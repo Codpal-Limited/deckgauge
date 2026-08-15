@@ -19,7 +19,7 @@ interface DragHandleProps {
 interface ColumnHeaderRowProps {
   visibleColumns?: VisibleColumns;
   columns?: BoardColumn[];
-  jiraAtlassianUrl?: string;
+  hasJiraIntegration?: boolean;
   hasGitHubIntegration?: boolean;
   hasAdoIntegration?: boolean;
   dragHandleProps?: DragHandleProps;
@@ -207,7 +207,7 @@ export function ColumnHeaderRow({
     updated: true,
   },
   columns,
-  jiraAtlassianUrl,
+  hasJiraIntegration,
   hasGitHubIntegration,
   hasAdoIntegration,
   dragHandleProps,
@@ -225,7 +225,7 @@ export function ColumnHeaderRow({
   // user hasn't hidden it via the Columns panel.
   const showSource =
     visibleColumns.source !== false &&
-    (!!jiraAtlassianUrl || !!hasGitHubIntegration || !!hasAdoIntegration);
+    (!!hasJiraIntegration || !!hasGitHubIntegration || !!hasAdoIntegration);
 
   // Shared classes for the pinned Item block so scrolled columns tuck underneath.
   const stickyCell = 'sticky z-20 bg-slate-50';

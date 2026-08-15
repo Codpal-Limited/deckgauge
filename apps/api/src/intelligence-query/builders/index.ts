@@ -2,7 +2,7 @@ export { intelligenceQueryBuilders, registerBuilder } from './registry.js';
 
 export type { WidgetSqlBuilder, BuiltSql, BuilderInputs } from './types.js';
 export type { ResolvedPeriod } from './period.js';
-export { resolvePeriod } from './period.js';
+export { resolvePeriod, resolveComparePeriods } from './period.js';
 
 // Side-effect imports: each builder file calls registerBuilder() (defined in
 // ./registry.ts) at module load. Importing them here is the only place that
@@ -37,3 +37,4 @@ import './delivery-trend-annotated.js';
 import './ai-adoption.js';
 import './investment-allocation.js';
 import './dora-metrics.js';
+import './period-comparison.js';

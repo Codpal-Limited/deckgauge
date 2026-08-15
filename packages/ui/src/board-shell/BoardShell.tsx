@@ -170,13 +170,13 @@ export function BoardShell<Row>({
           const reactKey = rowRenderKey ? rowRenderKey(row) : key;
           const selected = selection?.isSelected(key) ?? false;
           const rowClass = `group grid items-center border-b border-slate-100 transition-colors hover:bg-slate-50 ${
-            selected ? 'bg-indigo-50 border-indigo-200' : ''
+            selected ? 'bg-indigo-500/10 border-indigo-500/30' : ''
           }`;
           const rowInner = (
             <>
               <div className="sticky left-0 z-10 h-full" style={{ backgroundColor: groupColor }} />
               <div
-                className={`sticky z-10 ${selected ? 'bg-indigo-50' : 'bg-white'} flex items-center justify-center px-1 py-1 border-r border-slate-100`}
+                className={`sticky z-10 bg-white flex items-center justify-center px-1 py-1 border-r border-slate-100`}
                 style={{ left: CHECKBOX_LEFT }}
                 onKeyDown={(e) => e.stopPropagation()}
               >
@@ -198,7 +198,7 @@ export function BoardShell<Row>({
                   key={c.key}
                   className={[
                     'px-3 py-1 border-r border-slate-100 min-w-0',
-                    c.pinned ? `sticky z-10 ${selected ? 'bg-indigo-50' : 'bg-white'}` : '',
+                    c.pinned ? 'sticky z-10 bg-white' : '',
                   ]
                     .filter(Boolean)
                     .join(' ')}

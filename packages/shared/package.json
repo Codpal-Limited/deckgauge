@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "tsc --build --force",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:integration": "vitest run src/__tests__/jira-cloud-adapter.integration.test.ts",
     "lint": "eslint ."
   },

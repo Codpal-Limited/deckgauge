@@ -85,7 +85,15 @@ export async function handleSyncJob(
         projectKeys,
       });
 
-      const result = await jiraSyncProcessor({ adapter, projectKeys, trigger, db, syncConfigMap, ch });
+      const result = await jiraSyncProcessor({
+        adapter,
+        projectKeys,
+        trigger,
+        db,
+        syncConfigMap,
+        ch,
+        instanceId: instance.id,
+      });
       results.push({ instance: instance.name, ...result });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

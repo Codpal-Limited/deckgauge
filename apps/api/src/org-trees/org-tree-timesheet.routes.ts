@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { PutOrgTreeTimesheetConfigSchema } from '@deckgauge/shared';
 import { OrgTreeTimesheetConfigService } from './org-tree-timesheet-config.service.js';
 import { OrgTreeStatusPoolService } from './org-tree-status-pool.service.js';
+import { orgTree } from '../auth/policy.js';
 
 export interface OrgTreeTimesheetRoutesDeps {
   prisma: PrismaClient;
@@ -21,13 +22,13 @@ export function orgTreeTimesheetRoutes(deps: OrgTreeTimesheetRoutesDeps): Fastif
   }
 
   return async function plugin(app: FastifyInstance) {
-    app.get<{ Params: { id: string } }>('/org-trees/:id/timesheet-config', async (req, reply) => {
+    app.get<{ Params: { id: string } }>('/org-trees/:id/timesheet-config', { config: { policy: orgTree('VIEWER') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.id).success) return reply.code(400).send({ error: 'bad id' });
       if (!(await treeExists(req.params.id))) return reply.code(404).send({ error: 'not found' });
       return reply.send(await config.get(req.params.id));
     });
 
-    app.put<{ Params: { id: string } }>('/org-trees/:id/timesheet-config', async (req, reply) => {
+    app.put<{ Params: { id: string } }>('/org-trees/:id/timesheet-config', { config: { policy: orgTree('EDITOR') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.id).success) return reply.code(400).send({ error: 'bad id' });
       const parsed = PutOrgTreeTimesheetConfigSchema.safeParse(req.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
@@ -40,7 +41,7 @@ export function orgTreeTimesheetRoutes(deps: OrgTreeTimesheetRoutesDeps): Fastif
       );
     });
 
-    app.get<{ Params: { id: string } }>('/org-trees/:id/timesheet-status-pool', async (req, reply) => {
+    app.get<{ Params: { id: string } }>('/org-trees/:id/timesheet-status-pool', { config: { policy: orgTree('VIEWER') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.id).success) return reply.code(400).send({ error: 'bad id' });
       if (!(await treeExists(req.params.id))) return reply.code(404).send({ error: 'not found' });
       return reply.send(await pool.listForTree(req.params.id));

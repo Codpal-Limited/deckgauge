@@ -9,6 +9,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import { CHART_TOOLTIP } from './chartTheme';
 import type { Tier } from '@deckgauge/shared';
 
 interface Bucket {
@@ -36,7 +37,7 @@ export function HistogramChart({ buckets, height }: Props) {
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
         <XAxis dataKey="label" tick={{ fontSize: 10 }} />
         <YAxis tick={{ fontSize: 11 }} />
-        <Tooltip />
+        <Tooltip {...CHART_TOOLTIP} />
         <Bar dataKey="count">
           {buckets.map((b, i) => (
             <Cell key={i} fill={b.tier ? TIER_FILL[b.tier] : '#4f46e5'} />

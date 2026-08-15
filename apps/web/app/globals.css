@@ -61,6 +61,21 @@
    * must become the elevated surface, not stay white. `text-white`/`border-white`
    * are intentionally left fixed (they sit on coloured accents). */
   .dark .bg-white { background-color: rgb(var(--surface-1)); }
+
+  /* Native text-entry controls keep the browser's default white background, which
+   * the neutral-scale reversal above never touches. Without an explicit `bg-*`
+   * class their background stays white while their text colour flips to light in
+   * dark mode — rendering typed text invisible (white-on-white). Give every
+   * text-entry control a theme-managed surface + text colour as a fallback.
+   * `:where(:not(...))` pins specificity at (0,0,1): any explicit `bg-*`/`text-*`
+   * utility (0,1,0) still wins, so intentional `bg-transparent` / `bg-white` /
+   * `.input-dark` fields are untouched, and button/checkbox/etc. are excluded. */
+  input:where(:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='button'], [type='submit'], [type='reset'])),
+  textarea,
+  select {
+    background-color: rgb(var(--surface-1));
+    color: rgb(var(--slate-800));
+  }
 }
 
 @layer components {
@@ -111,3 +126,21 @@
   .dropdown-item { @apply w-full text-left px-4 py-2 text-sm text-slate-600 transition-colors duration-150 hover:bg-slate-50 hover:text-slate-800; }
   .dropdown-item-danger { @apply w-full text-left px-4 py-2 text-sm text-red-600 transition-colors duration-150 hover:bg-red-50; }
 }
+
+/*
+ * Recharts theming. Chart chrome (grid, axis lines, tick + label text) is drawn by
+ * Recharts as SVG *presentation attributes* with hardcoded light colours (e.g.
+ * stroke="#e2e8f0", default #666 tick text) that never flip for dark mode. CSS
+ * custom properties do NOT resolve inside SVG attributes, but they DO in CSS
+ * properties — and author CSS always overrides a presentation attribute — so these
+ * rules retint the chrome with the theme-aware neutral scale in one place, for every
+ * chart, in both themes and all browsers. Data-series colours stay as set per chart.
+ */
+.recharts-cartesian-grid line,
+.recharts-cartesian-grid path { stroke: rgb(var(--slate-200)); }
+.recharts-cartesian-axis-line,
+.recharts-cartesian-axis-tick-line { stroke: rgb(var(--slate-300)); }
+.recharts-cartesian-axis-tick-value,
+.recharts-label,
+.recharts-polar-angle-axis-tick-value,
+.recharts-polar-radius-axis-tick-value { fill: rgb(var(--slate-500)); }

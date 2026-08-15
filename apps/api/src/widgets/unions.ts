@@ -1,4 +1,6 @@
+import { DONE_STATUS_NAMES } from '@deckgauge/shared';
 import type { BoardScope } from '../intelligence/board-scope.js';
+import { chNormalizedStatusExpr } from './widget-helpers.js';
 
 export interface UnionResult {
   /** Null when no scope leg applies. */
@@ -6,12 +8,65 @@ export interface UnionResult {
   params: Record<string, unknown>;
 }
 
+// Separator for the exact (org_url, project) pair key. org_url is always a URL
+// and can never contain '#', so splitting at the first '#' is unambiguous — the
+// concatenation is injective.
+const ADO_REF_SEP = '#';
+
+/**
+ * WHERE fragment scoping an ADO table to the board's exact (org, project) pairs.
+ *
+ * ADO project names are unique only within an organisation and more than one org
+ * can be connected, so `project IN (...)` alone would blend two orgs' rows into
+ * one board. `(org_url, project) IN {…:Array(Tuple(String,String))}` would say
+ * this directly, but @clickhouse/client cannot serialise a tuple array (the
+ * server rejects it with CANNOT_PARSE_INPUT_ASSERTION_FAILED), so the exact
+ * check is a concatenated key. The two plain IN filters are kept alongside it so
+ * the primary key — (org_url, project, …) on every ADO table — still prunes.
+ *
+ * Falls back to project-only filtering when the scope carries no refs (hand-built
+ * scopes in tests; correct for a single-org install).
+ */
+function adoScopeFilter(scope: BoardScope, params: Record<string, unknown>): string {
+  const refs = scope.adoProjectRefs;
+  if (!refs || refs.length === 0) {
+    params.adoProjects = scope.adoProjects;
+    return `project IN {adoProjects:Array(String)}`;
+  }
+  params.adoProjects = Array.from(new Set(refs.map((r) => r.project)));
+  params.adoOrgs = Array.from(new Set(refs.map((r) => r.orgUrl)));
+  params.adoRefs = refs.map((r) => `${r.orgUrl}${ADO_REF_SEP}${r.project}`);
+  return `org_url IN {adoOrgs:Array(String)}
+        AND project IN {adoProjects:Array(String)}
+        AND has({adoRefs:Array(String)}, concat(org_url, '${ADO_REF_SEP}', project))`;
+}
+
 // Canonical issue shape: id, created_at, closed_at, state, type, assignee,
 // sprint_name, source.
 //
 // Per-provider divergences (see clickhouse/schemas/{01,09,30}_*.sql):
 //   jira_issues:    status_category (not state), issue_type, assignee,
-//                   resolved_at (not closed_at), sprint_name.
+//                   resolved_at (not closed_at), sprint_name. resolved_at is
+//                   frequently NULL — many workflows close by status transition
+//                   without setting a resolution date — so closed_at falls back
+//                   to the first "done" transition (jira_transitions), matching
+//                   how issue-cycle.ts / flow-throughput-cycle.ts detect done.
+//                   This keeps every closed_at-based widget (throughput,
+//                   investment-allocation, issues-opened-vs-closed, time-to-
+//                   restore) from silently undercounting Jira closes.
+//
+//                   The fallback MUST be wrapped in nullIf(..., toDateTime(0)):
+//                   ClickHouse runs with join_use_nulls = 0, so a LEFT JOIN miss
+//                   yields the joined column's DEFAULT rather than NULL, and
+//                   `transitioned_at` is a non-nullable DateTime whose default is
+//                   1970-01-01. Without the guard every never-closed issue reads
+//                   as "closed in 1970", which is not NULL and not in any recent
+//                   window — that silently zeroed WIP_COUNT for Jira boards.
+//
+// Every issue table is ReplacingMergeTree(synced_at), so each leg pins FINAL to
+// drop superseded row versions; otherwise re-synced issues are counted twice.
+// The Jira leg is aliased (it joins the transitions aggregate) and ClickHouse
+// expects FINAL after the alias — `AS ji FINAL`.
 //   github_issues:  native state ('open'/'closed'), no type column (derive
 //                   from labels: 'bug'/'defect' → 'Bug', else 'Other'),
 //                   assignee_login, closed_at, no sprint.
@@ -20,7 +75,7 @@ export interface UnionResult {
 const JIRA_ISSUES_COLUMNS = `
   toString(id)                                                                      AS id,
   created_at                                                                        AS created_at,
-  resolved_at                                                                       AS closed_at,
+  coalesce(resolved_at, nullIf(done_tr.done_at, toDateTime(0)))                      AS closed_at,
   status_category                                                                   AS state,
   issue_type                                                                        AS type,
   assignee                                                                          AS assignee,
@@ -66,24 +121,36 @@ export function issuesUnion(scope: BoardScope): UnionResult {
   const params: Record<string, unknown> = {};
 
   if (scope.jiraProjectKeys.length) {
+    // closed_at falls back to the first done transition when resolved_at is NULL
+    // (see JIRA_ISSUES_COLUMNS note). Pre-aggregate transitions per issue, then
+    // LEFT JOIN so issues with neither a resolution date nor a done transition
+    // still appear (closed_at stays NULL = still open).
     legs.push(`SELECT ${JIRA_ISSUES_COLUMNS}, 'jira' AS source
-      FROM cockpit.jira_issues WHERE project_key IN {jiraProjects:Array(String)}`);
+      FROM cockpit.jira_issues AS ji FINAL
+      LEFT JOIN (
+        SELECT issue_key, min(transitioned_at) AS done_at
+        FROM cockpit.jira_transitions
+        WHERE project_key IN {jiraProjects:Array(String)}
+          AND ${chNormalizedStatusExpr('to_status')} IN {jiraDoneStatuses:Array(String)}
+        GROUP BY issue_key
+      ) AS done_tr ON done_tr.issue_key = ji.key
+      WHERE ji.project_key IN {jiraProjects:Array(String)}`);
     params.jiraProjects = scope.jiraProjectKeys;
+    params.jiraDoneStatuses = [...DONE_STATUS_NAMES];
   }
   if (scope.githubRepoFullNames.length) {
     legs.push(`SELECT ${GITHUB_ISSUES_COLUMNS}, 'github' AS source
-      FROM cockpit.github_issues WHERE repo_full_name IN {ghRepos:Array(String)}`);
+      FROM cockpit.github_issues FINAL WHERE repo_full_name IN {ghRepos:Array(String)}`);
     params.ghRepos = scope.githubRepoFullNames;
   }
   if (scope.gitlabProjectPaths.length) {
     legs.push(`SELECT ${GITLAB_ISSUES_COLUMNS}, 'gitlab' AS source
-      FROM cockpit.gitlab_issues WHERE project_path IN {glIssuePaths:Array(String)}`);
+      FROM cockpit.gitlab_issues FINAL WHERE project_path IN {glIssuePaths:Array(String)}`);
     params.glIssuePaths = scope.gitlabProjectPaths;
   }
   if (scope.adoProjects.length) {
     legs.push(`SELECT ${ADO_ISSUES_COLUMNS}, 'ado' AS source
-      FROM cockpit.ado_work_items WHERE project IN {adoProjects:Array(String)}`);
-    params.adoProjects = scope.adoProjects;
+      FROM cockpit.ado_work_items FINAL WHERE ${adoScopeFilter(scope, params)}`);
   }
   return { sql: legs.length ? legs.join(' UNION ALL ') : null, params };
 }
@@ -165,8 +232,7 @@ export function pullRequestsUnion(scope: BoardScope): UnionResult {
   }
   if (scope.adoProjects.length) {
     legs.push(`SELECT ${ADO_PR_COLUMNS}, 'ado' AS source
-      FROM cockpit.ado_pull_requests WHERE project IN {adoProjects:Array(String)}`);
-    params.adoProjects = scope.adoProjects;
+      FROM cockpit.ado_pull_requests WHERE ${adoScopeFilter(scope, params)}`);
   }
   return { sql: legs.length ? legs.join(' UNION ALL ') : null, params };
 }
@@ -232,8 +298,7 @@ export function commitsUnion(scope: BoardScope): UnionResult {
   }
   if (scope.adoProjects.length) {
     legs.push(`SELECT ${ADO_COMMIT_COLUMNS}, 'ado' AS source
-      FROM cockpit.ado_commits WHERE project IN {adoProjects:Array(String)}`);
-    params.adoProjects = scope.adoProjects;
+      FROM cockpit.ado_commits WHERE ${adoScopeFilter(scope, params)}`);
   }
   return { sql: legs.length ? legs.join(' UNION ALL ') : null, params };
 }
@@ -279,8 +344,7 @@ export function reviewsUnion(scope: BoardScope): UnionResult {
   }
   if (scope.adoProjects.length) {
     legs.push(`SELECT ${ADO_REVIEW_COLUMNS}
-      FROM cockpit.ado_reviews FINAL WHERE project IN {adoProjects:Array(String)}`);
-    params.adoProjects = scope.adoProjects;
+      FROM cockpit.ado_reviews FINAL WHERE ${adoScopeFilter(scope, params)}`);
   }
   if (scope.gitlabProjectPaths.length) {
     legs.push(`SELECT ${GITLAB_REVIEW_COLUMNS}
@@ -323,8 +387,146 @@ export function developerCommitsUnion(scope: BoardScope): UnionResult {
   if (scope.adoProjects.length) {
     legs.push(`SELECT ${DEV_COMMIT_COLUMNS}
       FROM cockpit.ado_commits
-      WHERE project IN {adoProjects:Array(String)} AND is_merge_commit = 0`);
-    params.adoProjects = scope.adoProjects;
+      WHERE ${adoScopeFilter(scope, params)} AND is_merge_commit = 0`);
+  }
+  return { sql: legs.length ? legs.join(' UNION ALL ') : null, params };
+}
+
+// Canonical deployment shape: deployed_at, is_success, is_production, release_key, source.
+//
+// Real deployment records, so DORA's deploy frequency can stop proxying it from
+// merged-PR count (see packages/shared/src/dora.ts and dora-metrics.ts).
+//
+// Per-provider divergences:
+//   ado_deployments:    status ('succeeded' | 'failed' | 'partiallySucceeded' |
+//                       'canceled' | ...), is_production already resolved at
+//                       ingest from the stage name, completed_at Nullable so the
+//                       timestamp coalesces down to started_at.
+//   github_deployments: latest_status ('success' | 'failure' | ...) and
+//                       `production` (a 0/1 mirror of GitHub's
+//                       production_environment). Rows have been ingested by the
+//                       worker since Phase 3 but were never read by anything —
+//                       this union is their first consumer.
+//
+// Both tables are ReplacingMergeTree, so each leg pins FINAL: a redeployed or
+// re-synced record would otherwise be counted twice and inflate the metric.
+// Production classification for ADO is decided HERE, at query time, from the raw
+// columns — not read from the ingest-time is_production flag. ADO has no
+// "this stage is production" field, so any rule is a guess over names, and the
+// rule has already had to change twice against real data. Deciding at query time
+// means a revised rule applies retroactively to every ingested row; reading the
+// stored flag would need a full re-sync, which the deployment watermark makes
+// impossible (the same trap that froze ado_pull_requests).
+//
+// The rule (chosen deliberately as the tightest of the options):
+//   a production-ish name in the STAGE or the RELEASE DEFINITION,
+//   AND the release was built from a default/release branch.
+//
+// Why the definition name matters: in several projects the environment lives in
+// the pipeline name while the "stage" is a deployment TARGET —
+// 'Authentication PROD - Internal' deploys stage 'C8 - <Service> Auth'. Looking
+// only at the stage name reported 0 production deploys for a whole board.
+//
+// Why the branch clause: it excludes pre-production runs of a prod-named
+// pipeline. It also DROPS legitimate production deploys cut from a non-default
+// branch — on real data at the time of writing, one project fell from 881 rows
+// to 493. That trade was made knowingly.
+//
+// Why the redirect exclusion: a pipeline named 'PROD-<Project> - PROD to UAT'
+// carries PROD in its name but deploys to UAT.
+const ADO_PROD_NAME_RE = '(^|[^a-z])(prod|production|live|release)([^a-z]|$)';
+const ADO_PROD_DEFINITION_RE = '(^|[^a-z])(prod|production)([^a-z]|$)';
+const ADO_PROD_REDIRECT_RE = 'to[^a-z]*(uat|dev|qa|sit|test)';
+// Matches 'refs/heads/main', 'refs/heads/master', 'refs/heads/release'. A
+// versioned branch like 'release/1.2' deliberately does NOT match — treat that as
+// a known limitation rather than loosening the anchor.
+const ADO_DEFAULT_BRANCH_RE = '(^|/)(main|master|release)$';
+
+const ADO_DEPLOYMENT_COLUMNS = `
+  coalesce(completed_at, started_at)          AS deployed_at,
+  status = 'succeeded'                        AS is_success,
+  (
+       (match(lowerUTF8(environment), '${ADO_PROD_NAME_RE}')
+        OR match(lowerUTF8(definition_name), '${ADO_PROD_DEFINITION_RE}'))
+   AND NOT match(lowerUTF8(definition_name), '${ADO_PROD_REDIRECT_RE}')
+   AND match(lowerUTF8(coalesce(source_branch, '')), '${ADO_DEFAULT_BRANCH_RE}')
+  )                                           AS is_production,
+  -- One logical release fans out to one deployment row PER STAGE, and some
+  -- "stages" are not deploys at all ('Post New Relic Deployment Marker'). Counting
+  -- rows inflated deploy frequency 2-4x (worst observed projects: 4.4x, 3.5x).
+  -- Callers count DISTINCT release_key so a release reaching production once
+  -- counts once. Falls back to the deployment id when release_id is absent, so
+  -- those rows stay distinct instead of collapsing into a single bucket.
+  concat('ado#', toString(if(release_id > 0, release_id, deployment_id))) AS release_key
+`;
+
+// GitHub needs no name guessing and no branch corroboration: `production` is an
+// explicit flag on the deployment itself (a mirror of GitHub's
+// production_environment), not an inference from a label. ANDing a branch clause
+// here would only discard deploys GitHub has already told us were production.
+const GITHUB_DEPLOYMENT_COLUMNS = `
+  coalesce(latest_status_at, created_at)      AS deployed_at,
+  latest_status = 'success'                   AS is_success,
+  production                                  AS is_production,
+  concat('gh#', toString(deployment_id))      AS release_key
+`;
+
+export function deploymentsUnion(scope: BoardScope): UnionResult {
+  const legs: string[] = [];
+  const params: Record<string, unknown> = {};
+
+  // Projects with an explicit production allow-list get their OWN leg, because
+  // no name rule can separate an operational pipeline from a deployment one:
+  // 'Restart <region> Core Processor', 'Reset IIS' and 'Publish <Lib>Components'
+  // (a NuGet publish) must not count, while
+  // 'Release-<App>.Dashboard.sln-Master' must — and none of them carries a
+  // prod/production marker. An explicit list is authoritative, so it also skips
+  // the heuristic's default-branch requirement, exactly as GitHub's own
+  // `production` flag does.
+  const configured = scope.adoProdConfig ?? [];
+  const configuredKeys = new Set(configured.map((c) => `${c.orgUrl}${ADO_REF_SEP}${c.project}`));
+  configured.forEach((cfg, i) => {
+    const defsKey = `adoProdDefs${i}`;
+    const stagesKey = `adoProdStages${i}`;
+    const orgKey = `adoProdOrg${i}`;
+    const projKey = `adoProdProject${i}`;
+    params[defsKey] = cfg.definitions;
+    params[stagesKey] = cfg.stages;
+    params[orgKey] = cfg.orgUrl;
+    params[projKey] = cfg.project;
+    legs.push(`SELECT
+        coalesce(completed_at, started_at)                     AS deployed_at,
+        status = 'succeeded'                                   AS is_success,
+        (has({${defsKey}:Array(String)}, definition_name)
+         OR has({${stagesKey}:Array(String)}, environment))    AS is_production,
+        concat('ado#', toString(if(release_id > 0, release_id, deployment_id))) AS release_key,
+        'ado' AS source
+      FROM cockpit.ado_deployments FINAL
+      WHERE org_url = {${orgKey}:String} AND project = {${projKey}:String}`);
+  });
+
+  // Everything else keeps the heuristic. Configured projects are excluded here so
+  // a project is never counted by both rules.
+  const heuristicRefs = (scope.adoProjectRefs ?? []).filter(
+    (ref) => !configuredKeys.has(`${ref.orgUrl}${ADO_REF_SEP}${ref.project}`),
+  );
+  const usesHeuristic =
+    scope.adoProjects.length > 0 &&
+    (scope.adoProjectRefs === undefined || scope.adoProjectRefs.length === 0
+      ? true // no refs at all — fall back to project-only filtering
+      : heuristicRefs.length > 0);
+  if (usesHeuristic) {
+    const heuristicScope: BoardScope =
+      scope.adoProjectRefs === undefined || scope.adoProjectRefs.length === 0
+        ? scope
+        : { ...scope, adoProjectRefs: heuristicRefs };
+    legs.push(`SELECT ${ADO_DEPLOYMENT_COLUMNS}, 'ado' AS source
+      FROM cockpit.ado_deployments FINAL WHERE ${adoScopeFilter(heuristicScope, params)}`);
+  }
+  if (scope.githubRepoFullNames.length) {
+    legs.push(`SELECT ${GITHUB_DEPLOYMENT_COLUMNS}, 'github' AS source
+      FROM cockpit.github_deployments FINAL WHERE repo_full_name IN {ghRepos:Array(String)}`);
+    params.ghRepos = scope.githubRepoFullNames;
   }
   return { sql: legs.length ? legs.join(' UNION ALL ') : null, params };
 }

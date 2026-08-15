@@ -2,16 +2,23 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { renameOrgTree, deleteOrgTree } from '../../actions/org-trees';
+import { renameOrgTree, deleteOrgTree, type OrgTreeAccessEntry } from '../../actions/org-trees';
+import { ShareOrgTreeModal } from '../../components/ShareOrgTreeModal';
 
 interface OrgTreeHeaderActionsProps {
   treeId: string;
   treeName: string;
+  initialAccess?: OrgTreeAccessEntry[];
 }
 
-export function OrgTreeHeaderActions({ treeId, treeName }: OrgTreeHeaderActionsProps) {
+export function OrgTreeHeaderActions({
+  treeId,
+  treeName,
+  initialAccess = [],
+}: OrgTreeHeaderActionsProps) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [showShare, setShowShare] = useState(false);
 
   async function handleRename() {
     const next = window.prompt('Rename org tree', treeName);
@@ -48,6 +55,14 @@ export function OrgTreeHeaderActions({ treeId, treeName }: OrgTreeHeaderActionsP
     <div className="flex items-center gap-2">
       <button
         type="button"
+        onClick={() => setShowShare(true)}
+        disabled={busy}
+        className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+      >
+        Share
+      </button>
+      <button
+        type="button"
         onClick={handleRename}
         disabled={busy}
         className="btn-secondary text-xs py-1.5 px-3 disabled:opacity-60"
@@ -62,6 +77,13 @@ export function OrgTreeHeaderActions({ treeId, treeName }: OrgTreeHeaderActionsP
       >
         Delete
       </button>
+      {showShare && (
+        <ShareOrgTreeModal
+          orgTreeId={treeId}
+          members={initialAccess}
+          onClose={() => setShowShare(false)}
+        />
+      )}
     </div>
   );
 }

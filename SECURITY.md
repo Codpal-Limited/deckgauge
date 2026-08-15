@@ -9,7 +9,7 @@ We take the security of Deckgauge and its users seriously. Thank you for helping
 Report privately through either channel:
 
 - **GitHub private vulnerability reporting** — use the **"Report a vulnerability"** button on the repository's **Security** tab (preferred).
-- **Email** — **yaniv@codpal.com**.
+- **Email** — **support@codpal.com**.
 
 Please include:
 

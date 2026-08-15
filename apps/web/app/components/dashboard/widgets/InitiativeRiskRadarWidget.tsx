@@ -2,6 +2,7 @@
 
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
+import { WidgetEmptyState } from './WidgetEmptyState';
 
 interface Props {
   boardId: string;
@@ -31,21 +32,11 @@ export default function InitiativeRiskRadarWidget({ boardId, config }: Props) {
   const { data, error } = useWidgetData<Data>(boardId, 'INITIATIVE_RISK_RADAR', config);
   if (error) return <WidgetErrorState />;
   if (!data) return <p className="text-sm text-slate-400">Loading…</p>;
-  if (data.emptyReason)
-    return (
-      <p className="text-sm text-slate-500 p-2">
-        Connect a source in{' '}
-        <a className="underline" href="../sources">
-          Sources tab
-        </a>
-        .
-      </p>
-    );
+  if (data.emptyReason) return <WidgetEmptyState boardId={boardId} reason={data.emptyReason} />;
   if (data.initiatives.length === 0)
     return (
       <p className="text-sm text-slate-500 p-2">
-        No open initiatives with a due date. Set a Due date on a board row to
-        track it here.
+        No open initiatives with a due date. Set a Due date on a board row to track it here.
       </p>
     );
   return (

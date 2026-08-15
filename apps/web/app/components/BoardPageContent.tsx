@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { JiraSourceLinks } from '@deckgauge/shared';
 import { BoardUnifiedTabs } from './tabs/BoardUnifiedTabs';
 import { BoardView } from './BoardView';
 import { fetchProjectsPage, fetchCommentCounts } from '../actions/projects';
@@ -32,8 +33,10 @@ interface BoardPageContentProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     columns: any[];
     boardId: string;
-    jiraAtlassianUrl: string;
+    jiraLinks: JiraSourceLinks;
     hasGitHubIntegration: boolean;
+    adoOrgUrls: Record<string, string>;
+    hasAdoIntegration: boolean;
     commentCounts: Record<string, number>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     boardOwners: any[];

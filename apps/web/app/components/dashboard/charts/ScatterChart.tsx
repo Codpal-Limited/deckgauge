@@ -10,6 +10,7 @@ import {
   CartesianGrid,
   Cell,
 } from 'recharts';
+import { CHART_TOOLTIP } from './chartTheme';
 import type { BenchmarkConfig, Tier } from '@deckgauge/shared';
 import { BenchmarkBands } from './BenchmarkBands';
 import { TierLegend } from './TierLegend';
@@ -93,7 +94,7 @@ export function ScatterChart({
           />
           <ZAxis range={[40, 40]} />
           {benchmarks ? <BenchmarkBands config={benchmarks} yMax={yMax} /> : null}
-          <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+          <Tooltip {...CHART_TOOLTIP} cursor={{ strokeDasharray: '3 3' }} />
           <Scatter
             data={points}
             onClick={(d: { payload?: Point }) =>

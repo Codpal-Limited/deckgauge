@@ -1,14 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { Responsive, WidthProvider, Layout, LayoutItem } from 'react-grid-layout/legacy';
 import 'react-grid-layout/css/styles.css';
-import { fetchWidgets, updateWidgetLayouts } from '../../actions/widgets';
+import { fetchWidgets, fetchWidgetDataBatch, updateWidgetLayouts } from '../../actions/widgets';
 import WidgetCard from './WidgetCard';
 import WidgetPicker from './WidgetPicker';
 import { widgetRegistry } from './widgetRegistry';
 import { BoardPeriodProvider } from './BoardPeriodProvider';
 import { BoardPeriodPicker } from './BoardPeriodPicker';
+import {
+  WidgetDataBatchContext,
+  widgetBatchKey,
+  type WidgetDataBatch,
+} from './widgets/widget-data-batch-context';
 
 const ResponsiveGrid = WidthProvider(Responsive);
 
@@ -26,19 +31,98 @@ interface DashboardCanvasProps {
   canEdit: boolean;
 }
 
+// Column counts per breakpoint. Only `lg` matches the 12-column geometry a
+// widget's stored layout is written in — see persistLayout.
+const BREAKPOINTS = { lg: 1200, md: 996, sm: 768 } as const;
+const COLS = { lg: 12, md: 8, sm: 4 } as const;
+const DESKTOP_BREAKPOINT = 'lg';
+
 export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardCanvasProps) {
   const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
   const [showPicker, setShowPicker] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+  // WidthProvider renders at 1280px before it measures, so lg is the correct
+  // starting assumption; react-grid-layout reports every later change.
+  const [breakpoint, setBreakpoint] = useState<string>(DESKTOP_BREAKPOINT);
+  const canArrange = canEdit && breakpoint === DESKTOP_BREAKPOINT;
 
   const loadWidgets = useCallback(async () => {
-    const data = await fetchWidgets(boardId, viewId);
-    setWidgets(data);
+    setIsLoading(true);
+    try {
+      const data = await fetchWidgets(boardId, viewId);
+      setWidgets(data);
+    } finally {
+      setIsLoading(false);
+    }
   }, [boardId, viewId]);
 
   useEffect(() => {
     loadWidgets();
   }, [loadWidgets]);
+
+  // One batch request for every widget's data, replacing N per-widget server
+  // actions (which Next.js serializes). The dashboard fetches once and hands
+  // each widget its slice via WidgetDataBatchContext.
+  const [batch, setBatch] = useState<WidgetDataBatch>({
+    status: 'loading',
+    entries: new Map(),
+  });
+
+  // Depend on widget *types + configs*, not the widgets array identity: a
+  // layout drag replaces the array (same content → identical string → the
+  // effect below does not refire) but must not re-trigger the data batch. We
+  // read the live widget list through a ref so the effect need not list
+  // `widgets` as a dependency (which would refire on every layout change).
+  const batchInputKey = useMemo(
+    () => JSON.stringify(widgets.map((w) => [w.widgetType, w.config])),
+    [widgets]
+  );
+  const widgetsRef = useRef(widgets);
+  widgetsRef.current = widgets;
+
+  useEffect(() => {
+    const current = widgetsRef.current;
+    if (current.length === 0) {
+      setBatch({ status: 'ready', entries: new Map() });
+      return;
+    }
+
+    let cancelled = false;
+    setBatch({ status: 'loading', entries: new Map() });
+
+    // De-duplicate: two widgets of the same type+config share one result.
+    const seen = new Set<string>();
+    const items = current
+      .filter((w) => {
+        const k = widgetBatchKey(w.widgetType, w.config);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      })
+      .map((w) => ({ widgetType: w.widgetType, config: w.config }));
+
+    fetchWidgetDataBatch(boardId, items)
+      .then((res) => {
+        if (cancelled) return;
+        const entries = new Map(
+          res.results.map((r) => [
+            widgetBatchKey(r.widgetType, r.config),
+            { data: r.data, error: r.error },
+          ])
+        );
+        setBatch({ status: 'ready', entries });
+      })
+      .catch(() => {
+        // Batch endpoint unavailable → mark ready with no entries so each
+        // widget falls back to its own per-widget fetch (previous behaviour).
+        if (!cancelled) setBatch({ status: 'ready', entries: new Map() });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [boardId, viewId, batchInputKey]);
 
   const layouts: Layout = widgets.map((w) => ({
     i: w.id,
@@ -50,7 +134,14 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
     minH: 2,
   }));
 
-  const handleLayoutChange = useCallback(
+  // A widget stores ONE layout, and it is expressed in lg's 12 columns. Below
+  // lg, react-grid-layout re-flows that layout itself (correctBounds + compact
+  // against 8 or 4 columns) and reports the result through onLayoutChange, which
+  // is indistinguishable from a user edit. Persisting it overwrote the desktop
+  // layout with narrow-screen coordinates, so on the next wide render widgets
+  // came back squashed into the left of the grid. Persist real drag/resize
+  // gestures only, and only while the grid is actually showing 12 columns.
+  const persistLayout = useCallback(
     (newLayout: Layout) => {
       if (!canEdit) return;
       const changed = (newLayout as readonly LayoutItem[])
@@ -84,9 +175,50 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
     [boardId, viewId, canEdit, widgets]
   );
 
+  const handleGestureStop = useCallback(
+    (newLayout: Layout) => {
+      if (!canArrange) return;
+      persistLayout(newLayout);
+    },
+    [canArrange, persistLayout]
+  );
+
   const showPeriodPicker = widgets.some(
     (w) => widgetRegistry[w.widgetType]?.timeAware === true,
   );
+
+  if (isLoading) {
+    return (
+      <BoardPeriodProvider>
+        <div
+          className="flex flex-col items-center justify-center py-24 text-slate-400"
+          role="status"
+          aria-live="polite"
+        >
+          <svg
+            className="w-10 h-10 mb-4 animate-spin text-teal-500"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth={4}
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+          <p className="text-sm font-medium">Loading intelligence…</p>
+        </div>
+      </BoardPeriodProvider>
+    );
+  }
 
   if (widgets.length === 0 && !isPending) {
     return (
@@ -129,8 +261,14 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
 
   return (
     <BoardPeriodProvider>
+      <WidgetDataBatchContext.Provider value={batch}>
       <div className="p-4">
         <div className="flex items-center justify-end gap-2 mb-3">
+          {canEdit && !canArrange && (
+            <p className="mr-auto text-xs text-slate-400">
+              Rearranging widgets is available on a wider screen.
+            </p>
+          )}
           {showPeriodPicker && <BoardPeriodPicker />}
           {canEdit && (
             <button
@@ -145,12 +283,14 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
       <ResponsiveGrid
         className="layout"
         layouts={{ lg: layouts }}
-        breakpoints={{ lg: 1200, md: 996, sm: 768 }}
-        cols={{ lg: 12, md: 8, sm: 4 }}
+        breakpoints={BREAKPOINTS}
+        cols={COLS}
         rowHeight={80}
-        isDraggable={canEdit}
-        isResizable={canEdit}
-        onLayoutChange={handleLayoutChange}
+        isDraggable={canArrange}
+        isResizable={canArrange}
+        onBreakpointChange={setBreakpoint}
+        onDragStop={handleGestureStop}
+        onResizeStop={handleGestureStop}
       >
         {widgets.map((widget) => {
           const WidgetComponent = widgetRegistry[widget.widgetType]?.component;
@@ -160,6 +300,7 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
                 boardId={boardId}
                 viewId={viewId}
                 widgetId={widget.id}
+                widgetType={widget.widgetType}
                 title={widget.title}
                 canEdit={canEdit}
               >
@@ -183,6 +324,7 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
         />
       )}
     </div>
+      </WidgetDataBatchContext.Provider>
     </BoardPeriodProvider>
   );
 }

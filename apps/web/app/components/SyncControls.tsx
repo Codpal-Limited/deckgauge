@@ -6,17 +6,23 @@ import {
   triggerBoardSync,
   fetchBoardSyncStatus,
   fetchBoardSourceHealth,
+  revalidateBoardData,
   type BoardSyncStatus,
   type BoardSourceHealth,
 } from '../actions/board-sync';
+import { pollForSyncCompletion } from '../utils/board-sync-runner';
 
 interface SyncControlsProps {
   boardId: string;
   userRole?: 'OWNER' | 'EDITOR' | 'VIEWER' | null;
 }
 
-const POLL_INTERVAL_MS = 1000;
-const POLL_MAX_ITERATIONS = 30;
+// Both states block sync, so both belong in the warning — but a `reauthorize`
+// source has a working token whose SSO session lapsed, and telling that user to
+// replace the token sends them to re-issue a credential that was never broken.
+function isCredentialBlocked(state: BoardSourceHealth['state']): boolean {
+  return state === 'expired' || state === 'reauthorize';
+}
 
 export function SyncControls({ boardId, userRole }: SyncControlsProps) {
   const router = useRouter();
@@ -34,7 +40,7 @@ export function SyncControls({ boardId, userRole }: SyncControlsProps) {
 
   const loadHealth = useCallback(async () => {
     const h = await fetchBoardSourceHealth(boardId);
-    setExpired(h ? h.sources.filter((s) => s.state === 'expired') : []);
+    setExpired(h ? h.sources.filter((s) => isCredentialBlocked(s.state)) : []);
   }, [boardId]);
 
   useEffect(() => {
@@ -52,6 +58,18 @@ export function SyncControls({ boardId, userRole }: SyncControlsProps) {
   }, [toast]);
 
   const canTrigger = userRole === 'OWNER' || userRole === 'EDITOR';
+  // Drives the copy: a dead token needs replacing, a lapsed SSO session needs
+  // re-authorizing. Mixed sets get the stronger "expired" wording.
+  const hasTrulyExpired = expired.some((s) => s.state === 'expired');
+
+  // Synced rows reach the board through the page's server render, so a finished
+  // sync is invisible until that data is refetched. Drop the board's cached
+  // server data, then re-run the render — without this the board keeps showing
+  // its pre-sync rows (nothing at all, on a brand-new board) until a reload.
+  const refreshBoardRows = useCallback(async () => {
+    await revalidateBoardData(boardId);
+    router.refresh();
+  }, [boardId, router]);
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -73,20 +91,19 @@ export function SyncControls({ boardId, userRole }: SyncControlsProps) {
         setFixOpen(true);
       }
 
-      const startedAt = status?.finishedAt ?? null;
-      for (let i = 0; i < POLL_MAX_ITERATIONS; i++) {
-        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-        const next = await fetchBoardSyncStatus(boardId);
-        if (next?.finishedAt && next.finishedAt !== startedAt) {
-          setStatus(next);
-          setToast({
-            kind: 'success',
-            text: `Synced — ${next.sourceCount} source${next.sourceCount === 1 ? '' : 's'} updated`,
-          });
-          return;
-        }
+      const next = await pollForSyncCompletion(boardId, status?.finishedAt ?? null);
+      if (next) {
+        setStatus(next);
+        setToast({
+          kind: 'success',
+          text: `Synced — ${next.sourceCount} source${next.sourceCount === 1 ? '' : 's'} updated`,
+        });
+        await refreshBoardRows();
+        return;
       }
       setToast({ kind: 'info', text: 'Sync may still be running' });
+      // Poll window elapsed: show whatever the worker has written so far.
+      await refreshBoardRows();
     } finally {
       setIsSyncing(false);
       void loadStatus();
@@ -122,9 +139,13 @@ export function SyncControls({ boardId, userRole }: SyncControlsProps) {
         <button
           type="button"
           onClick={() => goFix(expired[0])}
-          className="rounded bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700 hover:bg-rose-200"
+          className={`rounded px-2 py-0.5 text-xs font-medium ${
+            hasTrulyExpired
+              ? 'bg-rose-100 text-rose-700 hover:bg-rose-200'
+              : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+          }`}
         >
-          ⚠ Token expired
+          {hasTrulyExpired ? '⚠ Token expired' : '⚠ Reauthorize connection'}
         </button>
       )}
       {toast && (
@@ -147,13 +168,20 @@ export function SyncControls({ boardId, userRole }: SyncControlsProps) {
               Sync can&apos;t reach some connections
             </h3>
             <p className="mt-1 text-xs text-slate-500">
-              These source tokens are expired — those sources were skipped.
+              These sources were skipped because their credentials could not be used.
             </p>
             <ul className="mt-3 space-y-1 text-sm text-slate-700">
               {expired.map((s) => (
                 <li key={`${s.provider}:${s.instanceId}`}>
                   <span className="font-medium capitalize">{s.provider}</span> — {s.label}
-                  <span className="text-rose-600"> · token expired</span>
+                  {s.state === 'reauthorize' ? (
+                    <span className="text-amber-600">
+                      {' '}
+                      · single sign-on needs reauthorizing (the token itself is still valid)
+                    </span>
+                  ) : (
+                    <span className="text-rose-600"> · token expired</span>
+                  )}
                 </li>
               ))}
             </ul>

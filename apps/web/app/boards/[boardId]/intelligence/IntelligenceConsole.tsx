@@ -150,7 +150,7 @@ export function IntelligenceConsole({
             type="button"
             onClick={() => void run()}
             disabled={running}
-            className="text-xs px-3 py-1.5 rounded bg-slate-900 text-white disabled:bg-slate-400 disabled:cursor-not-allowed hover:bg-slate-700"
+            className="text-xs px-3 py-1.5 rounded bg-slate-900 text-slate-50 disabled:bg-slate-400 disabled:cursor-not-allowed hover:bg-slate-700"
             title="Run query (Cmd/Ctrl+Enter)"
           >
             {running ? 'Running…' : 'Run'}

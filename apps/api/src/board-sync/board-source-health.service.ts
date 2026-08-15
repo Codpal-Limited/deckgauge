@@ -12,18 +12,35 @@ export interface BoardSourceProbes {
 
 export interface BoardSourceHealthResult {
   sources: BoardSourceHealth[];
+  /** True when any source is credential-blocked — `expired` OR `reauthorize`. */
   hasExpired: boolean;
 }
 
 type Provider = 'jira' | 'github' | 'ado' | 'gitlab';
 
-// 401/403 means the token is bad (actionable). Everything else is treated as a
-// transient reachability problem so we never falsely tell the user their token
-// expired — and so sync still attempts those instances.
+// A provider federated to an external IdP relays that IdP's error verbatim on a
+// 403 when the credential's SSO session needs interactive re-auth — an Entra
+// `AADSTS…` code, or GitHub's own SAML-enforcement copy. The token itself is
+// still good in that case, so calling it "expired" sends the user off to
+// re-issue a credential that was never the problem.
+const SSO_REAUTH = /AADSTS\d+|SAML enforcement|single[- ]sign[- ]on|Configure SSO/i;
+
+// 401/403 means the credential cannot do the job (actionable). Everything else
+// is treated as a transient reachability problem so we never falsely tell the
+// user their token expired — and so sync still attempts those instances.
 function classify(result: { ok: boolean; error?: string }): SourceHealthState {
   if (result.ok) return 'valid';
   const e = result.error ?? '';
-  return /\b(401|403)\b/.test(e) ? 'expired' : 'unreachable';
+  if (!/\b(401|403)\b/.test(e)) return 'unreachable';
+  return SSO_REAUTH.test(e) ? 'reauthorize' : 'expired';
+}
+
+/**
+ * Both credential-blocked states are equally unable to sync, so callers that
+ * decide what to skip must treat them alike — only the user-facing copy differs.
+ */
+export function isCredentialBlocked(state: SourceHealthState): boolean {
+  return state === 'expired' || state === 'reauthorize';
 }
 
 export class BoardSourceHealthService {
@@ -115,7 +132,7 @@ export class BoardSourceHealthService {
       }),
     );
 
-    return { sources, hasExpired: sources.some((s) => s.state === 'expired') };
+    return { sources, hasExpired: sources.some((s) => isCredentialBlocked(s.state)) };
   }
 
   // A probe throwing (instead of resolving `{ ok: false, error }`) must not

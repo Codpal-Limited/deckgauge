@@ -74,8 +74,7 @@ export function AnnotationLayer({ events, peak, onPeakClick, periods }: Props) {
           y={peak.value}
           r={6}
           fill={PEAK_FILL}
-          stroke="#fff"
-          strokeWidth={2}
+          stroke="none"
           onClick={() => onPeakClick?.(peak)}
           style={onPeakClick ? { cursor: 'pointer' } : undefined}
         />

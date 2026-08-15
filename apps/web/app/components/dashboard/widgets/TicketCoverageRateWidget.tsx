@@ -5,6 +5,7 @@ import { TierLegend } from '../charts/TierLegend';
 import { useWidgetConfigWithBoardPeriod } from '../useWidgetConfigWithBoardPeriod';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
+import { WidgetEmptyState } from './WidgetEmptyState';
 
 interface Props {
   boardId: string;
@@ -30,26 +31,14 @@ export default function TicketCoverageRateWidget({ boardId, config }: Props) {
   const { data, error } = useWidgetData<Data>(boardId, 'TICKET_COVERAGE_RATE', merged);
   if (error) return <WidgetErrorState />;
   if (!data) return <p className="text-sm text-slate-400">Loading…</p>;
-  if (data.emptyReason)
-    return (
-      <p className="text-sm text-slate-500 p-2">
-        Connect a source in{' '}
-        <a className="underline" href="../sources">
-          Sources tab
-        </a>
-        .
-      </p>
-    );
+  if (data.emptyReason) return <WidgetEmptyState boardId={boardId} reason={data.emptyReason} />;
   return (
     <div className="flex flex-col items-center justify-center h-full gap-1">
       <p className={`text-3xl font-semibold tabular-nums ${TIER_TEXT[data.tier]}`}>
         {Math.round(data.current_pct)}%
       </p>
       <SparklineCell points={data.trend} width={120} height={28} />
-      <TierLegend
-        config={BENCHMARKS_V1.TICKET_COVERAGE_RATE!}
-        currentValue={data.current_pct}
-      />
+      <TierLegend config={BENCHMARKS_V1.TICKET_COVERAGE_RATE!} currentValue={data.current_pct} />
     </div>
   );
 }

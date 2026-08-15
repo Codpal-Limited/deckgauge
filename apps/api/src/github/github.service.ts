@@ -32,23 +32,35 @@ export class GitHubService {
     return rows.map((r) => mask(r as GitHubInstance));
   }
 
-  async createInstance(input: CreateGitHubInstanceInput): Promise<GitHubInstancePublic> {
+  async createInstance(
+    input: CreateGitHubInstanceInput,
+    actingUserId?: string,
+  ): Promise<GitHubInstancePublic> {
     const row = await this.prisma.gitHubInstance.create({
       data: {
         baseUrl: input.baseUrl,
         accessToken: input.accessToken,
         repos: (input.repos ?? []).map(normalizeRepoFullName),
+        ...(actingUserId && { createdById: actingUserId }),
       },
     });
     return mask(row as GitHubInstance);
   }
 
-  async updateInstanceRepos(id: string, repos: string[]): Promise<GitHubInstancePublic | null> {
+  async updateInstanceRepos(
+    id: string,
+    repos: string[],
+    actingUserId?: string,
+  ): Promise<GitHubInstancePublic | null> {
     const existing = await this.prisma.gitHubInstance.findUnique({ where: { id } });
     if (!existing) return null;
+    // Claim-on-first-edit: an unclaimed (null owner) row is claimed by
+    // whoever edits it first. An already-claimed row keeps its owner.
+    const claim =
+      existing.createdById === null && actingUserId ? { createdById: actingUserId } : {};
     const row = await this.prisma.gitHubInstance.update({
       where: { id },
-      data: { repos: repos.map(normalizeRepoFullName) },
+      data: { repos: repos.map(normalizeRepoFullName), ...claim },
     });
     return mask(row as GitHubInstance);
   }
@@ -60,14 +72,18 @@ export class GitHubService {
   async updateInstanceToken(
     id: string,
     data: { accessToken: string; baseUrl?: string },
+    actingUserId?: string,
   ): Promise<GitHubInstancePublic | null> {
     const existing = await this.prisma.gitHubInstance.findUnique({ where: { id } });
     if (!existing) return null;
+    const claim =
+      existing.createdById === null && actingUserId ? { createdById: actingUserId } : {};
     const row = await this.prisma.gitHubInstance.update({
       where: { id },
       data: {
         accessToken: data.accessToken,
         ...(data.baseUrl !== undefined ? { baseUrl: data.baseUrl } : {}),
+        ...claim,
       },
     });
     return mask(row as GitHubInstance);
@@ -85,14 +101,32 @@ export class GitHubService {
     return row ? (row as GitHubInstance) : null;
   }
 
+  /**
+   * Probe the org the instance is configured for, not `/user`.
+   *
+   * `/user` resolves the caller's own identity, which an Entra-federated (EMU)
+   * account cannot do without a live IdP session — it 403s even while every org
+   * and repo the sync reads is perfectly readable. Probing the org asks the
+   * question the health badge actually answers: can this connection sync?
+   * Instances with no org configured have nothing better to probe, so they keep
+   * using `/user`.
+   *
+   * What this proves: the credential is live (a revoked token 401s here) and the
+   * org is not gated behind an unsatisfied SSO/IdP check. What it does NOT
+   * prove: that any individual repo is readable — a public org answers 200 even
+   * when the caller can see none of its repos. Per-repo access stays the repo
+   * sync's own business, recorded in `github_repo_syncs.lastErrorMessage`.
+   */
   private async probeToken(
     baseUrl: string,
     token: string,
+    org: string | null | undefined,
     fetchFn: FetchFn = fetch,
   ): Promise<{ ok: boolean; error?: string }> {
     const base = baseUrl.replace(/\/+$/, '');
+    const target = org ? `${base}/orgs/${encodeURIComponent(org)}` : `${base}/user`;
     try {
-      const res = await fetchFn(`${base}/user`, {
+      const res = await fetchFn(target, {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: 'application/vnd.github+json',
@@ -122,19 +156,20 @@ export class GitHubService {
   ): Promise<{ ok: boolean; error?: string }> {
     const instance = await this.getRawInstanceById(instanceId);
     if (!instance) return { ok: false, error: 'Instance not found' };
-    return this.probeToken(instance.baseUrl, instance.accessToken, fetchFn);
+    return this.probeToken(instance.baseUrl, instance.accessToken, instance.org, fetchFn);
   }
 
   async refreshToken(
     id: string,
     newToken: string,
     fetchFn: FetchFn = fetch,
+    actingUserId?: string,
   ): Promise<RefreshResult> {
     const instance = await this.getRawInstanceById(id);
     if (!instance) return { ok: false, notFound: true, error: 'Instance not found' };
-    const probe = await this.probeToken(instance.baseUrl, newToken, fetchFn);
+    const probe = await this.probeToken(instance.baseUrl, newToken, instance.org, fetchFn);
     if (!probe.ok) return probe;
-    const updated = await this.updateInstanceToken(id, { accessToken: newToken });
+    const updated = await this.updateInstanceToken(id, { accessToken: newToken }, actingUserId);
     if (!updated) return { ok: false, notFound: true, error: 'Instance not found' };
     return { ok: true };
   }

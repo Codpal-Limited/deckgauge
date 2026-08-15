@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { TimesheetGridResponse, IntervalsResponse } from '@deckgauge/shared';
-import { fetchTimesheetGrid, fetchIntervals } from '../../actions/timesheet';
+import { fetchTimesheetGridForTree, fetchIntervals } from '../../actions/timesheet';
 import { resolveWindow, formatPeriodLabel } from '../lib/timesheet-ui';
 import { TimesheetGrid } from './TimesheetGrid';
 import { buildGridCsv } from '../lib/grid-csv';
@@ -32,6 +32,19 @@ interface TimesheetViewProps {
   anchorIso: string;
   /** Hide the org-tree picker when the view is already scoped to a single tree (e.g. embedded in the org page). */
   hideTreePicker?: boolean;
+  /**
+   * Set when the server-side initial fetch (in timesheet/page.tsx) got a 403
+   * rather than null-from-any-other-failure — see `fetchTimesheetGridForTree`.
+   * Distinguishes "you lack the analytics role or tree access" from "the
+   * analytics backend is down", which look identical from `initialData` alone.
+   */
+  initialForbidden?: boolean;
+  /**
+   * Same idea one status code over: set when that initial fetch got a 401.
+   * Kept distinct from `initialForbidden` because the remedy differs — sign in
+   * again, versus ask for the analytics role or tree access.
+   */
+  initialUnauthenticated?: boolean;
 }
 
 function shiftAnchor(anchorIso: string, view: View, dir: 1 | -1): string {
@@ -47,7 +60,15 @@ const selectClass =
   'transition-colors hover:border-slate-300 focus:border-indigo-500 focus:outline-none ' +
   'focus:ring-2 focus:ring-indigo-500/20';
 
-export function TimesheetView({ orgTrees, initialData, initialOrgTreeId, anchorIso, hideTreePicker }: TimesheetViewProps) {
+export function TimesheetView({
+  orgTrees,
+  initialData,
+  initialOrgTreeId,
+  anchorIso,
+  hideTreePicker,
+  initialForbidden = false,
+  initialUnauthenticated = false,
+}: TimesheetViewProps) {
   const [orgTreeId, setOrgTreeId] = useState(initialOrgTreeId);
   const [anchor, setAnchor] = useState(anchorIso);
   const [view, setView] = useState<View>('month');
@@ -55,6 +76,14 @@ export function TimesheetView({ orgTrees, initialData, initialOrgTreeId, anchorI
   const [data, setData] = useState<TimesheetGridResponse | null>(initialData);
   const [loading, setLoading] = useState(false);
   const [drawer, setDrawer] = useState<IntervalsResponse | null>(null);
+  // Set on a 403 from either the initial SSR fetch or a reload (Prev/Next,
+  // granularity, time-basis, or tree-picker change) — every path that can
+  // replace `data` must also be able to set this, or a mid-session role/
+  // access revocation would fall straight back into the misleading
+  // "backend may be unavailable" branch below.
+  const [denied, setDenied] = useState<'forbidden' | 'unauthenticated' | null>(
+    initialUnauthenticated ? 'unauthenticated' : initialForbidden ? 'forbidden' : null,
+  );
 
   async function reload(next: { orgTreeId?: string; anchor?: string; view?: View; mode?: Mode }) {
     const orgId = next.orgTreeId ?? orgTreeId;
@@ -63,8 +92,14 @@ export function TimesheetView({ orgTrees, initialData, initialOrgTreeId, anchorI
     const m = next.mode ?? mode;
     const w = resolveWindow(a, v);
     setLoading(true);
-    const res = await fetchTimesheetGrid({ orgTreeId: orgId, from: w.from, to: w.to, granularity: w.granularity, mode: m });
-    setData(res);
+    const res = await fetchTimesheetGridForTree({ orgTreeId: orgId, from: w.from, to: w.to, granularity: w.granularity, mode: m });
+    if (res.ok) {
+      setData(res.data);
+      setDenied(null);
+    } else {
+      setData(null);
+      setDenied(res.reason === 'unknown' ? null : res.reason);
+    }
     setLoading(false);
   }
 
@@ -159,6 +194,12 @@ export function TimesheetView({ orgTrees, initialData, initialOrgTreeId, anchorI
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
         {loading ? (
           <p className="p-8 text-center text-sm text-slate-400">Loading…</p>
+        ) : denied ? (
+          <p className="p-8 text-center text-sm text-slate-500">
+            {denied === 'unauthenticated'
+              ? 'Your session has expired — sign in again to view timesheet data.'
+              : 'Analytics is limited to accounts with the analytics role.'}
+          </p>
         ) : data === null ? (
           <p className="p-8 text-center text-sm text-red-500">
             Couldn't load timesheet data — the analytics backend may be unavailable.

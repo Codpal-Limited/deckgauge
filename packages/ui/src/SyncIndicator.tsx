@@ -33,7 +33,7 @@ export function SyncIndicator({ className = '' }: SyncIndicatorProps) {
         <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
       </svg>
       {showTooltip && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-xs text-white bg-slate-700 rounded whitespace-nowrap z-50">
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-xs text-slate-50 bg-slate-700 rounded whitespace-nowrap z-50">
           Synced from Jira — updated on next sync
         </span>
       )}

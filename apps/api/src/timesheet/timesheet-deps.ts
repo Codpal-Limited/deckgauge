@@ -51,6 +51,12 @@ export function buildTimesheetDeps(prisma: PrismaClient, clickhouse: ChQueryClie
       return cfg ? cfg.dailyCapHours : null;
     },
     fetchTransitions: (toMs: number) => fetchTransitions(clickhouse, toMs),
+    loadRetiredProjects: async () => {
+      const rows = await prisma.retiredJiraProject.findMany({
+        select: { projectKey: true, cutoffDate: true },
+      });
+      return new Map(rows.map((r) => [r.projectKey.toUpperCase(), r.cutoffDate.getTime()]));
+    },
     fetchParentLinks: () => fetchParentLinks(clickhouse),
     fetchClassificationMap: () => fetchClassificationMap(clickhouse),
     loadIssueMeta: () => fetchIssueMeta(clickhouse),

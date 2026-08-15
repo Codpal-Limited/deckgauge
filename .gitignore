@@ -25,3 +25,11 @@ backups/
 
 # Personal commercialization docs — keep out of git
 Business Plan/
+
+# Advisor local-agent bridge runtime state (scripts/advisor-bridge.sh)
+.advisor-bridge.pid
+.advisor-bridge.log
+
+# OSS_Staging throwaway snapshot (lives outside the repo; defensive)
+/deckgauge-oss-staging/
+../deckgauge-oss-staging/

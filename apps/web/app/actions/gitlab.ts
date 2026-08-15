@@ -2,6 +2,20 @@
 'use server';
 
 import type { RemoteProjectsResult } from './board-sources';
+import { authFetch } from './api';
+import { MissingSessionError } from '../lib/api-server';
+
+/**
+ * `authFetch` now throws {@link MissingSessionError} rather than quietly
+ * sending an anonymous request. Swallowing that in a `catch {}` and returning
+ * an empty list would reinstate exactly the silent degradation this is meant
+ * to remove: the page would render "no GitLab connections" for a user whose
+ * session simply expired. Re-throw it so it surfaces (and is logged
+ * server-side); genuine network/API failures keep their existing handling.
+ */
+function rethrowMissingSession(err: unknown): void {
+  if (err instanceof MissingSessionError) throw err;
+}
 
 interface GitLabInstance {
   id: string;
@@ -23,14 +37,13 @@ interface GitLabProjectSync {
   updatedAt: string;
 }
 
-const base = () => process.env.API_URL ?? 'http://api:3001';
-
 export async function fetchGitLabInstances(): Promise<GitLabInstance[]> {
   try {
-    const resp = await fetch(`${base()}/gitlab/instances`, { cache: 'no-store' });
+    const resp = await authFetch('/gitlab/instances', { cache: 'no-store' });
     if (!resp.ok) return [];
     return (await resp.json()) as GitLabInstance[];
-  } catch {
+  } catch (err) {
+    rethrowMissingSession(err);
     return [];
   }
 }
@@ -42,7 +55,7 @@ export async function createGitLabInstance(input: {
   projects: string[];
 }): Promise<{ ok: boolean; message: string }> {
   try {
-    const resp = await fetch(`${base()}/gitlab/instances`, {
+    const resp = await authFetch('/gitlab/instances', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(input),
@@ -56,22 +69,24 @@ export async function createGitLabInstance(input: {
 
 export async function deleteGitLabInstance(id: string): Promise<{ ok: boolean }> {
   try {
-    const resp = await fetch(`${base()}/gitlab/instances/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const resp = await authFetch(`/gitlab/instances/${encodeURIComponent(id)}`, { method: 'DELETE' });
     return { ok: resp.ok };
-  } catch {
+  } catch (err) {
+    rethrowMissingSession(err);
     return { ok: false };
   }
 }
 
 export async function fetchGitLabProjectSyncs(instanceId?: string): Promise<GitLabProjectSync[]> {
   try {
-    const url = instanceId
-      ? `${base()}/gitlab/project-syncs?instanceId=${encodeURIComponent(instanceId)}`
-      : `${base()}/gitlab/project-syncs`;
-    const resp = await fetch(url, { cache: 'no-store' });
+    const path = instanceId
+      ? `/gitlab/project-syncs?instanceId=${encodeURIComponent(instanceId)}`
+      : '/gitlab/project-syncs';
+    const resp = await authFetch(path, { cache: 'no-store' });
     if (!resp.ok) return [];
     return (await resp.json()) as GitLabProjectSync[];
-  } catch {
+  } catch (err) {
+    rethrowMissingSession(err);
     return [];
   }
 }
@@ -83,7 +98,7 @@ export async function createGitLabProjectSync(input: {
   syncCommits?: boolean;
 }): Promise<{ ok: boolean; message: string }> {
   try {
-    const resp = await fetch(`${base()}/gitlab/project-syncs`, {
+    const resp = await authFetch('/gitlab/project-syncs', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(input),
@@ -97,7 +112,10 @@ export async function createGitLabProjectSync(input: {
 
 export async function testGitLabConnection(instanceId: string): Promise<{ ok: boolean; error?: string }> {
   try {
-    const resp = await fetch(`${base()}/gitlab/instances/${encodeURIComponent(instanceId)}/test`, { method: 'POST', cache: 'no-store' });
+    const resp = await authFetch(`/gitlab/instances/${encodeURIComponent(instanceId)}/test`, {
+      method: 'POST',
+      cache: 'no-store',
+    });
     if (!resp.ok) {
       const data = (await resp.json().catch(() => ({}))) as { error?: string };
       return { ok: false, error: data.error ?? `API ${resp.status}` };
@@ -114,7 +132,7 @@ export async function createGitLabInstanceReturning(input: {
   accessToken: string;
   projects: string[];
 }): Promise<{ id: string }> {
-  const resp = await fetch(`${base()}/gitlab/instances`, {
+  const resp = await authFetch('/gitlab/instances', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(input),
@@ -129,9 +147,11 @@ export async function listGitLabRemoteProjects(
 ): Promise<RemoteProjectsResult> {
   try {
     const term = search?.trim();
-    const url = new URL(`${base()}/gitlab/instances/${encodeURIComponent(instanceId)}/projects`);
-    if (term) url.searchParams.set('search', term);
-    const resp = await fetch(url, { cache: 'no-store' });
+    const qs = term ? `?search=${encodeURIComponent(term)}` : '';
+    const resp = await authFetch(
+      `/gitlab/instances/${encodeURIComponent(instanceId)}/projects${qs}`,
+      { cache: 'no-store' },
+    );
     if (!resp.ok) {
       const authFailed = resp.status === 401 || resp.status === 403;
       // Surface the API's message (e.g. a base-URL/HTML-parse error) instead of a
@@ -142,7 +162,18 @@ export async function listGitLabRemoteProjects(
     }
     const data = (await resp.json()) as { projects?: string[] };
     return { ok: true, projects: data.projects ?? [] };
-  } catch {
+  } catch (err) {
+    // This one has an error channel of its own, so say what actually happened
+    // instead of blaming GitLab. `authFailed` stays false: it drives the
+    // "reconnect this GitLab connection" flow, and the connection is fine —
+    // it is the caller's Deckgauge session that is gone.
+    if (err instanceof MissingSessionError) {
+      return {
+        ok: false,
+        authFailed: false,
+        error: 'Your Deckgauge session has expired — reload the page and sign in again.',
+      };
+    }
     return { ok: false, authFailed: false, error: 'Could not reach GitLab.' };
   }
 }

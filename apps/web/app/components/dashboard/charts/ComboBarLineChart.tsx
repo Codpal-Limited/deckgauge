@@ -10,6 +10,7 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+import { CHART_TOOLTIP } from './chartTheme';
 
 interface ComboPoint {
   label: string;
@@ -45,7 +46,7 @@ function CycleDot(props: {
       r={4}
       stroke="#dc2626"
       strokeWidth={flagged ? 2 : 1}
-      fill={flagged ? '#ffffff' : '#dc2626'}
+      fill={flagged ? 'none' : '#dc2626'}
     />
   );
 }
@@ -79,7 +80,7 @@ export function ComboBarLineChart({ points, height }: Props) {
             fontSize: 11,
           }}
         />
-        <Tooltip />
+        <Tooltip {...CHART_TOOLTIP} />
         <Legend />
         <Bar yAxisId="left" dataKey="delivered" name="Delivered" fill="#4f46e5" />
         <Line

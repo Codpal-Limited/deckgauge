@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import type { ProjectStatus, BoardColumn, BoardOwner, BoardStatus } from '@deckgauge/shared';
+import { resolveJiraBrowseUrl, hasAnyJiraLink, type JiraSourceLinks } from '@deckgauge/shared';
 import { RelativeTime } from './RelativeTime';
 import { StatusPill } from './StatusPill';
 import { DynamicStatusPill } from './DynamicStatusPill';
@@ -65,13 +66,16 @@ interface BoardRowProps {
   onSelect?: (selected: boolean) => void;
   onExpand?: () => void;
   jiraKey?: string | null;
-  jiraAtlassianUrl?: string;
+  /** The row's own Jira project, used to pick its site out of `jiraLinks`. */
+  jiraProjectKey?: string | null;
+  jiraLinks?: JiraSourceLinks;
   githubIssueId?: string | null;
   githubRepoFullName?: string | null;
   hasGitHubIntegration?: boolean;
   adoWorkItemId?: number | null;
   adoProject?: string | null;
-  adoOrgUrl?: string;
+  /** Keyed by ADO project name — a board can source work items from multiple ADO orgs. */
+  adoOrgUrls?: Record<string, string>;
   hasAdoIntegration?: boolean;
   boardOwners?: BoardOwner[];
   boardStatuses?: BoardStatus[];
@@ -135,13 +139,14 @@ export function BoardRow({
   onSelect,
   onExpand,
   jiraKey,
-  jiraAtlassianUrl,
+  jiraProjectKey,
+  jiraLinks,
   githubIssueId,
   githubRepoFullName,
   hasGitHubIntegration,
   adoWorkItemId,
   adoProject,
-  adoOrgUrl,
+  adoOrgUrls,
   hasAdoIntegration,
   boardOwners,
   boardStatuses,
@@ -190,7 +195,9 @@ export function BoardRow({
   }, [useDynamicOwners, boardOwners, ownerSearch]);
 
   const isBlocked = status === 'BLOCKED';
-  const blockedClass = isBlocked ? 'bg-red-50' : '';
+  // Translucent tint (not the fixed-light bg-red-50) so it reads as a subtle red wash
+  // over the row in both light and dark themes instead of a glaring light band in dark.
+  const blockedClass = isBlocked ? 'bg-red-500/10' : '';
 
   useEffect(() => {
     setNameValue(name);
@@ -251,7 +258,7 @@ export function BoardRow({
   if (isDeleting) {
     return (
       <div
-        className="grid items-center border-b border-slate-200 bg-red-50 transition-colors"
+        className="grid items-center border-b border-slate-200 bg-red-500/10 transition-colors"
         style={{ gridTemplateColumns: 'var(--board-grid-cols)' }}
         data-row-id={id}
       >
@@ -287,13 +294,15 @@ export function BoardRow({
   // Backgrounds for the pinned Item block (stripe/checkbox/name) so columns
   // scrolling underneath don't show through. Mirrors the row's own hover/select
   // states since the sticky cells sit above the row background.
-  const stickyBg = selected
-    ? 'bg-indigo-50 group-hover:bg-indigo-100'
-    : 'bg-white group-hover:bg-slate-50';
+  // Sticky cells must be OPAQUE (columns scroll underneath), so they use the themed
+  // surface (bg-white → dark surface in dark mode) rather than the fixed-light
+  // bg-indigo-50 that glared in dark. Selection is still shown by the row's
+  // translucent indigo tint + border on the scrollable cells.
+  const stickyBg = 'bg-white group-hover:bg-slate-50';
 
   return (
     <div
-      className={`group grid items-center border-b border-slate-100 transition-all duration-150 hover:bg-slate-50 ${blockedClass} ${selected ? 'bg-indigo-50 border-indigo-200' : ''} ${getRowClasses({ isFocused, isSelected: isKbSelected })}`}
+      className={`group grid items-center border-b border-slate-100 transition-all duration-150 hover:bg-slate-50 ${blockedClass} ${selected ? 'bg-indigo-500/10 border-indigo-500/30' : ''} ${getRowClasses({ isFocused, isSelected: isKbSelected })}`}
       style={{ gridTemplateColumns: 'var(--board-grid-cols)' }}
       tabIndex={isFocused ? 0 : -1}
       data-row-id={id}
@@ -593,17 +602,24 @@ export function BoardRow({
 
       {/* Source Link column */}
       {visibleColumns.source !== false &&
-        (jiraAtlassianUrl || hasGitHubIntegration || hasAdoIntegration) && (
+        (hasAnyJiraLink(jiraLinks) || hasGitHubIntegration || hasAdoIntegration) && (
         <div className="px-2 py-2 border-r border-slate-100 flex items-center justify-center">
-          {jiraKey && jiraAtlassianUrl ? (
-            <JiraKeyBadge jiraKey={jiraKey} atlassianUrl={jiraAtlassianUrl} />
+          {jiraKey && resolveJiraBrowseUrl(jiraLinks, jiraProjectKey) ? (
+            <JiraKeyBadge
+              jiraKey={jiraKey}
+              atlassianUrl={resolveJiraBrowseUrl(jiraLinks, jiraProjectKey)!}
+            />
           ) : githubIssueId && githubRepoFullName ? (
             <GitHubIssueBadge
               githubIssueId={githubIssueId}
               githubRepoFullName={githubRepoFullName}
             />
-          ) : adoWorkItemId && adoProject && adoOrgUrl ? (
-            <AdoWorkItemBadge workItemId={adoWorkItemId} project={adoProject} orgUrl={adoOrgUrl} />
+          ) : adoWorkItemId && adoProject && adoOrgUrls?.[adoProject] ? (
+            <AdoWorkItemBadge
+              workItemId={adoWorkItemId}
+              project={adoProject}
+              orgUrl={adoOrgUrls[adoProject]}
+            />
           ) : (
             <span className="text-xs text-slate-400">{'\u2014'}</span>
           )}

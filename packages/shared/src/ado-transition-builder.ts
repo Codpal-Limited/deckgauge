@@ -27,6 +27,14 @@ function fmt(d: Date): string {
 }
 
 /**
+ * The state a work item was already in before the revisions being built.
+ *
+ * Keyed `${project}#${workItemId}`. Supplied on an incremental sweep so the
+ * first in-window change still reports the true `from_state` and dwell time.
+ */
+export type AdoPriorState = { state: string; changedAt: Date };
+
+/**
  * Build `ado_transitions` rows from a flat list of work-item revisions.
  *
  * Groups by work item, sorts each group by `changedAt`, and emits one row per
@@ -34,8 +42,17 @@ function fmt(d: Date): string {
  * the first change is counted. `time_in_prev_state_s` is the full time spent in
  * the previous state, spanning intervening same-state revisions. Mirrors how
  * Jira transitions feed `reconstructIntervals`. Input is not mutated.
+ *
+ * `priorStates` seeds an item's state from BEFORE this batch. A full sweep
+ * passes nothing and the first revision reads as a creation (`from_state: ''`).
+ * An incremental sweep — which only receives revisions after its watermark —
+ * passes the last known state per item so a change at the window boundary is
+ * not misreported as a creation with zero time in the previous state.
  */
-export function buildAdoTransitions(revisions: AdoWorkItemRevision[]): AdoTransitionRow[] {
+export function buildAdoTransitions(
+  revisions: AdoWorkItemRevision[],
+  priorStates?: ReadonlyMap<string, AdoPriorState>,
+): AdoTransitionRow[] {
   const byItem = new Map<string, AdoWorkItemRevision[]>();
   for (const r of revisions) {
     const key = `${r.project}#${r.workItemId}`;
@@ -45,11 +62,12 @@ export function buildAdoTransitions(revisions: AdoWorkItemRevision[]): AdoTransi
   }
 
   const out: AdoTransitionRow[] = [];
-  for (const list of byItem.values()) {
+  for (const [key, list] of byItem) {
     const sorted = [...list].sort((a, b) => a.changedAt.getTime() - b.changedAt.getTime());
     const { workItemId } = sorted[0]!;
-    let prevState: string | null = null;
-    let prevChangedMs: number | null = null;
+    const prior = priorStates?.get(key);
+    let prevState: string | null = prior?.state ?? null;
+    let prevChangedMs: number | null = prior?.changedAt.getTime() ?? null;
 
     for (const r of sorted) {
       if (prevState !== null && r.state === prevState) continue; // no state change

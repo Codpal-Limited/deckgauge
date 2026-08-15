@@ -1,6 +1,7 @@
 'use client';
 
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { CHART_TOOLTIP } from '../charts/chartTheme';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
 
@@ -37,7 +38,7 @@ export default function StatusDistributionWidget({ boardId, config }: Props) {
             <Cell key={i} fill={item.color} />
           ))}
         </Pie>
-        <Tooltip />
+        <Tooltip {...CHART_TOOLTIP} />
         <Legend />
       </PieChart>
     </ResponsiveContainer>

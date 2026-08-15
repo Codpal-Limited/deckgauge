@@ -1,0 +1,20 @@
+-- clickhouse/schemas/35_ado_deployments_drop_is_production.sql
+--
+-- Drops cockpit.ado_deployments.is_production, which was written at ingest and
+-- never read.
+--
+-- 34_ado_deployments.sql uses CREATE TABLE IF NOT EXISTS, so editing the column
+-- out of it only affects fresh installs; an existing table keeps the column
+-- until something alters it. This file is that alteration. Every *.sql in this
+-- directory is re-applied on every deploy (scripts/apply-clickhouse-schemas.sh),
+-- so the statement must be idempotent — IF EXISTS makes the second and later
+-- runs no-ops.
+--
+-- Why it goes rather than staying as a harmless extra: production-ness is
+-- decided at QUERY time in deploymentsUnion (apps/api/src/widgets/unions.ts),
+-- from environment / definition_name / source_branch plus any per-project
+-- override. A deployment row is fetched exactly once — the watermark never
+-- re-reads it — so a verdict frozen at ingest could never be revised, and the
+-- column's plausible name invited exactly the wrong query. No data is lost that
+-- cannot be recomputed from the raw columns that remain.
+ALTER TABLE cockpit.ado_deployments DROP COLUMN IF EXISTS is_production;

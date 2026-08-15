@@ -307,6 +307,54 @@ const TABLE_COLUMNS: Readonly<
     { name: 'linked_ticket_keys', type: 'Array(String)' },
     { name: 'synced_at', type: 'DateTime' },
   ],
+  // Deployment tables. Both were being written long before anything could read
+  // them here — github_deployments since Phase 3, ado_deployments since the ADO
+  // code-intelligence repair — so the query console and the Advisor were blind
+  // to every deployment row in the instance.
+  //
+  // Neither carries a production flag this layer should trust: ado_deployments
+  // has none by design (see clickhouse/schemas/35_*), and github_deployments'
+  // `production` mirrors GitHub's own `production_environment` field, which is
+  // real data rather than a name guess. Deploy-frequency semantics live in
+  // deploymentsUnion, not here — this map only describes what columns exist.
+  ado_deployments: [
+    { name: 'id', type: 'String' },
+    { name: 'deployment_id', type: 'UInt64' },
+    { name: 'kind', type: 'String' },
+    { name: 'org_url', type: 'String' },
+    { name: 'project', type: 'String' },
+    { name: 'instance_id', type: 'String' },
+    { name: 'definition_id', type: 'UInt32' },
+    { name: 'definition_name', type: 'String' },
+    { name: 'release_id', type: 'UInt32' },
+    { name: 'release_name', type: 'String' },
+    { name: 'environment', type: 'String' },
+    { name: 'status', type: 'String' },
+    { name: 'requested_by', type: 'Nullable(String)' },
+    { name: 'source_branch', type: 'Nullable(String)' },
+    { name: 'source_sha', type: 'Nullable(String)' },
+    { name: 'queued_at', type: 'Nullable(DateTime)' },
+    { name: 'started_at', type: 'Nullable(DateTime)' },
+    { name: 'completed_at', type: 'Nullable(DateTime)' },
+    { name: 'synced_at', type: 'DateTime' },
+  ],
+  github_deployments: [
+    { name: 'id', type: 'String' },
+    { name: 'org', type: 'String' },
+    { name: 'repo_full_name', type: 'String' },
+    { name: 'instance_id', type: 'String' },
+    { name: 'deployment_id', type: 'UInt64' },
+    { name: 'ref', type: 'String' },
+    { name: 'sha', type: 'String' },
+    { name: 'task', type: 'String' },
+    { name: 'environment', type: 'String' },
+    { name: 'production', type: 'UInt8' },
+    { name: 'creator_login', type: 'String' },
+    { name: 'created_at', type: 'DateTime' },
+    { name: 'updated_at', type: 'DateTime' },
+    { name: 'latest_status', type: 'Nullable(String)' },
+    { name: 'latest_status_at', type: 'Nullable(DateTime)' },
+  ],
 });
 
 export async function buildSchemaPayload(

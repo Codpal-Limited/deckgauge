@@ -14,6 +14,7 @@ import { ComparisonBoardPicker } from './ComparisonBoardPicker';
 import CompareReviewQualityWidget from '../dashboard/widgets/CompareReviewQualityWidget';
 import CompareFlowWidget from '../dashboard/widgets/CompareFlowWidget';
 import CompareDeliveryWidget from '../dashboard/widgets/CompareDeliveryWidget';
+import WidgetHelpButton from '../dashboard/WidgetHelpButton';
 
 interface Props {
   comparisonId: string; // passed to widgets as their boardId slot; the comparison API dispatches on it
@@ -21,9 +22,13 @@ interface Props {
 }
 
 const COMPARISON_WIDGETS = [
-  { title: 'Compare: Review Quality', Component: CompareReviewQualityWidget },
-  { title: 'Compare: Flow', Component: CompareFlowWidget },
-  { title: 'Compare: Delivery', Component: CompareDeliveryWidget },
+  {
+    type: 'COMPARE_REVIEW_QUALITY',
+    title: 'Compare: Review Quality',
+    Component: CompareReviewQualityWidget,
+  },
+  { type: 'COMPARE_FLOW', title: 'Compare: Flow', Component: CompareFlowWidget },
+  { type: 'COMPARE_DELIVERY', title: 'Compare: Delivery', Component: CompareDeliveryWidget },
 ] as const;
 
 export default function ComparisonCanvas({ comparisonId, canEdit }: Props) {
@@ -92,13 +97,14 @@ export default function ComparisonCanvas({ comparisonId, canEdit }: Props) {
           </p>
         ) : (
           <div className="space-y-4">
-            {COMPARISON_WIDGETS.map(({ title, Component }) => (
+            {COMPARISON_WIDGETS.map(({ type, title, Component }) => (
               <div
                 key={title}
                 className="flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
               >
-                <div className="px-4 py-2.5 border-b border-slate-100">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
                   <h3 className="text-sm font-semibold text-slate-700 truncate">{title}</h3>
+                  <WidgetHelpButton widgetType={type} title={title} />
                 </div>
                 <div className="p-4 overflow-auto min-h-[360px]">
                   {/* The comparison id occupies the widget's boardId slot; the

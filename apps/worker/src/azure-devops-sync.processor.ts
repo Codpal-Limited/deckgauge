@@ -10,6 +10,7 @@ import {
   mapAdoToClickHouseRows,
   writeAdoBasicToClickHouse,
 } from './ado-dual-writer.js';
+import { fetchAdoPriorStates, type ChQueryClient } from './ado-transition-priors.js';
 
 /**
  * Convert an adapter-shaped `AzureDevOpsWorkItem` into the leaner shape the
@@ -50,8 +51,13 @@ interface ProcessorInput {
    * family (`ado_pull_requests`). Transitions are dual-written via a Reporting
    * Work Item Revisions sweep (best-effort). Omitted in tests that don't care
    * about CH coverage so the call site stays backward-compatible.
+   *
+   * When the client also implements `queryRows`, the revisions sweep runs
+   * INCREMENTALLY from a per-project watermark (see the sweep below). Without
+   * it the sweep falls back to a full history read, which is correct but is
+   * what exhausted the Azure DevOps throughput budget.
    */
-  ch?: ChClient;
+  ch?: ChClient & Partial<ChQueryClient>;
   /**
    * Optional orgUrl / instanceId — required when `ch` is provided so the CH
    * row's primary key (`org_url`, `project`, `ado_id`) matches what
@@ -171,18 +177,68 @@ export async function azureDevOpsSyncProcessor(input: ProcessorInput): Promise<P
       // Revisions endpoint gives full state history. Best-effort: a failure
       // here must not fail the work-item sync (transitions retry next run;
       // ReplacingMergeTree dedups re-swept rows by id).
+      //
+      // INCREMENTAL. This sweep used to run with no `startDateTime`, re-reading
+      // every project's complete revision history on every scheduled run —
+      // ~256k revisions per cycle across one large org, every 15 minutes,
+      // which is what got the account's requests throttled by Azure DevOps. It
+      // now resumes from a per-project watermark, seeding the builder with the
+      // state each item was already in so a change at the window boundary keeps
+      // its true from_state and dwell time (see fetchAdoPriorStates).
       if (ch) {
         try {
+          const sync = instanceId
+            ? await db.azureDevOpsProjectSync.findUnique({
+                where: {
+                  azureDevOpsInstanceId_adoProject: {
+                    azureDevOpsInstanceId: instanceId,
+                    adoProject: project,
+                  },
+                },
+                select: { id: true, lastRevisionSyncAt: true },
+              })
+            : null;
+
+          // Incremental needs both a watermark and the ability to read back
+          // prior states; without either, fall back to a correct full sweep.
+          const canReadPriors = typeof ch.queryRows === 'function';
+          const since = canReadPriors ? (sync?.lastRevisionSyncAt ?? undefined) : undefined;
+
+          // Stamp from BEFORE the fetch so revisions written mid-sweep are
+          // picked up next run rather than skipped.
+          const revisionStart = new Date();
+
           const revisions: AdoWorkItemRevision[] = [];
-          for await (const batch of adapter.streamWorkItemRevisions(project)) {
+          for await (const batch of adapter.streamWorkItemRevisions(project, since)) {
             revisions.push(...batch);
           }
-          const transitions = buildAdoTransitions(revisions);
+
+          const priorStates = since
+            ? await fetchAdoPriorStates(
+                ch as ChQueryClient,
+                project,
+                Array.from(new Set(revisions.map((r) => r.workItemId))),
+              )
+            : undefined;
+
+          const transitions = buildAdoTransitions(revisions, priorStates);
           if (transitions.length > 0) {
             await writeAdoBasicToClickHouse(ch, { workItems: [], transitions });
           }
+
+          // Only advance the watermark once the rows are safely written, so a
+          // mid-sweep failure re-reads the same window instead of losing it.
+          if (sync && canReadPriors) {
+            await db.azureDevOpsProjectSync.update({
+              where: { id: sync.id },
+              data: { lastRevisionSyncAt: revisionStart },
+            });
+          }
+
           console.log(
-            `[Azure DevOps Processor] Wrote ${transitions.length} transitions for ${project}`,
+            `[Azure DevOps Processor] Wrote ${transitions.length} transitions for ${project} ` +
+              `(${since ? `incremental since ${since.toISOString()}` : 'full sweep'}, ` +
+              `${revisions.length} revisions read)`,
           );
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

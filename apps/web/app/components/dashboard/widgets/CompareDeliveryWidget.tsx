@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts';
+import { CHART_TOOLTIP } from '../charts/chartTheme';
 import { AnnotationLayer, type AnnotationEvent } from '../charts/AnnotationLayer';
 import { useWidgetConfigWithBoardPeriod } from '../useWidgetConfigWithBoardPeriod';
 import { useWidgetData } from './useWidgetData';
@@ -104,7 +105,7 @@ export default function CompareDeliveryWidget({ boardId, config }: Props) {
                 tick={{ fontSize: 11 }}
                 label={{ value: 'delivered', angle: -90, position: 'insideLeft', fontSize: 11 }}
               />
-              <Tooltip />
+              <Tooltip {...CHART_TOOLTIP} />
               <Legend />
               {/* Shared freeze/calendar overlay across all boards' series. */}
               <AnnotationLayer events={events} peak={null} periods={periods} />

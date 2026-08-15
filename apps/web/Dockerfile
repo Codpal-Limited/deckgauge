@@ -21,6 +21,7 @@ COPY packages/ui/ packages/ui/
 RUN pnpm --filter @deckgauge/ui build
 # Copy web source files individually to preserve node_modules from deps stage
 COPY apps/web/app apps/web/app
+COPY apps/web/components apps/web/components
 COPY apps/web/auth.ts apps/web/auth.ts
 COPY apps/web/middleware.ts apps/web/middleware.ts
 COPY apps/web/lib apps/web/lib

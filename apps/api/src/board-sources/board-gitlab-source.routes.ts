@@ -5,6 +5,7 @@ import { BoardGitLabSourceService } from './board-gitlab-source.service.js';
 import { PreviewCountService, PreviewSourceNotFoundError } from './preview-count.service.js';
 import { clickhouse as defaultClickhouse } from '@deckgauge/db';
 import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
+import { board } from '../auth/policy.js';
 
 export function boardGitLabSourceRoutes(deps: {
   prisma: PrismaClient;
@@ -18,6 +19,7 @@ export function boardGitLabSourceRoutes(deps: {
   return async function plugin(app: FastifyInstance) {
     app.get<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/gitlab',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -27,6 +29,7 @@ export function boardGitLabSourceRoutes(deps: {
 
     app.post<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/gitlab',
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -42,6 +45,7 @@ export function boardGitLabSourceRoutes(deps: {
 
     app.patch<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/gitlab/:id',
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -61,6 +65,7 @@ export function boardGitLabSourceRoutes(deps: {
 
     app.delete<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/gitlab/:id',
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -73,6 +78,7 @@ export function boardGitLabSourceRoutes(deps: {
 
     app.get<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/gitlab/:id/preview-count',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })

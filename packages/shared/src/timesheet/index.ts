@@ -1,6 +1,7 @@
 export * from './types';
 export * from './intervals';
 export * from './clip';
+export * from './clip-retired';
 export * from './status-rules';
 export * from './buckets';
 export * from './normalize';

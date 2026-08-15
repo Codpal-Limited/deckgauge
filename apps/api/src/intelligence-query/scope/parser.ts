@@ -60,6 +60,10 @@ export class ParseError extends Error {
 //     The `x ->` arrow lambda inside arrayMap is masked by rule 1 (if it contains
 //     a param) or handled by turning the whole function call argument into a
 //     masked placeholder.
+//
+//  8. `<table> [AS <alias>] FINAL` → `<table> [AS <alias>]` — ClickHouse's
+//     ReplacingMergeTree dedup modifier. Stripped before parsing and re-attached
+//     on serialise.
 
 interface Mask {
   placeholder: string;
@@ -107,6 +111,36 @@ const INTERVAL_WEEK_RE = /\bINTERVAL\s+'([^']+)'\s+(WEEK|WEEKS)\b/gi;
 // optionally with commas, ending with ]. Does not match SQL array subscripts
 // because those are [integer].
 const CH_ARRAY_LITERAL_RE = /\[\s*'[^']*'(?:\s*,\s*'[^']*')*\s*\]/g;
+
+// ── Rule 8: `FINAL` table modifier ───────────────────────────────────────────
+// ClickHouse-only. Appears either directly after the table
+// (`FROM cockpit.github_issues FINAL`) or after an alias
+// (`FROM cockpit.jira_issues AS ji FINAL`). The postgresql grammar has neither
+// form: the bare one only *appeared* to work because the parser mistook FINAL
+// for a table alias (silently polluting the alias set collectTableRefs walks),
+// and the aliased one is a hard syntax error. Strip the modifier and record the
+// table reference that carried it so restore can re-attach it — execute.ts runs
+// serialize() output directly, so dropping FINAL would silently reintroduce the
+// ReplacingMergeTree duplicate rows it exists to remove.
+const FINAL_MODIFIER_RE =
+  /((?:[A-Za-z_]\w*\.)?[A-Za-z_]\w*(?:\s+AS\s+[A-Za-z_]\w*)?)\s+FINAL\b/gi;
+
+// Turns a captured table reference ("cockpit.jira_issues AS ji") into a regex
+// tolerant of the serialiser's identifier quoting, which may be double quotes
+// ("cockpit"."jira_issues" AS "ji") or backticks depending on the dialect option.
+function tableRefPattern(ref: string): string {
+  const quote = '["`]?';
+  return ref
+    .trim()
+    .split(/\s+/)
+    .map((token) =>
+      token
+        .split('.')
+        .map((seg) => quote + seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + quote)
+        .join('\\.')
+    )
+    .join('\\s+');
+}
 
 function buildMasks(sql: string): { masked: string; masks: Mask[] } {
   const masks: Mask[] = [];
@@ -198,6 +232,15 @@ function buildMasks(sql: string): { masked: string; masks: Mask[] } {
     return full.replace('[', '(').replace(']', ')');
   });
 
+  // Rule 8: `<table> [AS <alias>] FINAL` → `<table> [AS <alias>]`
+  // Runs last so the ARRAY JOIN clause (rule 5) is already gone and cannot be
+  // scanned for a spurious FINAL.
+  out = out.replace(FINAL_MODIFIER_RE, (_full, tableRef: string) => {
+    const idx = masks.filter((m) => m.placeholder.startsWith('__chFinal')).length;
+    masks.push({ placeholder: `__chFinal${idx}__`, original: tableRef });
+    return tableRef;
+  });
+
   return { masked: out, masks };
 }
 
@@ -266,12 +309,21 @@ function restoreMasks(serialised: string, masks: Mask[], originalSql: string): s
     });
   }
 
+  // Restore Rule 8 (FINAL) — re-attach the modifier to each table reference that
+  // carried it. Matched backtick-tolerantly because the serialiser quotes
+  // identifiers; the negative lookahead keeps a re-run idempotent.
+  for (const mask of masks.filter((m) => m.placeholder.startsWith('__chFinal'))) {
+    const re = new RegExp(`(${tableRefPattern(mask.original)})(?!\\s+FINAL\\b)`, 'i');
+    out = out.replace(re, '$1 FINAL');
+  }
+
   for (const { placeholder, original } of masks) {
     if (placeholder === '__chLagInFrame_sentinel__') continue;
     if (placeholder.startsWith('__chLimitParam')) continue;
     if (placeholder.startsWith('__chNullable')) continue;
     if (placeholder.startsWith('__chIntervalIdent')) continue;
     if (placeholder.startsWith('__chIntervalWeek')) continue;
+    if (placeholder.startsWith('__chFinal')) continue;
 
     if (placeholder === '__chArrayJoin__') {
       // ARRAY JOIN was stripped; re-insert before GROUP BY / ORDER BY / end

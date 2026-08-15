@@ -12,8 +12,12 @@
       "enabled": true,
       "publicClient": false,
       "secret": "vp-cockpit-secret",
-      "redirectUris": ["http://localhost:3000/*", "http://localhost:3010/*"],
-      "webOrigins": ["http://localhost:3000", "http://localhost:3010"],
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:3010/*",
+        "http://localhost:3030/*"
+      ],
+      "webOrigins": ["http://localhost:3000", "http://localhost:3010", "http://localhost:3030"],
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "protocol": "openid-connect",
@@ -23,7 +27,16 @@
     }
   ],
   "roles": {
-    "realm": []
+    "realm": [
+      {
+        "name": "cockpit-admin",
+        "description": "Full administrative access: salary read/write, Owner-equivalent access on every org tree, and implies cockpit-analytics. Does not bypass board access checks — boards still require their own BoardAccess role."
+      },
+      {
+        "name": "cockpit-analytics",
+        "description": "Read access to engineering-intelligence dashboards. A timesheet read that names an org tree also requires Viewer on that tree; one with no tree needs only this role. Granted automatically to anyone holding cockpit-admin."
+      }
+    ]
   },
   "users": []
 }

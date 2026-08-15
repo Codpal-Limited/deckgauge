@@ -63,4 +63,44 @@ export class BoardAdoSourceService {
   async detach(id: string): Promise<void> {
     await this.prisma.boardAdoSource.delete({ where: { id } });
   }
+
+  // Keyed by ADO project name rather than a single URL: a board can attach more
+  // than one BoardAdoSource, so its work items can legitimately come from
+  // different ADO orgs. Callers resolve a given row's link by its own
+  // `adoProject`, instead of assuming one org for the whole board.
+  async orgUrlsByProject(boardId: string): Promise<Record<string, string>> {
+    const sources = await this.prisma.boardAdoSource.findMany({
+      where: { boardId },
+      select: {
+        azureDevOpsProjectSync: {
+          select: {
+            adoProject: true,
+            azureDevOpsInstance: { select: { orgUrl: true } },
+          },
+        },
+      },
+    });
+    // A Project row records only `adoProject` (a name), never the instance it came
+    // from, and `@@unique([azureDevOpsInstanceId, adoProject])` lets the same name
+    // exist on two instances. When a board attaches same-named projects from
+    // different orgs, a row's org is unknowable from the row alone — drop the entry
+    // so the Source cell renders "—". Emitting either candidate would reintroduce
+    // the wrong-org link this method exists to prevent. Same name + same orgUrl
+    // (duplicate connection rows) is not ambiguous, so it is kept.
+    const AMBIGUOUS = null;
+    const byProject = new Map<string, string | typeof AMBIGUOUS>();
+    for (const { azureDevOpsProjectSync: sync } of sources) {
+      const orgUrl = sync.azureDevOpsInstance.orgUrl;
+      const existing = byProject.get(sync.adoProject);
+      if (existing === undefined) {
+        byProject.set(sync.adoProject, orgUrl);
+      } else if (existing !== orgUrl) {
+        byProject.set(sync.adoProject, AMBIGUOUS);
+      }
+    }
+
+    return Object.fromEntries(
+      [...byProject].filter((entry): entry is [string, string] => entry[1] !== AMBIGUOUS),
+    );
+  }
 }

@@ -46,10 +46,24 @@ export interface PromotePayload {
   issues: PromoteJiraItem[];
 }
 
+/**
+ * Per-board-source JQL filtering, resolved by `resolveJqlAllowLists` before the
+ * promote runs. Sources absent from both collections are promoted unfiltered.
+ */
+export interface PromoteOptions {
+  /** boardJiraSource.id → the only issue keys that source may promote. */
+  allowedKeysBySourceId?: Map<string, ReadonlySet<string>>;
+  /** Sources whose filter could not be resolved — skipped entirely, so a broken filter never widens the board. */
+  skipSourceIds?: ReadonlySet<string>;
+}
+
 export class JiraPromoteService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async promoteAll(payload: PromotePayload = { epics: [], issues: [] }): Promise<PromoteResult> {
+  async promoteAll(
+    payload: PromotePayload = { epics: [], issues: [] },
+    options: PromoteOptions = {},
+  ): Promise<PromoteResult> {
     let created = 0;
     let updated = 0;
     let markedRemoved = 0;
@@ -64,6 +78,17 @@ export class JiraPromoteService {
       const jiraProjectKey = ps.jiraProjectKey;
 
       for (const boardSource of ps.boardSources) {
+        // Its JQL filter could not be resolved this run (Jira rejected it, or was
+        // unreachable). Promoting unfiltered would flood the board with the whole
+        // project; marking removed would flag every row it already has. Leave it be.
+        if (options.skipSourceIds?.has(boardSource.id)) {
+          console.warn(
+            `[JiraPromote] Skipping board source ${boardSource.id} (${jiraProjectKey}) — its JQL filter could not be resolved`,
+          );
+          continue;
+        }
+
+        const allowedKeys = options.allowedKeysBySourceId?.get(boardSource.id) ?? null;
         const allowedTypes = boardSource.allowedIssueTypes as string[];
         const statusMapping = (boardSource.statusMapping ?? {}) as Record<string, string>;
         const fieldMappings = (boardSource.fieldMappings ?? {}) as Record<string, string>;
@@ -139,10 +164,17 @@ export class JiraPromoteService {
           })),
         ];
 
-        const items =
+        const notExcluded =
           excludedJiraKeys.size > 0
             ? allItems.filter((r) => !excludedJiraKeys.has(r.key))
             : allItems;
+
+        // The board source's JQL filter, applied as an intersection. Anything it
+        // drops is left out of `seenKeys`, so a row that stopped matching gets
+        // flagged `jiraRemovedFromSource` by the mark-removed pass below — the
+        // same treatment as an issue deleted in Jira.
+        const items =
+          allowedKeys === null ? notExcluded : notExcluded.filter((r) => allowedKeys.has(r.key));
 
         const seenKeys: string[] = [];
 

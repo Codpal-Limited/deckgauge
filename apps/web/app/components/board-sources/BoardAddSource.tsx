@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import type { BulkBindRequest } from '@deckgauge/shared';
+import type { BulkBindRequest, ConnectionHint } from '@deckgauge/shared';
 import {
   PROVIDER_LABEL,
   PROVIDER_ROLE_FIELDS,
@@ -14,6 +14,7 @@ import {
   type BulkAttachResult,
 } from './GitHubSourcePicker';
 import { SourceReconnectBanner } from './SourceReconnectBanner';
+import { SourceHostFixBanner } from './SourceHostFixBanner';
 import type { RemoteProjectsResult } from '../../actions/board-sources';
 
 export type { Provider } from './providers/roles';
@@ -58,6 +59,12 @@ export interface AddNewActions {
   testConnection: (
     provider: Provider,
     connectionId: string,
+  ) => Promise<{ ok: boolean; error?: string; hint?: ConnectionHint }>;
+  /** Repoints an existing connection at a different base URL. Never rejects. */
+  updateConnectionUrl: (
+    provider: Provider,
+    connectionId: string,
+    url: string,
   ) => Promise<{ ok: boolean; error?: string }>;
 }
 
@@ -125,6 +132,11 @@ export function BoardAddSource({
   const [subBusy, setSubBusy] = useState(false);
   const [subError, setSubError] = useState<string | null>(null);
   const [reconnect, setReconnect] = useState(false);
+  // Held with its connection id: the wizard has created the connection but not
+  // yet adopted it (`connectionId` stays empty until a test passes).
+  const [hostHint, setHostHint] = useState<{ hint: ConnectionHint; connectionId: string } | null>(
+    null,
+  );
 
   const goToProviderStep = () => {
     setStep('provider');
@@ -139,6 +151,7 @@ export function BoardAddSource({
     setRemoteProjects(null);
     setRemoteSearch('');
     setSubError(null);
+    setHostHint(null);
     setReconnect(false);
   };
 
@@ -154,6 +167,7 @@ export function BoardAddSource({
     setRemoteProjects(null);
     setRemoteSearch('');
     setSubError(null);
+    setHostHint(null);
     setReconnect(false);
   };
 
@@ -240,6 +254,7 @@ export function BoardAddSource({
     if (!provider || !addNewActions) return;
     setAddingNew(true);
     setSubError(null);
+    setHostHint(null);
     setRemoteProjects(null);
     setSubBusy(true);
     try {
@@ -304,34 +319,80 @@ export function BoardAddSource({
     }
   };
 
+  /** Adopt a validated connection and load its remote projects. */
+  const adoptConnection = async (conn: { id: string; name: string }) => {
+    if (!provider || !addNewActions) return;
+    setConnections((prev) => (prev.some((c) => c.id === conn.id) ? prev : [...prev, conn]));
+    setConnectionId(conn.id);
+    setNewConn(false);
+    const result = await addNewActions.listRemoteProjects(provider, conn.id, remoteSearch);
+    if (result.ok) {
+      setRemoteProjects(result.projects);
+      return;
+    }
+    if (result.authFailed) {
+      setReconnect(true);
+      return;
+    }
+    setSubError(result.error || 'Could not load projects for this connection.');
+    setRemoteProjects([]);
+  };
+
   const createAndTest = async (values: Record<string, string>) => {
     if (!provider || !addNewActions) return;
     setSubBusy(true);
     setSubError(null);
+    setHostHint(null);
     try {
       const conn = await addNewActions.createConnection(provider, values);
       const test = await addNewActions.testConnection(provider, conn.id);
       if (!test.ok) {
         setSubError(test.error ?? 'Connection test failed.');
+        if (test.hint) setHostHint({ hint: test.hint, connectionId: conn.id });
         return;
       }
-      setConnections((prev) => [...prev, conn]);
-      setConnectionId(conn.id);
-      setNewConn(false);
-      const result = await addNewActions.listRemoteProjects(provider, conn.id, remoteSearch);
-      if (result.ok) {
-        setRemoteProjects(result.projects);
-      } else if (result.authFailed) {
-        setReconnect(true);
-      } else {
-        setSubError(result.error || 'Could not load projects for this connection.');
-        setRemoteProjects([]);
-      }
+      await adoptConnection(conn);
     } catch {
       setSubError('Could not create the connection.');
     } finally {
       setSubBusy(false);
     }
+  };
+
+  /** Repoint the just-created connection at the canonical host and retry. */
+  const applyHostHint = async () => {
+    if (!provider || !addNewActions || !hostHint) return;
+    const { hint, connectionId: id } = hostHint;
+    setSubBusy(true);
+    setSubError(null);
+    try {
+      const patched = await addNewActions.updateConnectionUrl(provider, id, hint.suggestedUrl);
+      if (!patched.ok) {
+        setSubError(patched.error ?? 'Could not update the connection URL.');
+        setHostHint(null);
+        return;
+      }
+      const test = await addNewActions.testConnection(provider, id);
+      if (!test.ok) {
+        setSubError(test.error ?? 'Connection test failed.');
+        setHostHint(null);
+        return;
+      }
+      setHostHint(null);
+      await adoptConnection({ id, name: hint.suggestedUrl });
+    } catch {
+      setSubError('Could not update the connection URL.');
+      setHostHint(null);
+    } finally {
+      setSubBusy(false);
+    }
+  };
+
+  /** Dismiss the new-connection form, discarding any leftover fix offer or error. */
+  const cancelNewConnection = () => {
+    setNewConn(false);
+    setHostHint(null);
+    setSubError(null);
   };
 
   // GitLab searches server-side (it can match on project name/description, not
@@ -494,13 +555,20 @@ export function BoardAddSource({
 
             {addNewActions && addingNew && (
               <div className="mt-3 rounded-md border border-slate-200 p-3 space-y-2">
+                {hostHint && (
+                  <SourceHostFixBanner
+                    suggestedUrl={hostHint.hint.suggestedUrl}
+                    busy={subBusy}
+                    onUseSuggested={applyHostHint}
+                  />
+                )}
                 {subError && <p className="text-xs text-rose-600">{subError}</p>}
                 {newConn ? (
                   <AddConnectionForm
                     provider={provider}
                     busy={subBusy}
                     onSubmit={createAndTest}
-                    onCancel={() => setNewConn(false)}
+                    onCancel={cancelNewConnection}
                   />
                 ) : connections.length === 0 && !subBusy ? (
                   <>

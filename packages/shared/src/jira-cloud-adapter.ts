@@ -64,6 +64,10 @@ export class JiraCloudAdapter implements JiraPort {
     return this.fetchPaginated(jql, (issue) => this.mapToIssue(issue));
   }
 
+  async fetchIssueKeys(jql: string): Promise<string[]> {
+    return this.fetchPaginated(jql, (issue) => issue.key, "key");
+  }
+
   private buildJql(projectKeys: string[], isEpic: boolean): string {
     const projectList = projectKeys.map((key) => `"${key}"`).join(", ");
     if (isEpic) {
@@ -74,7 +78,8 @@ export class JiraCloudAdapter implements JiraPort {
 
   private async fetchPaginated<T>(
     jql: string,
-    mapper: (issue: JiraIssueResponse) => T
+    mapper: (issue: JiraIssueResponse) => T,
+    fieldsCsv = "summary,description,status,assignee,issuetype,updated,customfield_10014,project"
   ): Promise<T[]> {
     if (this.circuitOpen) {
       throw new JiraCircuitOpenError();
@@ -82,7 +87,7 @@ export class JiraCloudAdapter implements JiraPort {
 
     const results: T[] = [];
     const maxResults = 100;
-    const fields = "summary,description,status,assignee,issuetype,updated,customfield_10014,project";
+    const fields = fieldsCsv;
     const baseUrl = this.config.atlassianUrl.replace(/\/+$/, "");
 
     // Try new POST /search/jql endpoint first (Atlassian CHANGE-2046)

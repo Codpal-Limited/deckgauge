@@ -1,4 +1,4 @@
-// apps/worker/src/github-backfill-estimator.ts
+// GitHub backfill estimation. Moved here from the worker so the API can share it.
 export interface RepoCostInput {
   openIssuesCount: number;
   lastPushedAt: Date | null;

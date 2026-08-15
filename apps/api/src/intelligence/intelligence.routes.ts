@@ -8,6 +8,7 @@ import type { PrismaClient } from '@deckgauge/db';
 import { z } from 'zod';
 import { ClickhouseIntelligenceService } from './clickhouse-intelligence.service.js';
 import { getBoardScope, type BoardScope } from './board-scope.js';
+import { ANALYTICS, ADMIN } from '../auth/policy.js';
 
 const DateRangeQuery = z.object({
   from: z.string().datetime().optional(),
@@ -58,7 +59,7 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
       return { scope };
     }
 
-    app.get('/intelligence/overview', async (req, reply) => {
+    app.get('/intelligence/overview', { config: { policy: ANALYTICS } }, async (req, reply) => {
       const parsed = DateRangeQuery.safeParse(req.query);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
       const from = parsed.data.from ? new Date(parsed.data.from) : defaultFrom();
@@ -73,7 +74,7 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
       return reply.send(data);
     });
 
-    app.get('/intelligence/developers/:login/weekly', async (req, reply) => {
+    app.get('/intelligence/developers/:login/weekly', { config: { policy: ANALYTICS } }, async (req, reply) => {
       const params = z.object({ login: z.string().min(1) }).safeParse(req.params);
       if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
       const parsed = DateRangeQuery.safeParse(req.query);
@@ -95,7 +96,7 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
       return reply.send(data);
     });
 
-    app.get('/intelligence/anomalies', async (req, reply) => {
+    app.get('/intelligence/anomalies', { config: { policy: ANALYTICS } }, async (req, reply) => {
       const parsed = z
         .object({
           threshold: z.coerce.number().lt(0).gt(-1).optional(),
@@ -113,7 +114,7 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
       return reply.send(data);
     });
 
-    app.get('/intelligence/ai-breakdown', async (req, reply) => {
+    app.get('/intelligence/ai-breakdown', { config: { policy: ANALYTICS } }, async (req, reply) => {
       const parsed = DateRangeQuery.safeParse(req.query);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
       const from = parsed.data.from ? new Date(parsed.data.from) : defaultFrom();
@@ -127,7 +128,7 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
       return reply.send(data);
     });
 
-    app.get('/intelligence/coverage', async (req, reply) => {
+    app.get('/intelligence/coverage', { config: { policy: ANALYTICS } }, async (req, reply) => {
       const parsed = DateRangeQuery.safeParse(req.query);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
       const from = parsed.data.from ? new Date(parsed.data.from) : defaultFrom();
@@ -142,7 +143,7 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
     });
 
     // EI-021 — unified ticket timeline.
-    app.get('/intelligence/tickets/:key', async (req, reply) => {
+    app.get('/intelligence/tickets/:key', { config: { policy: ANALYTICS } }, async (req, reply) => {
       const params = z.object({ key: z.string().min(1) }).safeParse(req.params);
       if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
       const parsed = BoardIdQuery.safeParse(req.query);
@@ -158,7 +159,7 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
     });
 
     // P2 — developer table (one row per dev, last 12 weeks default).
-    app.get('/intelligence/developer-table', async (req, reply) => {
+    app.get('/intelligence/developer-table', { config: { policy: ANALYTICS } }, async (req, reply) => {
       const parsed = DateRangeQuery.safeParse(req.query);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
       const to = parsed.data.to ? new Date(parsed.data.to) : new Date();
@@ -170,7 +171,7 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
     });
 
     // P2 — developer detail (heatmap, recent PRs, AI trend) over N days.
-    app.get('/intelligence/developers/:login/detail', async (req, reply) => {
+    app.get('/intelligence/developers/:login/detail', { config: { policy: ANALYTICS } }, async (req, reply) => {
       const params = z.object({ login: z.string().min(1) }).safeParse(req.params);
       if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
       const q = z.object({ days: z.coerce.number().int().min(1).max(365).optional() }).safeParse(
@@ -182,7 +183,7 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
     });
 
     // P2 — paginated pull-request list.
-    app.get('/intelligence/pull-requests', async (req, reply) => {
+    app.get('/intelligence/pull-requests', { config: { policy: ANALYTICS } }, async (req, reply) => {
       const parsed = DateRangeQuery.extend({
         page: z.coerce.number().int().min(1).optional(),
         perPage: z.coerce.number().int().min(1).max(200).optional(),
@@ -200,7 +201,7 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
     });
 
     // P2 — weekly AI% trend.
-    app.get('/intelligence/ai-trend', async (req, reply) => {
+    app.get('/intelligence/ai-trend', { config: { policy: ANALYTICS } }, async (req, reply) => {
       const parsed = DateRangeQuery.safeParse(req.query);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
       const to = parsed.data.to ? new Date(parsed.data.to) : new Date();
@@ -215,7 +216,7 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
     // The route enqueues a job onto the corresponding BullMQ queue via a dependency-injected
     // enqueue callback. If no enqueue function was provided to intelligenceRoutes, returns 503
     // so the caller knows the worker bus isn't reachable from this API process.
-    app.post('/intelligence/sync', async (req, reply) => {
+    app.post('/intelligence/sync', { config: { policy: ADMIN } }, async (req, reply) => {
       const body = z
         .object({ source: z.enum(['jira', 'github', 'ado', 'gitlab', 'all']) })
         .safeParse(req.body);

@@ -30,6 +30,31 @@ export class OrgEmployeeForbiddenError extends Error {
   }
 }
 
+/**
+ * Thrown when a write names OrgEmployee ids that do not belong to the org tree
+ * the request was authorized against.
+ *
+ * The rule: a route policy gates ONE entity — the `:boardId`, the `:id`, the
+ * subject employee. Every other employee id the handler then acts on arrives
+ * from the body or query and has been gated by nothing. Those ids must be
+ * confirmed to live in the same tree, or the request is refused; otherwise the
+ * caller reaches rows in a tree they hold nothing on, through a resource they
+ * legitimately own.
+ *
+ * The whole request is refused — never partially applied with the offending
+ * ids trimmed out. A silent trim hides a deliberate attempt, and gives a
+ * legitimate caller who mistyped an id a success response that quietly did
+ * less than they asked. Same call made in `BoardAccessDeniedError`
+ * (auth/board-access.ts) for the board-set equivalent. The ids are carried so
+ * the route can answer with something diagnosable.
+ */
+export class CrossTreeEmployeeError extends Error {
+  constructor(public readonly orgEmployeeIds: string[]) {
+    super(`Forbidden: employee(s) ${orgEmployeeIds.join(', ')} do not belong to this org tree`);
+    this.name = 'CrossTreeEmployeeError';
+  }
+}
+
 /** Minimal shape needed to rank an employee within its tree. */
 interface RankableEmployee {
   id: string;
@@ -70,12 +95,24 @@ export interface OrgTreeSummary {
 export class OrgTreeService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async create(name: string): Promise<{ id: string }> {
-    const max = await this.prisma.orgTree.aggregate({ _max: { position: true } });
-    const row = await this.prisma.orgTree.create({
-      data: { name, position: (max._max.position ?? -1) + 1 },
+  /**
+   * Create a tree and, when a creator is known, stamp them as its OWNER in
+   * the same transaction — a tree whose access row didn't land would be
+   * invisible to its own creator and recoverable only by an admin.
+   */
+  async create(name: string, createdByUserId?: string): Promise<{ id: string }> {
+    return this.prisma.$transaction(async (tx) => {
+      const max = await tx.orgTree.aggregate({ _max: { position: true } });
+      const row = await tx.orgTree.create({
+        data: { name, position: (max._max.position ?? -1) + 1 },
+      });
+      if (createdByUserId) {
+        await tx.orgTreeAccess.create({
+          data: { orgTreeId: row.id, userId: createdByUserId, role: 'OWNER' },
+        });
+      }
+      return { id: row.id };
     });
-    return { id: row.id };
   }
 
   /** Rename a tree. Returns the updated summary, or null when the tree is gone. */
@@ -91,8 +128,18 @@ export class OrgTreeService {
     };
   }
 
-  async list(): Promise<OrgTreeSummary[]> {
-    const rows = await this.prisma.orgTree.findMany({ orderBy: { position: 'asc' } });
+  /**
+   * List trees, optionally restricted to `orgTreeIds`. An empty array must
+   * yield an empty result, not every tree — `orgTreeIds === undefined` (not
+   * a falsy/length check) is what distinguishes "no filter" from "filter to
+   * nothing", since `{ id: { in: [] } }` and omitting the clause entirely
+   * are very different queries to Prisma.
+   */
+  async list(opts: { orgTreeIds?: string[] } = {}): Promise<OrgTreeSummary[]> {
+    const rows = await this.prisma.orgTree.findMany({
+      where: opts.orgTreeIds === undefined ? undefined : { id: { in: opts.orgTreeIds } },
+      orderBy: { position: 'asc' },
+    });
     return rows.map((r) => ({
       id: r.id,
       name: r.name,
@@ -241,10 +288,32 @@ export class OrgTreeService {
     };
   }
 
+  /**
+   * A `managerId` arriving from a request body has been gated by nothing — the
+   * route policy checked the SUBJECT employee's (or the tree's) access, never
+   * the manager's. A manager from another tree writes a parent pointer that
+   * `moveEmployee`'s own cycle detection cannot even see, since that is scoped
+   * to `orgTreeId`, and puts a row from a tree the caller may hold nothing on
+   * into this tree's hierarchy. Refuse it — same rule as
+   * `EmployeeBoardService.addExistingMembers`.
+   */
+  private async assertManagerInTree(
+    orgTreeId: string,
+    managerId: string | null | undefined,
+  ): Promise<void> {
+    if (!managerId) return;
+    const manager = await this.prisma.orgEmployee.findUnique({
+      where: { id: managerId },
+      select: { orgTreeId: true },
+    });
+    if (!manager || manager.orgTreeId !== orgTreeId) throw new CrossTreeEmployeeError([managerId]);
+  }
+
   async createEmployee(
     treeId: string,
     input: { name: string; role?: string | null; managerId?: string | null },
   ): Promise<{ id: string }> {
+    await this.assertManagerInTree(treeId, input.managerId);
     const siblings = await this.prisma.orgEmployee.aggregate({
       where: { orgTreeId: treeId, managerId: input.managerId ?? null },
       _max: { position: true },
@@ -310,6 +379,7 @@ export class OrgTreeService {
   async moveEmployee(id: string, input: { managerId: string | null; position: number }): Promise<void> {
     const emp = await this.prisma.orgEmployee.findUnique({ where: { id } });
     if (!emp) return;
+    await this.assertManagerInTree(emp.orgTreeId, input.managerId);
     const all = await this.prisma.orgEmployee.findMany({
       where: { orgTreeId: emp.orgTreeId },
       select: { id: true, managerId: true },

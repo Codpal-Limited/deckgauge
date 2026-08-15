@@ -3,6 +3,7 @@ import { TrendLineChart } from '../charts/TrendLineChart';
 import { useWidgetConfigWithBoardPeriod } from '../useWidgetConfigWithBoardPeriod';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
+import { WidgetEmptyState } from './WidgetEmptyState';
 
 interface Props {
   boardId: string;
@@ -34,17 +35,7 @@ export default function ReviewMixWidget({ boardId, config }: Props) {
   const { data, error } = useWidgetData<Data>(boardId, 'REVIEW_MIX', merged);
   if (error) return <WidgetErrorState />;
   if (!data) return <p className="text-sm text-slate-400">Loading…</p>;
-  if (data.emptyReason)
-    return (
-      <p className="text-sm text-slate-500 p-2">
-        Attach a GitHub source in{' '}
-        <a className="underline" href="../sources">
-          Sources tab
-        </a>{' '}
-        to see review mix.
-      </p>
-    );
-
+  if (data.emptyReason) return <WidgetEmptyState boardId={boardId} reason={data.emptyReason} />;
   const { summary, weeks } = data;
   const hasWeeklyData = weeks.length > 0;
 

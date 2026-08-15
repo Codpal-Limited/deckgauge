@@ -8,6 +8,7 @@ import {
 } from '@deckgauge/shared';
 import { RoadmapPrefsService } from '../roadmaps/roadmap-prefs.service.js';
 import { BoardTreeService } from './board-tree.service.js';
+import { AUTHENTICATED } from '../auth/policy.js';
 
 export async function boardTreeRoutes(
   app: FastifyInstance,
@@ -15,13 +16,13 @@ export async function boardTreeRoutes(
 ) {
   const service = new BoardTreeService(prisma);
 
-  app.get('/me/board-tree', async (req, reply) => {
+  app.get('/me/board-tree', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
     const userId = req.user?.id;
     if (!userId) return reply.status(401).send({ error: 'Authentication required' });
     return reply.send(await service.getTree(userId));
   });
 
-  app.post('/me/board-folders', async (req, reply) => {
+  app.post('/me/board-folders', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
     const userId = req.user?.id;
     if (!userId) return reply.status(401).send({ error: 'Authentication required' });
     const parsed = CreateBoardFolderInputSchema.safeParse(req.body);
@@ -34,7 +35,7 @@ export async function boardTreeRoutes(
     }
   });
 
-  app.patch<{ Params: { id: string } }>('/me/board-folders/:id', async (req, reply) => {
+  app.patch<{ Params: { id: string } }>('/me/board-folders/:id', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
     const userId = req.user?.id;
     if (!userId) return reply.status(401).send({ error: 'Authentication required' });
     const parsed = UpdateBoardFolderInputSchema.safeParse(req.body);
@@ -48,7 +49,7 @@ export async function boardTreeRoutes(
     }
   });
 
-  app.delete<{ Params: { id: string } }>('/me/board-folders/:id', async (req, reply) => {
+  app.delete<{ Params: { id: string } }>('/me/board-folders/:id', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
     const userId = req.user?.id;
     if (!userId) return reply.status(401).send({ error: 'Authentication required' });
     const deleted = await service.deleteFolder(userId, req.params.id);
@@ -56,7 +57,7 @@ export async function boardTreeRoutes(
     return reply.status(204).send();
   });
 
-  app.patch<{ Params: { boardId: string } }>('/me/board-prefs/:boardId', async (req, reply) => {
+  app.patch<{ Params: { boardId: string } }>('/me/board-prefs/:boardId', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
     const userId = req.user?.id;
     if (!userId) return reply.status(401).send({ error: 'Authentication required' });
     const parsed = UpdateBoardPrefInputSchema.safeParse(req.body);
@@ -69,7 +70,7 @@ export async function boardTreeRoutes(
     }
   });
 
-  app.patch<{ Params: { roadmapId: string } }>('/me/roadmap-prefs/:roadmapId', async (req, reply) => {
+  app.patch<{ Params: { roadmapId: string } }>('/me/roadmap-prefs/:roadmapId', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
     const userId = req.user?.id;
     if (!userId) return reply.status(401).send({ error: 'Authentication required' });
     const parsed = UpdateRoadmapPrefInputSchema.safeParse(req.body);

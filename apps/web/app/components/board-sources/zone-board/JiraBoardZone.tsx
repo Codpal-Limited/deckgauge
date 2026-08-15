@@ -22,7 +22,6 @@ interface Props {
   sourceId: string;
   boardStatuses: BoardStatusOption[];
   onSaveStatusMapping: (mapping: Record<string, string>) => Promise<void>;
-  onSaveAllowedIssueTypes: (types: string[]) => Promise<void>;
 }
 
 export function JiraBoardZone({
@@ -34,25 +33,11 @@ export function JiraBoardZone({
   sourceId,
   boardStatuses,
   onSaveStatusMapping,
-  onSaveAllowedIssueTypes,
 }: Props) {
   const [advancedOpen, setAdvancedOpen] = useState(value.jqlFilter !== null);
-  const [issueTypesError, setIssueTypesError] = useState<string | null>(null);
 
   const patch = <K extends keyof JiraZoneValue>(k: K, v: JiraZoneValue[K]) =>
     onChange({ ...value, [k]: v });
-
-  async function handleIssueTypesChange(next: string[]) {
-    const previous = value.allowedIssueTypes;
-    patch('allowedIssueTypes', next);
-    setIssueTypesError(null);
-    try {
-      await onSaveAllowedIssueTypes(next);
-    } catch (err) {
-      patch('allowedIssueTypes', previous);
-      setIssueTypesError(err instanceof Error ? err.message : 'Failed to save issue types');
-    }
-  }
 
   return (
     <div className="rounded-lg border border-slate-200 p-3">
@@ -88,16 +73,18 @@ export function JiraBoardZone({
             ))}
           </select>
         </Row>
+        {/* Draft-only, like every other field here: an empty `allowedIssueTypes`
+            is what keeps a newly attached source inert, so persisting a chip on
+            click would arm the sync while the target group and JQL filter were
+            still unsaved — and the next sweep promotes the whole project into an
+            auto-created group. Save changes writes the zone in one patch. */}
         <Row label="Issue types">
           <IssueTypeChipsBlock
             boardId={boardId}
             sourceId={sourceId}
             value={value.allowedIssueTypes}
-            onChange={handleIssueTypesChange}
+            onChange={(next) => patch('allowedIssueTypes', next)}
           />
-          {issueTypesError && (
-            <p className="mt-1 text-[11px] text-rose-600">{issueTypesError}</p>
-          )}
         </Row>
         <Row label="Status mapping">
           <StatusMappingLink

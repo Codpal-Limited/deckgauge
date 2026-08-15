@@ -2,6 +2,7 @@
 
 import { authFetch } from './api';
 import type { RemoteProjectsResult } from './board-sources';
+import { ConnectionHintSchema, type ConnectionHint } from '@deckgauge/shared';
 
 // --- Jira Instances ---
 
@@ -35,16 +36,34 @@ export async function createJiraInstance(data: {
   return await res.json();
 }
 
-export async function testJiraConnection(instanceId: string) {
+export type TestConnectionResult =
+  | { ok: true }
+  | { ok: false; error: string; hint?: ConnectionHint };
+
+/**
+ * Returns the API's real failure message instead of null. The previous `null`
+ * became a bare "test failed" in the UI, hiding diagnoses the API had already
+ * produced (e.g. a 401 caused by a vanity Atlassian host).
+ */
+export async function testJiraConnection(instanceId: string): Promise<TestConnectionResult> {
   try {
     const res = await authFetch(`/jira/instances/${instanceId}/test`, {
       method: 'POST',
       cache: 'no-store',
     });
-    if (!res.ok) return null;
-    return await res.json();
+    if (res.ok) return { ok: true };
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: unknown;
+      hint?: unknown;
+    };
+    const parsedHint = ConnectionHintSchema.safeParse(body.hint);
+    return {
+      ok: false,
+      error: typeof body.error === 'string' ? body.error : `Test failed (${res.status})`,
+      hint: parsedHint.success ? parsedHint.data : undefined,
+    };
   } catch {
-    return null;
+    return { ok: false, error: 'Could not reach the API.' };
   }
 }
 
@@ -72,7 +91,7 @@ export async function discoverJiraProjects(
 
 export async function updateJiraInstance(
   instanceId: string,
-  data: { projectKeys: string[] },
+  data: { projectKeys?: string[]; atlassianUrl?: string },
 ) {
   const res = await authFetch(`/jira/instances/${instanceId}`, {
     method: 'PATCH',

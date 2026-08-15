@@ -6,6 +6,7 @@ import { useWidgetConfigWithBoardPeriod } from '../useWidgetConfigWithBoardPerio
 import { openIntelligenceConsole } from '../openIntelligenceConsole';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
+import { WidgetEmptyState } from './WidgetEmptyState';
 
 interface Props {
   boardId: string;
@@ -24,16 +25,7 @@ export default function ReviewPickupTimeWidget({ boardId, config }: Props) {
   const { data, error } = useWidgetData<Data>(boardId, 'REVIEW_PICKUP_TIME', merged);
   if (error) return <WidgetErrorState />;
   if (!data) return <p className="text-sm text-slate-400">Loading…</p>;
-  if (data.emptyReason)
-    return (
-      <p className="text-sm text-slate-500 p-2">
-        Connect a source in{' '}
-        <a className="underline" href="../sources">
-          Sources tab
-        </a>
-        .
-      </p>
-    );
+  if (data.emptyReason) return <WidgetEmptyState boardId={boardId} reason={data.emptyReason} />;
   return (
     <TrendLineChart
       series={[

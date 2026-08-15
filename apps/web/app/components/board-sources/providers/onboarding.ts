@@ -60,13 +60,34 @@ export const PROVIDER_ONBOARDING: Record<Provider, OnboardingGuide> = {
     tokenUrl:
       'https://learn.microsoft.com/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate',
     linkLabel: 'How to create an Azure DevOps token',
-    scopes: ['Code (Read)', 'Work Items (Read)', 'Project & Team (Read)'],
+    // Release (Read) is NOT optional despite having been absent from this list
+    // for as long as deployment ingestion has existed. DORA's deploy frequency
+    // and change failure rate read classic Release pipeline deployments from
+    // vsrm.dev.azure.com/{org}/{project}/_apis/release/deployments; without the
+    // scope that call fails, the per-project catch swallows it, and both metrics
+    // quietly fall back to their proxies. A token minted by following these
+    // steps could not read a single deployment.
+    //
+    // Environment (Read) covers multi-stage YAML pipeline deployments
+    // (distributedtask/environments/{id}/environmentdeploymentrecords), which
+    // are not ingested yet — the endpoint answers an auth redirect rather than
+    // JSON without it. Asked for now so the tokens minted from here are already
+    // able to read them when that source is added, instead of every connection
+    // needing to be re-tokenised on that day.
+    scopes: [
+      'Code (Read)',
+      'Work Items (Read)',
+      'Project & Team (Read)',
+      'Release (Read)',
+      'Environment (Read)',
+    ],
     steps: [
       'In your Azure DevOps org, open User settings → Personal access tokens.',
-      'Click "New Token" and grant the read scopes below.',
+      'Click "New Token" and grant every read scope below.',
       'Copy the token, then enter your organization URL below.',
       'Paste the token and click "Create & test".',
     ],
+    note: 'Release (Read) is what lets Deckgauge count real deployments — without it, Deployment Frequency and Change Failure Rate fall back to estimates.',
   },
   gitlab: {
     tokenUrl: `https://gitlab.com/-/user_settings/personal_access_tokens?name=Deckgauge&scopes=${GITLAB_SCOPES.join(

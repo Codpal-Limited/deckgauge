@@ -3,6 +3,7 @@ import { TrendLineChart } from '../charts/TrendLineChart';
 import { useWidgetConfigWithBoardPeriod } from '../useWidgetConfigWithBoardPeriod';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
+import { WidgetEmptyState } from './WidgetEmptyState';
 
 interface Props {
   boardId: string;
@@ -28,17 +29,7 @@ export default function BotVsHumanWidget({ boardId, config }: Props) {
   const { data, error } = useWidgetData<Data>(boardId, 'BOT_VS_HUMAN', merged);
   if (error) return <WidgetErrorState />;
   if (!data) return <p className="text-sm text-slate-400">Loading…</p>;
-  if (data.emptyReason)
-    return (
-      <p className="text-sm text-slate-500 p-2">
-        Attach a code source (GitHub, GitLab or Azure DevOps) in{' '}
-        <a className="underline" href="../sources">
-          Sources tab
-        </a>{' '}
-        to see the bot vs human split.
-      </p>
-    );
-
+  if (data.emptyReason) return <WidgetEmptyState boardId={boardId} reason={data.emptyReason} />;
   const { summary, weeks } = data;
   const hasWeeklyData = weeks.length > 0;
 
@@ -47,7 +38,11 @@ export default function BotVsHumanWidget({ boardId, config }: Props) {
       <div className="grid grid-cols-3 gap-2 px-1">
         <KpiTile label="Bot share" value={`${Math.round(summary.bot_pct)}%`} accent="bot" />
         <KpiTile label="Bot commits" value={summary.bot_count.toLocaleString()} accent="bot" />
-        <KpiTile label="Human commits" value={summary.human_count.toLocaleString()} accent="human" />
+        <KpiTile
+          label="Human commits"
+          value={summary.human_count.toLocaleString()}
+          accent="human"
+        />
       </div>
       <div className="flex-1 min-h-0">
         {hasWeeklyData ? (

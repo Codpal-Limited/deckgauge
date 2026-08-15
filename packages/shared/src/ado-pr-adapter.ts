@@ -3,11 +3,19 @@ import { detectAiAssistance } from './ai-detection';
 import { extractTicketKeys } from './ticket-link-extractor';
 import { chDateTime, chDateTimeRequired } from './clickhouse-datetime';
 import { resilientFetchJson } from './resilient-fetch';
+import type { Throttle } from './request-throttle';
 
 export interface AdoPrFetchOpts {
   project: string;
   repoIds?: string[];
   since?: Date;
+  /**
+   * Upper bound on PR creation time. Set only for backfill, where history is
+   * walked backwards in bounded [since, until) chunks so each chunk terminates
+   * inside the per-repo timeout. When set, a single `created`-range sweep runs
+   * (see fetchPullRequests) instead of the incremental created+closed pair.
+   */
+  until?: Date;
   ticketPrefixes?: string[];
   pageSize?: number;
   maxPages?: number;
@@ -65,6 +73,12 @@ export interface AdoReviewRow {
 export interface AdoPrFetchResult {
   pullRequests: AdoPullRequestRow[];
   reviews: AdoReviewRow[];
+  /**
+   * Non-fatal degradations, e.g. a PR whose work-item links could not be read.
+   * The caller is expected to log these — they are never silently dropped, but
+   * they must not cost us the PR row itself.
+   */
+  warnings?: string[];
 }
 
 export interface AdoPrPort {
@@ -78,6 +92,11 @@ interface AdoPrAdapterConfig {
   username?: string;
   instanceId: string;
   fetchFn?: typeof fetch;
+  /**
+   * Optional client-side pacing, shared with the other ADO adapters so all ADO
+   * traffic spends one account-wide budget. Omitted in tests.
+   */
+  throttle?: Throttle;
 }
 
 interface RawRepo {
@@ -104,6 +123,12 @@ interface RawPr {
   labels?: Array<{ name: string; active?: boolean }>;
   createdBy?: RawIdentity;
   reviewers?: Array<RawIdentity & { vote: number; votedFor?: Array<{ value: number; timestamp: string }> }>;
+}
+
+// `/pullRequests/{id}/workitems` returns bare refs: { id, url }. The id is the
+// work item's numeric ADO id as a string.
+interface RawWorkItemRef {
+  id?: string | number;
 }
 
 interface RawThreadProperty {
@@ -191,32 +216,90 @@ export class AdoPrAdapter implements AdoPrPort {
 
     const pullRequests: AdoPullRequestRow[] = [];
     const reviews: AdoReviewRow[] = [];
+    const warnings: string[] = [];
     for (const repoId of repoIds) {
-      for (let page = 0; page < maxPages; page++) {
-        const params = new URLSearchParams({
-          'api-version': '7.1',
-          'searchCriteria.status': 'all',
-          'searchCriteria.repositoryId': repoId,
-          $top: String(pageSize),
-          $skip: String(page * pageSize),
-        });
-        if (opts.since) params.set('searchCriteria.minTime', opts.since.toISOString());
-        const url = `${this.orgUrl}/${projectEnc}/_apis/git/pullrequests?${params.toString()}`;
-        const list = await this.ado<{ value: RawPr[] }>(url);
-        if (!list.value || list.value.length === 0) break;
-        for (const pr of list.value) {
-          const threads = await this.ado<{ value: RawThread[] }>(
-            `${this.orgUrl}/${projectEnc}/_apis/git/repositories/${pr.repository.id}/pullRequests/${pr.pullRequestId}/threads?api-version=7.1`,
-          );
-          pullRequests.push(this.transform(opts.project, pr, threads.value, prefixes));
-          for (const review of this.extractReviews(opts.project, pr, threads.value)) {
-            reviews.push(review);
+      // An incremental run must sweep TWO time ranges. ADO applies
+      // searchCriteria.minTime against queryTimeRangeType, which defaults to
+      // `created` — so a created-only sweep never returns a PR opened before
+      // the watermark, even after it merges. Those rows freeze in the state
+      // they had at first capture: status stays 'active', closedDate stays
+      // null, and because pullRequestsUnion synthesises merged_at from
+      // status='completed', they silently vanish from deploy frequency, lead
+      // time, PR cycle time and merge frequency. The `closed` sweep is what
+      // brings the late merges (and abandonments) back.
+      //
+      // A first run has no watermark and must not be time-filtered at all —
+      // one untimed sweep backfills the full history.
+      //
+      // Backfill mode (`until` set) walks a bounded window of history and needs
+      // only the created range: every PR opened in the window comes back with
+      // whatever state it holds now.
+      const timeRanges: Array<'created' | 'closed' | null> = opts.until
+        ? ['created']
+        : opts.since
+          ? ['created', 'closed']
+          : [null];
+
+      // Both sweeps return a PR that was created AND closed inside the window.
+      // Dedupe by pullRequestId BEFORE fetching threads: threads are one
+      // request per PR (the expensive N+1 in this adapter), so deduping after
+      // would double the request cost of every incremental run.
+      const rawById = new Map<number, RawPr>();
+      for (const range of timeRanges) {
+        for (let page = 0; page < maxPages; page++) {
+          const params = new URLSearchParams({
+            'api-version': '7.1',
+            'searchCriteria.status': 'all',
+            'searchCriteria.repositoryId': repoId,
+            $top: String(pageSize),
+            $skip: String(page * pageSize),
+          });
+          if (opts.since && range) {
+            params.set('searchCriteria.queryTimeRangeType', range);
+            params.set('searchCriteria.minTime', opts.since.toISOString());
+            if (opts.until) params.set('searchCriteria.maxTime', opts.until.toISOString());
           }
+          const url = `${this.orgUrl}/${projectEnc}/_apis/git/pullrequests?${params.toString()}`;
+          const list = await this.ado<{ value: RawPr[] }>(url);
+          if (!list.value || list.value.length === 0) break;
+          for (const pr of list.value) rawById.set(pr.pullRequestId, pr);
+          if (list.value.length < pageSize) break;
         }
-        if (list.value.length < pageSize) break;
+      }
+
+      for (const pr of rawById.values()) {
+        const threads = await this.ado<{ value: RawThread[] }>(
+          `${this.orgUrl}/${projectEnc}/_apis/git/repositories/${pr.repository.id}/pullRequests/${pr.pullRequestId}/threads?api-version=7.1`,
+        );
+        // ADO links work items to PRs relationally — the ids are not in the PR
+        // title, body or branch name, so text extraction alone reports 0%
+        // ticket coverage on every ADO board. This relation is the real signal.
+        //
+        // Best-effort: a PAT scoped without work-item read, or a permanent 403
+        // on one project, must not cost us the PR row (which carries every
+        // merge-based metric). Degrade to text extraction and report why.
+        let workItemRefs: RawWorkItemRef[] = [];
+        try {
+          const workItems = await this.ado<{ value: RawWorkItemRef[] }>(
+            `${this.orgUrl}/${projectEnc}/_apis/git/repositories/${pr.repository.id}/pullRequests/${pr.pullRequestId}/workitems?api-version=7.1`,
+          );
+          workItemRefs = workItems.value ?? [];
+        } catch (err) {
+          warnings.push(
+            `work-item links unavailable for ${opts.project} PR #${pr.pullRequestId}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        }
+        pullRequests.push(
+          this.transform(opts.project, pr, threads.value, prefixes, workItemRefs),
+        );
+        for (const review of this.extractReviews(opts.project, pr, threads.value)) {
+          reviews.push(review);
+        }
       }
     }
-    return { pullRequests, reviews };
+    return warnings.length > 0 ? { pullRequests, reviews, warnings } : { pullRequests, reviews };
   }
 
   private extractReviews(project: string, pr: RawPr, threads: RawThread[]): AdoReviewRow[] {
@@ -262,12 +345,23 @@ export class AdoPrAdapter implements AdoPrPort {
   }
 
   private async ado<T>(url: string): Promise<T> {
-    const r = await resilientFetchJson<T>(this.doFetch, url, {
-      headers: {
-        Authorization: authHeader(this.cfg),
-        Accept: 'application/json',
+    await this.cfg.throttle?.acquire();
+    const r = await resilientFetchJson<T>(
+      this.doFetch,
+      url,
+      {
+        headers: {
+          Authorization: authHeader(this.cfg),
+          Accept: 'application/json',
+        },
       },
-    });
+      {
+        // Feed the server's own backoff instruction back into the shared
+        // throttle so the OTHER ADO sync slows down too — both spend the same
+        // account budget.
+        onThrottled: ({ waitMs }) => this.cfg.throttle?.backOff(waitMs),
+      },
+    );
     if (!r.ok) throw new Error(`ADO ${r.status} ${r.statusText} for ${url}`);
     return r.data as T;
   }
@@ -277,6 +371,7 @@ export class AdoPrAdapter implements AdoPrPort {
     pr: RawPr,
     threads: RawThread[],
     prefixes: string[],
+    workItemRefs: RawWorkItemRef[],
   ): AdoPullRequestRow {
     const isDraft: 0 | 1 = pr.isDraft ? 1 : 0;
     const updatedAt =
@@ -310,12 +405,25 @@ export class AdoPrAdapter implements AdoPrPort {
       branchName: source,
       authorLogin: author,
     });
-    const linkedKeys = extractTicketKeys({
-      text: `${pr.title}\n${pr.description ?? ''}`,
-      branchName: source,
-      prefixes,
-      source: 'ado',
-    });
+    // Work-item ids are emitted bare (e.g. '13614') to match
+    // projects.ado_work_item_id, so the existing
+    // has(linked_ticket_keys, {key}) timeline lookup resolves against a board
+    // row's ADO id without any extra mapping. Prefix-extracted keys stay as a
+    // second source for teams that do write 'BWAY-7' in PR titles.
+    const workItemKeys = workItemRefs
+      .map((ref) => (ref.id == null ? '' : String(ref.id).trim()))
+      .filter((id) => id.length > 0);
+    const linkedKeys = Array.from(
+      new Set([
+        ...workItemKeys,
+        ...extractTicketKeys({
+          text: `${pr.title}\n${pr.description ?? ''}`,
+          branchName: source,
+          prefixes,
+          source: 'ado',
+        }),
+      ]),
+    ).sort();
 
     return {
       id: `${this.orgUrl}/${project}#${pr.pullRequestId}`,

@@ -8,10 +8,16 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
-import { AnnotationLayer, type AnnotationEvent, type AnnotationPeak } from '../charts/AnnotationLayer';
+import { CHART_TOOLTIP } from '../charts/chartTheme';
+import {
+  AnnotationLayer,
+  type AnnotationEvent,
+  type AnnotationPeak,
+} from '../charts/AnnotationLayer';
 import { useWidgetConfigWithBoardPeriod } from '../useWidgetConfigWithBoardPeriod';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
+import { WidgetEmptyState } from './WidgetEmptyState';
 
 interface Props {
   boardId: string;
@@ -40,19 +46,11 @@ export default function DeliveryTrendAnnotatedWidget({ boardId, config }: Props)
 
   if (error) return <WidgetErrorState />;
   if (!data) return <p className="text-sm text-slate-400">Loading…</p>;
-  if (data.emptyReason)
-    return (
-      <p className="text-sm text-slate-500 p-2">
-        Connect a source in{' '}
-        <a className="underline" href="../sources">
-          Sources tab
-        </a>
-        .
-      </p>
-    );
-
+  if (data.emptyReason) return <WidgetEmptyState boardId={boardId} reason={data.emptyReason} />;
   if (data.series.length === 0)
-    return <p className="text-xs text-slate-400 px-1">No delivered items in the selected period.</p>;
+    return (
+      <p className="text-xs text-slate-400 px-1">No delivered items in the selected period.</p>
+    );
 
   return (
     <div className="h-full w-full flex flex-col">
@@ -64,7 +62,7 @@ export default function DeliveryTrendAnnotatedWidget({ boardId, config }: Props)
             tick={{ fontSize: 11 }}
             label={{ value: 'delivered', angle: -90, position: 'insideLeft', fontSize: 11 }}
           />
-          <Tooltip />
+          <Tooltip {...CHART_TOOLTIP} />
           <AnnotationLayer
             events={data.events}
             peak={data.peak}

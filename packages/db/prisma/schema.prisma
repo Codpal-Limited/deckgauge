@@ -115,6 +115,7 @@ model Board {
   calendarEvents     BoardCalendarEvent[]
   comparisonMemberships ComparisonMember[]
   calendarSource     BoardCalendarSource?
+  advisorSessions    AdvisorSession[]
 
   @@map("boards")
 }
@@ -261,7 +262,7 @@ model Project {
   uploads       Upload[]
   statusChanges ProjectStatusChange[]
 
-  @@unique([jiraKey, jiraProjectKey])
+  @@unique([boardId, jiraKey, jiraProjectKey])
   @@unique([boardId, adoWorkItemId])
   @@unique([boardId, githubIssueId])
   @@unique([boardId, calendarEventId])
@@ -343,6 +344,13 @@ model JiraInstance {
   projectKeys  String[]
   createdAt    DateTime @default(now())
 
+  // Creator-scoped ownership (authz hardening). Null means "unclaimed" —
+  // pre-existing rows from before this column existed, or rows whose creator
+  // was later deleted (onDelete: SetNull). CONNECTION_OWNER treats a null
+  // owner as editable by any signed-in user; the first edit claims it.
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
   projectSyncs JiraProjectSync[] // Phase 3
 
   @@map("jira_instances")
@@ -406,6 +414,10 @@ model GitHubInstance {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  // Creator-scoped ownership (authz hardening) — see JiraInstance.createdById.
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
   repoSyncs GitHubRepoSync[] // Phase 3
 
   @@map("github_instances")
@@ -421,6 +433,10 @@ model AzureDevOpsInstance {
   projects    String[]
   createdAt   DateTime              @default(now()) @map("created_at")
   updatedAt   DateTime              @updatedAt @map("updated_at")
+
+  // Creator-scoped ownership (authz hardening) — see JiraInstance.createdById.
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   projectSyncs AzureDevOpsProjectSync[] // Phase 3
 
@@ -451,6 +467,11 @@ model User {
   email      String   @unique
   name       String
   avatarUrl  String?  @map("avatar_url")
+  /// Database-side administrator flag, OR'd with the Keycloak `cockpit-admin`
+  /// realm-role claim in keycloak-auth.plugin.ts. Exists because a realm role
+  /// cannot be granted to an install that has already imported its realm —
+  /// realm-export.json seeds fresh imports only.
+  isAdmin    Boolean  @default(false) @map("is_admin")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
@@ -463,6 +484,16 @@ model User {
   roadmapAccess     RoadmapAccess[]
   roadmapPrefs      UserRoadmapPref[]
   employeeComments  OrgEmployeeComment[]
+  orgTreeAccess     OrgTreeAccess[]
+  advisorSessions   AdvisorSession[]
+
+  // Creator-scoped provider connections (authz hardening). A deleted user's
+  // connections become unclaimed (createdById set null), not destroyed —
+  // see onDelete: SetNull on each instance model's createdBy relation.
+  createdJiraInstances        JiraInstance[]
+  createdGitHubInstances      GitHubInstance[]
+  createdAzureDevOpsInstances AzureDevOpsInstance[]
+  createdGitLabInstances      GitLabInstance[]
 
   @@map("users")
 }
@@ -619,6 +650,10 @@ model GitLabInstance {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  // Creator-scoped ownership (authz hardening) — see JiraInstance.createdById.
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
   projectSyncs GitLabProjectSync[]
 
   @@map("gitlab_instances")
@@ -771,8 +806,41 @@ model AzureDevOpsProjectSync {
   syncAllRepos Boolean  @default(false) @map("sync_all_repos")
 
   lastSyncedAt DateTime? @map("last_synced_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  /// Watermark for the Reporting Work Item Revisions sweep that feeds
+  /// `ado_transitions`. Without it the sweep re-read every project's full
+  /// revision history on every run (~256k rows/cycle across one large org),
+  /// which is what got the account throughput-throttled by ADO. Distinct
+  /// from `lastSyncedAt`, which is the PR/commit intelligence stamp.
+  lastRevisionSyncAt DateTime? @map("last_revision_sync_at")
+
+  /// Watermark for real deployment records (classic Release pipeline
+  /// deployments → cockpit.ado_deployments), which DORA's deploy frequency
+  /// prefers over the merged-PR proxy. Separate from `lastSyncedAt` for the same
+  /// reason as `lastRevisionSyncAt`: deployments are a project-level stream on a
+  /// different host (vsrm.dev.azure.com) and must not be tied to the per-repo
+  /// PR/commit pass.
+  lastDeploymentSyncAt DateTime? @map("last_deployment_sync_at")
+
+  /// Which release pipelines / stages count as a PRODUCTION deploy for this
+  /// project. Both empty (the default) means fall back to the name heuristic in
+  /// deploymentsUnion.
+  ///
+  /// Configuration exists because no name rule can separate an operational
+  /// pipeline from a deployment one. Shapes seen in real installs:
+  /// 'Restart <region> Core Processor', 'Reset IIS', 'Shutdown <service>' and
+  /// 'Publish <Lib>Components' (a NuGet publish) must NOT count, while
+  /// 'Release-<App>.Dashboard.sln-Master' must. Neither set carries a
+  /// prod/production marker.
+  ///
+  /// When set, these REPLACE the heuristic for the project — including its
+  /// default-branch requirement, since an explicit list is authoritative in the
+  /// same way GitHub's `production` flag is.
+  prodReleaseDefinitions String[] @default([]) @map("prod_release_definitions")
+  prodStages             String[] @default([]) @map("prod_stages")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   azureDevOpsInstance AzureDevOpsInstance @relation(fields: [azureDevOpsInstanceId], references: [id], onDelete: Cascade)
   boardSources        BoardAdoSource[]
@@ -782,7 +850,7 @@ model AzureDevOpsProjectSync {
   @@map("azure_devops_project_syncs")
 }
 
-// Per-repo intelligence watermark for an ADO project sync. A project (e.g. Horus)
+// Per-repo intelligence watermark for an ADO project sync. A single project
 // can fan out to 50+ repos with tens of thousands of PRs; a single project-level
 // `lastSyncedAt` made the sync all-or-nothing, so one transient fetch failure
 // aborted the whole project and the watermark never advanced — it re-fetched from
@@ -797,6 +865,18 @@ model AdoRepoSyncState {
 
   lastPrSyncAt     DateTime? @map("last_pr_sync_at")
   lastCommitSyncAt DateTime? @map("last_commit_sync_at")
+
+  // Backward-walking backfill cursors. lastPrSyncAt/lastCommitSyncAt only ever
+  // move forward, so once they have advanced past a gap in history (e.g. rows
+  // lost to a ClickHouse partition drop) nothing re-reads it. These cursors
+  // record how far back history has been filled; each run pulls one bounded
+  // chunk older than the cursor and moves it back, until it reaches the
+  // configured floor. NULL means backfill has not started for that stream.
+  prBackfilledUntil     DateTime? @map("pr_backfilled_until")
+  commitBackfilledUntil DateTime? @map("commit_backfilled_until")
+
+  // Deployment sync is per PROJECT, not per repo (ADO release pipelines belong
+  // to a project), so its watermark lives on AzureDevOpsProjectSync instead.
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -933,7 +1013,25 @@ model OrgTree {
   employeeBoards   EmployeeBoard[]
   timesheetConfig  OrgTreeTimesheetConfig?
   source           OrgTreeSource?
+  access           OrgTreeAccess[]
   @@map("org_trees")
+}
+
+model OrgTreeAccess {
+  id        String          @id @default(uuid())
+  orgTreeId String          @map("org_tree_id")
+  userId    String          @map("user_id")
+  role      BoardAccessRole
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+
+  orgTree OrgTree @relation(fields: [orgTreeId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgTreeId, userId])
+  @@index([orgTreeId])
+  @@index([userId])
+  @@map("org_tree_access")
 }
 
 model OrgEmployee {
@@ -1313,4 +1411,76 @@ model OrgTreeTimesheetConfig {
   orgTree        OrgTree  @relation(fields: [orgTreeId], references: [id], onDelete: Cascade)
 
   @@map("org_tree_timesheet_configs")
+}
+
+model RetiredJiraProject {
+  projectKey String   @id @map("project_key")
+  cutoffDate DateTime @map("cutoff_date")
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("retired_jira_projects")
+}
+
+// ── Advisor ───────────────────────────────────────────────────────────────────
+
+// Single instance-level row (OSS installs are single-tenant). Stores the
+// advisor's LLM provider config. apiKey is stored as-is for v1 (encrypted-at-rest
+// is a follow-up) and must never be returned to the client.
+model AdvisorConfig {
+  id        String   @id @default(cuid())
+  provider  String
+  apiKey    String?
+  baseUrl   String?
+  model     String
+
+  /// Operator off switch for the Advisor's source-lookup tools (`search_source`
+  /// / `read_source`). Default ON: those tools read only source this repo
+  /// already publishes under FSL-1.1-Apache-2.0, and they are bounded by a path
+  /// allowlist. An operator who keeps private modules inside the source tree
+  /// turns it off here. A deployment configured purely from `.env` has no row to
+  /// set, and uses `ADVISOR_SOURCE_LOOKUP` instead — a saved row wins, matching
+  /// `AdvisorConfigService.getConfig`'s existing precedence.
+  sourceLookupEnabled Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+}
+
+// One advisor conversation, owned by a single user and pinned to one board.
+// Per-board because the advisor's tools only read that board's data — a
+// transcript resumed against a different board would cite numbers its own
+// history never came from.
+model AdvisorSession {
+  id        String   @id @default(cuid())
+  boardId   String   @map("board_id")
+  userId    String   @map("user_id")
+  // Derived from the first question; empty until that question is appended.
+  title     String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  board    Board            @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages AdvisorMessage[]
+
+  @@index([userId, boardId, updatedAt])
+  @@map("advisor_sessions")
+}
+
+model AdvisorMessage {
+  id        String   @id @default(cuid())
+  sessionId String   @map("session_id")
+  // 'user' | 'assistant'. Kept as a string rather than an enum so a future
+  // role needs no migration; the Zod schema in @deckgauge/shared is the gate.
+  role      String
+  text      String
+  // Names of the tools run for this turn; assistant turns only.
+  toolCalls Json?    @map("tool_calls")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session AdvisorSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("advisor_messages")
 }

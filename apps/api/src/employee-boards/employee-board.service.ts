@@ -8,7 +8,7 @@ import {
   type EmployeeColumnDto,
 } from '@deckgauge/shared';
 import { toOrgEmployeeDto } from '../org-trees/org-employee-dto.js';
-import { OrgTreeService, computeTreeRanking } from '../org-trees/org-tree.service.js';
+import { OrgTreeService, computeTreeRanking, CrossTreeEmployeeError } from '../org-trees/org-tree.service.js';
 
 export class EmployeeBoardService {
   private readonly orgService: OrgTreeService;
@@ -96,15 +96,56 @@ export class EmployeeBoardService {
     ]);
   }
 
-  async reorderGroups(order: { id: string; position: number }[]): Promise<void> {
+  /**
+   * `boardId` is the id the route policy actually gated; the group ids come
+   * from the body and are gated by nothing. Every update is therefore scoped
+   * to `employeeBoardId: boardId` — a group id belonging to some other board
+   * matches zero rows instead of being repositioned, so no write can escape
+   * the board the caller was authorized against.
+   *
+   * `updateMany`, not `update`, precisely so a foreign id is a no-op rather
+   * than a P2025 mid-transaction. Same silent-guard shape as `moveMember`'s
+   * `targetGroup.employeeBoardId !== member.employeeBoardId` check below:
+   * reordering is idempotent positional data that leaks nothing, so skipping
+   * an out-of-scope id is enough — unlike `addExistingMembers`, where the
+   * ids being refused are what the request is FOR.
+   */
+  async reorderGroups(boardId: string, order: { id: string; position: number }[]): Promise<void> {
     await this.prisma.$transaction(
       order.map((o) =>
-        this.prisma.employeeGroup.update({ where: { id: o.id }, data: { position: o.position } })
+        this.prisma.employeeGroup.updateMany({
+          where: { id: o.id, employeeBoardId: boardId },
+          data: { position: o.position },
+        })
       )
     );
   }
 
+  /**
+   * The route policy gates `:boardId` only — `orgEmployeeIds` comes from the
+   * body and is gated by nothing. Confirm every named employee lives in this
+   * board's own org tree before creating membership rows, or a caller who owns
+   * a tree of their own can attach employees from a tree they hold nothing on
+   * and then read their full profiles back through `GET
+   * /employee-boards/:boardId`. Refuses the whole request rather than trimming
+   * — see `CrossTreeEmployeeError`.
+   */
   async addExistingMembers(boardId: string, orgEmployeeIds: string[]): Promise<void> {
+    const board = await this.prisma.employeeBoard.findUnique({
+      where: { id: boardId },
+      select: { orgTreeId: true },
+    });
+    if (!board) throw new Error('board not found');
+
+    const requested = [...new Set(orgEmployeeIds)];
+    const inTree = await this.prisma.orgEmployee.findMany({
+      where: { id: { in: requested }, orgTreeId: board.orgTreeId },
+      select: { id: true },
+    });
+    const allowed = new Set(inTree.map((e) => e.id));
+    const foreign = requested.filter((id) => !allowed.has(id));
+    if (foreign.length > 0) throw new CrossTreeEmployeeError(foreign);
+
     const groupId = await this.defaultGroupId(boardId);
     const max = await this.prisma.employeeBoardMember.aggregate({
       where: { employeeGroupId: groupId },

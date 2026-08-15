@@ -139,7 +139,7 @@ function RailButton({ item, active, onSelect }: RailButtonProps) {
       {/* Hover tooltip */}
       <span
         role="tooltip"
-        className="pointer-events-none absolute left-full top-1/2 z-40 ml-2 -translate-y-1/2 scale-95 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs font-semibold text-white opacity-0 shadow-lg transition group-hover:scale-100 group-hover:opacity-100"
+        className="pointer-events-none absolute left-full top-1/2 z-40 ml-2 -translate-y-1/2 scale-95 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs font-semibold text-slate-50 opacity-0 shadow-lg transition group-hover:scale-100 group-hover:opacity-100"
       >
         {item.label}
       </span>

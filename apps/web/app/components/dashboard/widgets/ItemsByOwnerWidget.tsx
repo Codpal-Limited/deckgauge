@@ -1,6 +1,7 @@
 'use client';
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { CHART_TOOLTIP } from '../charts/chartTheme';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
 
@@ -25,7 +26,7 @@ export default function ItemsByOwnerWidget({ boardId, config }: Props) {
       <BarChart data={data.owners} layout="vertical">
         <XAxis type="number" />
         <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
-        <Tooltip />
+        <Tooltip {...CHART_TOOLTIP} />
         <Bar dataKey="count" fill="#6366f1" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>

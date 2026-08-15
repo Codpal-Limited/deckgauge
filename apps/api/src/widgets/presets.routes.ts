@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
 import { z } from 'zod';
 import { PresetService, type PresetError } from './presets.service.js';
-import { requireBoardAccess } from '../board-access/board-access.middleware.js';
+import { board } from '../auth/policy.js';
 
 const ApplyPresetBody = z.object({
   presetKey: z.string().min(1).max(50),
@@ -20,7 +20,7 @@ export async function presetsRoutes(
   //   404 + { error: 'unknown_preset' } if presetKey not registered
   app.post<{ Params: { boardId: string }; Body: { presetKey: string } }>(
     '/boards/:boardId/views/apply-preset',
-    { preHandler: [requireBoardAccess(prisma, 'EDITOR')] },
+    { config: { policy: board('EDITOR') } },
     async (req, reply) => {
       const { boardId } = req.params;
       const parsed = ApplyPresetBody.safeParse(req.body);

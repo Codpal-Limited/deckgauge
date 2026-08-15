@@ -3,13 +3,22 @@
 // machinery from benchmarks.ts, but keeps its own threshold table because DORA
 // sub-metrics are NOT widget types (BENCHMARKS_V1 is keyed by widget type).
 //
-// IMPORTANT — these are PROXIES on the data Deckgauge already ingests, since
-// there is no deployment or incident source yet:
+// Which of these are measured and which are proxied:
 //   - Lead Time         : p50 cycle time (first commit → merge) of merged PRs.
-//   - Deploy Frequency  : merged PRs per week (a merge ≈ a deployable change).
-//   - Change Failure Rate: corrective-commit ratio (fix/revert/hotfix message
-//                          match) — the same signal Rework Rate uses.
-//   - Time to Restore   : p50 hours from bug-issue opened → closed.
+//                         Measured.
+//   - Deploy Frequency  : successful PRODUCTION deployments per week, from real
+//                         deployment records (cockpit.ado_deployments — classic
+//                         Release pipelines — and cockpit.github_deployments).
+//                         PROXIED as merged PRs per week only when the board's
+//                         scope has no deployment source; DoraMetricsResult
+//                         reports which via deploySource, and the widget labels
+//                         a proxied number.
+//   - Change Failure Rate: PROXY — corrective-commit ratio (fix/revert/hotfix
+//                          message match), the same signal Rework Rate uses.
+//                          Could move to failed-vs-total deployments now that
+//                          deployment records carry a status, but has not.
+//   - Time to Restore   : PROXY — p50 hours from bug-issue opened → closed;
+//                         there is no incident source.
 // Thresholds follow the commonly-cited DORA state-of-DevOps bands.
 import { type BenchmarkConfig, type Tier, tierFor } from './benchmarks';
 

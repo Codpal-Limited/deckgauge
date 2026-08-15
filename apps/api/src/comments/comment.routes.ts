@@ -5,6 +5,7 @@ import { CommentService } from "./comment.service.js";
 import { CreateCommentInputSchema, UpdateCommentInputSchema } from "@deckgauge/shared";
 import { z } from "zod";
 import type { UploadService } from "../uploads/upload.service.js";
+import { board, viaEntity, fromParam, fromQueryCsv, parseCsvParam } from "../auth/policy.js";
 
 const UuidSchema = z.string().uuid();
 
@@ -15,13 +16,18 @@ export async function commentRoutes(
   const service = new CommentService(prisma, uploadService);
 
   // GET /projects/comment-counts?projectIds=id1,id2
-  // Registered first to avoid conflict with /projects/:id/comments
-  app.get<{ Querystring: { projectIds?: string } }>(
+  // Registered first to avoid conflict with /projects/:id/comments.
+  // Resolves every listed project's board and requires VIEWER on each one.
+  // `parseCsvParam`, not `raw.split(",")` — a repeated param
+  // (`?projectIds=a&projectIds=b`) arrives as an ARRAY, which `.split` 500s
+  // on, in a handler whose own `fromQueryCsv` policy had already parsed it
+  // correctly. Same fix as GET /org-employees/comment-counts.
+  app.get<{ Querystring: { projectIds?: string | string[] } }>(
     "/projects/comment-counts",
+    { config: { policy: board("VIEWER", viaEntity("project", fromQueryCsv("projectIds"))) } },
     async (req, reply) => {
-      const raw = req.query.projectIds;
-      if (!raw) return reply.send({});
-      const ids = raw.split(",").filter(Boolean);
+      const ids = parseCsvParam(req.query.projectIds);
+      if (ids.length === 0) return reply.send({});
       const invalid = ids.some((id) => !UuidSchema.safeParse(id).success);
       if (invalid) {
         return reply.status(400).send({ error: "Invalid project ID in list" });
@@ -31,9 +37,11 @@ export async function commentRoutes(
     },
   );
 
-  // GET /projects/:id/comments
+  // GET /projects/:id/comments — :id is a project id; the board is
+  // reachable through Project.boardId (direct column).
   app.get<{ Params: { id: string } }>(
     "/projects/:id/comments",
+    { config: { policy: board("VIEWER", viaEntity("project", fromParam("id"))) } },
     async (req, reply) => {
       const idParsed = UuidSchema.safeParse(req.params.id);
       if (!idParsed.success) {
@@ -44,9 +52,10 @@ export async function commentRoutes(
     },
   );
 
-  // POST /projects/:id/comments
+  // POST /projects/:id/comments — see GET /projects/:id/comments.
   app.post<{ Params: { id: string } }>(
     "/projects/:id/comments",
+    { config: { policy: board("EDITOR", viaEntity("project", fromParam("id"))) } },
     async (req, reply) => {
       const idParsed = UuidSchema.safeParse(req.params.id);
       if (!idParsed.success) {
@@ -65,9 +74,15 @@ export async function commentRoutes(
     },
   );
 
-  // PATCH /projects/:id/comments/:cid
+  // PATCH /projects/:id/comments/:cid — the handler trusts :cid alone (it
+  // never checks that :id actually owns that comment), so the policy must
+  // too: resolve the board from the comment itself (:cid → ProjectComment →
+  // Project.boardId, two hops), not from the outer :id, or a comment id from
+  // a board the caller lacks access to could be edited by naming an :id they
+  // *do* have access to.
   app.patch<{ Params: { id: string; cid: string } }>(
     "/projects/:id/comments/:cid",
+    { config: { policy: board("EDITOR", viaEntity("projectComment", fromParam("cid"))) } },
     async (req, reply) => {
       const cidParsed = UuidSchema.safeParse(req.params.cid);
       if (!cidParsed.success) {
@@ -86,9 +101,10 @@ export async function commentRoutes(
     },
   );
 
-  // DELETE /projects/:id/comments/:cid
+  // DELETE /projects/:id/comments/:cid — see PATCH /projects/:id/comments/:cid.
   app.delete<{ Params: { id: string; cid: string } }>(
     "/projects/:id/comments/:cid",
+    { config: { policy: board("EDITOR", viaEntity("projectComment", fromParam("cid"))) } },
     async (req, reply) => {
       const cidParsed = UuidSchema.safeParse(req.params.cid);
       if (!cidParsed.success) {

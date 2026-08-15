@@ -17,6 +17,7 @@ import { ColumnManager } from "./ColumnManager";
 import { setBoardColumnLayout } from "../actions/roadmap";
 import { deleteColumn } from "../actions/projects";
 import { ColumnLayoutSchema, isSystemColumnVisible, type ColumnLayout } from "@deckgauge/shared";
+import { hasAnyJiraLink, type JiraSourceLinks } from "@deckgauge/shared";
 
 const DEFAULT_HIDDEN_SYSTEM_FIELDS = ["startDate", "endDate", "duration"];
 
@@ -32,9 +33,9 @@ interface BoardViewProps {
   groups: (Group & { projects: (Project & { fieldValues?: Record<string, string> })[] })[];
   columns: BoardColumn[];
   boardId: string;
-  jiraAtlassianUrl?: string;
+  jiraLinks?: JiraSourceLinks;
   hasGitHubIntegration?: boolean;
-  adoOrgUrl?: string;
+  adoOrgUrls?: Record<string, string>;
   hasAdoIntegration?: boolean;
   commentCounts?: Record<string, number>;
   boardOwners?: BoardOwner[];
@@ -46,7 +47,7 @@ interface BoardViewProps {
   ) => void;
 }
 
-export function BoardView({ board, groups, columns, boardId, jiraAtlassianUrl, hasGitHubIntegration, adoOrgUrl, hasAdoIntegration, commentCounts, boardOwners, boardStatuses, userRole, onProjectDeleted, onGroupsChange }: BoardViewProps) {
+export function BoardView({ board, groups, columns, boardId, jiraLinks, hasGitHubIntegration, adoOrgUrls, hasAdoIntegration, commentCounts, boardOwners, boardStatuses, userRole, onProjectDeleted, onGroupsChange }: BoardViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRules, setFilterRules] = useState<
     { column: string; condition: string; value: string }[]
@@ -201,7 +202,7 @@ export function BoardView({ board, groups, columns, boardId, jiraAtlassianUrl, h
                 columns={columns}
                 hidden={layout.hidden}
                 hasIntegration={
-                  !!(jiraAtlassianUrl || hasGitHubIntegration || hasAdoIntegration)
+                  (hasAnyJiraLink(jiraLinks) || hasGitHubIntegration || hasAdoIntegration)
                 }
                 onToggle={toggleColumn}
                 onAddColumn={() => setShowColumnManager(true)}
@@ -229,9 +230,9 @@ export function BoardView({ board, groups, columns, boardId, jiraAtlassianUrl, h
           commentCounts={commentCounts}
           boardOwners={boardOwners}
           boardStatuses={boardStatuses}
-          jiraAtlassianUrl={jiraAtlassianUrl || ''}
+          jiraLinks={jiraLinks}
           hasGitHubIntegration={hasGitHubIntegration}
-          adoOrgUrl={adoOrgUrl || ''}
+          adoOrgUrls={adoOrgUrls || {}}
           hasAdoIntegration={hasAdoIntegration}
           userRole={userRole}
           onNavItemsChange={setNavItems}

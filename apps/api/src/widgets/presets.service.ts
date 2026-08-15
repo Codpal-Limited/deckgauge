@@ -70,6 +70,7 @@ export const ENGINEERING_INTELLIGENCE_PRESET_V1: Preset = {
     { type: 'DELIVERY_TREND_ANNOTATED',    title: 'Delivery Trend',            layout: { x: 0, y: 56, w: 12, h: 6 }, config: { weeks: 12 } },
     { type: 'INVESTMENT_ALLOCATION',       title: 'Investment Allocation',     layout: { x: 0, y: 62, w: 6, h: 4 }, config: { days: 90 } },
     { type: 'DORA_METRICS',                title: 'DORA Metrics',              layout: { x: 6, y: 62, w: 6, h: 4 }, config: { weeks: 12 } },
+    { type: 'PERIOD_COMPARISON',        title: 'Period-over-Period',        layout: { x: 0, y: 66, w: 12, h: 6 }, config: {} },
   ],
 };
 

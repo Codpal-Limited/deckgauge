@@ -91,6 +91,9 @@ export interface AdoProjectSyncRow {
   syncCommits: boolean;
   syncRepos: string[];
   syncAllRepos: boolean;
+  /** Explicit production allow-lists; BOTH empty = fall back to the heuristic. */
+  prodReleaseDefinitions: string[];
+  prodStages: string[];
   lastSyncedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -116,6 +119,32 @@ export async function createAdoProjectSync(input: {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(input),
   });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+/**
+ * Set which release pipelines / stages count as a production deploy.
+ *
+ * Separate from updateAdoProjectSync because it is a different endpoint with a
+ * different guard: the sync flags are AUTHENTICATED, while production config is
+ * keyed by the INSTANCE id so the connection-ownership policy applies. Passing
+ * two empty lists clears the override and returns the project to the stage-name
+ * heuristic.
+ */
+export async function saveAdoProductionConfig(
+  instanceId: string,
+  project: string,
+  input: { definitions: string[]; stages: string[] }
+) {
+  const res = await authFetch(
+    `/azure-devops/instances/${instanceId}/project-syncs/${encodeURIComponent(project)}/production-config`,
+    {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    }
+  );
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
@@ -277,4 +306,31 @@ export async function testAdoConnection(id: string) {
 }
 export async function testGitLabConnection(id: string) {
   return testConnectionAt(`/gitlab/instances/${id}/test`);
+}
+
+// ---- Instances: delete ----
+// Deleting an instance cascades (Prisma onDelete: Cascade): the instance's
+// project syncs and every board's source rows built on them are removed too.
+async function deleteInstanceAt(path: string): Promise<RefreshResult> {
+  const res = await authFetch(path, { method: 'DELETE' });
+  if (res.ok) return { ok: true };
+  try {
+    const body = (await res.json()) as { error?: string };
+    return { ok: false, error: body.error ?? `Delete failed: ${res.status}` };
+  } catch {
+    return { ok: false, error: `Delete failed: ${res.status}` };
+  }
+}
+
+export async function deleteJiraInstance(id: string) {
+  return deleteInstanceAt(`/jira/instances/${id}`);
+}
+export async function deleteGitHubInstance(id: string) {
+  return deleteInstanceAt(`/github/instances/${id}`);
+}
+export async function deleteAdoInstance(id: string) {
+  return deleteInstanceAt(`/azure-devops/instances/${id}`);
+}
+export async function deleteGitLabInstance(id: string) {
+  return deleteInstanceAt(`/gitlab/instances/${id}`);
 }

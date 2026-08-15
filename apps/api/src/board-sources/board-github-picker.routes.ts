@@ -3,6 +3,7 @@ import type { Octokit } from '@octokit/rest';
 import { PickerQuerySchema, type PickerResponse } from '@deckgauge/shared';
 import type { GitHubInstance, PrismaClient } from '@deckgauge/db';
 import { listRepos } from './board-github-picker.service.js';
+import { board } from '../auth/policy.js';
 
 /**
  * GET /api/boards/:boardId/github/picker
@@ -22,6 +23,7 @@ export function boardGitHubPickerRoutes(deps: {
   return async function plugin(app: FastifyInstance): Promise<void> {
     app.get<{ Params: { boardId: string } }>(
       '/api/boards/:boardId/github/picker',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const query = req.query as Record<string, string | undefined>;
         const parsed = PickerQuerySchema.safeParse({

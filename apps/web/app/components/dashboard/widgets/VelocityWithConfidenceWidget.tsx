@@ -2,13 +2,12 @@
 import { TrendLineChart } from '../charts/TrendLineChart';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
+import { WidgetEmptyState } from './WidgetEmptyState';
 
 interface Props {
   boardId: string;
   config: Record<string, unknown>;
 }
-
-type EmptyReason = 'no_issue_source' | 'no_sprintable_source' | 'no_sprint_data';
 
 interface Data {
   sprints: Array<{
@@ -17,39 +16,7 @@ interface Data {
     lower: number;
     upper: number;
   }>;
-  emptyReason?: EmptyReason | string;
-}
-
-function EmptyState({ reason }: { reason: EmptyReason | string | undefined }) {
-  if (reason === 'no_sprintable_source') {
-    return (
-      <p className="text-sm text-slate-500 p-2">
-        Velocity needs a Jira or Azure DevOps source — GitHub and GitLab issues
-        don&apos;t have sprints. Attach one in the{' '}
-        <a className="underline" href="../sources">
-          Sources tab
-        </a>
-        .
-      </p>
-    );
-  }
-  if (reason === 'no_sprint_data') {
-    return (
-      <p className="text-sm text-slate-500 p-2">
-        No sprint data yet. Velocity appears once issues are assigned to sprints
-        and the intelligence sync has run.
-      </p>
-    );
-  }
-  return (
-    <p className="text-sm text-slate-500 p-2">
-      Connect a source in{' '}
-      <a className="underline" href="../sources">
-        Sources tab
-      </a>
-      .
-    </p>
-  );
+  emptyReason?: string;
 }
 
 export default function VelocityWithConfidenceWidget({ boardId, config }: Props) {
@@ -60,7 +27,7 @@ export default function VelocityWithConfidenceWidget({ boardId, config }: Props)
   // the backend forgets to set emptyReason. Without this the chart renders
   // axes with no line, which reads as a broken widget.
   if (data.emptyReason || data.sprints.length === 0) {
-    return <EmptyState reason={data.emptyReason ?? 'no_sprint_data'} />;
+    return <WidgetEmptyState boardId={boardId} reason={data.emptyReason ?? 'no_sprint_data'} />;
   }
   return (
     <TrendLineChart

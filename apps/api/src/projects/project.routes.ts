@@ -8,6 +8,16 @@ import {
 import { AutomationService } from "../automations/automation.service.js";
 import type { PrismaClient } from "@deckgauge/db";
 import { z } from "zod";
+import {
+  board,
+  viaEntity,
+  viaBoardId,
+  fromParam,
+  fromQuery,
+  fromBodyField,
+  fromBodyFieldArray,
+  fromBodyArray,
+} from "../auth/policy.js";
 
 // Bulk delete accepts a batch of project ids. The board's "delete selected"
 // action chunks large selections client-side; this cap bounds a single request
@@ -18,11 +28,14 @@ const BulkDeleteSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(10000),
 });
 
-// Optional server-side filtering/sorting for the board project list. All fields
-// optional → omitting them all reproduces the original unfiltered behavior.
+// Optional server-side filtering/sorting for the board project list.
+// `boardId` is required: omitting it used to return every project across
+// every board, unfiltered by access — a data leak in single-user mode (where
+// the policy layer is bypassed entirely, see below) and simply the wrong
+// default regardless of mode. Every caller already always sends it.
 // `status` accepts a repeated param or a comma-separated string.
 const ProjectListQuerySchema = z.object({
-  boardId: z.string().uuid().optional(),
+  boardId: z.string().uuid(),
   groupId: z.string().uuid().optional(),
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().max(500).optional(),
@@ -46,29 +59,44 @@ export async function projectRoutes(
 
   // GET /projects?boardId=&groupId=&page=&pageSize=&search=&status=&sortColumn=&sortDir=
   //   → { items, total, hasMore }
-  app.get("/projects", async (req, reply) => {
-    const parsed = ProjectListQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: parsed.error.flatten() });
-    }
-    const q = parsed.data;
-    const result = await service.list({
-      boardId: q.boardId,
-      groupId: q.groupId,
-      page: q.page,
-      pageSize: q.pageSize,
-      search: q.search,
-      statuses: q.status,
-      sort: q.sortColumn
-        ? { column: q.sortColumn, direction: q.sortDir ?? "asc" }
-        : undefined,
-    });
-    return reply.send(result);
-  });
+  //
+  // `boardId` is required (see ProjectListQuerySchema above) — the policy
+  // below denies boardless calls too, but only in multi-user mode; single-
+  // user mode bypasses the policy layer entirely (evaluatePolicy short-
+  // circuits to ALLOW), so the Zod-level requirement is what actually closes
+  // the leak there. Chosen over "scope to boards the caller can access"
+  // because single-user mode has no user-board membership to scope against,
+  // and every real caller (apps/web/app/page.tsx, fetchProjectsPage) already
+  // always sends boardId.
+  app.get(
+    "/projects",
+    { config: { policy: board("VIEWER", viaBoardId(fromQuery("boardId"))) } },
+    async (req, reply) => {
+      const parsed = ProjectListQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.flatten() });
+      }
+      const q = parsed.data;
+      const result = await service.list({
+        boardId: q.boardId,
+        groupId: q.groupId,
+        page: q.page,
+        pageSize: q.pageSize,
+        search: q.search,
+        statuses: q.status,
+        sort: q.sortColumn
+          ? { column: q.sortColumn, direction: q.sortDir ?? "asc" }
+          : undefined,
+      });
+      return reply.send(result);
+    },
+  );
 
-  // GET /projects/:id (includes field values)
+  // GET /projects/:id (includes field values) — the board is reachable
+  // through Project.boardId (direct column, nullable).
   app.get<{ Params: { id: string } }>(
     "/projects/:id",
+    { config: { policy: board("VIEWER", viaEntity("project", fromParam("id"))) } },
     async (req, reply) => {
       const project = await service.getById(req.params.id);
       if (!project) return reply.status(404).send({ error: "Not found" });
@@ -79,19 +107,27 @@ export async function projectRoutes(
     },
   );
 
-  // POST /projects
-  app.post("/projects", async (req, reply) => {
-    const parsed = CreateProjectInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: parsed.error.flatten() });
-    }
-    const project = await service.create(parsed.data);
-    return reply.status(201).send(project);
-  });
+  // POST /projects — boardId is optional in the schema (a project can be
+  // created unattached to any board), but that path is unused by the app
+  // today; denying it when boardId is absent is the safe default rather than
+  // guessing at an "unattached" access rule that doesn't exist yet.
+  app.post(
+    "/projects",
+    { config: { policy: board("EDITOR", viaBoardId(fromBodyField("boardId"))) } },
+    async (req, reply) => {
+      const parsed = CreateProjectInputSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.flatten() });
+      }
+      const project = await service.create(parsed.data);
+      return reply.status(201).send(project);
+    },
+  );
 
-  // PATCH /projects/:id
+  // PATCH /projects/:id — see GET /projects/:id.
   app.patch<{ Params: { id: string } }>(
     "/projects/:id",
+    { config: { policy: board("EDITOR", viaEntity("project", fromParam("id"))) } },
     async (req, reply) => {
       const parsed = UpdateProjectInputSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -124,9 +160,10 @@ export async function projectRoutes(
     },
   );
 
-  // DELETE /projects/:id
+  // DELETE /projects/:id — see GET /projects/:id.
   app.delete<{ Params: { id: string } }>(
     "/projects/:id",
+    { config: { policy: board("EDITOR", viaEntity("project", fromParam("id"))) } },
     async (req, reply) => {
       const deleted = await service.delete(req.params.id, req.user?.id);
       if (!deleted) return reply.status(404).send({ error: "Not found" });
@@ -136,37 +173,62 @@ export async function projectRoutes(
 
   // POST /projects/bulk-delete  { ids: string[] } → { deleted: number }
   // One request deletes the whole batch; replaces the old client loop that
-  // issued one DELETE per id (which timed out on large selections).
-  app.post("/projects/bulk-delete", async (req, reply) => {
-    const parsed = BulkDeleteSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: parsed.error.flatten() });
-    }
-    const deleted = await service.deleteMany(parsed.data.ids, req.user?.id);
-    return reply.send({ deleted });
-  });
+  // issued one DELETE per id (which timed out on large selections). Resolve
+  // every id's board and require EDITOR on each one — a batch spanning
+  // several boards must pass on every one of them, not just the first.
+  app.post(
+    "/projects/bulk-delete",
+    { config: { policy: board("EDITOR", viaEntity("project", fromBodyFieldArray("ids"))) } },
+    async (req, reply) => {
+      const parsed = BulkDeleteSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.flatten() });
+      }
+      const deleted = await service.deleteMany(parsed.data.ids, req.user?.id);
+      return reply.send({ deleted });
+    },
+  );
 
-  // POST /projects/reorder
-  app.post("/projects/reorder", async (req, reply) => {
-    const parsed = ReorderInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: parsed.error.flatten() });
-    }
-    const projects = await service.reorder(parsed.data);
-    return reply.send(projects);
-  });
+  // POST /projects/reorder — the body is a bare array of { id, order?,
+  // groupId? }. Same batch reasoning as bulk-delete above.
+  app.post(
+    "/projects/reorder",
+    { config: { policy: board("EDITOR", viaEntity("project", fromBodyArray("id"))) } },
+    async (req, reply) => {
+      const parsed = ReorderInputSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.flatten() });
+      }
+      const projects = await service.reorder(parsed.data);
+      return reply.send(projects);
+    },
+  );
 
-  // POST /projects/:id/move-to-board
-  app.post<{ Params: { id: string } }>('/projects/:id/move-to-board', async (req, reply) => {
-    const parsed = MoveToBoardSchema.safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    try {
-      const result = await service.moveProjectToBoard(req.params.id, parsed.data.targetGroupId, req.user?.id);
-      return reply.send(result);
-    } catch (err) {
-      const msg = (err as Error).message;
-      const code = msg.endsWith('_NOT_FOUND') ? 404 : 400;
-      return reply.code(code).send({ error: msg });
-    }
-  });
+  // POST /projects/:id/move-to-board — moves a project onto a (possibly
+  // different) board's group. Requires EDITOR on the project's *current*
+  // board (:id → Project.boardId) AND on the *target* board
+  // (body.targetGroupId → Group.boardId); both must resolve and pass.
+  app.post<{ Params: { id: string } }>(
+    '/projects/:id/move-to-board',
+    {
+      config: {
+        policy: board('EDITOR', [
+          viaEntity('project', fromParam('id')),
+          viaEntity('group', fromBodyField('targetGroupId')),
+        ]),
+      },
+    },
+    async (req, reply) => {
+      const parsed = MoveToBoardSchema.safeParse(req.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      try {
+        const result = await service.moveProjectToBoard(req.params.id, parsed.data.targetGroupId, req.user?.id);
+        return reply.send(result);
+      } catch (err) {
+        const msg = (err as Error).message;
+        const code = msg.endsWith('_NOT_FOUND') ? 404 : 400;
+        return reply.code(code).send({ error: msg });
+      }
+    },
+  );
 }

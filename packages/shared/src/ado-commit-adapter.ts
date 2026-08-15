@@ -3,6 +3,7 @@ import { detectAiAssistance } from './ai-detection';
 import { extractTicketKeys } from './ticket-link-extractor';
 import { chDateTimeRequired } from './clickhouse-datetime';
 import { resilientFetchJson } from './resilient-fetch';
+import type { Throttle } from './request-throttle';
 
 export interface AdoCommitFetchOpts {
   project: string;
@@ -20,6 +21,12 @@ export interface AdoCommitFetchOpts {
   // branches are skipped. When `activeSince` is omitted, all branches qualify.
   defaultBranch?: string;
   activeSince?: Date;
+  /**
+   * Upper bound on commit time. Set only for backfill, where history is walked
+   * backwards in bounded [since, until) chunks so each chunk terminates inside
+   * the per-repo timeout.
+   */
+  until?: Date;
 }
 
 export interface AdoCommitRow {
@@ -62,6 +69,11 @@ interface AdoCommitAdapterConfig {
   username?: string;
   instanceId: string;
   fetchFn?: typeof fetch;
+  /**
+   * Optional client-side pacing, shared with the other ADO adapters so all ADO
+   * traffic spends one account-wide budget. Omitted in tests.
+   */
+  throttle?: Throttle;
 }
 
 interface RawBranchStat {
@@ -125,6 +137,7 @@ export class AdoCommitAdapter implements AdoCommitPort {
           $skip: String(page * pageSize),
         });
         if (commitsSince) params.set('searchCriteria.fromDate', commitsSince.toISOString());
+        if (opts.until) params.set('searchCriteria.toDate', opts.until.toISOString());
         const list = await this.ado<{ value: RawCommit[] }>(`${repoUrl}/commits?${params.toString()}`);
         if (!list.value || list.value.length === 0) break;
         for (const raw of list.value) {
@@ -147,7 +160,22 @@ export class AdoCommitAdapter implements AdoCommitPort {
     opts: AdoCommitFetchOpts,
     maxBranches: number,
   ): Promise<string[]> {
-    const stats = await this.ado<{ value: RawBranchStat[] }>(`${repoUrl}/stats/branches?api-version=7.1`);
+    // A repository with no commits answers this endpoint with 400, not an empty
+    // list, and that 400 used to fail the whole repo. The cost was not the
+    // handful of commits it did not find: the sync handler's per-repo catch
+    // fires BEFORE the watermark upsert, so such a repo never got a sync-state
+    // row — and with no watermark its next pass ran the PR sweep untimed (full
+    // history) and 400'd again, every hour, forever. Three repos on one install
+    // were in that loop, all with zero refs upstream.
+    //
+    // Deliberately narrow: ONLY branch enumeration tolerates a 400, and only by
+    // returning no branches. A 400 from the commits endpoint stays fatal —
+    // silently reporting zero commits there would be indistinguishable from a
+    // genuinely quiet repo.
+    const stats = await this.adoAllowEmpty<{ value: RawBranchStat[] }>(
+      `${repoUrl}/stats/branches?api-version=7.1`,
+    );
+    if (stats === null) return [];
     const def = opts.defaultBranch ? branchFromRef(opts.defaultBranch) : null;
     const activeSinceMs = opts.activeSince ? opts.activeSince.getTime() : null;
 
@@ -179,10 +207,33 @@ export class AdoCommitAdapter implements AdoCommitPort {
     return Array.from(new Set(selected));
   }
 
+  /**
+   * Like {@link ado}, but resolves to null on a 400 instead of throwing.
+   *
+   * Reserved for branch enumeration on a repository that may be empty — see the
+   * call site. Every other 400 is a real fault and must stay fatal.
+   */
+  private async adoAllowEmpty<T>(url: string): Promise<T | null> {
+    await this.cfg.throttle?.acquire();
+    const r = await resilientFetchJson<T>(
+      this.doFetch,
+      url,
+      { headers: { Authorization: authHeader(this.cfg), Accept: 'application/json' } },
+      { onThrottled: ({ waitMs }) => this.cfg.throttle?.backOff(waitMs) },
+    );
+    if (r.status === 400) return null;
+    if (!r.ok) throw new Error(`ADO ${r.status} ${r.statusText} for ${url}`);
+    return r.data as T;
+  }
+
   private async ado<T>(url: string): Promise<T> {
-    const r = await resilientFetchJson<T>(this.doFetch, url, {
-      headers: { Authorization: authHeader(this.cfg), Accept: 'application/json' },
-    });
+    await this.cfg.throttle?.acquire();
+    const r = await resilientFetchJson<T>(
+      this.doFetch,
+      url,
+      { headers: { Authorization: authHeader(this.cfg), Accept: 'application/json' } },
+      { onThrottled: ({ waitMs }) => this.cfg.throttle?.backOff(waitMs) },
+    );
     if (!r.ok) throw new Error(`ADO ${r.status} ${r.statusText} for ${url}`);
     return r.data as T;
   }

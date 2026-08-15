@@ -1,11 +1,30 @@
 'use server';
 
 import { revalidateTag } from 'next/cache';
+import type { WidgetDataBatchItem, WidgetDataBatchResponse } from '@deckgauge/shared';
 import { apiRequest, authFetch } from './api';
 import { widgetsTag } from '../utils/cache-tags';
 
 export async function fetchWidgets(boardId: string, viewId: string) {
   const res = await apiRequest(`/boards/${boardId}/views/${viewId}/widgets`);
+  return res.json();
+}
+
+// Fetch data for many widgets in a single request. The dashboard uses this
+// instead of one fetchWidgetData call per widget: N per-widget server actions
+// (which Next.js serializes) collapse into one round-trip, and the API resolves
+// them in parallel behind it. Callers key results by
+// `${widgetType}:${JSON.stringify(config)}`.
+export async function fetchWidgetDataBatch(
+  boardId: string,
+  widgets: WidgetDataBatchItem[]
+): Promise<WidgetDataBatchResponse> {
+  const res = await authFetch(`/boards/${boardId}/widgets/data`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ widgets }),
+  });
+  if (!res.ok) throw new Error(`Widget batch fetch failed: ${res.status}`);
   return res.json();
 }
 

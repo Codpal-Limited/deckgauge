@@ -1,10 +1,12 @@
 'use client';
 
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { CHART_TOOLTIP } from '../charts/chartTheme';
 import type { InvestmentCategory } from '@deckgauge/shared';
 import { useWidgetConfigWithBoardPeriod } from '../useWidgetConfigWithBoardPeriod';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
+import { WidgetEmptyState } from './WidgetEmptyState';
 
 interface Props {
   boardId: string;
@@ -40,16 +42,7 @@ export default function InvestmentAllocationWidget({ boardId, config }: Props) {
 
   if (error) return <WidgetErrorState />;
   if (!data) return <p className="text-sm text-slate-400">Loading…</p>;
-  if (data.emptyReason)
-    return (
-      <p className="text-sm text-slate-500 p-2">
-        Connect an issue source in the{' '}
-        <a className="underline" href="../sources">
-          Sources tab
-        </a>
-        .
-      </p>
-    );
+  if (data.emptyReason) return <WidgetEmptyState boardId={boardId} reason={data.emptyReason} />;
   if (data.slices.length === 0)
     return <p className="text-sm text-slate-400 p-2">No completed work in this window.</p>;
 
@@ -71,6 +64,7 @@ export default function InvestmentAllocationWidget({ boardId, config }: Props) {
           ))}
         </Pie>
         <Tooltip
+          {...CHART_TOOLTIP}
           formatter={(value, _name, item) => {
             const slice = (item as { payload?: Slice } | undefined)?.payload;
             return [`${value} (${slice?.pct ?? 0}%)`, slice?.label ?? ''];

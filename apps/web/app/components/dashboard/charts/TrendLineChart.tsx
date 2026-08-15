@@ -10,6 +10,7 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts';
+import { ChartTooltip } from './ChartTooltip';
 import type { BenchmarkConfig } from '@deckgauge/shared';
 import { BenchmarkBands } from './BenchmarkBands';
 import { TierLegend } from './TierLegend';
@@ -91,8 +92,10 @@ export function TrendLineChart({
     const row: Record<string, string | number | undefined> = { x };
     for (const s of series) row[s.name] = s.points.find((p) => p.x === x)?.y;
     if (confidenceBand) {
-      row.__lower = confidenceBand.lower[i];
-      row.__upper = confidenceBand.upper[i];
+      // Recharts range area: a [lower, upper] tuple draws the band directly, with
+      // no background-coloured "mask" area. The old mask hardcoded fill="#fff",
+      // which painted a visible white band in dark mode (the card is not white).
+      row.__band = [confidenceBand.lower[i], confidenceBand.upper[i]];
     }
     return row;
   });
@@ -118,24 +121,15 @@ export function TrendLineChart({
           />
           {benchmarks ? <BenchmarkBands config={benchmarks} yMax={yMax} /> : null}
           {confidenceBand ? (
-            <>
-              <Area
-                type="monotone"
-                dataKey="__upper"
-                stroke="none"
-                fill="#4f46e5"
-                fillOpacity={0.08}
-              />
-              <Area
-                type="monotone"
-                dataKey="__lower"
-                stroke="none"
-                fill="#ffffff"
-                fillOpacity={1}
-              />
-            </>
+            <Area
+              type="monotone"
+              dataKey="__band"
+              stroke="none"
+              fill="#4f46e5"
+              fillOpacity={0.12}
+            />
           ) : null}
-          <Tooltip />
+          <Tooltip content={<ChartTooltip />} />
           {series.length > 1 ? <Legend /> : null}
           {series.map((s) => (
             <Line

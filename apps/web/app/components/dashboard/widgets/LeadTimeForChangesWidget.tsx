@@ -4,6 +4,7 @@ import { TrendLineChart } from '../charts/TrendLineChart';
 import { useWidgetConfigWithBoardPeriod } from '../useWidgetConfigWithBoardPeriod';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
+import { WidgetEmptyState } from './WidgetEmptyState';
 
 interface Props {
   boardId: string;
@@ -21,17 +22,7 @@ export default function LeadTimeForChangesWidget({ boardId, config }: Props) {
 
   if (error) return <WidgetErrorState />;
   if (!data) return <p className="text-sm text-slate-400">Loading…</p>;
-  if (data.emptyReason) {
-    return (
-      <p className="text-sm text-slate-500 p-2">
-        Connect a source in{' '}
-        <a className="underline" href="../sources">
-          Sources tab
-        </a>{' '}
-        to populate Lead Time.
-      </p>
-    );
-  }
+  if (data.emptyReason) return <WidgetEmptyState boardId={boardId} reason={data.emptyReason} />;
   return (
     <TrendLineChart
       series={[

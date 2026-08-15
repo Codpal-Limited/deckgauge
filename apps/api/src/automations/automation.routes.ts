@@ -5,6 +5,7 @@ import {
   UpdateAutomationInputSchema,
 } from './automation.service.js';
 import type { PrismaClient } from '@deckgauge/db';
+import { board, viaEntity, fromParam } from '../auth/policy.js';
 
 export async function automationRoutes(
   app: FastifyInstance,
@@ -15,6 +16,7 @@ export async function automationRoutes(
   // GET /boards/:id/automations
   app.get<{ Params: { id: string } }>(
     '/boards/:id/automations',
+    { config: { policy: board('VIEWER') } },
     async (req, reply) => {
       const rules = await service.listByBoard(req.params.id);
       return reply.send(rules);
@@ -24,6 +26,7 @@ export async function automationRoutes(
   // POST /boards/:id/automations
   app.post<{ Params: { id: string } }>(
     '/boards/:id/automations',
+    { config: { policy: board('EDITOR') } },
     async (req, reply) => {
       const parsed = CreateAutomationInputSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -35,9 +38,11 @@ export async function automationRoutes(
     },
   );
 
-  // PATCH /automations/:id
+  // PATCH /automations/:id — :id is an automation rule id; the board is
+  // reachable through AutomationRule.boardId (direct column).
   app.patch<{ Params: { id: string } }>(
     '/automations/:id',
+    { config: { policy: board('EDITOR', viaEntity('automationRule', fromParam('id'))) } },
     async (req, reply) => {
       const parsed = UpdateAutomationInputSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -49,9 +54,10 @@ export async function automationRoutes(
     },
   );
 
-  // DELETE /automations/:id
+  // DELETE /automations/:id — see PATCH /automations/:id.
   app.delete<{ Params: { id: string } }>(
     '/automations/:id',
+    { config: { policy: board('EDITOR', viaEntity('automationRule', fromParam('id'))) } },
     async (req, reply) => {
       const deleted = await service.delete(req.params.id);
       if (!deleted) return reply.status(404).send({ error: 'Not found' });

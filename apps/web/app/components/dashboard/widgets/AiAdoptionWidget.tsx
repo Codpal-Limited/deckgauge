@@ -3,6 +3,7 @@ import { SortableTable } from '../charts/SortableTable';
 import { useWidgetConfigWithBoardPeriod } from '../useWidgetConfigWithBoardPeriod';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
+import { WidgetEmptyState } from './WidgetEmptyState';
 
 interface Props {
   boardId: string;
@@ -33,16 +34,7 @@ export default function AiAdoptionWidget({ boardId, config }: Props) {
   const { data, error } = useWidgetData<Data>(boardId, 'AI_ADOPTION', merged);
   if (error) return <WidgetErrorState />;
   if (!data) return <p className="text-sm text-slate-400">Loading…</p>;
-  if (data.emptyReason)
-    return (
-      <p className="text-sm text-slate-500 p-2">
-        Connect a source in{' '}
-        <a className="underline" href="../sources">
-          Sources tab
-        </a>
-        .
-      </p>
-    );
+  if (data.emptyReason) return <WidgetEmptyState boardId={boardId} reason={data.emptyReason} />;
   return (
     <div className="flex flex-col h-full gap-1">
       <div className="flex-1 min-h-0">
@@ -59,9 +51,7 @@ export default function AiAdoptionWidget({ boardId, config }: Props) {
           ]}
         />
       </div>
-      <p className="text-xs text-slate-500 px-2">
-        Detection is trailer-based; absence ≠ zero use.
-      </p>
+      <p className="text-xs text-slate-500 px-2">Detection is trailer-based; absence ≠ zero use.</p>
     </div>
   );
 }

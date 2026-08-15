@@ -6,6 +6,12 @@ import {
   CreateJiraInstanceInputSchema,
   UpdateJiraInstanceInputSchema,
 } from "@deckgauge/shared";
+import {
+  AUTHENTICATED,
+  CONNECTION_OWNER,
+  CONNECTION_OWNER_CLAIMED,
+  connectionOwnerProtectingFields,
+} from "../auth/policy.js";
 
 export async function jiraInstanceRoutes(
   app: FastifyInstance,
@@ -14,39 +20,53 @@ export async function jiraInstanceRoutes(
   const service = new JiraInstanceService(prisma);
 
   // GET /jira/instances — list all configured instances (tokens masked)
-  app.get("/jira/instances", async (_req, reply) => {
+  app.get("/jira/instances", { config: { policy: AUTHENTICATED } }, async (_req, reply) => {
     const instances = await service.list();
     return reply.send(instances);
   });
 
   // POST /jira/instances — add a new Jira instance
-  app.post("/jira/instances", async (req, reply) => {
+  app.post("/jira/instances", { config: { policy: AUTHENTICATED } }, async (req, reply) => {
     const parsed = CreateJiraInstanceInputSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
-    const instance = await service.create(parsed.data);
+    const instance = await service.create(parsed.data, req.user?.id);
     return reply.status(201).send(instance);
   });
 
-  // PATCH /jira/instances/:id — update an instance
+  // PATCH /jira/instances/:id — update an instance.
+  // `atlassianUrl` is withheld while the row is unclaimed: repointing the host
+  // while keeping the stored apiToken makes the next POST …/projects send that
+  // credential to the new host as Basic auth. Claim the row with any other
+  // edit first — see UnclaimedGuard in auth/policy.ts.
   app.patch<{ Params: { id: string } }>(
     "/jira/instances/:id",
+    {
+      config: {
+        policy: connectionOwnerProtectingFields(['atlassianUrl']),
+        connectionModel: 'jiraInstance',
+      },
+    },
     async (req, reply) => {
       const parsed = UpdateJiraInstanceInputSchema.safeParse(req.body);
       if (!parsed.success) {
         return reply.status(400).send({ error: parsed.error.flatten() });
       }
-      const instance = await service.update(req.params.id, parsed.data);
+      const instance = await service.update(req.params.id, parsed.data, req.user?.id);
       if (!instance)
         return reply.status(404).send({ error: "Instance not found" });
       return reply.send(instance);
     },
   );
 
-  // DELETE /jira/instances/:id — remove an instance
+  // DELETE /jira/instances/:id — remove an instance.
+  // Cascades JiraInstance → JiraProjectSync → BoardJiraSource, wiping the Jira
+  // source configuration of every board using it, so an unclaimed row must be
+  // claimed by a non-destructive edit before anyone may delete it.
   app.delete<{ Params: { id: string } }>(
     "/jira/instances/:id",
+    { config: { policy: CONNECTION_OWNER_CLAIMED, connectionModel: 'jiraInstance' } },
     async (req, reply) => {
       const deleted = await service.delete(req.params.id);
       if (!deleted)
@@ -55,69 +75,36 @@ export async function jiraInstanceRoutes(
     },
   );
 
-  // POST /jira/instances/:id/test — test connectivity
+  // POST /jira/instances/:id/test — test connectivity. Delegates to the service
+  // so it shares the scoped TLS dispatcher and the canonical-host diagnosis;
+  // the previous inline copy set NODE_TLS_REJECT_UNAUTHORIZED process-wide,
+  // which disabled certificate validation for every concurrent health probe.
   app.post<{ Params: { id: string } }>(
     "/jira/instances/:id/test",
+    { config: { policy: AUTHENTICATED } },
     async (req, reply) => {
-      const instance = await service.getRawById(req.params.id);
-      if (!instance)
+      const result = await service.testConnection(req.params.id);
+      if (result.notFound) {
         return reply.status(404).send({ error: "Instance not found" });
-
-      // Allow self-signed certs (corporate proxies)
-      const origTls = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-      process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
-      try {
-        const credentials = `${instance.email}:${instance.apiToken}`;
-        const encoded = Buffer.from(credentials).toString("base64");
-        const baseUrl = instance.atlassianUrl.replace(/\/+$/, "");
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
-
-        const res = await fetch(`${baseUrl}/rest/api/3/myself`, {
-          headers: {
-            Authorization: `Basic ${encoded}`,
-            Accept: "application/json",
-          },
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
-
-        if (!res.ok) {
-          const text = await res.text();
-          return reply
-            .status(422)
-            .send({ ok: false, error: `Jira returned ${res.status}: ${text}` });
-        }
-
-        return reply.send({ ok: true });
-      } catch (err: unknown) {
-        let message = "Unknown error";
-        if (err instanceof Error) {
-          message = err.message;
-          const cause = (err as Error & { cause?: Error }).cause;
-          if (cause) message += ` — ${cause.message}`;
-        }
-        return reply.status(422).send({ ok: false, error: message });
-      } finally {
-        // Restore original TLS setting
-        if (origTls !== undefined) {
-          process.env.NODE_TLS_REJECT_UNAUTHORIZED = origTls;
-        } else {
-          delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-        }
       }
+      if (!result.ok) {
+        return reply
+          .status(422)
+          .send({ ok: false, error: result.error, hint: result.hint });
+      }
+      return reply.send({ ok: true });
     },
   );
 
   // POST /jira/instances/:id/refresh-token — validate and swap the API token
   app.post<{ Params: { id: string } }>(
     "/jira/instances/:id/refresh-token",
+    { config: { policy: CONNECTION_OWNER, connectionModel: 'jiraInstance' } },
     async (req, reply) => {
       const body = z.object({ token: z.string().min(1) }).safeParse(req.body);
       if (!body.success)
         return reply.status(400).send({ error: body.error.flatten() });
-      const result = await service.refreshToken(req.params.id, body.data.token);
+      const result = await service.refreshToken(req.params.id, body.data.token, fetch, req.user?.id);
       if (result.notFound)
         return reply.status(404).send({ error: "Instance not found" });
       if (!result.ok)
@@ -129,6 +116,7 @@ export async function jiraInstanceRoutes(
   // POST /jira/instances/:id/projects — discover accessible Jira projects
   app.post<{ Params: { id: string } }>(
     "/jira/instances/:id/projects",
+    { config: { policy: AUTHENTICATED } },
     async (req, reply) => {
       const instance = await service.getRawById(req.params.id);
       if (!instance)
@@ -186,6 +174,7 @@ export async function jiraInstanceRoutes(
   // Returns alphabetically sorted list of issue type names from the Jira project.
   app.get<{ Params: { id: string; projectKey: string } }>(
     "/jira/instances/:id/projects/:projectKey/issue-types",
+    { config: { policy: AUTHENTICATED } },
     async (req, reply) => {
       const instance = await service.getRawById(req.params.id);
       if (!instance)

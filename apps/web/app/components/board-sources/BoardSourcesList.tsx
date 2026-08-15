@@ -1,8 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { BulkBindRequest } from '@deckgauge/shared';
-import { BoardSourceCard, type SourceShape, type AdoConnectionPatch } from './BoardSourceCard';
+import {
+  BoardSourceCard,
+  type SourceShape,
+  type AdoConnectionPatch,
+  type SourceSyncOutcome,
+} from './BoardSourceCard';
+import { runSyncAfterSave } from '../../utils/board-sync-runner';
 import {
   BoardAddSource,
   type ReadyProviders,
@@ -13,7 +19,7 @@ import { SourcesEmptyState } from './SourcesEmptyState';
 import type { GitHubInstanceOption, BulkAttachResult } from './GitHubSourcePicker';
 import { hydrateJira, hydrateGitHub, hydrateAdo, hydrateGitLab } from './hydrate';
 import type { BoardStatusOption } from './StatusMappingEditor';
-import { fetchBoardSourceHealth } from '../../actions/board-sync';
+import { fetchBoardSourceHealth, type SourceHealth } from '../../actions/board-sync';
 import {
   patchBoardJiraSource,
   patchBoardGitHubSource,
@@ -42,7 +48,13 @@ import {
 } from '../../actions/connections';
 import type { RemoteProjectsResult } from '../../actions/board-sources';
 import { bulkAddGitHubRepos } from '../../actions/github-sources';
-import { fetchJiraInstances, discoverJiraProjects, createJiraInstance, testJiraConnection } from '../../actions/jira';
+import {
+  fetchJiraInstances,
+  discoverJiraProjects,
+  createJiraInstance,
+  testJiraConnection,
+  updateJiraInstance,
+} from '../../actions/jira';
 import { fetchGitHubInstances, discoverGitHubRepos, createGitHubInstance, testGitHubConnection } from '../../actions/github';
 import { fetchAzureDevOpsInstances, listAzureDevOpsRemoteProjects, createAzureDevOpsInstance, testAzureDevOpsConnection } from '../../actions/azure-devops';
 import { fetchGitLabInstances, listGitLabRemoteProjects, createGitLabInstanceReturning, testGitLabConnection } from '../../actions/gitlab';
@@ -69,7 +81,8 @@ export function BoardSourcesList({
   const [sources, setSources] = useState<SourceShape[]>(initialSources);
   const [addOpen, setAddOpen] = useState(false);
   const [addProvider, setAddProvider] = useState<Provider | undefined>(undefined);
-  const [health, setHealth] = useState<Record<string, 'valid' | 'expired' | 'unreachable'>>({});
+  const [health, setHealth] = useState<Record<string, SourceHealth>>({});
+  const router = useRouter();
   const searchParams = useSearchParams();
   const fixInstanceId = searchParams.get('fix')?.split(':')[1] ?? null;
 
@@ -159,6 +172,14 @@ export function BoardSourcesList({
       const finalUpdated = updated;
       setSources((prev) => prev.map((s) => (s.id === finalUpdated.id ? finalUpdated : s)));
     }
+  }
+
+  // A saved source config only changes what the board shows once a sync has run
+  // against it, so saving triggers one and then re-renders the board's server data.
+  async function handleSyncAfterSave(): Promise<SourceSyncOutcome> {
+    const outcome = await runSyncAfterSave(boardId);
+    router.refresh();
+    return outcome;
   }
 
   async function handleDetach(source: SourceShape) {
@@ -343,13 +364,26 @@ export function BoardSourcesList({
       return { id: inst.id, name: v.name };
     },
     testConnection: async (provider: Provider, connectionId: string) => {
-      if (provider === 'jira') {
-        const r = await testJiraConnection(connectionId);
-        return r ? { ok: true as const } : { ok: false as const, error: 'test failed' };
-      }
+      if (provider === 'jira') return testJiraConnection(connectionId);
       if (provider === 'github') return testGitHubConnection(connectionId);
       if (provider === 'ado') return testAzureDevOpsConnection(connectionId);
       return testGitLabConnection(connectionId);
+    },
+    updateConnectionUrl: async (
+      provider: Provider,
+      connectionId: string,
+      url: string,
+    ): Promise<{ ok: boolean; error?: string }> => {
+      // Only Jira produces a canonical-url hint, so only Jira can get here.
+      if (provider !== 'jira') {
+        return { ok: false, error: 'Changing the URL is not supported for this provider.' };
+      }
+      try {
+        await updateJiraInstance(connectionId, { atlassianUrl: url });
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : 'Could not update the URL.' };
+      }
     },
     ensureSync: async (provider: Provider, connectionId: string, projectKey: string) => {
       if (provider === 'jira') {
@@ -413,8 +447,8 @@ export function BoardSourcesList({
             groups={groups}
             boardStatuses={boardStatuses}
             onSave={(patch, connectionPatch) => handleSave(s, patch, connectionPatch)}
+            onSyncAfterSave={handleSyncAfterSave}
             onSaveStatusMapping={(m) => handleSave(s, { statusMapping: m })}
-            onSaveAllowedIssueTypes={(types) => handleSave(s, { allowedIssueTypes: types })}
             onDetach={() => handleDetach(s)}
             health={health[s.instanceId]}
             openFix={fixInstanceId === s.instanceId}

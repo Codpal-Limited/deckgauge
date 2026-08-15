@@ -1,6 +1,7 @@
 import { PrismaClient } from '@deckgauge/db'
 import { JiraPort } from '@deckgauge/shared'
 import { JiraPromoteService } from './jira-promote.service.js'
+import { resolveJqlAllowLists } from './jira-jql-filter.js'
 import { type ChClient } from './jira-dual-writer.js'
 
 interface ProcessorInput {
@@ -9,6 +10,12 @@ interface ProcessorInput {
   trigger: string
   db: PrismaClient
   syncConfigMap?: Map<string, string>  // projectKey → syncConfigId
+  /**
+   * The Jira connection these project keys belong to. Scopes the per-board JQL
+   * filter lookup, so a board source on another connection that happens to share
+   * a project key is not filtered by this run's key set.
+   */
+  instanceId?: string
   /**
    * Optional ClickHouse client. When provided, the processor dual-writes the
    * full unfiltered set of fetched epics+issues into the `jira_issues` CH table
@@ -28,7 +35,7 @@ interface ProcessorOutput {
 }
 
 export async function jiraSyncProcessor(input: ProcessorInput): Promise<ProcessorOutput> {
-  const { adapter, projectKeys, trigger, db } = input
+  const { adapter, projectKeys, trigger, db, instanceId } = input
 
   // Create SyncRun record
   const syncRun = await db.syncRun.create({
@@ -62,6 +69,11 @@ export async function jiraSyncProcessor(input: ProcessorInput): Promise<Processo
     // 20260603120000_drop_legacy_phase3_tables. The promote service now reads
     // the fetched arrays directly via the payload arg below.
 
+    // Resolve each board source's Advanced-filter (JQL) into the issue keys it
+    // admits. The fetch above is shared by every board on the project key, so the
+    // filter has to be applied as an intersection at promote time.
+    const jqlFilters = await resolveJqlAllowLists({ db, adapter, instanceId, projectKeys })
+
     // Second pass: promote Jira items to Project rows
     const promoteService = new JiraPromoteService(db)
     const promoteResult = await promoteService.promoteAll({
@@ -83,10 +95,15 @@ export async function jiraSyncProcessor(input: ProcessorInput): Promise<Processo
         assignee: i.assignee ?? null,
         type: i.type,
       })),
+    }, {
+      allowedKeysBySourceId: jqlFilters.allowedKeysBySourceId,
+      skipSourceIds: jqlFilters.skipSourceIds,
     })
     console.log(`[Processor] Promote: ${promoteResult.created} created, ${promoteResult.updated} updated, ${promoteResult.markedRemoved} marked removed`)
 
-    // Update SyncRun with success
+    // Update SyncRun with success. A filter Jira refused does not fail the run —
+    // the other sources synced fine — but it is recorded so a board that silently
+    // stopped updating has a traceable reason.
     const updated = await db.syncRun.update({
       where: { id: syncRun.id },
       data: {
@@ -94,6 +111,7 @@ export async function jiraSyncProcessor(input: ProcessorInput): Promise<Processo
         finishedAt: new Date(),
         epicCount: epics.length,
         issueCount: issues.length,
+        errorMessage: summarizeJqlErrors(jqlFilters.errors),
       },
     })
 
@@ -126,6 +144,15 @@ export async function jiraSyncProcessor(input: ProcessorInput): Promise<Processo
       errorMessage: updated.errorMessage,
     }
   }
+}
+
+function summarizeJqlErrors(
+  errors: ReadonlyArray<{ boardSourceId: string; projectKey: string; message: string }>,
+): string | null {
+  if (errors.length === 0) return null
+  return errors
+    .map((e) => `JQL filter failed for ${e.projectKey} (board source ${e.boardSourceId}): ${e.message}`)
+    .join('; ')
 }
 
 function normalizeTrigger(trigger: string): 'STARTUP' | 'MANUAL' | 'SCHEDULED' {

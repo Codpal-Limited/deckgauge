@@ -1,6 +1,7 @@
 'use client';
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { CHART_TOOLTIP } from '../charts/chartTheme';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
 
@@ -47,7 +48,7 @@ export default function StatusByGroupWidget({ boardId, config }: Props) {
       <BarChart data={chartData} layout="vertical">
         <XAxis type="number" />
         <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
-        <Tooltip />
+        <Tooltip {...CHART_TOOLTIP} />
         <Legend />
         {Array.from(allStatuses.entries()).map(([label, color]) => (
           <Bar key={label} dataKey={label} stackId="stack" fill={color} />

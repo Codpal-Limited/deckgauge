@@ -1,9 +1,15 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { PrismaClient } from '@deckgauge/db';
+import { RestoreBoardSyncExclusionsInputSchema } from '@deckgauge/shared';
 import { BoardSyncService } from './board-sync.service.js';
-import { BoardSourceHealthService, type BoardSourceProbes } from './board-source-health.service.js';
-import { requireBoardAccess } from '../board-access/board-access.middleware.js';
+import { BoardSyncExclusionService } from './board-sync-exclusion.service.js';
+import {
+  BoardSourceHealthService,
+  isCredentialBlocked,
+  type BoardSourceProbes,
+} from './board-source-health.service.js';
+import { board } from '../auth/policy.js';
 import type { IntelligenceQueues } from '../intelligence/queues.js';
 import { JiraInstanceService } from '../jira-instances/jira-instance.service.js';
 import { GitHubService } from '../github/github.service.js';
@@ -37,7 +43,7 @@ export function boardSyncRoutes(deps: Deps) {
 
     app.post<{ Params: { boardId: string } }>(
       '/boards/:boardId/sync',
-      { preHandler: requireBoardAccess(deps.prisma, 'EDITOR') },
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = ParamsSchema.safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -47,7 +53,10 @@ export function boardSyncRoutes(deps: Deps) {
         }
 
         const health = await buildHealthService().probe(params.data.boardId);
-        const expired = health.sources.filter((s) => s.state === 'expired');
+        // Named `expired` for wire compatibility, but it carries every
+        // credential-blocked source — each entry keeps its own `state` so the UI
+        // can say "reauthorize" where that is the real remedy.
+        const expired = health.sources.filter((s) => isCredentialBlocked(s.state));
         const skip = new Set(expired.map((s) => s.instanceId));
         const service = new BoardSyncService(deps.prisma, deps.queues);
         const enqueued = await service.enqueueBoardSync(params.data.boardId, skip);
@@ -61,7 +70,7 @@ export function boardSyncRoutes(deps: Deps) {
 
     app.get<{ Params: { boardId: string } }>(
       '/boards/:boardId/sync/health',
-      { preHandler: requireBoardAccess(deps.prisma, 'VIEWER') },
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = ParamsSchema.safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -72,7 +81,7 @@ export function boardSyncRoutes(deps: Deps) {
 
     app.get<{ Params: { boardId: string } }>(
       '/boards/:boardId/sync/status',
-      { preHandler: requireBoardAccess(deps.prisma, 'VIEWER') },
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = ParamsSchema.safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -90,6 +99,37 @@ export function boardSyncRoutes(deps: Deps) {
         );
         const status = await service.getBoardSyncStatus(params.data.boardId);
         return reply.code(200).send(status);
+      },
+    );
+
+    // Deleting a synced row blacklists its key so the next sync cannot re-add
+    // it. These two routes make that reversible: list what a board has
+    // excluded, and drop entries so the next sync brings them back.
+    app.get<{ Params: { boardId: string } }>(
+      '/boards/:boardId/sync/exclusions',
+      { config: { policy: board('VIEWER') } },
+      async (req, reply) => {
+        const params = ParamsSchema.safeParse(req.params);
+        if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
+
+        const service = new BoardSyncExclusionService(deps.prisma);
+        return reply.code(200).send(await service.list(params.data.boardId));
+      },
+    );
+
+    app.delete<{ Params: { boardId: string } }>(
+      '/boards/:boardId/sync/exclusions',
+      { config: { policy: board('EDITOR') } },
+      async (req, reply) => {
+        const params = ParamsSchema.safeParse(req.params);
+        if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
+
+        const body = RestoreBoardSyncExclusionsInputSchema.safeParse(req.body);
+        if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
+
+        const service = new BoardSyncExclusionService(deps.prisma);
+        const result = await service.restore(params.data.boardId, body.data.ids);
+        return reply.code(200).send(result);
       },
     );
   };

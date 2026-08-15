@@ -52,7 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </main>
           </div>
           <SessionExpiredOverlay />
-          <Toaster position="bottom-right" richColors closeButton />
+          <Toaster position="bottom-right" richColors closeButton offset={80} />
         </Providers>
       </body>
     </html>

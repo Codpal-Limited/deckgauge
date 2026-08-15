@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -15,6 +16,7 @@ import { groupRoutes } from "./groups/group.routes.js";
 import { columnRoutes } from "./columns/column.routes.js";
 import { automationRoutes } from "./automations/automation.routes.js";
 import { jiraInstanceRoutes } from "./jira-instances/jira-instance.routes.js";
+import { retiredProjectsRoutes } from "./retired-projects/retired-projects.routes.js";
 import { commentRoutes } from "./comments/comment.routes.js";
 import { ownerRoutes } from "./owners/owner.routes.js";
 import { boardStatusRoutes } from "./board-statuses/board-status.routes.js";
@@ -40,6 +42,8 @@ import {
 import { boardAdoSourceRoutes } from "./board-sources/board-ado-source.routes.js";
 import { boardGitLabSourceRoutes } from "./board-sources/board-gitlab-source.routes.js";
 import { buildKeycloakAuthPlugin } from "./auth/keycloak-auth.plugin.js";
+import { buildPolicyPlugin } from "./auth/policy.plugin.js";
+import { PUBLIC } from "./auth/policy.js";
 import { boardAccessRoutes } from "./board-access/board-access.routes.js";
 import { userRoutes } from "./users/user.routes.js";
 import { boardViewRoutes } from "./widgets/board-views.routes.js";
@@ -47,12 +51,18 @@ import { dashboardWidgetRoutes } from "./widgets/dashboard-widgets.routes.js";
 import { widgetDataRoutes } from "./widgets/widget-data.routes.js";
 import { presetsRoutes } from "./widgets/presets.routes.js";
 import { intelligenceQueryRoutes } from "./intelligence-query/routes.js";
+import { advisorRoutes } from "./advisor/advisor.routes.js";
+import { advisorHelpRoutes } from "./advisor/advisor-help.routes.js";
+import { advisorConfigRoutes } from "./advisor/advisor-config.routes.js";
+import { advisorSessionRoutes } from "./advisor/advisor-session.routes.js";
+import { mcpRoutes } from "./mcp/mcp.routes.js";
 import { boardSyncRoutes } from "./board-sync/board-sync.routes.js";
 import { boardTreeRoutes } from "./board-tree/board-tree.routes.js";
 import { roadmapRoutes } from "./roadmap/roadmap.routes.js";
 import { comparisonRoutes } from "./comparison/comparison.routes.js";
 import { orgTreeRoutes } from "./org-trees/org-tree.routes.js";
 import { orgTreeTimesheetRoutes } from "./org-trees/org-tree-timesheet.routes.js";
+import { buildOrgTreeAccessRoutes } from "./org-trees/org-tree-access.routes.js";
 import { OrgTreeService } from "./org-trees/org-tree.service.js";
 import { OrgSourceService } from "./org-trees/org-source.service.js";
 import { employeeBoardRoutes } from "./employee-boards/employee-board.routes.js";
@@ -62,6 +72,7 @@ import { TimesheetService } from "./timesheet/timesheet.service.js";
 import { timesheetRoutes } from "./timesheet/timesheet.routes.js";
 import { buildTimesheetDeps } from "./timesheet/timesheet-deps.js";
 import { locationRoutes } from "./locations/location.routes.js";
+import { advisorConfigFromEnv } from "./advisor/advisor-config-env.js";
 import { loadEnterprise, COMMUNITY_STATUS } from "./enterprise-loader.js";
 import type { RouteHost } from "./enterprise-contract.js";
 
@@ -70,19 +81,69 @@ export function buildServer(prisma: PrismaClient) {
   mkdirSync(uploadsDir, { recursive: true });
 
   const app = Fastify({ logger: true });
+  const enterprisePromise = loadEnterprise();
+
+  // @fastify/cors registers a global `OPTIONS *` preflight route internally
+  // (`fastify.options('*', { schema: {...} }, ...)` — see its source; there is
+  // no option to pass it a `config`). It sits outside `protectedApp` just like
+  // `/health` below, so `buildPolicyPlugin`'s boot assertion never sees it
+  // either way — but route-inventory.test.ts's own onRoute hook (attached
+  // directly to this `app`, which sees every route in the whole tree) does,
+  // and reports it MISSING. Stamp it PUBLIC the moment it's registered, since
+  // it can't be labeled at its own registration call: this is a CORS
+  // preflight route, browser-initiated, carries no Authorization header per
+  // spec, and its handler is a no-op `reply.send()` — same "no board, no
+  // policy needed" class as /health. Must run before `app.register(cors...)`.
+  app.addHook("onRoute", (route) => {
+    if (route.method === "OPTIONS" && route.url === "*" && !route.config?.policy) {
+      route.config = { ...route.config, policy: PUBLIC };
+    }
+  });
 
   app.register(cors, { origin: true });
+  app.register(rateLimit, {
+    max: Number(process.env.RATE_LIMIT_MAX ?? 300),
+    timeWindow: process.env.RATE_LIMIT_WINDOW ?? "1 minute",
+  });
   app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } });
 
-  app.get("/health", async (_req, reply) => {
-    return reply.send({ status: "ok" });
+  // Nested (not a bare top-level `.get()`) so its registration defers into
+  // avvio's boot queue like every other route family below, rather than
+  // being added synchronously before a test could attach its own `onRoute`
+  // hook. It stays outside the `protectedApp` context below — the policy
+  // plugin never enforces it — so `config.policy` here is documentation and
+  // route-inventory data, not enforcement.
+  app.register(async (instance) => {
+    instance.get("/health", { config: { policy: PUBLIC } }, async (_req, reply) => {
+      return reply.send({ status: "ok" });
+    });
   });
+
+  // An ADVISOR_PROVIDER that doesn't yield a usable config (typo'd provider,
+  // missing model/key, base URL without its scheme) degrades silently to
+  // "advisor not configured" — say so at boot rather than leaving the
+  // operator to wonder why their .env had no effect.
+  if (process.env.ADVISOR_PROVIDER && !advisorConfigFromEnv(process.env)) {
+    app.log.warn(
+      { provider: process.env.ADVISOR_PROVIDER },
+      "ADVISOR_PROVIDER is set but the advisor env config is incomplete or invalid — " +
+        "the advisor will report itself unconfigured. Check ADVISOR_MODEL and " +
+        "ADVISOR_ANTHROPIC_API_KEY / ADVISOR_OLLAMA_BASE_URL (the base URL needs an http:// or https:// scheme).",
+    );
+  }
 
   const uploadService = new UploadService(prisma, uploadsDir);
 
   // Protected routes — all require a valid Keycloak JWT
   app.register(async (protectedApp) => {
-    protectedApp.register(buildKeycloakAuthPlugin(prisma));
+    const enterprise = await enterprisePromise;
+    protectedApp.register(
+      buildKeycloakAuthPlugin(prisma, {
+        onUserAuthenticated: enterprise?.onUserAuthenticated?.bind(enterprise),
+      }),
+    );
+    const singleUser = process.env.DECKGAUGE_SINGLE_USER === "true";
+    await protectedApp.register(buildPolicyPlugin(prisma, { singleUser }));
     protectedApp.register(boardAccessRoutes, { prisma });
     protectedApp.register(userRoutes, { prisma });
     protectedApp.register(commentRoutes, { prisma, uploadService });
@@ -109,17 +170,18 @@ export function buildServer(prisma: PrismaClient) {
     protectedApp.register(columnRoutes, { prisma });
     protectedApp.register(automationRoutes, { prisma });
     protectedApp.register(jiraInstanceRoutes, { prisma });
+    protectedApp.register(retiredProjectsRoutes, { prisma });
     protectedApp.register(ownerRoutes, { prisma });
     protectedApp.register(boardStatusRoutes, { prisma });
     protectedApp.register(uploadRoutes, { service: uploadService });
     protectedApp.register(githubRoutes, { prisma });
     protectedApp.register(azureDevOpsRoutes, { prisma });
-    protectedApp.register(adoProjectSyncRoutes({ prisma }));
-    protectedApp.register(gitlabRoutes({ prisma }));
+    protectedApp.register(adoProjectSyncRoutes({ prisma, singleUser }));
+    protectedApp.register(gitlabRoutes({ prisma, singleUser }));
     protectedApp.register(developerProfileRoutes({ prisma }));
-    protectedApp.register(jiraProjectSyncRoutes({ prisma }));
-    protectedApp.register(githubRepoSyncRoutes({ prisma }));
-    protectedApp.register(gitlabProjectSyncRoutes({ prisma }));
+    protectedApp.register(jiraProjectSyncRoutes({ prisma, singleUser }));
+    protectedApp.register(githubRepoSyncRoutes({ prisma, singleUser }));
+    protectedApp.register(gitlabProjectSyncRoutes({ prisma, singleUser }));
     protectedApp.register(boardJiraSourceRoutes({ prisma, clickhouse }));
 
     // Three-tier BullMQ queue client for GitHub bulk-repo ingestion.
@@ -156,9 +218,14 @@ export function buildServer(prisma: PrismaClient) {
     protectedApp.register(boardGitLabSourceRoutes({ prisma, clickhouse }));
     protectedApp.register(boardViewRoutes, { prisma });
     protectedApp.register(dashboardWidgetRoutes, { prisma });
-    protectedApp.register(widgetDataRoutes, { prisma });
+    protectedApp.register(widgetDataRoutes, { prisma, singleUser });
     protectedApp.register(presetsRoutes, { prisma });
     protectedApp.register(intelligenceQueryRoutes, { prisma });
+    protectedApp.register(advisorRoutes({ prisma, clickhouse }));
+    protectedApp.register(advisorHelpRoutes({ prisma }));
+    protectedApp.register(advisorConfigRoutes({ prisma }));
+    protectedApp.register(advisorSessionRoutes({ prisma }));
+    protectedApp.register(mcpRoutes({ prisma, clickhouse }));
     protectedApp.register(roadmapRoutes, { prisma });
     protectedApp.register(roadmapsRoutes, { prisma });
     protectedApp.register(comparisonRoutes, { prisma });
@@ -194,6 +261,7 @@ export function buildServer(prisma: PrismaClient) {
         },
       }),
     );
+    protectedApp.register(buildOrgTreeAccessRoutes(prisma));
 
     // EI-019 — Phase 3 intelligence routes. clickhouse is the shared
     // @clickhouse/client singleton exported from @deckgauge/db; its
@@ -234,13 +302,19 @@ export function buildServer(prisma: PrismaClient) {
   // (license-gated) routes. In the Community build the module is absent, this is
   // a no-op, and the platform runs fully as open source.
   // See planning/OPEN-CORE-ARCHITECTURE.md.
+  //
+  // Registered outside `protectedApp`, same as /health above — the policy
+  // plugin never enforces this route, so `config.policy: PUBLIC` here is
+  // documentation and route-inventory data, not enforcement. It's an
+  // informational status endpoint (edition/license-state/feature flags, no
+  // secrets), the same "safe to be unauthenticated" class as /health.
   app.register(async (entApp) => {
-    const enterprise = await loadEnterprise();
+    const enterprise = await enterprisePromise;
     if (enterprise) {
       const status = await enterprise.verifyLicense();
       await enterprise.registerRoutes(entApp as unknown as RouteHost, status);
     } else {
-      entApp.get("/enterprise/status", async () => ({
+      entApp.get("/enterprise/status", { config: { policy: PUBLIC } }, async () => ({
         edition: COMMUNITY_STATUS.edition,
         licenseState: COMMUNITY_STATUS.state,
         features: COMMUNITY_STATUS.features,

@@ -1,29 +1,8 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
 import { SaveCalendarSourceConnectionSchema } from '@deckgauge/shared';
 import { CalendarSourceService } from './calendar-source.service.js';
-
-/** Requires the caller to have at least EDITOR access on the board. */
-async function requireBoardEditor(
-  req: FastifyRequest,
-  reply: FastifyReply,
-  prisma: PrismaClient,
-  boardId: string,
-): Promise<boolean> {
-  const userId = req.user?.id;
-  if (!userId) {
-    reply.status(401).send({ error: 'Auth required' });
-    return false;
-  }
-  const access = await prisma.boardAccess.findUnique({
-    where: { boardId_userId: { boardId, userId } },
-  });
-  if (!access || access.role === 'VIEWER') {
-    reply.status(403).send({ error: 'Forbidden' });
-    return false;
-  }
-  return true;
-}
+import { board } from '../auth/policy.js';
 
 export interface CalendarSourceRoutesDeps {
   prisma: PrismaClient;
@@ -44,9 +23,9 @@ export async function calendarSourceRoutes(
   // GET the current calendar-source connection state (never exposes the token).
   app.get<{ Params: { boardId: string } }>(
     '/boards/:boardId/calendar-source',
-    async (req, reply) => {
+    { config: { policy: board('VIEWER') } },
+    async (req) => {
       const { boardId } = req.params;
-      if (!(await requireBoardEditor(req, reply, prisma, boardId))) return;
       return service.getConfig(boardId);
     },
   );
@@ -56,9 +35,9 @@ export async function calendarSourceRoutes(
   // owner's UPN) — tokens never transit back to the browser.
   app.post<{ Params: { boardId: string } }>(
     '/boards/:boardId/calendar-source/connection',
+    { config: { policy: board('EDITOR') } },
     async (req, reply) => {
       const { boardId } = req.params;
-      if (!(await requireBoardEditor(req, reply, prisma, boardId))) return;
       const body = SaveCalendarSourceConnectionSchema.safeParse(req.body);
       if (!body.success) return reply.status(400).send({ error: body.error.flatten() });
       return service.saveConnection(boardId, {
@@ -73,9 +52,9 @@ export async function calendarSourceRoutes(
   // Disconnect: drop the stored token + connection metadata.
   app.delete<{ Params: { boardId: string } }>(
     '/boards/:boardId/calendar-source/connection',
+    { config: { policy: board('EDITOR') } },
     async (req, reply) => {
       const { boardId } = req.params;
-      if (!(await requireBoardEditor(req, reply, prisma, boardId))) return;
       const result = await service.clearConnection(boardId);
       if (!result) return reply.status(404).send({ error: 'not found' });
       return result;
@@ -87,9 +66,9 @@ export async function calendarSourceRoutes(
   // not a stuck 'syncing' status), then markSyncing for the UI.
   app.post<{ Params: { boardId: string } }>(
     '/boards/:boardId/calendar-source/sync',
+    { config: { policy: board('EDITOR') } },
     async (req, reply) => {
       const { boardId } = req.params;
-      if (!(await requireBoardEditor(req, reply, prisma, boardId))) return;
       const existing = await service.getConfig(boardId);
       if (!existing) return reply.status(404).send({ error: 'not found' });
       try {

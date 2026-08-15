@@ -54,6 +54,9 @@ export const GitHubInstanceSchema = z.object({
   baseUrl: z.string().url(),
   accessToken: z.string().min(1),
   repos: z.array(z.string()),
+  // The org this connection reads. Nullable because instances created before
+  // org scoping existed have none — health probing falls back to `/user` there.
+  org: z.string().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 });

@@ -17,7 +17,7 @@ Turn **Jira, GitHub, GitLab, and Azure DevOps** into one board with the widgets,
 rankings, and roadmaps engineering leaders use to see what’s really going on.
 
 [![License: FSL-1.1](https://img.shields.io/badge/license-FSL--1.1-0c8f83)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/YanivCodpal/deckgauge?style=social)](https://github.com/YanivCodpal/deckgauge)
+[![Stars](https://img.shields.io/github/stars/Codpal-Limited/deckgauge?style=social)](https://github.com/Codpal-Limited/deckgauge)
 
 [**Website**](https://deckgauge.com) · [**Docs**](https://deckgauge.com/docs) · [**Enterprise**](https://deckgauge.com/enterprise)
 
@@ -70,7 +70,7 @@ That’s it — the agent clones the repo, starts the stack, sets up the databas
 ## Install it yourself (Docker)
 
 ```bash
-git clone https://github.com/YanivCodpal/deckgauge
+git clone https://github.com/Codpal-Limited/deckgauge
 cd deckgauge
 cp .env.example .env
 docker compose up -d
@@ -95,14 +95,43 @@ Open source. Multi-tool. No lock-in. Read the queries, run it yourself, trust th
 
 ---
 
+## 🤖 Ask the Advisor — powered by *your* Claude Code or Codex
+
+Deckgauge has an in-app Advisor panel that answers questions about a board.
+If you already have [Claude Code](https://docs.claude.com/en/docs/claude-code)
+or [Codex](https://github.com/openai/codex) installed and signed in, it runs on
+**your** local agent — no API key, no model configuration, no separate LLM bill,
+and your model credentials never touch Deckgauge.
+
+```bash
+pnpm deckgauge:advisor   # detects your local agent and connects the panel to it
+```
+
+Open a board's Advisor panel while signed in and it authenticates itself with
+your existing session. The agent reads board data only through Deckgauge's
+read-only, board-scoped MCP tools — every call re-checks your board access
+server-side. The bridge also asks the agent to hand it permission decisions, and
+auto-denies file edits and shell commands whenever it gets them; if an agent
+won't do that, the bridge says so rather than pretending otherwise. It runs a
+full local coding agent on your behalf, so read the security model before
+pointing it at anything you care about.
+
+No local agent? The panel falls back to a server-side provider (an Anthropic key
+or your own Ollama server), configured in **Settings → Advisor**.
+
+Details, including the full security model: [`docs/advisor-local-agent.md`](docs/advisor-local-agent.md)
+and [`docs/advisor-mcp.md`](docs/advisor-mcp.md).
+
+---
+
 ## Editions
 
 - **Community** — free and open source, **uncapped** (analyze any number of developers), under the license below.
-- **Enterprise** — SSO, advanced access control, aggregate-only (works-council) mode, audit logs, and support — as a managed **SaaS** or in your own environment with a commercial license. → [deckgauge.com/enterprise](https://deckgauge.com/enterprise) · **yaniv@codpal.com**
+- **Enterprise** — SSO, advanced access control, aggregate-only (works-council) mode, audit logs, and support — as a managed **SaaS** or in your own environment with a commercial license. → [deckgauge.com/enterprise](https://deckgauge.com/enterprise) · **support@codpal.com**
 
 ## Advisory & support
 
-Deckgauge is built and maintained by **[CodPal](https://codpal.com)** — fractional CTO-as-a-service for startups and scale-ups. The platform is fully open source and stands on its own. If you want help acting on what it surfaces — reading your DORA metrics, clearing delivery bottlenecks, or standing up engineering leadership — CodPal offers a **[Deckgauge Engineering Health Check](https://deckgauge.com/health-check)**: a fractional CTO reviews your dashboard and hands you a one-page assessment plus your top three fixes. → **yaniv@codpal.com**
+Deckgauge is built and maintained by **[CodPal](https://codpal.com)** — fractional CTO-as-a-service for startups and scale-ups. The platform is fully open source and stands on its own. If you want help acting on what it surfaces — reading your DORA metrics, clearing delivery bottlenecks, or standing up engineering leadership — CodPal offers a **[Deckgauge Engineering Health Check](https://deckgauge.com/health-check)**: a fractional CTO reviews your dashboard and hands you a one-page assessment plus your top three fixes. → **support@codpal.com**
 
 ## Contributing
 

@@ -7,6 +7,9 @@ import {
   type InvestmentSlice,
   buildDoraScorecard,
   type DoraMetric,
+  buildPeriodComparison,
+  type PeriodComparisonMetric,
+  type PeriodMetricKey,
 } from '@deckgauge/shared';
 import { getWidgetBoardScope } from './widget-board-scope.js';
 import {
@@ -48,7 +51,11 @@ import { buildDeliveryTrendAnnotatedSql } from '../intelligence-query/builders/d
 import { buildAiAdoptionSql } from '../intelligence-query/builders/ai-adoption.js';
 import { buildInvestmentAllocationSql } from '../intelligence-query/builders/investment-allocation.js';
 import { buildDoraMetricsSql } from '../intelligence-query/builders/dora-metrics.js';
-import { resolvePeriod } from '../intelligence-query/builders/period.js';
+import { resolvePeriod, resolveComparePeriods } from '../intelligence-query/builders/period.js';
+import {
+  buildPeriodComparisonSql,
+  buildPeriodComparisonTrendSql,
+} from '../intelligence-query/builders/period-comparison.js';
 import { getBoardScopes, type BoardScopeEntry } from '../intelligence/board-scope.js';
 import {
   countMetricComparability,
@@ -76,7 +83,38 @@ export interface InvestmentAllocationResult {
 export interface DoraMetricsResult {
   metrics: DoraMetric[];
   weeks: number;
+  /**
+   * Where Deployment Frequency came from: 'deployments' = real deployment
+   * records; 'merge_proxy' = merged-PR count, because the board's scope has no
+   * deployment source. Surfaced so the widget can label a proxied number rather
+   * than presenting it as observed.
+   */
+  deploySource?: 'deployments' | 'merge_proxy';
+  /**
+   * Where Change Failure Rate came from: 'deployments' = the share of production
+   * releases that did not succeed, observed from real deployment status;
+   * 'commit_proxy' = the corrective-commit ratio, used when the board's scope
+   * yields no classifiable production release. Labelled for the same reason as
+   * {@link deploySource}.
+   */
+  changeFailureSource?: 'deployments' | 'commit_proxy';
   emptyReason?: 'no_source';
+}
+
+// Keyed by the shared PeriodMetricKey union so the trajectories map can't
+// drift from the metric keys buildPeriodComparison actually produces. Built
+// incrementally from ClickHouse rows (which arrive as plain strings), so the
+// accumulator narrows each row's `metric` with a cast rather than claiming
+// every key is always populated (a source-less board only fills the keys its
+// connected sources support).
+export type PeriodTrajectories = Record<PeriodMetricKey, Array<{ month: string; value: number | null }>>;
+
+export interface PeriodComparisonResult {
+  metrics: PeriodComparisonMetric[];
+  periodA: { from: string; to: string };
+  periodB: { from: string; to: string };
+  trajectories: PeriodTrajectories;
+  emptyReason?: string;
 }
 
 export interface LeadTimeForChangesResult {
@@ -1160,9 +1198,11 @@ export class WidgetDataService {
   // DORA metrics scorecard: the four DORA delivery-performance metrics with
   // Elite/High/Medium/Low tiers. One ClickHouse round-trip returns the raw
   // aggregates; the service derives the per-week deploy rate and the change-
-  // failure ratio, then @deckgauge/shared tiers them. All four are proxies
-  // (no deployment/incident source yet) — see dora.ts. Any metric whose source
-  // is absent comes back null → rendered "—".
+  // failure ratio, then @deckgauge/shared tiers them. Deployment Frequency now
+  // reads real deployment records when the board's scope has any (falling back
+  // to the merged-PR proxy, reported via deploySource); lead time, change
+  // failure rate and time to restore are still proxies — see dora.ts. Any metric
+  // whose source is absent comes back null → rendered "—".
   async getDoraMetrics(
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
@@ -1186,31 +1226,141 @@ export class WidgetDataService {
     });
     const rows = castRows<{
       lead_time_hours: number | string | null;
-      deploys: number | string | null;
+      deploys_real: number | string | null;
+      deploys_proxy: number | string | null;
       corrective_commits: number | string | null;
       total_commits: number | string | null;
       ttr_hours: number | string | null;
+      failed_releases: number | string | null;
+      total_releases: number | string | null;
     }>(await result.json());
     const r = rows[0];
 
     const num = (v: number | string | null | undefined): number | null =>
       v == null || v === '' ? null : Number(v);
 
-    const deploys = num(r?.deploys);
+    // Prefer real deployment records, but fall back to the merged-PR proxy when
+    // they yield ZERO production deploys — a board whose pipelines only ever
+    // deploy to DEV/UAT, or whose stages carry ADO's default "Stage 1" name,
+    // has a deployment source that the production heuristic cannot read. Showing
+    // it 0/wk as an observed number is worse than showing the proxy it replaced.
+    const deploysReal = num(r?.deploys_real);
+    const deploysProxy = num(r?.deploys_proxy);
+    const useReal = deploysReal != null && deploysReal > 0;
+    const deploys = useReal ? deploysReal : deploysProxy;
+    const deploySource: 'deployments' | 'merge_proxy' = useReal ? 'deployments' : 'merge_proxy';
     const totalCommits = num(r?.total_commits);
     const corrective = num(r?.corrective_commits);
+
+    // Change Failure Rate from OBSERVED release outcomes when there are releases
+    // to measure, else the corrective-commit proxy.
+    //
+    // The switch keys on "were there any classifiable production releases", not
+    // on "did the measurement come out above zero" — unlike deploy frequency
+    // above, where a real zero and an unreadable zero are indistinguishable. Here
+    // they are not: total_releases = 0 means nothing was measurable, while
+    // failed = 0 out of 20 is a genuine clean run and must be reported as such.
+    // Falling through on a true 0% would replace good news with a commit-message
+    // guess.
+    const failedReleases = num(r?.failed_releases);
+    const totalReleases = num(r?.total_releases);
+    const haveReleases = totalReleases != null && totalReleases > 0 && failedReleases != null;
+    const changeFailureSource: 'deployments' | 'commit_proxy' = haveReleases
+      ? 'deployments'
+      : 'commit_proxy';
+    const changeFailureRatePct = haveReleases
+      ? (failedReleases / totalReleases) * 100
+      : totalCommits == null || totalCommits === 0 || corrective == null
+        ? null
+        : (corrective / totalCommits) * 100;
 
     const metrics = buildDoraScorecard({
       leadTimeHours: num(r?.lead_time_hours),
       deployFreqPerWeek: deploys == null ? null : deploys / weeks,
-      changeFailureRatePct:
-        totalCommits == null || totalCommits === 0 || corrective == null
-          ? null
-          : (corrective / totalCommits) * 100,
+      changeFailureRatePct,
       timeToRestoreHours: num(r?.ttr_hours),
     });
 
-    return { metrics, weeks };
+    return { metrics, weeks, deploySource, changeFailureSource };
+  }
+
+  // Period-over-Period scorecard. Runs the two-window builder in one round-trip,
+  // converts merged-PR counts to a per-week deploy frequency for each window,
+  // and derives the change-failure ratio, then hands raw values to the shared
+  // direction-aware delta builder.
+  async getPeriodComparison(
+    boardId: string,
+    config: Record<string, unknown>,
+  ): Promise<PeriodComparisonResult> {
+    const { a, b } = resolveComparePeriods(config, Date.now);
+    const periodA = { from: a.from.toISOString(), to: a.to.toISOString() };
+    const periodB = { from: b.from.toISOString(), to: b.to.toISOString() };
+
+    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const built = buildPeriodComparisonSql({ config, scope });
+    if (!built)
+      return {
+        metrics: [],
+        periodA,
+        periodB,
+        trajectories: {} as PeriodTrajectories,
+        emptyReason: 'no_source',
+      };
+
+    const result = await this.clickhouse.query({
+      query: built.sql,
+      query_params: built.params,
+      format: 'JSONEachRow',
+    });
+    const rows = castRows<Record<string, number | string | null>>(await result.json());
+    const r = rows[0] ?? {};
+
+    const num = (v: number | string | null | undefined): number | null =>
+      v == null || v === '' ? null : Number(v);
+    const weeks = (from: Date, to: Date) =>
+      Math.max((to.getTime() - from.getTime()) / (7 * 24 * 60 * 60 * 1000), 1);
+    const perWeek = (count: number | null, from: Date, to: Date) =>
+      count == null ? null : count / weeks(from, to);
+    const ratioPct = (part: number | null, total: number | null) =>
+      part == null || total == null || total === 0 ? null : (part / total) * 100;
+
+    const metrics = buildPeriodComparison({
+      cycleTimeHours: { a: num(r.cycle_a), b: num(r.cycle_b) },
+      issueCycleHours: { a: num(r.issue_cycle_a), b: num(r.issue_cycle_b) },
+      deployFreqPerWeek: {
+        a: perWeek(num(r.deploys_a), a.from, a.to),
+        b: perWeek(num(r.deploys_b), b.from, b.to),
+      },
+      changeFailureRatePct: {
+        a: ratioPct(num(r.corrective_a), num(r.total_a)),
+        b: ratioPct(num(r.corrective_b), num(r.total_b)),
+      },
+      timeToRestoreHours: { a: num(r.ttr_a), b: num(r.ttr_b) },
+      throughput: { a: num(r.throughput_a), b: num(r.throughput_b) },
+    });
+
+    const trendBuilt = buildPeriodComparisonTrendSql({ config, scope });
+    // Built as a partial accumulator since only metrics whose source is in
+    // scope get a leg in the trend SQL; cast to the full PeriodTrajectories
+    // record at the return boundary (mirrors PeriodComparisonMetric['key'],
+    // which is drawn from the same PeriodMetricKey union).
+    const trajectories: Partial<PeriodTrajectories> = {};
+    if (trendBuilt) {
+      const tResult = await this.clickhouse.query({
+        query: trendBuilt.sql,
+        query_params: trendBuilt.params,
+        format: 'JSONEachRow',
+      });
+      const tRows = castRows<{ metric: string; month: string; value: number | string | null }>(
+        await tResult.json(),
+      );
+      for (const row of tRows) {
+        const key = row.metric as PeriodMetricKey;
+        (trajectories[key] ??= []).push({ month: row.month, value: num(row.value) });
+      }
+    }
+
+    return { metrics, periodA, periodB, trajectories: trajectories as PeriodTrajectories };
   }
 
   // Iteration planning accuracy: % of items committed to a sprint/iteration

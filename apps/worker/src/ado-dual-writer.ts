@@ -72,7 +72,7 @@ async function upsertOnce(
 // helper lets the basic processor still dual-write its work items into the
 // matching `ado_work_items` ClickHouse table. ReplacingMergeTree merges the
 // rows with any richer data future intelligence handlers may write into the
-// same table. Mirrors the mapping in packages/db/src/backfill-to-clickhouse.ts.
+// same table, using the same column mapping the original backfill used.
 
 export interface AdoBasicDualWritePayload {
   workItems: ReadonlyArray<Record<string, unknown>>;

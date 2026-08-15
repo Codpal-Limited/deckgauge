@@ -90,7 +90,7 @@ async function upsertGithubOnce(
 // issues + milestones into the matching `github_issues` and `github_milestones`
 // ClickHouse tables. ReplacingMergeTree merges the rows with the rich data the
 // intelligence handler writes (different tables — no row collision today).
-// Mirrors the mapping in packages/db/src/backfill-to-clickhouse.ts.
+// Uses the same column mapping the original backfill used.
 
 export interface GitHubBasicDualWritePayload {
   issues: ReadonlyArray<Record<string, unknown>>;

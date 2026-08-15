@@ -26,6 +26,7 @@ import {
 import { createTypeCache, type TypeCache } from './type-cache.js';
 import { clickhouse as defaultClickhouse } from '@deckgauge/db';
 import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
+import { board } from '../auth/policy.js';
 
 // Same 60s TTL as Jira/ADO — see board-jira-source.routes.ts for rationale.
 const TYPE_CACHE_TTL_MS = 60_000;
@@ -78,6 +79,7 @@ export function boardGitHubSourceRoutes(deps: {
   return async function plugin(app: FastifyInstance) {
     app.get<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/github',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -87,6 +89,7 @@ export function boardGitHubSourceRoutes(deps: {
 
     app.post<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/github',
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -110,6 +113,7 @@ export function boardGitHubSourceRoutes(deps: {
 
     app.post<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/github/bulk',
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -132,6 +136,7 @@ export function boardGitHubSourceRoutes(deps: {
 
     app.patch<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/github/:id',
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -145,6 +150,7 @@ export function boardGitHubSourceRoutes(deps: {
 
     app.delete<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/github/:id',
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -168,6 +174,7 @@ export function boardGitHubSourceRoutes(deps: {
 
     app.get<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/github/:id/preview-count',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -186,6 +193,7 @@ export function boardGitHubSourceRoutes(deps: {
 
     app.get<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/github/:id/source-statuses',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -205,6 +213,7 @@ export function boardGitHubSourceRoutes(deps: {
 
     app.get<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/github/:id/labels',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -228,6 +237,7 @@ export function boardGitHubSourceRoutes(deps: {
 
     app.get<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/github/:id/issue-types',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })

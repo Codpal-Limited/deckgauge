@@ -14,7 +14,7 @@ Thanks for your interest in improving **Deckgauge** — the open-source engineer
 Deckgauge is a **pnpm + Turborepo monorepo** (Next.js web, Fastify API, BullMQ worker, Postgres, Redis, ClickHouse, Keycloak).
 
 ```bash
-git clone https://github.com/YanivCodpal/deckgauge
+git clone https://github.com/Codpal-Limited/deckgauge
 cd deckgauge
 cp .env.example .env
 docker compose up -d
@@ -68,4 +68,4 @@ Deckgauge is licensed under the **Functional Source License (FSL-1.1-Apache-2.0)
 
 ## Questions?
 
-Open an issue or discussion, or email **yaniv@codpal.com**.
+Open an issue or discussion, or email **support@codpal.com**.

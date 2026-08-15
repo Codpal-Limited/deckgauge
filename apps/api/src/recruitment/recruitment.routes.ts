@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
 import { z } from 'zod';
 import { RecruitmentService, RecruitmentError } from './recruitment.service.js';
+import { board } from '../auth/policy.js';
 
 const OnboardBodySchema = z.object({
   orgTreeId: z.string().min(1),
@@ -46,6 +47,7 @@ export async function recruitmentRoutes(
   // Hired candidate row and link the row to it. EDITOR+ on the board required.
   app.post<{ Params: { boardId: string; projectId: string } }>(
     '/boards/:boardId/candidates/:projectId/onboard',
+    { config: { policy: board('EDITOR') } },
     async (req, reply) => {
       const { boardId, projectId } = req.params;
       if (!(await requireBoardEditor(req, reply, prisma, boardId))) return;

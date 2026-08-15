@@ -9,6 +9,7 @@ import type {
   BoardOwner,
   BoardStatus,
 } from '@deckgauge/shared';
+import type { JiraSourceLinks } from '@deckgauge/shared';
 
 export interface ProjectRowProps {
   project: Project;
@@ -31,9 +32,9 @@ export interface ProjectRowProps {
   onSelect?: (selected: boolean) => void;
   onExpand?: () => void;
   commentCount?: number;
-  jiraAtlassianUrl?: string;
+  jiraLinks?: JiraSourceLinks;
   hasGitHubIntegration?: boolean;
-  adoOrgUrl?: string;
+  adoOrgUrls?: Record<string, string>;
   hasAdoIntegration?: boolean;
   boardOwners?: BoardOwner[];
   boardStatuses?: BoardStatus[];
@@ -86,9 +87,9 @@ export function ProjectRow({
   onSelect,
   onExpand,
   commentCount,
-  jiraAtlassianUrl,
+  jiraLinks,
   hasGitHubIntegration,
-  adoOrgUrl,
+  adoOrgUrls,
   hasAdoIntegration,
   boardOwners,
   boardStatuses,
@@ -121,13 +122,14 @@ export function ProjectRow({
       description={project.description ?? undefined}
       updatedAt={project.updatedAt}
       jiraKey={project.jiraKey}
-      jiraAtlassianUrl={jiraAtlassianUrl}
+      jiraProjectKey={project.jiraProjectKey}
+      jiraLinks={jiraLinks}
       githubIssueId={project.githubIssueId}
       githubRepoFullName={project.githubRepoFullName}
       hasGitHubIntegration={hasGitHubIntegration}
       adoWorkItemId={project.adoWorkItemId}
       adoProject={project.adoProject}
-      adoOrgUrl={adoOrgUrl}
+      adoOrgUrls={adoOrgUrls}
       hasAdoIntegration={hasAdoIntegration}
       onEdit={onEdit}
       onDelete={onDelete}

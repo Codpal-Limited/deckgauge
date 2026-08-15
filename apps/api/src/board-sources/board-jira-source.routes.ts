@@ -19,6 +19,7 @@ import {
 import { createTypeCache, type TypeCache } from './type-cache.js';
 import { clickhouse as defaultClickhouse } from '@deckgauge/db';
 import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
+import { board } from '../auth/policy.js';
 
 // Type-cache TTL: 60s. Provider type lists change rarely (admin-edited issue
 // types) so 60s is plenty fresh while still cutting the request rate ~60x for
@@ -70,6 +71,7 @@ export function boardJiraSourceRoutes(deps: {
   return async function plugin(app: FastifyInstance) {
     app.get<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/jira',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -77,8 +79,22 @@ export function boardJiraSourceRoutes(deps: {
       },
     );
 
+    // jiraProjectKey -> atlassianUrl (+ a fallback for rows whose source was
+    // detached), scoped to this board. Lets the web app build each row's Source-column
+    // link from the Jira site it actually synced from, instead of one global URL.
+    app.get<{ Params: { boardId: string } }>(
+      '/boards/:boardId/sources/jira/atlassian-urls',
+      { config: { policy: board('VIEWER') } },
+      async (req, reply) => {
+        const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
+        if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
+        return service.atlassianUrlsByProjectKey(params.data.boardId);
+      },
+    );
+
     app.post<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/jira',
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -94,6 +110,7 @@ export function boardJiraSourceRoutes(deps: {
 
     app.patch<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/jira/:id',
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -107,6 +124,7 @@ export function boardJiraSourceRoutes(deps: {
 
     app.delete<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/jira/:id',
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -119,6 +137,7 @@ export function boardJiraSourceRoutes(deps: {
 
     app.get<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/jira/:id/preview-count',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -137,6 +156,7 @@ export function boardJiraSourceRoutes(deps: {
 
     app.get<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/jira/:id/source-statuses',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -156,6 +176,7 @@ export function boardJiraSourceRoutes(deps: {
 
     app.get<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/jira/:id/issue-types',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })

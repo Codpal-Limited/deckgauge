@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { BoardStatusService } from './board-status.service.js';
 import type { PrismaClient } from '@deckgauge/db';
 import { CreateBoardStatusInputSchema, UpdateBoardStatusInputSchema } from '@deckgauge/shared';
+import { board, viaEntity, fromParam } from '../auth/policy.js';
 
 function isPrismaUniqueConstraintError(err: unknown): boolean {
   return (
@@ -21,6 +22,7 @@ export async function boardStatusRoutes(
   // GET /boards/:boardId/statuses
   app.get<{ Params: { boardId: string } }>(
     '/boards/:boardId/statuses',
+    { config: { policy: board('VIEWER') } },
     async (req, reply) => {
       const statuses = await service.listByBoard(req.params.boardId);
       return reply.send(statuses);
@@ -30,6 +32,7 @@ export async function boardStatusRoutes(
   // POST /boards/:boardId/statuses
   app.post<{ Params: { boardId: string } }>(
     '/boards/:boardId/statuses',
+    { config: { policy: board('EDITOR') } },
     async (req, reply) => {
       const parsed = CreateBoardStatusInputSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -48,9 +51,11 @@ export async function boardStatusRoutes(
     },
   );
 
-  // PATCH /board-statuses/:id
+  // PATCH /board-statuses/:id — :id is a board status id; the board is
+  // reachable through BoardStatus.boardId (direct column).
   app.patch<{ Params: { id: string } }>(
     '/board-statuses/:id',
+    { config: { policy: board('EDITOR', viaEntity('boardStatus', fromParam('id'))) } },
     async (req, reply) => {
       const parsed = UpdateBoardStatusInputSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -69,9 +74,10 @@ export async function boardStatusRoutes(
     },
   );
 
-  // DELETE /board-statuses/:id
+  // DELETE /board-statuses/:id — see PATCH /board-statuses/:id.
   app.delete<{ Params: { id: string } }>(
     '/board-statuses/:id',
+    { config: { policy: board('EDITOR', viaEntity('boardStatus', fromParam('id'))) } },
     async (req, reply) => {
       const result = await service.delete(req.params.id);
       if (!result.deleted) {

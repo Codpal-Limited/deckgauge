@@ -15,7 +15,9 @@ interface OrgTreesPanelProps {
 
 export function OrgTreesPanel({ orgTrees, activePath }: OrgTreesPanelProps) {
   if (orgTrees.length === 0) {
-    return <PanelEmptyState message="No org trees yet. Create one with the New button below." />;
+    return (
+      <PanelEmptyState message="No org trees have been shared with you yet. Ask an owner to share one, or create a new one with the New button below." />
+    );
   }
 
   return (

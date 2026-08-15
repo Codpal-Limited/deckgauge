@@ -31,10 +31,12 @@ export type {
   AzureDevOpsProjectSync,
   AdoRepoSyncState,
   OrgTree,
+  OrgTreeAccess,
   OrgEmployee,
   OrgEmployeeAlias,
   OrgTreeSource,
   OrgTreeTimesheetConfig,
+  RetiredJiraProject,
   OrgEmployeeComment,
   CostClassification,
   EmployeeBoard,
@@ -42,6 +44,9 @@ export type {
   EmployeeBoardMember,
   EmployeeColumn,
   EmployeeFieldValue,
+  AdvisorConfig,
+  AdvisorSession,
+  AdvisorMessage,
 } from "@prisma/client";
 export type { BoardAccessRole, BoardViewType, SyncSource } from "@prisma/client";
 export type {

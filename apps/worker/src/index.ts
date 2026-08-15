@@ -24,6 +24,9 @@ import {
   FakeAdoPrAdapter,
   AdoCommitAdapter,
   FakeAdoCommitAdapter,
+  AdoDeploymentAdapter,
+  FakeAdoDeploymentAdapter,
+  RequestThrottle,
 } from '@deckgauge/shared'
 import { loadAzureDevOpsConfig } from '@deckgauge/shared/azure-devops-config'
 import { handleSyncJob } from './jira-sync.handler.js'
@@ -129,8 +132,15 @@ const chClient = {
     if (rows.length === 0) return
     await chInsertMany(table, rows as Array<Record<string, unknown>>)
   },
+  // Read-back path. The incremental ADO revisions sweep uses this to recover the
+  // state each work item was already in before its window, so a status change at
+  // the window boundary keeps its true from_state and dwell time instead of
+  // re-reading history from Azure DevOps.
+  async queryRows<T>(sql: string): Promise<T[]> {
+    const result = await clickhouse.query({ query: sql, format: 'JSONEachRow' })
+    return (await result.json()) as T[]
+  },
 }
-void clickhouse // keep import referenced for future direct queries
 
 const queue = new Queue('jira-sync', { connection })
 const worker = new Worker(
@@ -156,6 +166,16 @@ await queue.add('jira-sync', { trigger: 'startup' }, { jobId: 'startup-job' })
 
 // Schedule repeating job every 15 minutes with dedup
 const repeatInterval = process.env.CRON_INTERVAL ? parseInt(process.env.CRON_INTERVAL) : 15 * 60 * 1000
+
+// Azure DevOps gets its own, slower cadence. A full ADO pass across two real
+// orgs (23 projects, 363 repos) took ~33 minutes
+// against a 15-minute schedule, so passes ran back-to-back around the clock and
+// at times overlapped — which is how the account's request throughput budget got
+// exhausted. Separate from CRON_INTERVAL so throttling ADO does not also stale
+// out Jira/GitHub/GitLab, which are nowhere near their limits.
+const adoRepeatInterval = process.env.ADO_CRON_INTERVAL
+  ? parseInt(process.env.ADO_CRON_INTERVAL)
+  : 60 * 60 * 1000
 
 // Ensure exactly ONE repeatable schedule per queue. BullMQ keys repeatable jobs
 // by interval, so a prior run with a different CRON_INTERVAL (e.g. a test using
@@ -247,18 +267,44 @@ const jiraIntelFactory = (cfg: { atlassianUrl: string; email: string; apiToken: 
   return new JiraIntelligenceAdapter(cfg)
 }
 
+// ── Azure DevOps client-side pacing ────────────────────────────────────────
+// ONE throttle for every ADO adapter: the work-item sync, the PR sync and the
+// commit sync all authenticate as the same PAT, so Azure DevOps bills them
+// against a single account throughput budget. Sharing the instance means a 429
+// seen by any of them slows all of them (see RequestThrottle.backOff).
+//
+// Sizing: ADO meters a caller in throughput units over a 5-minute sliding
+// window and starts delaying requests past its share. There is no reliable
+// remaining-quota header to steer by, so we pace conservatively — ~3 req/s with
+// a 600-per-5-min ceiling — and let Retry-After correct us when we are wrong.
+// Both knobs are env-tunable for ops without a rebuild.
+const adoThrottle = new RequestThrottle({
+  minIntervalMs: Number(process.env.ADO_MIN_REQUEST_INTERVAL_MS) || 300,
+  maxPerWindow: Number(process.env.ADO_MAX_REQUESTS_PER_WINDOW) || 600,
+  windowMs: 5 * 60 * 1000,
+})
+
 const adoPrFactory = (cfg: { orgUrl: string; authMethod: 'PAT' | 'BASIC'; accessToken: string; username?: string; instanceId: string }) => {
   if (process.env.USE_FAKE_ADO === 'true') {
     return new FakeAdoPrAdapter([])
   }
-  return new AdoPrAdapter(cfg)
+  return new AdoPrAdapter({ ...cfg, throttle: adoThrottle })
 }
 
 const adoCommitFactory = (cfg: { orgUrl: string; authMethod: 'PAT' | 'BASIC'; accessToken: string; username?: string; instanceId: string }) => {
   if (process.env.USE_FAKE_ADO === 'true') {
     return new FakeAdoCommitAdapter([])
   }
-  return new AdoCommitAdapter(cfg)
+  return new AdoCommitAdapter({ ...cfg, throttle: adoThrottle })
+}
+
+// Real deployment records (classic Release pipelines) → cockpit.ado_deployments,
+// which DORA's deploy frequency prefers over the merged-PR proxy.
+const adoDeploymentFactory = (cfg: { orgUrl: string; authMethod: 'PAT' | 'BASIC'; accessToken: string; username?: string; instanceId: string }) => {
+  if (process.env.USE_FAKE_ADO === 'true') {
+    return new FakeAdoDeploymentAdapter([])
+  }
+  return new AdoDeploymentAdapter({ ...cfg, throttle: adoThrottle })
 }
 
 function makeIntelligenceQueue(name: string, handler: (jobData: { trigger?: string }) => Promise<unknown>) {
@@ -295,12 +341,19 @@ const jiraIntelQueue = makeIntelligenceQueue('jira-intelligence-sync', (data) =>
   handleJiraIntelligenceSync(data as never, db, jiraIntelFactory, chClient),
 )
 const adoIntelQueue = makeIntelligenceQueue('ado-intelligence-sync', (data) =>
-  handleAdoIntelligenceSync(data as never, db, adoPrFactory, adoCommitFactory, chClient),
+  handleAdoIntelligenceSync(
+    data as never,
+    db,
+    adoPrFactory,
+    adoCommitFactory,
+    chClient,
+    adoThrottle,
+    adoDeploymentFactory,
+  ),
 )
 
-for (const q of [jiraIntelQueue, adoIntelQueue]) {
-  await scheduleRepeatable(q, q.name, { trigger: 'scheduled' }, repeatInterval, `${q.name}-scheduled`)
-}
+await scheduleRepeatable(jiraIntelQueue, jiraIntelQueue.name, { trigger: 'scheduled' }, repeatInterval, `${jiraIntelQueue.name}-scheduled`)
+await scheduleRepeatable(adoIntelQueue, adoIntelQueue.name, { trigger: 'scheduled' }, adoRepeatInterval, `${adoIntelQueue.name}-scheduled`)
 
 // ── GitHub bulk-repo ingestion: three-tier sync queues ────────────────────
 // Each tier has its own queue + worker. Repeatables are added per-repo by
@@ -415,7 +468,7 @@ const adoAdapterFactory = (cfg: {
   if (process.env.USE_FAKE_AZURE_DEVOPS === 'true') {
     return new FakeAzureDevOpsAdapter();
   }
-  return new AzureDevOpsRestAdapter(cfg);
+  return new AzureDevOpsRestAdapter({ ...cfg, throttle: adoThrottle });
 };
 
 const adoWorker = new Worker(
@@ -439,8 +492,8 @@ adoWorker.on('failed', (job, err) => {
 // Enqueue ADO startup job
 await adoQueue.add('azure-devops-sync', { trigger: 'startup' }, { jobId: 'ado-startup-job' });
 
-// Schedule ADO repeating sync
-await scheduleRepeatable(adoQueue, 'azure-devops-sync', { trigger: 'scheduled' }, repeatInterval, 'ado-sync-scheduled');
+// Schedule ADO repeating sync — on the slower ADO cadence, see adoRepeatInterval
+await scheduleRepeatable(adoQueue, 'azure-devops-sync', { trigger: 'scheduled' }, adoRepeatInterval, 'ado-sync-scheduled');
 
 // ── GitHub sync ─────────────────────────────────────────────────────────────
 

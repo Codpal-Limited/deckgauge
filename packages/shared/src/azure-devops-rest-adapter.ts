@@ -1,6 +1,7 @@
 import { AzureDevOpsPort } from './azure-devops-port';
 import { AzureDevOpsWorkItem } from './azure-devops-schemas';
 import { AdoWorkItemRevision } from './ado-work-item-revision';
+import type { Throttle } from './request-throttle';
 
 // ── Error Classes ─────────────────────────────────────────────────────────────
 
@@ -25,6 +26,11 @@ interface AzureDevOpsAdapterConfig {
   authMethod: 'PAT' | 'BASIC';
   accessToken: string;
   username?: string;
+  /**
+   * Optional client-side pacing, shared with the ADO PR/commit adapters so all
+   * ADO traffic spends one account-wide budget. Omitted in tests.
+   */
+  throttle?: Throttle;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -134,6 +140,7 @@ export class AzureDevOpsRestAdapter implements AzureDevOpsPort {
   private readonly fetchFn: FetchFn;
   private readonly delayFn: DelayFn;
   private readonly wiqlPageSize: number;
+  private readonly throttle?: Throttle;
   private consecutiveFailures = 0;
 
   constructor(
@@ -146,6 +153,7 @@ export class AzureDevOpsRestAdapter implements AzureDevOpsPort {
     this.fetchFn = fetchFn;
     this.delayFn = delayFn;
     this.wiqlPageSize = wiqlPageSize;
+    this.throttle = config.throttle;
 
     if (config.authMethod === 'PAT') {
       const encoded = Buffer.from(`:${config.accessToken}`).toString('base64');
@@ -343,6 +351,7 @@ export class AzureDevOpsRestAdapter implements AzureDevOpsPort {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      await this.throttle?.acquire();
       let response: Response;
       try {
         response = await this.fetchFn(url, {
@@ -377,6 +386,9 @@ export class AzureDevOpsRestAdapter implements AzureDevOpsPort {
       if (response.status === 429) {
         const retryAfter = response.headers.get('Retry-After');
         const waitMs = retryAfter ? Number(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
+        // Propagate the backoff to the shared throttle so the PR/commit sync
+        // slows down too — all ADO traffic spends one account budget.
+        this.throttle?.backOff(waitMs);
         if (attempt < MAX_RETRIES) {
           await this.delayFn(waitMs);
         }

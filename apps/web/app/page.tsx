@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Group, BoardColumn, BoardOwner, BoardStatus } from "@deckgauge/shared";
+import type { JiraSourceLinks } from "@deckgauge/shared";
 import { BoardView } from "./components/BoardView";
 import BoardPageContent from "./components/BoardPageContent";
 import { auth } from "@/auth";
@@ -77,14 +78,22 @@ async function fetchBoard(boardId: string) {
   }
 }
 
-async function fetchJiraAtlassianUrl(): Promise<string> {
+// Keyed by the row's own `jiraProjectKey`, scoped to this board — a board can attach
+// Jira sources from more than one site. Previously this took the first row of the
+// global `/jira/instances` list, so every board's Jira links pointed at whichever
+// instance was listed first, regardless of where the board actually synced from.
+// `no-store` for the same reason as the ADO map: board-source attach/detach
+// revalidates no cache tag, so a tagged entry here would never be invalidated.
+async function fetchJiraLinks(boardId: string): Promise<JiraSourceLinks> {
+  const empty: JiraSourceLinks = { byProjectKey: {}, fallback: null };
   try {
-    const res = await authFetch('/jira/instances', { cache: 'no-store' });
-    if (!res.ok) return '';
-    const instances = await res.json();
-    return instances.length > 0 ? instances[0].atlassianUrl : '';
+    const res = await authFetch(`/boards/${boardId}/sources/jira/atlassian-urls`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return empty;
+    return res.json();
   } catch {
-    return '';
+    return empty;
   }
 }
 
@@ -99,14 +108,26 @@ async function fetchHasGitHubIntegration(): Promise<boolean> {
   }
 }
 
-async function fetchAzureDevOpsOrgUrl(): Promise<string> {
+// Keyed by ADO project name — a board's items can come from more than one ADO
+// org/connection (BoardAdoSource is board <-> AzureDevOpsProjectSync, not 1:1),
+// so the org URL must be resolved per project, scoped to this board. Previously
+// this grabbed the first row of the global `/azure-devops/instances` list, which
+// pointed every board's Source links at whichever ADO connection was created
+// first — regardless of which connection a given board actually synced from.
+// `no-store`, matching the sibling Jira/GitHub connection fetchers: attaching or
+// detaching a board source (apps/web/app/actions/board-sources.ts) revalidates
+// nothing, so a `boardTag` cache entry here would never be invalidated — a newly
+// attached source's rows would render "—" instead of a link, and an edited org URL
+// would stay stale. Only board *content* mutations revalidate boardTag.
+async function fetchAdoOrgUrlsByProject(boardId: string): Promise<Record<string, string>> {
   try {
-    const res = await authFetch('/azure-devops/instances', { cache: 'no-store' });
-    if (!res.ok) return '';
-    const instances = await res.json();
-    return instances.length > 0 ? instances[0].orgUrl : '';
+    const res = await authFetch(`/boards/${boardId}/sources/ado/org-urls`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return {};
+    return res.json();
   } catch {
-    return '';
+    return {};
   }
 }
 
@@ -190,9 +211,9 @@ export default async function BoardPage({ searchParams }: PageProps) {
           groups={[]}
           columns={[]}
           boardId=""
-          jiraAtlassianUrl=""
+          jiraLinks={{ byProjectKey: {}, fallback: null }}
           hasGitHubIntegration={false}
-          adoOrgUrl=""
+          adoOrgUrls={{}}
           hasAdoIntegration={false}
           commentCounts={{}}
           boardOwners={[]}
@@ -203,19 +224,19 @@ export default async function BoardPage({ searchParams }: PageProps) {
     );
   }
 
-  const [groupsResult, columns, board, jiraAtlassianUrl, hasGitHubIntegration, adoOrgUrl, boardOwners, boardStatuses, views] = await Promise.all([
+  const [groupsResult, columns, board, jiraLinks, hasGitHubIntegration, adoOrgUrls, boardOwners, boardStatuses, views] = await Promise.all([
     fetchGroups(selectedBoardId),
     fetchColumns(selectedBoardId),
     fetchBoard(selectedBoardId),
-    fetchJiraAtlassianUrl(),
+    fetchJiraLinks(selectedBoardId),
     fetchHasGitHubIntegration(),
-    fetchAzureDevOpsOrgUrl(),
+    fetchAdoOrgUrlsByProject(selectedBoardId),
     fetchBoardOwners(selectedBoardId),
     fetchBoardStatuses(selectedBoardId),
     fetchBoardViews(selectedBoardId),
   ]);
   const { groups, total: projectTotal } = groupsResult;
-  const hasAdoIntegration = !!adoOrgUrl;
+  const hasAdoIntegration = Object.keys(adoOrgUrls).length > 0;
 
   // Comment counts for the first (SSR) page only; the progressive loader fetches
   // counts for later pages client-side as they load.
@@ -240,9 +261,9 @@ export default async function BoardPage({ searchParams }: PageProps) {
           groups,
           columns,
           boardId: selectedBoardId,
-          jiraAtlassianUrl,
+          jiraLinks,
           hasGitHubIntegration,
-          adoOrgUrl,
+          adoOrgUrls,
           hasAdoIntegration,
           commentCounts,
           boardOwners,

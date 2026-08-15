@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --external react",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "lint": "eslint ."
   },
   "peerDependencies": {

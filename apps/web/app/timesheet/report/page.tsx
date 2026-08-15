@@ -1,5 +1,5 @@
 import { listOrgTrees } from '../../actions/org-trees';
-import { fetchCapexReport } from '../../actions/timesheet';
+import { fetchCapexReportForTree } from '../../actions/timesheet';
 import { resolveWindow } from '../lib/timesheet-ui';
 import { ReportView } from '../components/ReportView';
 import { TimesheetTabs } from '../components/TimesheetTabs';
@@ -10,8 +10,13 @@ export default async function TimesheetReportPage() {
   const initialOrgTreeId = orgTrees[0]?.id ?? '';
   const anchorIso = new Date().toISOString();
   const w = resolveWindow(anchorIso, 'month');
-  const initialReport = initialOrgTreeId
-    ? await fetchCapexReport({
+
+  // See timesheet/page.tsx's identical comment: a 403 must reach ReportView as
+  // `initialForbidden` and a 401 as `initialUnauthenticated`, not collapse
+  // into the same `initialReport: null` a real fetch failure produces — nor
+  // into each other, since their remedies differ.
+  const capexResult = initialOrgTreeId
+    ? await fetchCapexReportForTree({
         orgTreeId: initialOrgTreeId,
         from: w.from,
         to: w.to,
@@ -19,6 +24,10 @@ export default async function TimesheetReportPage() {
         mode: 'normalized',
       })
     : null;
+  const initialReport = capexResult?.ok ? capexResult.data : null;
+  const initialForbidden = capexResult != null && !capexResult.ok && capexResult.reason === 'forbidden';
+  const initialUnauthenticated =
+    capexResult != null && !capexResult.ok && capexResult.reason === 'unauthenticated';
 
   return (
     <main className="mx-auto max-w-7xl p-6">
@@ -39,6 +48,8 @@ export default async function TimesheetReportPage() {
           initialReport={initialReport}
           initialOrgTreeId={initialOrgTreeId}
           anchorIso={anchorIso}
+          initialForbidden={initialForbidden}
+          initialUnauthenticated={initialUnauthenticated}
         />
       )}
     </main>

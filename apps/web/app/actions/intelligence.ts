@@ -1,14 +1,15 @@
 // EI-031 — server actions for the intelligence UI.
 'use server';
 
+import { authFetch } from './api';
+
 interface SyncTriggerResult { ok: boolean; message: string; }
 
 export async function triggerIntelligenceSync(
   source: 'jira' | 'github' | 'ado' | 'gitlab' | 'all',
 ): Promise<SyncTriggerResult> {
-  const base = process.env.API_URL ?? 'http://api:3001';
   try {
-    const resp = await fetch(`${base}/intelligence/sync`, {
+    const resp = await authFetch('/intelligence/sync', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ source }),

@@ -2,6 +2,7 @@
 import { useWidgetConfigWithBoardPeriod } from '../useWidgetConfigWithBoardPeriod';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
+import { WidgetEmptyState } from './WidgetEmptyState';
 import { ReviewQualityTable } from './ReviewQualityTable';
 
 interface Props {
@@ -24,12 +25,7 @@ export default function ReviewQualityIndexWidget({ boardId, config }: Props) {
   const { data, error } = useWidgetData<Data>(boardId, 'REVIEW_QUALITY_INDEX', merged);
   if (error) return <WidgetErrorState />;
   if (!data) return <p className="text-sm text-slate-400">Loading…</p>;
-  if (data.emptyReason)
-    return (
-      <p className="text-sm text-slate-500 p-2">
-        Connect a GitHub or Azure DevOps source in the Sources tab.
-      </p>
-    );
+  if (data.emptyReason) return <WidgetEmptyState boardId={boardId} reason={data.emptyReason} />;
 
   return <ReviewQualityTable metrics={data} />;
 }

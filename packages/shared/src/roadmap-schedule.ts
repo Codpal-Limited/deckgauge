@@ -70,7 +70,7 @@ export interface ScheduledBar {
 
 const UNASSIGNED = '__unassigned__';
 
-function compareOrder(a: ScheduleProject, b: ScheduleProject): number {
+export function compareOrder(a: ScheduleProject, b: ScheduleProject): number {
   const ao = a.order ?? Number.POSITIVE_INFINITY;
   const bo = b.order ?? Number.POSITIVE_INFINITY;
   if (ao !== bo) return ao - bo;

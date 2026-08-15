@@ -4,6 +4,7 @@ import {
   createAdoProjectSync,
   deleteAdoProjectSync,
   updateAdoProjectSync,
+  saveAdoProductionConfig,
   type AdoProjectSyncRow,
 } from '../../actions/connections';
 
@@ -16,9 +17,11 @@ interface EditDraft {
   syncCommits: boolean;
   syncReposText: string;
   syncAllRepos: boolean;
+  prodDefinitionsText: string;
+  prodStagesText: string;
 }
 
-function parseRepos(text: string): string[] {
+function parseCsv(text: string): string[] {
   return text
     .split(',')
     .map((r) => r.trim())
@@ -40,7 +43,7 @@ export function AzureDevOpsConnectionsPanel({ initialSyncs }: Props) {
 
   function add() {
     setError(null);
-    const syncRepos = parseRepos(reposText);
+    const syncRepos = parseCsv(reposText);
     startTransition(async () => {
       try {
         const row = await createAdoProjectSync({
@@ -84,6 +87,8 @@ export function AzureDevOpsConnectionsPanel({ initialSyncs }: Props) {
       syncCommits: s.syncCommits,
       syncReposText: s.syncRepos.join(', '),
       syncAllRepos: s.syncAllRepos,
+      prodDefinitionsText: s.prodReleaseDefinitions.join(', '),
+      prodStagesText: s.prodStages.join(', '),
     });
   }
 
@@ -94,17 +99,32 @@ export function AzureDevOpsConnectionsPanel({ initialSyncs }: Props) {
 
   function saveEdit(id: string) {
     if (!editDraft) return;
+    const row = syncs.find((s) => s.id === id);
+    if (!row) return;
     setError(null);
     const patch = {
       syncPrs: editDraft.syncPrs,
       syncCommits: editDraft.syncCommits,
-      syncRepos: parseRepos(editDraft.syncReposText),
+      syncRepos: parseCsv(editDraft.syncReposText),
       syncAllRepos: editDraft.syncAllRepos,
+    };
+    const prodPatch = {
+      prodReleaseDefinitions: parseCsv(editDraft.prodDefinitionsText),
+      prodStages: parseCsv(editDraft.prodStagesText),
     };
     startTransition(async () => {
       try {
+        // Two endpoints, deliberately: the sync flags are AUTHENTICATED and keyed
+        // by the sync row, while production config is keyed by the INSTANCE so
+        // the connection-ownership policy applies. Local state is updated only
+        // after BOTH succeed — a user who lacks ownership must not be shown a
+        // production config the server refused to store.
         await updateAdoProjectSync(id, patch);
-        setSyncs((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+        await saveAdoProductionConfig(row.azureDevOpsInstanceId, row.adoProject, {
+          definitions: prodPatch.prodReleaseDefinitions,
+          stages: prodPatch.prodStages,
+        });
+        setSyncs((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch, ...prodPatch } : s)));
         setEditingId(null);
         setEditDraft(null);
       } catch (e) {
@@ -125,6 +145,7 @@ export function AzureDevOpsConnectionsPanel({ initialSyncs }: Props) {
               <th className="pb-2">Instance</th>
               <th className="pb-2">Project</th>
               <th className="pb-2">Code sync</th>
+              <th className="pb-2">Production deploys</th>
               <th className="pb-2">Used by</th>
               <th className="pb-2">Last synced</th>
               <th className="pb-2 text-right"></th>
@@ -198,6 +219,53 @@ export function AzureDevOpsConnectionsPanel({ initialSyncs }: Props) {
                             <span className="ml-1 text-slate-500">({s.syncRepos.join(', ')})</span>
                           )
                         )}
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-2">
+                    {isEditing && editDraft ? (
+                      <div className="flex flex-col gap-1">
+                        <input
+                          value={editDraft.prodDefinitionsText}
+                          onChange={(e) =>
+                            setEditDraft({ ...editDraft, prodDefinitionsText: e.target.value })
+                          }
+                          placeholder="Production pipelines"
+                          className="rounded border border-slate-300 px-2 py-1 text-xs"
+                        />
+                        <input
+                          value={editDraft.prodStagesText}
+                          onChange={(e) =>
+                            setEditDraft({ ...editDraft, prodStagesText: e.target.value })
+                          }
+                          placeholder="Production stages"
+                          className="rounded border border-slate-300 px-2 py-1 text-xs"
+                        />
+                        <span className="text-[11px] text-slate-500">
+                          Comma-separated. Leave both empty to infer production from stage names.
+                        </span>
+                      </div>
+                    ) : s.prodReleaseDefinitions.length === 0 && s.prodStages.length === 0 ? (
+                      // Nothing configured. Say WHICH rule is running rather than
+                      // leaving the cell blank — a blank reads as "no deploys",
+                      // when in fact the stage-name heuristic is deciding, and on
+                      // a project whose stages are all named "Stage 1" it cannot.
+                      <span
+                        className="text-xs text-slate-500"
+                        title="Deploy frequency and change failure rate infer production from the release stage name. Projects whose stages are all named ADO's default 'Stage 1' cannot be classified — list their pipelines or stages here."
+                      >
+                        Auto (stage names)
+                      </span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {[...s.prodReleaseDefinitions, ...s.prodStages].map((v) => (
+                          <span
+                            key={v}
+                            className="rounded border border-slate-300 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-700"
+                          >
+                            {v}
+                          </span>
+                        ))}
                       </div>
                     )}
                   </td>

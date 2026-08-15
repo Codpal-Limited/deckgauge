@@ -27,3 +27,26 @@ export function resolvePeriod(
   const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
   return { from, to };
 }
+
+// Resolve the two windows a period-comparison widget compares. config.periodA
+// and config.periodB each accept { from, to } ISO dates. When omitted, default
+// to two adjacent 90-day windows: B = the last 90 days, A = the 90 before that.
+const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+
+export function resolveComparePeriods(
+  config: Record<string, unknown>,
+  now: () => number = Date.now,
+): { a: ResolvedPeriod; b: ResolvedPeriod } {
+  const rawA = (config.periodA ?? {}) as Record<string, unknown>;
+  const rawB = (config.periodB ?? {}) as Record<string, unknown>;
+  const hasA = typeof rawA.from === 'string' && typeof rawA.to === 'string';
+  const hasB = typeof rawB.from === 'string' && typeof rawB.to === 'string';
+  if (hasA && hasB) {
+    return { a: resolvePeriod(rawA, now), b: resolvePeriod(rawB, now) };
+  }
+  const toB = new Date(now());
+  const fromB = new Date(toB.getTime() - NINETY_DAYS_MS);
+  const toA = fromB;
+  const fromA = new Date(toA.getTime() - NINETY_DAYS_MS);
+  return { a: { from: fromA, to: toA }, b: { from: fromB, to: toB } };
+}

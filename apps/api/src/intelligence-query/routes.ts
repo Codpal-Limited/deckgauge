@@ -11,6 +11,7 @@ import { interpolateChParams } from './sql-params.js';
 import { executeUserSql, ConsoleError } from './scope/execute.js';
 import { resolveScope } from './scope/resolve-scope.js';
 import { getConsoleClickhouse } from './scope/console-clickhouse.js';
+import { board } from '../auth/policy.js';
 
 export async function intelligenceQueryRoutes(
   app: FastifyInstance,
@@ -23,7 +24,7 @@ export async function intelligenceQueryRoutes(
   // { tables: [], scope: { repos: [], ... } }.
   app.get<{ Params: { boardId: string } }>(
     '/boards/:boardId/intelligence/schema',
-    { preHandler: [requireBoardAccess(prisma, 'VIEWER')] },
+    { config: { policy: board('VIEWER') }, preHandler: [requireBoardAccess(prisma, 'VIEWER')] },
     async (req, reply) => {
       const payload = await buildSchemaPayload(prisma, req.params.boardId);
       return reply.code(200).send(payload);
@@ -46,7 +47,7 @@ export async function intelligenceQueryRoutes(
     Querystring: { widget?: string; config?: string; filter?: string };
   }>(
     '/boards/:boardId/intelligence/sql',
-    { preHandler: [requireBoardAccess(prisma, 'VIEWER')] },
+    { config: { policy: board('VIEWER') }, preHandler: [requireBoardAccess(prisma, 'VIEWER')] },
     async (req, reply) => {
       const { widget, config: cfgB64, filter } = req.query;
 
@@ -126,7 +127,7 @@ export async function intelligenceQueryRoutes(
 
   app.post<{ Params: { boardId: string } }>(
     '/boards/:boardId/intelligence/execute',
-    { preHandler: [requireBoardAccess(prisma, 'VIEWER')] },
+    { config: { policy: board('VIEWER') }, preHandler: [requireBoardAccess(prisma, 'VIEWER')] },
     async (req, reply) => {
       const { boardId } = req.params;
 

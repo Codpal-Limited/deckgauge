@@ -1,5 +1,6 @@
+import type { TimesheetGridResponse } from '@deckgauge/shared';
 import { listOrgTrees } from '../actions/org-trees';
-import { fetchTimesheetGrid } from '../actions/timesheet';
+import { fetchTimesheetGridForTree } from '../actions/timesheet';
 import { resolveWindow } from './lib/timesheet-ui';
 import { TimesheetView } from './components/TimesheetView';
 import { TimesheetTabs } from './components/TimesheetTabs';
@@ -18,23 +19,40 @@ export default async function TimesheetPage({
     (requestedId && orgTrees.some((t) => t.id === requestedId) ? requestedId : orgTrees[0]?.id) ?? '';
   const anchorIso = new Date().toISOString();
   const w = resolveWindow(anchorIso, 'month');
-  const initialData = initialOrgTreeId
-    ? await fetchTimesheetGrid({
-        orgTreeId: initialOrgTreeId,
-        from: w.from,
-        to: w.to,
-        granularity: w.granularity,
-        mode: 'normalized',
-      })
-    : {
-        from: w.from,
-        to: w.to,
-        granularity: w.granularity,
-        mode: 'normalized' as const,
-        buckets: [],
-        employees: [],
-        unmatched: [],
-      };
+
+  // A 403 here must reach TimesheetView as `initialForbidden`, and a 401 as
+  // `initialUnauthenticated`, rather than collapsing into the same
+  // `initialData: null` a real fetch failure produces — or into each other.
+  // See fetchTimesheetGridForTree's doc for why conflating any of the three
+  // misleads the user about the remedy.
+  let initialData: TimesheetGridResponse | null = null;
+  let initialForbidden = false;
+  let initialUnauthenticated = false;
+  if (initialOrgTreeId) {
+    const result = await fetchTimesheetGridForTree({
+      orgTreeId: initialOrgTreeId,
+      from: w.from,
+      to: w.to,
+      granularity: w.granularity,
+      mode: 'normalized',
+    });
+    if (result.ok) {
+      initialData = result.data;
+    } else {
+      initialForbidden = result.reason === 'forbidden';
+      initialUnauthenticated = result.reason === 'unauthenticated';
+    }
+  } else {
+    initialData = {
+      from: w.from,
+      to: w.to,
+      granularity: w.granularity,
+      mode: 'normalized' as const,
+      buckets: [],
+      employees: [],
+      unmatched: [],
+    };
+  }
 
   return (
     <main className="mx-auto max-w-7xl p-6">
@@ -55,6 +73,8 @@ export default async function TimesheetPage({
           initialData={initialData}
           initialOrgTreeId={initialOrgTreeId}
           anchorIso={anchorIso}
+          initialForbidden={initialForbidden}
+          initialUnauthenticated={initialUnauthenticated}
         />
       )}
     </main>

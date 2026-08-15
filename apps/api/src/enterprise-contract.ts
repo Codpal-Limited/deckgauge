@@ -33,4 +33,10 @@ export interface EnterpriseModule {
   verifyLicense(): Promise<LicenseStatus>;
   registerRoutes(host: RouteHost, status: LicenseStatus): Promise<void>;
   enabledFeatures(status: LicenseStatus): FeatureFlag[];
+  /**
+   * Optional edition hook invoked best-effort after a user authenticates and
+   * their local record is upserted. Generic extension point (e.g. audit,
+   * last-login, notifications). Absent in Community.
+   */
+  onUserAuthenticated?(userId: string): Promise<void>;
 }

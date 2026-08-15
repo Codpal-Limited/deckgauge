@@ -3,6 +3,7 @@ import { JiraEpic, JiraIssue } from "./jira-schemas";
 
 export class FakeJiraAdapter implements JiraPort {
   public fixtureIssueTypesByProject: Record<string, string[]> = {};
+  public fixtureKeysByJql: Record<string, string[]> = {};
 
   private readonly epicData: Record<string, JiraEpic[]> = {
     BWAY: [
@@ -174,5 +175,15 @@ export class FakeJiraAdapter implements JiraPort {
 
   async fetchProjectIssueTypes(projectKey: string): Promise<string[]> {
     return this.fixtureIssueTypesByProject[projectKey] ?? [];
+  }
+
+  /**
+   * There is no JQL engine here, so callers that need a filtered key set must
+   * declare it: `fixtureKeysByJql[jql] = [...]`. An undeclared query resolves to
+   * no keys, which reads as "this filter admits nothing" — the safe direction
+   * for a fake, since the alternative would fake a filter that never filters.
+   */
+  async fetchIssueKeys(jql: string): Promise<string[]> {
+    return this.fixtureKeysByJql[jql] ?? [];
   }
 }

@@ -1,6 +1,7 @@
 import {
   reconstructIntervals,
   clipToWindow,
+  clipRetiredSpans,
   computeTimesheet,
   resolveDailyCapSeconds,
   resolveInProgressStatuses,
@@ -19,6 +20,7 @@ import {
   type CapexReportResponse,
   type EpicBreakdownResponse,
   type IntervalsResponse,
+  type RetiredProjectMap,
 } from '@deckgauge/shared';
 import { makeAssigneeResolver } from './assignee-resolver.js';
 import { shapeGrid, shapeReport, type EmployeeMeta } from './timesheet-shape.js';
@@ -39,6 +41,8 @@ export interface TimesheetDeps {
   /** Per-day working-hours cap in hours for a tree; null when unconfigured (→ engine default). */
   loadOrgTreeDailyCapHours: (orgTreeId: string) => Promise<number | null>;
   fetchTransitions: (toMs: number) => Promise<RawTransition[]>;
+  /** UPPERCASE Jira project key -> cutoff epoch-ms; issues of these projects stop accruing after the cutoff. */
+  loadRetiredProjects: () => Promise<RetiredProjectMap>;
   fetchParentLinks: () => Promise<Map<string, string>>;
   fetchClassificationMap: () => Promise<Map<string, 'CAPEX' | 'OPEX'>>;
   /** issueKey -> { title, source deep link }. One fetch, cached in the engine run. */
@@ -93,6 +97,7 @@ export class TimesheetService {
       parentOf,
       ownClassification,
       issueMeta,
+      retired,
     ] = await Promise.all([
       this.deps.loadEmployees(orgTreeId),
       this.deps.loadRules(),
@@ -102,6 +107,7 @@ export class TimesheetService {
       this.deps.fetchParentLinks(),
       this.deps.fetchClassificationMap(),
       this.deps.loadIssueMeta(),
+      this.deps.loadRetiredProjects(),
     ]);
 
     const titleByIssueKey = new Map<string, string>();
@@ -113,7 +119,7 @@ export class TimesheetService {
 
     const dailyCapSeconds = resolveDailyCapSeconds(dailyCapHours);
     const resolve = makeAssigneeResolver(loaded);
-    const spans = reconstructIntervals(transitions, nowMs);
+    const spans = clipRetiredSpans(reconstructIntervals(transitions, nowMs), retired);
     const result = computeTimesheet({
       employees: loaded.map((e) => ({ id: e.id, role: e.role })),
       rules,
@@ -211,11 +217,12 @@ export class TimesheetService {
     const toMs = Date.parse(q.to);
     const nowMs = this.now();
     // loadEmployees('') returns ALL employees for issue-scoped drill-down (Task 6 contract).
-    const [transitions, loaded, rules, orgTreeActiveStatuses] = await Promise.all([
+    const [transitions, loaded, rules, orgTreeActiveStatuses, retired] = await Promise.all([
       this.deps.fetchTransitions(toMs),
       this.deps.loadEmployees(''),
       this.deps.loadRules(),
       this.deps.loadOrgTreeActiveStatuses(q.orgTreeId),
+      this.deps.loadRetiredProjects(),
     ]);
     const resolve = makeAssigneeResolver(loaded);
     // Resolve the in-progress config exactly like the grid engine so the drawer's
@@ -225,7 +232,7 @@ export class TimesheetService {
       orgTreeActiveStatuses != null
         ? { statuses: new Set(orgTreeActiveStatuses), useCategoryFallback: false }
         : resolveInProgressStatuses({ id: q.employeeId, role: employee?.role ?? null }, rules);
-    const spans = reconstructIntervals(transitions, nowMs)
+    const spans = clipRetiredSpans(reconstructIntervals(transitions, nowMs), retired)
       .filter((s) => s.issueKey === q.issueKey && resolve(s.assignee, s.provider) === q.employeeId)
       .filter((s) => spanIsInProgress(s, config))
       .map((s) => clipToWindow(s, fromMs, toMs))

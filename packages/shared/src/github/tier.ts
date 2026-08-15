@@ -1,4 +1,4 @@
-// apps/worker/src/github-tier.ts
+// GitHub sync tiering. Moved here from the worker so the API can share it.
 export type Tier = 'hot' | 'warm' | 'cold';
 
 export function computeTier(lastPushedAt: Date | null): Tier {

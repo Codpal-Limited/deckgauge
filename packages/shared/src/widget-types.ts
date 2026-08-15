@@ -24,6 +24,7 @@ export const NEW_WIDGET_TYPES = [
   'AI_ADOPTION',
   'INVESTMENT_ALLOCATION',
   'DORA_METRICS',
+  'PERIOD_COMPARISON',
 ] as const;
 export type NewWidgetType = (typeof NEW_WIDGET_TYPES)[number];
 
@@ -102,6 +103,10 @@ export const WIDGET_SCOPE_REQUIREMENTS: Record<NewWidgetType, WidgetSourceKind[]
   // (time-to-restore), so any code or issue source makes it partially usable;
   // metrics without a matching source render as "—".
   DORA_METRICS: ['github', 'gitlab', 'ado', 'jira'],
+  // Period comparison spans the DORA proxy set (PR/commit speed + change-failure)
+  // plus issue throughput/time-to-restore — any code or issue source makes it
+  // partially usable; unsupported metrics render "—" in both periods.
+  PERIOD_COMPARISON: ['github', 'gitlab', 'ado', 'jira'],
 };
 
 export interface WidgetScopeFlags {

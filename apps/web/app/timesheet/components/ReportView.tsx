@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { CapexReportResponse, EpicBreakdownResponse } from '@deckgauge/shared';
-import { fetchCapexReport, fetchEpicBreakdown } from '../../actions/timesheet';
+import { fetchCapexReportForTree, fetchEpicBreakdownForTree } from '../../actions/timesheet';
 import { resolveWindow, formatPeriodLabel } from '../lib/timesheet-ui';
 import { buildReportCsv } from '../lib/report-csv';
 import { CapexReportPanel } from './CapexReportPanel';
@@ -63,6 +63,33 @@ interface ReportViewProps {
   anchorIso: string;
   /** Hide the org-tree picker when the view is already scoped to a single tree (e.g. embedded in the org page). */
   hideTreePicker?: boolean;
+  /**
+   * Set when the server-side initial fetch (in timesheet/report/page.tsx) got
+   * a 403 rather than null-from-any-other-failure — see
+   * `fetchCapexReportForTree`'s doc. The epic-breakdown leaderboard has no
+   * SSR seed (it always fetches on mount), so it has no equivalent initial
+   * prop — its own forbidden state starts false and is set by that fetch.
+   */
+  initialForbidden?: boolean;
+  /**
+   * Same idea one status code over: set when that initial fetch got a 401.
+   * Kept distinct from `initialForbidden` because the remedy differs — sign in
+   * again, versus ask for the analytics role or tree access.
+   */
+  initialUnauthenticated?: boolean;
+}
+
+/**
+ * Which denial the user is looking at, or `null` for "not denied". A 401 and a
+ * 403 send the user to different remedies, so they must not share one boolean
+ * — see `TimesheetDenialReason` in actions/timesheet.ts.
+ */
+type DeniedReason = 'forbidden' | 'unauthenticated' | null;
+
+function deniedCopy(reason: Exclude<DeniedReason, null>): string {
+  return reason === 'unauthenticated'
+    ? 'Your session has expired — sign in again to view this report.'
+    : 'Analytics is limited to accounts with the analytics role.';
 }
 
 function shiftAnchor(anchorIso: string, view: View, dir: 1 | -1): string {
@@ -145,7 +172,15 @@ function EpicPagination({ page, pageSize, total, count, onPrev, onNext }: EpicPa
   );
 }
 
-export function ReportView({ orgTrees, initialReport, initialOrgTreeId, anchorIso, hideTreePicker }: ReportViewProps) {
+export function ReportView({
+  orgTrees,
+  initialReport,
+  initialOrgTreeId,
+  anchorIso,
+  hideTreePicker,
+  initialForbidden = false,
+  initialUnauthenticated = false,
+}: ReportViewProps) {
   const [orgTreeId, setOrgTreeId] = useState(initialOrgTreeId);
   const [anchor, setAnchor] = useState(anchorIso);
   const [view, setView] = useState<View>('month');
@@ -153,10 +188,16 @@ export function ReportView({ orgTrees, initialReport, initialOrgTreeId, anchorIs
   const [groupBy, setGroupBy] = useState<GroupBy | undefined>(undefined);
   const [report, setReport] = useState<CapexReportResponse | null>(initialReport);
   const [loading, setLoading] = useState(false);
+  // See TimesheetView's identical field for why every path that can replace
+  // `report`/`epics` must also be able to set its denial flag.
+  const [denied, setDenied] = useState<DeniedReason>(
+    initialUnauthenticated ? 'unauthenticated' : initialForbidden ? 'forbidden' : null,
+  );
   const [epicWindow, setEpicWindow] = useState<EpicWindow>(EPIC_WINDOW_DEFAULT);
   const [epicPage, setEpicPage] = useState(0);
   const [epics, setEpics] = useState<EpicBreakdownResponse | null>(null);
   const [epicsLoading, setEpicsLoading] = useState(true);
+  const [epicsDenied, setEpicsDenied] = useState<DeniedReason>(null);
 
   async function reload(next: { orgTreeId?: string; anchor?: string; view?: View; mode?: Mode; groupBy?: GroupBy }) {
     const orgId = next.orgTreeId ?? orgTreeId;
@@ -167,8 +208,14 @@ export function ReportView({ orgTrees, initialReport, initialOrgTreeId, anchorIs
     const w = resolveWindow(a, v);
     setLoading(true);
     try {
-      const res = await fetchCapexReport({ orgTreeId: orgId, from: w.from, to: w.to, granularity: w.granularity, mode: m, groupBy: g });
-      setReport(res);
+      const res = await fetchCapexReportForTree({ orgTreeId: orgId, from: w.from, to: w.to, granularity: w.granularity, mode: m, groupBy: g });
+      if (res.ok) {
+        setReport(res.data);
+        setDenied(null);
+      } else {
+        setReport(null);
+        setDenied(res.reason === 'unknown' ? null : res.reason);
+      }
     } finally {
       setLoading(false);
     }
@@ -182,7 +229,7 @@ export function ReportView({ orgTrees, initialReport, initialOrgTreeId, anchorIs
     let cancelled = false;
     const w = epicWindowRange(epicWindow);
     setEpicsLoading(true);
-    fetchEpicBreakdown({
+    fetchEpicBreakdownForTree({
       orgTreeId,
       from: w.from,
       to: w.to,
@@ -191,7 +238,14 @@ export function ReportView({ orgTrees, initialReport, initialOrgTreeId, anchorIs
       offset: epicPage * EPIC_PAGE_SIZE,
     })
       .then((res) => {
-        if (!cancelled) setEpics(res);
+        if (cancelled) return;
+        if (res.ok) {
+          setEpics(res.data);
+          setEpicsDenied(null);
+        } else {
+          setEpics(null);
+          setEpicsDenied(res.reason === 'unknown' ? null : res.reason);
+        }
       })
       .finally(() => {
         if (!cancelled) setEpicsLoading(false);
@@ -305,6 +359,8 @@ export function ReportView({ orgTrees, initialReport, initialOrgTreeId, anchorIs
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card">
         {loading ? (
           <p className="p-4 text-center text-sm text-slate-400">Loading…</p>
+        ) : denied ? (
+          <p className="p-4 text-center text-sm text-slate-500">{deniedCopy(denied)}</p>
         ) : report === null ? (
           <p className="p-4 text-center text-sm text-red-500">
             Couldn't load the CapEx/OpEx report — the analytics backend may be unavailable.
@@ -344,6 +400,8 @@ export function ReportView({ orgTrees, initialReport, initialOrgTreeId, anchorIs
 
         {epicsLoading ? (
           <p className="p-4 text-center text-sm text-slate-400">Loading…</p>
+        ) : epicsDenied ? (
+          <p className="p-4 text-center text-sm text-slate-500">{deniedCopy(epicsDenied)}</p>
         ) : epics === null ? (
           <p className="p-4 text-center text-sm text-red-500">
             Couldn't load the epic breakdown — the analytics backend may be unavailable.

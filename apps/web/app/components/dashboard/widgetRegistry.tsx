@@ -39,6 +39,7 @@ import DeliveryTrendAnnotatedWidget from './widgets/DeliveryTrendAnnotatedWidget
 import AiAdoptionWidget from './widgets/AiAdoptionWidget';
 import InvestmentAllocationWidget from './widgets/InvestmentAllocationWidget';
 import DoraMetricsWidget from './widgets/DoraMetricsWidget';
+import PeriodComparisonWidget from './widgets/PeriodComparisonWidget';
 import CompareReviewQualityWidget from './widgets/CompareReviewQualityWidget';
 import CompareFlowWidget from './widgets/CompareFlowWidget';
 import CompareDeliveryWidget from './widgets/CompareDeliveryWidget';
@@ -723,6 +724,19 @@ export const WIDGET_CATALOG: WidgetDefinition[] = [
     configFields: [{ key: 'weeks', label: 'Range (weeks)', type: 'select', default: 12,
       options: [{ label: '4 weeks', value: 4 }, { label: '12 weeks', value: 12 }, { label: '26 weeks', value: 26 }] }],
     component: DoraMetricsWidget,
+  },
+  {
+    type: 'PERIOD_COMPARISON', label: 'Period-over-Period',
+    description:
+      'Compares the team against its own past — KPI deltas between two windows (e.g. last two quarters), with direction-aware improved/regressed verdicts.',
+    timeAware: false,
+    category: 'flow', subject: 'pull_requests',
+    sources: ['github', 'gitlab', 'ado', 'jira'],
+    requiredScopeAny: ['githubRepoFullNames', 'gitlabProjectPaths', 'adoProjects', 'jiraProjectKeys'],
+    chartKind: 'table',
+    defaultSize: { w: 12, h: 6 },
+    configFields: [],
+    component: PeriodComparisonWidget,
   },
   // ── P6 — multi-board comparison widgets (standalone Comparison only) ────────
   {

@@ -3,6 +3,7 @@ import { RoadmapService } from '../roadmap/roadmap.service.js';
 import { ProjectService, type UpdateProjectInput } from '../projects/project.service.js';
 import { ColumnService } from '../columns/column.service.js';
 import { RoadmapMembershipService } from './roadmap-membership.service.js';
+import { forbiddenBoardIds, type BoardAccessLog } from '../auth/board-access.js';
 
 const BUILT_IN_FIELDS = new Set(['name', 'description', 'status', 'owner']);
 
@@ -41,15 +42,24 @@ export class RoadmapItemService {
   }
 
   /**
-   * Verifies the project exists and its group belongs to the roadmap.
-   * Materialises subscription-derived groups first via reconcile().
+   * Verifies the project exists, its group belongs to the roadmap, and the
+   * caller may edit the project's *board*. Materialises subscription-derived
+   * groups first via reconcile().
+   *
+   * The board check is the point: these endpoints write to real board rows
+   * (name, status, owner, schedule, custom fields), and RoadmapAccess is
+   * granted independently of BoardAccess — a roadmap EDITOR who holds no role
+   * on the board would otherwise edit its content through the roadmap.
    *
    * @throws Error('ROADMAP_ITEM_NOT_FOUND') if project is missing
-   * @throws Error('ROADMAP_ITEM_FORBIDDEN') if project's group is not in the roadmap
+   * @throws Error('ROADMAP_ITEM_FORBIDDEN') if project's group is not in the
+   *   roadmap, or the caller lacks EDITOR on its board
    */
   private async assertItemInRoadmap(
     roadmapId: string,
     projectId: string,
+    userId: string,
+    log?: BoardAccessLog,
   ): Promise<{ boardId: string; groupId: string }> {
     await this._reconcile(roadmapId);
 
@@ -65,6 +75,9 @@ export class RoadmapItemService {
     });
     if (!membership) throw new Error('ROADMAP_ITEM_FORBIDDEN');
 
+    const forbidden = await forbiddenBoardIds(this.prisma, userId, [project.boardId], 'EDITOR', log);
+    if (forbidden.length > 0) throw new Error('ROADMAP_ITEM_FORBIDDEN');
+
     return { boardId: project.boardId, groupId: project.groupId };
   }
 
@@ -76,8 +89,10 @@ export class RoadmapItemService {
     roadmapId: string,
     projectId: string,
     patch: { startDate?: string | null; endDate?: string | null; durationCode?: string | null },
+    userId: string,
+    log?: BoardAccessLog,
   ): Promise<{ id: string; startDate: string | null; endDate: string | null; durationCode: string | null }> {
-    const { boardId } = await this.assertItemInRoadmap(roadmapId, projectId);
+    const { boardId } = await this.assertItemInRoadmap(roadmapId, projectId, userId, log);
     return this._setSchedule(boardId, projectId, patch);
   }
 
@@ -91,8 +106,10 @@ export class RoadmapItemService {
     projectId: string,
     field: string,
     value: string,
+    userId: string,
+    log?: BoardAccessLog,
   ): Promise<void> {
-    await this.assertItemInRoadmap(roadmapId, projectId);
+    await this.assertItemInRoadmap(roadmapId, projectId, userId, log);
 
     if (BUILT_IN_FIELDS.has(field)) {
       await this._projectUpdate(projectId, { [field]: value } as UpdateProjectInput);
@@ -109,8 +126,10 @@ export class RoadmapItemService {
     roadmapId: string,
     projectId: string,
     patch: { groupId?: string; order?: number },
+    userId: string,
+    log?: BoardAccessLog,
   ): Promise<void> {
-    await this.assertItemInRoadmap(roadmapId, projectId);
+    await this.assertItemInRoadmap(roadmapId, projectId, userId, log);
 
     if (patch.groupId !== undefined) {
       const tgt = await this.prisma.roadmapGroup.findUnique({

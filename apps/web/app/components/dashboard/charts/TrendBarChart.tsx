@@ -10,6 +10,7 @@ import {
   Legend,
   ReferenceLine,
 } from 'recharts';
+import { CHART_TOOLTIP } from './chartTheme';
 
 interface SeriesPoint {
   x: string;
@@ -58,7 +59,7 @@ export function TrendBarChart({
             fontSize: 11,
           }}
         />
-        <Tooltip />
+        <Tooltip {...CHART_TOOLTIP} />
         {series.length > 1 ? <Legend /> : null}
         {targetLine ? (
           <ReferenceLine

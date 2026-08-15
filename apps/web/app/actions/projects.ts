@@ -27,15 +27,25 @@ export type ProjectUpdateData = Partial<ProjectFormData> & {
   resetOwnerToAssignee?: boolean;
 };
 
-// When boardId is known, expire only the per-board cache tag. The previous
-// implementation also called revalidateTag(boardsListTag()) (stale — no
-// board-level fetch is tagged with boardsListTag; fetchAllProjects on / uses
-// cache: "no-store") and revalidatePath("/") in the boardId branch (redundant
-// — Next.js auto-revalidates the route a server action was called from).
-// The /-path fallback remains for code paths that lack a boardId.
-function invalidate(boardId?: string): void {
+// When boardId is known, expire the per-board Data Cache tag so the next server
+// render reads fresh groups/rows. High-frequency edits (drag reorder, inline
+// field edits) stop here — a route revalidation on every drop would refetch the
+// whole board (the over-fetch removed in 21981fb3).
+//
+// `revalidateRoute` additionally busts the client-side Router Cache for `/`.
+// Tag invalidation alone does NOT reliably purge the `/` segment from the Router
+// Cache once the user has soft-navigated away (e.g. to the Sources tab) and back
+// — a known Next 14 limitation for a route that isn't currently active. Without
+// it, structural changes (create/delete of a group, row, or column) persist in
+// the DB but the board replays the stale cached RSC payload on tab-return: a new
+// group/row/column vanishes and a deleted one reappears. Pass it for those ops.
+function invalidate(
+  boardId?: string,
+  opts?: { revalidateRoute?: boolean },
+): void {
   if (boardId) {
     revalidateTag(boardTag(boardId));
+    if (opts?.revalidateRoute) revalidatePath("/");
   } else {
     revalidatePath("/");
   }
@@ -51,7 +61,7 @@ export async function createProject(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  invalidate(boardId ?? data.boardId);
+  invalidate(boardId ?? data.boardId, { revalidateRoute: true });
 }
 
 export async function updateProject(
@@ -88,7 +98,7 @@ export async function deleteProject(
   boardId?: string,
 ): Promise<void> {
   await apiRequest(`/projects/${id}`, { method: "DELETE" });
-  invalidate(boardId);
+  invalidate(boardId, { revalidateRoute: true });
 }
 
 // Bulk delete for the board's "delete selected" action. The previous
@@ -112,7 +122,7 @@ export async function deleteProjects(
     const data = (await res.json()) as { deleted: number };
     deleted += data.deleted;
   }
-  invalidate(boardId);
+  invalidate(boardId, { revalidateRoute: true });
   return { deleted };
 }
 
@@ -179,7 +189,7 @@ export async function duplicateProject(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...data, name: `Copy of ${name}` }),
   });
-  invalidate(boardId ?? data.boardId);
+  invalidate(boardId ?? data.boardId, { revalidateRoute: true });
 }
 
 export interface ReorderUpdate {
@@ -223,7 +233,7 @@ export async function createColumn(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    invalidate(boardId);
+    invalidate(boardId, { revalidateRoute: true });
     return {};
   } catch (err) {
     const message =
@@ -264,7 +274,7 @@ export async function deleteColumn(
   boardId?: string,
 ): Promise<void> {
   await apiRequest(`/columns/${columnId}`, { method: "DELETE" });
-  invalidate(boardId);
+  invalidate(boardId, { revalidateRoute: true });
 }
 
 // --- Groups ---
@@ -285,7 +295,7 @@ export async function createGroup(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, boardId }),
   });
-  invalidate(boardId);
+  invalidate(boardId, { revalidateRoute: true });
 }
 
 export async function updateGroup(
@@ -306,7 +316,7 @@ export async function deleteGroup(
   boardId?: string,
 ): Promise<void> {
   await apiRequest(`/groups/${groupId}`, { method: "DELETE" });
-  invalidate(boardId);
+  invalidate(boardId, { revalidateRoute: true });
 }
 
 export async function reorderGroups(

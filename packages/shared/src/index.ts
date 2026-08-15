@@ -49,6 +49,28 @@ export {
 export { buildBoardTree } from "./build-board-tree";
 
 export {
+  CreateRetiredJiraProjectInputSchema,
+  UpdateRetiredJiraProjectInputSchema,
+  RetiredJiraProjectDtoSchema,
+} from './retired-projects-schemas';
+export type {
+  CreateRetiredJiraProjectInput,
+  UpdateRetiredJiraProjectInput,
+  RetiredJiraProjectDto,
+} from './retired-projects-schemas';
+
+export {
+  WidgetDataBatchItemSchema,
+  WidgetDataBatchRequestSchema,
+} from './widget-data-batch-schemas';
+export type {
+  WidgetDataBatchItem,
+  WidgetDataBatchRequest,
+  WidgetDataBatchResultEntry,
+  WidgetDataBatchResponse,
+} from './widget-data-batch-schemas';
+
+export {
   JiraEpicSchema,
   JiraIssueSchema,
   SyncRunSchema,
@@ -70,6 +92,8 @@ export {
   JiraAuthError,
 } from "./jira-cloud-adapter";
 
+export { stripJqlOrderBy, buildFilteredKeyJql } from "./jira-jql";
+
 export {
   JiraConfigSchema,
   type JiraConfig,
@@ -81,10 +105,12 @@ export {
   JiraInstancePublicSchema,
   CreateJiraInstanceInputSchema,
   UpdateJiraInstanceInputSchema,
+  ConnectionHintSchema,
   type JiraInstance,
   type JiraInstancePublic,
   type CreateJiraInstanceInput,
   type UpdateJiraInstanceInput,
+  type ConnectionHint,
 } from "./jira-instance-schemas";
 
 export {
@@ -266,7 +292,9 @@ export {
 export type { AzureDevOpsPort } from './azure-devops-port';
 export type { AdoWorkItemRevision } from './ado-work-item-revision';
 export { buildAdoTransitions } from './ado-transition-builder';
-export type { AdoTransitionRow } from './ado-transition-builder';
+export type { AdoTransitionRow, AdoPriorState } from './ado-transition-builder';
+export { RequestThrottle } from './request-throttle';
+export type { Throttle, RequestThrottleOpts, ThrottleClock } from './request-throttle';
 
 export {
   AzureDevOpsRestAdapter,
@@ -349,6 +377,19 @@ export type {
   AdoCommitFetchOpts,
   AdoCommitRow,
 } from './ado-commit-adapter';
+
+// Real ADO deployment records (classic Release pipelines) — the source DORA's
+// deploy frequency prefers over the merged-PR proxy.
+export {
+  AdoDeploymentAdapter,
+  FakeAdoDeploymentAdapter,
+  releaseHost,
+} from './ado-deployment-adapter';
+export type {
+  AdoDeploymentPort,
+  AdoDeploymentFetchOpts,
+  AdoDeploymentRow,
+} from './ado-deployment-adapter';
 
 // Resilient JSON fetch (per-attempt timeout covering the body read + bounded
 // retry) for long upstream-API sync loops.
@@ -442,11 +483,21 @@ export {
   SourceHealthStateSchema,
   BoardSourceHealthSchema,
   BoardSourceHealthResponseSchema,
+  SyncExclusionSourceSchema,
+  BoardSyncExclusionSchema,
+  BoardSyncExclusionListResponseSchema,
+  RestoreBoardSyncExclusionsInputSchema,
+  RestoreBoardSyncExclusionsResponseSchema,
   type BoardSyncEnqueueResponse,
   type BoardSyncStatusResponse,
   type SourceHealthState,
   type BoardSourceHealth,
   type BoardSourceHealthResponse,
+  type SyncExclusionSource,
+  type BoardSyncExclusion,
+  type BoardSyncExclusionListResponse,
+  type RestoreBoardSyncExclusionsInput,
+  type RestoreBoardSyncExclusionsResponse,
 } from './board-sync';
 
 export {
@@ -470,6 +521,7 @@ export {
   addCalendarDays,
   computeSchedule,
   resolveWidthDays,
+  compareOrder,
 } from './roadmap-schedule';
 export type {
   SizeLabel,
@@ -583,7 +635,20 @@ export type {
 export { DORA_BENCHMARKS, DORA_METRIC_LABELS, classifyDora, buildDoraScorecard } from './dora';
 export type { DoraMetricKey, DoraMetric, DoraInputs } from './dora';
 
+export {
+  computeDelta,
+  buildPeriodComparison,
+  type PeriodMetricKey,
+  type MetricDirection,
+  type DeltaVerdict,
+  type PeriodDelta,
+  type PeriodComparisonMetric,
+  type PeriodComparisonInputs,
+} from './period-comparison';
+
 export { costFromSeconds, DEFAULT_BLENDED_HOURLY_RATE } from './timesheet-cost';
+
+export { gradeTrajectory, type TrajectoryGrade, type TrajectoryVerdict } from './trajectory';
 
 export { HEAT_WEEKS, emptyHeat, mondayOf, weekSlotIndex } from './commit-heat';
 
@@ -604,6 +669,8 @@ export { wouldCreateCycle } from './org-tree-edit';
 export {
   reconstructIntervals,
   clipToWindow,
+  clipRetiredSpans,
+  jiraProjectKeyOf,
   resolveInProgressStatuses,
   spanIsInProgress,
   splitIntoBuckets,
@@ -615,6 +682,7 @@ export {
   DONE_STATUS_NAMES,
   resolveEpicKey,
   buildEpicBreakdown,
+  NON_IN_PROGRESS_STATUSES,
 } from './timesheet/index';
 export type {
   Provider,
@@ -634,6 +702,7 @@ export type {
   EpicBreakdownRow,
   EpicBreakdownInput,
   EpicEmployeeSeconds,
+  RetiredProjectMap,
 } from './timesheet/index';
 
 // Timesheet API schemas (Phase 2b-ii) — request/response validation.
@@ -796,3 +865,46 @@ export {
   LocationSearchResponseSchema,
 } from './location-schemas';
 export type { LocationSuggestion, LocationSearchResponse } from './location-schemas';
+
+export {
+  advisorAskRequestSchema,
+  advisorConfigSchema,
+  advisorSourceLookupSchema,
+  advisorAppendMessageSchema,
+  advisorHistoryMessageSchema,
+  advisorMessageRoleSchema,
+  advisorPageContextSchema,
+  advisorHelpAskRequestSchema,
+  buildHistoryForAsk,
+  deriveSessionTitle,
+  ADVISOR_HISTORY_MAX_MESSAGES,
+  ADVISOR_HISTORY_MAX_CHARS,
+  ADVISOR_MESSAGE_MAX_CHARS,
+  ADVISOR_QUESTION_MAX_CHARS,
+  ADVISOR_TITLE_MAX_CHARS,
+  type AdvisorAskRequest,
+  type AdvisorConfigInput,
+  type AdvisorSourceLookupInput,
+  type AdvisorAppendMessageInput,
+  type AdvisorHistoryMessage,
+  type AdvisorMessageRole,
+  type AdvisorPageContextDto,
+  type AdvisorHelpAskRequest,
+  type AdvisorSessionSummaryDto,
+  type AdvisorSessionMessageDto,
+  type AdvisorSessionTranscriptDto,
+} from './advisor';
+
+export {
+  resolveJiraBrowseUrl,
+  hasAnyJiraLink,
+  type JiraSourceLinks,
+} from './jira-source-links';
+
+export {
+  OrgTreeAccessRoleSchema,
+  GrantOrgTreeAccessSchema,
+  UpdateOrgTreeAccessSchema,
+  type GrantOrgTreeAccess,
+  type UpdateOrgTreeAccess,
+} from './org-tree-access';

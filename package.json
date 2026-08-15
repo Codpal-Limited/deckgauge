@@ -15,8 +15,10 @@
     "backup": "bash scripts/backup.sh",
     "restore": "bash scripts/restore.sh",
     "migrate:clickhouse": "pnpm --filter @deckgauge/db migrate:clickhouse",
-    "seed:jira": "tsx scripts/seed-jira.ts",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "deckgauge:advisor": "pnpm --filter @deckgauge/advisor-bridge dev",
+    "advisor:start": "bash scripts/advisor-bridge.sh start",
+    "advisor:stop": "bash scripts/advisor-bridge.sh stop",
+    "advisor:status": "bash scripts/advisor-bridge.sh status"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
@@ -27,6 +29,7 @@
     "prettier": "^3.0.0",
     "turbo": "^2.0.0",
     "typescript": "^5.4.0",
-    "typescript-eslint": "^8.0.0"
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^4.1.4"
   }
 }

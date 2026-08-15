@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { createReadStream } from 'node:fs';
 import { join } from 'node:path';
 import type { UploadService } from './upload.service.js';
+import { board, viaEntity, viaBranch, fromQuery, fromParam } from '../auth/policy.js';
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/png',
@@ -14,9 +15,35 @@ export async function uploadRoutes(
   app: FastifyInstance,
   { service }: { service: UploadService },
 ) {
-  // POST /api/uploads?projectId=:id  OR  /api/uploads?orgEmployeeId=:id
+  // POST /api/uploads?projectId=:id  OR  /api/uploads?orgEmployeeId=:id — one
+  // route, two unrelated resources with two unrelated access models.
+  //
+  // The rule (not a snapshot of today's wiring): an upload is gated on
+  // whatever owns the row it will be attached to, at the same rank a direct
+  // edit of that row would require. `?projectId=` therefore needs EDITOR on
+  // that project's board; `?orgEmployeeId=` attaches the file to an
+  // OrgEmployee, which an org tree owns, so it needs EDITOR on that tree via
+  // `OrgTreeAccess` — the `then: 'orgEntity'` branch arm in policy.ts.
+  //
+  // Never write `then: 'authenticated'` on either arm. An arm that gates
+  // nothing resolves to an empty board set, which `evaluatePolicy` allows
+  // outright — turning this endpoint into an unauthenticated-in-effect write
+  // into data the caller cannot read back.
+  //
+  // These must be tried as ordered, mutually-exclusive branches, not OR'd: a
+  // failed EDITOR check on the projectId branch must deny outright, never
+  // fall through to the orgEmployeeId branch just because that query param
+  // happens to be unset.
   app.post<{ Querystring: { projectId?: string; orgEmployeeId?: string } }>(
     '/api/uploads',
+    {
+      config: {
+        policy: board('EDITOR', viaBranch([
+          { when: fromQuery('projectId'), then: 'project' },
+          { when: fromQuery('orgEmployeeId'), then: 'orgEntity', orgModel: 'orgEmployee' },
+        ])),
+      },
+    },
     async (req, reply) => {
       const { projectId, orgEmployeeId } = req.query;
       if (!projectId && !orgEmployeeId) {
@@ -55,9 +82,17 @@ export async function uploadRoutes(
     },
   );
 
-  // GET /api/uploads/:id
+  // GET /api/uploads/:id — :id is the upload id; the board is reachable
+  // through Upload.projectId → Project.boardId (two hops, nullable). An
+  // upload with no projectId is org-employee-scoped instead; `viaEntity`'s
+  // `upload` resolution (policy.ts) resolves that employee's org tree and
+  // requires the caller to hold at least this policy's role on it
+  // (`hasOrgTreeRole`) — the same rule POST /api/uploads applies on the write
+  // side, applied here on the stored row since there's no query param to
+  // branch on. Being signed in is not enough on either side.
   app.get<{ Params: { id: string } }>(
     '/api/uploads/:id',
+    { config: { policy: board('VIEWER', viaEntity('upload', fromParam('id'))) } },
     async (req, reply) => {
       const upload = await service.findById(req.params.id);
       if (!upload) {

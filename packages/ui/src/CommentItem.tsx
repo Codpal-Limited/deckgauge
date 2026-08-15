@@ -79,7 +79,7 @@ export function CommentItem({ comment, onEdit, onDelete, onTogglePin }: CommentI
   }, []);
 
   return (
-    <div className={`px-5 py-4 border-b border-slate-100 ${comment.pinned ? 'bg-amber-50' : ''}`}>
+    <div className={`px-5 py-4 border-b border-slate-100 ${comment.pinned ? 'bg-amber-500/10' : ''}`}>
       <style>{`.mention { color: #2563eb; font-weight: 500; } .comment-body img { cursor: zoom-in; }`}</style>
       {comment.pinned && (
         <div className="flex items-center gap-1 mb-2">

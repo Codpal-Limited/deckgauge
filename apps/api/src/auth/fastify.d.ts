@@ -4,5 +4,6 @@ declare module 'fastify' {
   interface FastifyRequest {
     user: User;
     isAdmin: boolean;
+    canViewAnalytics: boolean;
   }
 }

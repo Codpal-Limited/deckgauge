@@ -19,6 +19,7 @@ import {
 import { createTypeCache, type TypeCache } from './type-cache.js';
 import { clickhouse as defaultClickhouse } from '@deckgauge/db';
 import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
+import { board } from '../auth/policy.js';
 
 // Same 60s TTL as Jira — see board-jira-source.routes.ts for rationale.
 const TYPE_CACHE_TTL_MS = 60_000;
@@ -66,6 +67,7 @@ export function boardAdoSourceRoutes(deps: {
   return async function plugin(app: FastifyInstance) {
     app.get<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/ado',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -73,8 +75,22 @@ export function boardAdoSourceRoutes(deps: {
       },
     );
 
+    // adoProject -> orgUrl, scoped to this board. Consumed by the web app to
+    // build each row's Source-column link against the ADO org it actually
+    // synced from, instead of a single global org URL for every board.
+    app.get<{ Params: { boardId: string } }>(
+      '/boards/:boardId/sources/ado/org-urls',
+      { config: { policy: board('VIEWER') } },
+      async (req, reply) => {
+        const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
+        if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
+        return service.orgUrlsByProject(params.data.boardId);
+      },
+    );
+
     app.post<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/ado',
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -90,6 +106,7 @@ export function boardAdoSourceRoutes(deps: {
 
     app.patch<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/ado/:id',
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -103,6 +120,7 @@ export function boardAdoSourceRoutes(deps: {
 
     app.delete<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/ado/:id',
+      { config: { policy: board('EDITOR') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -115,6 +133,7 @@ export function boardAdoSourceRoutes(deps: {
 
     app.get<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/ado/:id/preview-count',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -133,6 +152,7 @@ export function boardAdoSourceRoutes(deps: {
 
     app.get<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/ado/:id/source-statuses',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
@@ -152,6 +172,7 @@ export function boardAdoSourceRoutes(deps: {
 
     app.get<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/ado/:id/work-item-types',
+      { config: { policy: board('VIEWER') } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })

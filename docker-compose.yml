@@ -95,9 +95,9 @@ services:
         limits:
           memory: 128M
     environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
     volumes:
       - keycloak_db_data:/var/lib/postgresql/data
     healthcheck:
@@ -119,17 +119,17 @@ services:
     command: /opt/keycloak/bin/kc.sh start-dev --import-realm
     environment:
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
       # Cap JVM heap — default uses ~1.9 GB which is excessive for local dev
       JAVA_OPTS_APPEND: "-Xms128m -Xmx384m"
       # Use localhost so browser redirects work; server-side calls use Docker service name
       KC_HOSTNAME: localhost
       KC_HOSTNAME_PORT: "8080"
       KC_HOSTNAME_STRICT: "false"
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       # Microsoft Entra ID SSO (optional — leave blank to disable)
       MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
       MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
@@ -205,8 +205,8 @@ services:
       KEYCLOAK_ISSUER: "http://localhost:8080/realms/vp-cockpit"
       KEYCLOAK_INTERNAL_URL: "http://keycloak:8080/realms/vp-cockpit"
       KEYCLOAK_CLIENT_ID: "vp-cockpit-web"
-      KEYCLOAK_CLIENT_SECRET: "vp-cockpit-secret"
-      NEXTAUTH_SECRET: "vp-cockpit-nextauth-secret"
+      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_CLIENT_SECRET:-vp-cockpit-secret}"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-vp-cockpit-nextauth-secret}"
       NEXTAUTH_URL: "http://localhost:3000"
       AUTH_TRUST_HOST: "true"
       # Microsoft Graph "Connect" OAuth (org-tree directory sync). Empty = the
@@ -230,7 +230,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 384M   # BullMQ host for 6+ queue+worker pairs (jira/gitlab/ado/github/sync-run-prune/roadmap-slip). The ADO processor streams large projects (azure-devops-sync.processor → streamWorkItems → promoteProjectStream): work items are fetched, dual-written to ClickHouse, and promoted one batch at a time, so even a 20k+ work-item project (Horus) never buffers its full set in memory. This kept peak usage under 384M again after the temporary 1024M bump that worked around the pre-streaming OOM.
+          memory: 768M   # BullMQ host for 6+ queue+worker pairs (jira/gitlab/ado/github/sync-run-prune/roadmap-slip). The ADO processor streams large projects (azure-devops-sync.processor → streamWorkItems → promoteProjectStream): work items are fetched, dual-written to ClickHouse, and promoted one batch at a time. Bumped 384M→768M (2026-07-31): after one org's ADO source list grew to 17 projects, transition-write peaks (two projects at ~9.2k and ~32k work items) crossed 384M and the container was cgroup-killed ~every 20-30min (RestartCount climbing). Each kill rewinds the sequential per-project run to the top of the list, permanently starving the tail projects, which never got stamped. 768M absorbs the peaks while leaving VM headroom (~5.9GiB total; 1024M was too aggressive with ~840MiB free).
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-cockpit}:${POSTGRES_PASSWORD:-cockpit}@postgres:5432/${POSTGRES_DB:-cockpit}"
       REDIS_URL: "redis://redis:6379"
@@ -241,6 +241,26 @@ services:
       MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-}
       MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
       MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      # ADO code-intelligence tuning knobs. These are all documented as
+      # env-tunable and read at call time, but this block whitelists what the
+      # container actually sees — without a passthrough here, setting them in
+      # .env silently does nothing (which is exactly what happened when the
+      # history backfill was first switched on). Every one is unset-safe: the
+      # readers use `Number(x) || default` or a truthiness check, so an empty
+      # value falls back to the built-in default.
+      #   ADO_BACKFILL_*            — backward-walking history backfill, off
+      #                               unless ADO_BACKFILL_ENABLED=1; see
+      #                               ado-intelligence-sync.handler.ts.
+      #   ADO_REPO_INTEL_TIMEOUT_MS — per-repo fetch ceiling.
+      #   ADO_CRON_INTERVAL         — ADO sync period, kept separate from
+      #                               CRON_INTERVAL so throttling ADO does not
+      #                               stale out Jira/GitHub/GitLab.
+      ADO_BACKFILL_ENABLED: ${ADO_BACKFILL_ENABLED:-}
+      ADO_BACKFILL_CHUNK_DAYS: ${ADO_BACKFILL_CHUNK_DAYS:-}
+      ADO_BACKFILL_FLOOR_DAYS: ${ADO_BACKFILL_FLOOR_DAYS:-}
+      ADO_BACKFILL_REPOS_PER_RUN: ${ADO_BACKFILL_REPOS_PER_RUN:-}
+      ADO_REPO_INTEL_TIMEOUT_MS: ${ADO_REPO_INTEL_TIMEOUT_MS:-}
+      ADO_CRON_INTERVAL: ${ADO_CRON_INTERVAL:-}
     depends_on:
       postgres:
         condition: service_healthy

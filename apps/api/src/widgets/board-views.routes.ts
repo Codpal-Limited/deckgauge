@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
-import { requireBoardAccess } from '../board-access/board-access.middleware.js';
+import { board } from '../auth/policy.js';
 import {
   BoardViewService,
   CreateBoardViewSchema,
@@ -15,6 +15,7 @@ export async function boardViewRoutes(
 
   app.get<{ Params: { boardId: string } }>(
     '/boards/:boardId/views',
+    { config: { policy: board('VIEWER') } },
     async (req) => {
       return service.listByBoard(req.params.boardId);
     },
@@ -22,7 +23,7 @@ export async function boardViewRoutes(
 
   app.post<{ Params: { boardId: string } }>(
     '/boards/:boardId/views',
-    { preHandler: [requireBoardAccess(prisma, 'EDITOR')] },
+    { config: { policy: board('EDITOR') } },
     async (req, reply) => {
       const parsed = CreateBoardViewSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -35,7 +36,7 @@ export async function boardViewRoutes(
 
   app.patch<{ Params: { boardId: string; viewId: string } }>(
     '/boards/:boardId/views/:viewId',
-    { preHandler: [requireBoardAccess(prisma, 'EDITOR')] },
+    { config: { policy: board('EDITOR') } },
     async (req, reply) => {
       const parsed = UpdateBoardViewSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -48,7 +49,7 @@ export async function boardViewRoutes(
 
   app.delete<{ Params: { boardId: string; viewId: string } }>(
     '/boards/:boardId/views/:viewId',
-    { preHandler: [requireBoardAccess(prisma, 'EDITOR')] },
+    { config: { policy: board('EDITOR') } },
     async (req, reply) => {
       try {
         const deleted = await service.delete(req.params.viewId);

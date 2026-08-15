@@ -11,6 +11,7 @@ import {
 } from '@deckgauge/shared';
 import { RoadmapMembershipService } from './roadmap-membership.service.js';
 import { RoadmapGanttConfigService } from './roadmap-gantt-config.service.js';
+import { accessibleBoardIds, type BoardAccessLog } from '../auth/board-access.js';
 
 export class RoadmapService {
   constructor(private readonly prisma: PrismaClient) {}
@@ -106,16 +107,84 @@ export class RoadmapService {
     });
   }
 
-  async getDetail(roadmapId: string, role: RoadmapAccessRoleValue): Promise<RoadmapDetail> {
+  /**
+   * The roadmap with its groups and their project rows.
+   *
+   * `userId` is not decoration: RoadmapAccess is granted independently of
+   * BoardAccess, so a roadmap VIEWER would otherwise read every subscribed
+   * board's full project rows — name, status, owner, dates and every custom
+   * field value — for boards they hold no role on at all. Each group's board
+   * is re-checked for VIEWER on every read, which is also what makes access
+   * revoked *after* the group was added take effect.
+   *
+   * Groups on boards the caller cannot see are omitted rather than 403ing the
+   * whole roadmap: a cross-board roadmap is routinely shared wider than any one
+   * of its boards, so showing the readable part is the useful, and still safe,
+   * behaviour. Attaching a board remains gated on the *adder* holding VIEWER
+   * (see RoadmapMembershipService).
+   */
+  async getDetail(
+    roadmapId: string,
+    role: RoadmapAccessRoleValue,
+    userId: string,
+    log?: BoardAccessLog,
+  ): Promise<RoadmapDetail> {
     await new RoadmapMembershipService(this.prisma).reconcile(roadmapId);
+    // Restores `readDetail`'s pre-split behaviour exactly: before the split,
+    // this method's only path to the GANTT config was `ensure`, which
+    // materializes a default row the first time a roadmap is read with none
+    // yet. `readDetail` itself now reads via the non-writing `peek` (see its
+    // doc comment), so that auto-create is preserved HERE instead, keeping
+    // this method's observable behaviour — including its side effects,
+    // not just its return value — identical to before this task. One extra
+    // query; buys exact parity.
+    await new RoadmapGanttConfigService(this.prisma).ensure(roadmapId);
+    return this.readDetail(roadmapId, role, userId, log);
+  }
 
+  /**
+   * Everything `getDetail` does EXCEPT `reconcile` and the GANTT-config
+   * `ensure` — the fully read-only half of the assembly, split out so a
+   * caller that must never write (the Advisor's page-state resolver) can
+   * read a roadmap directly without mutating anything. `getDetail` calls
+   * this immediately after reconciling and ensuring the GANTT config, so
+   * its behaviour for existing callers is unchanged, side effects included.
+   *
+   * A caller that calls this directly instead of `getDetail` (the Advisor)
+   * accepts two documented, deliberate trades against what the live page
+   * shows:
+   *  - subscribed boards' groups may be marginally stale — `reconcile` is
+   *    what adds/removes groups as board subscriptions change, and this
+   *    method never runs it;
+   *  - the roadmap's GANTT config comes from `RoadmapGanttConfigService.peek`,
+   *    which returns in-memory defaults instead of a persisted row when
+   *    none exists yet, rather than creating one on a read.
+   * Both are the correct trade for a caller that must never write, and this
+   * method — unlike `getDetail` — never writes: no `create`, `update`,
+   * `delete`, `upsert`, or `$transaction` anywhere in its call graph
+   * (including `peek`, which only ever reads).
+   *
+   * `userId` is as load-bearing here as it is on `getDetail`, and for the same
+   * reason: the per-group board re-check lives in THIS method, so it governs
+   * both callers. Reading a roadmap without it would hand the caller project
+   * rows from boards they hold no role on — the exact leak the re-check closes
+   * — and a read-only caller leaks just as effectively as a writing one. It is
+   * the authenticated caller's id, never a value from the model or the request
+   * body.
+   */
+  async readDetail(
+    roadmapId: string,
+    role: RoadmapAccessRoleValue,
+    userId: string,
+    log?: BoardAccessLog,
+  ): Promise<RoadmapDetail> {
     const roadmap = await this.prisma.roadmap.findUnique({
       where: { id: roadmapId },
       select: { id: true, name: true, description: true, hiddenSystemColumns: true },
     });
     if (!roadmap) throw new Error('ROADMAP_NOT_FOUND');
 
-    const rows = await this.prisma.roadmapGroup.findMany({
+    const allRows = await this.prisma.roadmapGroup.findMany({
       where: { roadmapId },
       orderBy: { position: 'asc' },
       select: {
@@ -141,6 +210,17 @@ export class RoadmapService {
         },
       },
     });
+
+    // Drop every group whose board the caller cannot view. A group with no
+    // board at all is dropped too — unresolvable is never "no check needed".
+    const visibleBoardIds = await accessibleBoardIds(
+      this.prisma,
+      userId,
+      allRows.map((r) => r.group.boardId).filter(Boolean) as string[],
+      'VIEWER',
+      log,
+    );
+    const rows = allRows.filter((r) => r.group.boardId && visibleBoardIds.has(r.group.boardId));
 
     // Resolve the per-board "Size" column so we can read each item's size label.
     const boardIds = Array.from(
@@ -188,7 +268,10 @@ export class RoadmapService {
       };
     });
 
-    const ganttConfig = await new RoadmapGanttConfigService(this.prisma).ensure(roadmapId);
+    // `peek`, not `ensure`: this method must never write (see the doc
+    // comment above). `peek` returns the same shape `ensure` would persist
+    // when no GANTT config exists yet, just without creating the row.
+    const ganttConfig = await new RoadmapGanttConfigService(this.prisma).peek(roadmapId);
 
     return {
       id: roadmap.id,

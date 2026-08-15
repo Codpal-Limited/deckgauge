@@ -53,13 +53,14 @@ export class GitLabService {
     });
   }
 
-  async createInstance(input: CreateGitLabInstanceInput) {
+  async createInstance(input: CreateGitLabInstanceInput, actingUserId?: string) {
     return this.prisma.gitLabInstance.create({
       data: {
         name: input.name,
         baseUrl: gitlabApiBase(input.baseUrl ?? 'https://gitlab.com/api/v4'),
         accessToken: input.accessToken,
         projects: input.projects,
+        ...(actingUserId && { createdById: actingUserId }),
       },
       select: {
         id: true,
@@ -128,16 +129,21 @@ export class GitLabService {
     return this.probeToken(instance.baseUrl, instance.accessToken);
   }
 
-  async updateInstanceToken(id: string, accessToken: string) {
+  async updateInstanceToken(id: string, accessToken: string, actingUserId?: string) {
     const existing = await this.prisma.gitLabInstance.findUnique({ where: { id } });
     if (!existing) return null;
-    return this.prisma.gitLabInstance.update({ where: { id }, data: { accessToken } });
+    // Claim-on-first-edit: an unclaimed (null owner) row is claimed by
+    // whoever edits it first. An already-claimed row keeps its owner.
+    const claim =
+      existing.createdById === null && actingUserId ? { createdById: actingUserId } : {};
+    return this.prisma.gitLabInstance.update({ where: { id }, data: { accessToken, ...claim } });
   }
 
   async refreshToken(
     id: string,
     newToken: string,
     fetchFn = this.fetchFn,
+    actingUserId?: string,
   ): Promise<RefreshResult> {
     const instance = await this.prisma.gitLabInstance.findUnique({
       where: { id },
@@ -146,7 +152,7 @@ export class GitLabService {
     if (!instance) return { ok: false, notFound: true, error: 'Instance not found' };
     const probe = await this.probeToken(instance.baseUrl, newToken, fetchFn);
     if (!probe.ok) return probe;
-    const updated = await this.updateInstanceToken(id, newToken);
+    const updated = await this.updateInstanceToken(id, newToken, actingUserId);
     if (!updated) return { ok: false, notFound: true, error: 'Instance not found' };
     return { ok: true };
   }

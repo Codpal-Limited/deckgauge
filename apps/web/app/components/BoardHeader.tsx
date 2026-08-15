@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateBoard, deleteBoard } from "../actions/projects";
 import { ShareBoardModal } from "./ShareBoardModal";
+import { AskAdvisorButton } from "../../components/advisor/AskAdvisorButton";
 
 interface BoardAccessEntry {
   id: string;
@@ -107,6 +108,9 @@ export function BoardHeader({ board, userRole, currentUserId, boardAccess }: Boa
       >
         {showDescription ? "\u25B2" : "\u25BC"}
       </button>
+
+      {/* Ask the Advisor */}
+      <AskAdvisorButton boardId={board.id} variant="header" />
 
       {/* Share button */}
       {userRole === "OWNER" && (

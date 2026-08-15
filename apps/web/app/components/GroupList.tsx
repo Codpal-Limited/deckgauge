@@ -45,6 +45,7 @@ import type {
   BoardStatus,
   ProjectStatus,
 } from '@deckgauge/shared';
+import { hasAnyJiraLink, type JiraSourceLinks } from '@deckgauge/shared';
 import { resolveColumnWidth, buildBoardGridTemplate } from '@deckgauge/shared';
 import type { GridColumnSpec } from '@deckgauge/shared';
 import {
@@ -225,9 +226,9 @@ interface GroupListProps {
   commentCounts?: Record<string, number>;
   boardOwners?: BoardOwner[];
   boardStatuses?: BoardStatus[];
-  jiraAtlassianUrl?: string;
+  jiraLinks?: JiraSourceLinks;
   hasGitHubIntegration?: boolean;
-  adoOrgUrl?: string;
+  adoOrgUrls?: Record<string, string>;
   hasAdoIntegration?: boolean;
   userRole?: 'OWNER' | 'EDITOR' | 'VIEWER' | null;
   onNavItemsChange?: (items: string[]) => void;
@@ -270,9 +271,9 @@ export function GroupList({
   commentCounts,
   boardOwners,
   boardStatuses,
-  jiraAtlassianUrl,
+  jiraLinks,
   hasGitHubIntegration,
-  adoOrgUrl,
+  adoOrgUrls,
   hasAdoIntegration,
   userRole,
   onNavItemsChange,
@@ -441,7 +442,7 @@ export function GroupList({
 
   // An integration must be connected for the Source column to have anything to
   // show; the user can then hide it via the Columns panel.
-  const hasIntegration = !!(jiraAtlassianUrl || hasGitHubIntegration || hasAdoIntegration);
+  const hasIntegration = (hasAnyJiraLink(jiraLinks) || hasGitHubIntegration || hasAdoIntegration);
   const showSource = hasIntegration && visibleSystemFields.source !== false;
   const showOwner = visibleSystemFields.owner !== false;
   // Assignee (the synced source person) is hidden by default; opt in via Columns.
@@ -1085,9 +1086,9 @@ export function GroupList({
                 (id) => updateFieldValue(id, colId, value, boardId),
                 "Couldn't update field"
               ),
-      jiraAtlassianUrl,
+      jiraLinks,
       hasGitHubIntegration,
-      adoOrgUrl,
+      adoOrgUrls,
       hasAdoIntegration,
       onNameChange:
         isViewer || isTempId(project.id)
@@ -1250,9 +1251,9 @@ export function GroupList({
       applyToSelection,
       boardId,
       columns,
-      jiraAtlassianUrl,
+      jiraLinks,
       hasGitHubIntegration,
-      adoOrgUrl,
+      adoOrgUrls,
       hasAdoIntegration,
       allGroups,
       selectedItems,
@@ -1406,7 +1407,7 @@ export function GroupList({
                         >
                           <ColumnHeaderRow
                             columns={columns}
-                            jiraAtlassianUrl={jiraAtlassianUrl}
+                            hasJiraIntegration={hasAnyJiraLink(jiraLinks)}
                             hasGitHubIntegration={hasGitHubIntegration}
                             hasAdoIntegration={hasAdoIntegration}
                             sortConfig={sortConfig}

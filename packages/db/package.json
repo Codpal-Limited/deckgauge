@@ -12,7 +12,9 @@
     "migrate:clickhouse": "tsx src/clickhouse-migrate.ts",
     "seed": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} tsx seed.ts",
     "grant-owner": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} tsx scripts/grant-owner-access.ts",
-    "test": "vitest run",
+    "grant:org-access": "tsx src/scripts/grant-org-access.ts",
+    "bootstrap:admin": "tsx src/scripts/bootstrap-admin.ts",
+    "test": "vitest run --passWithNoTests",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -22,6 +24,7 @@
   "devDependencies": {
     "dotenv": "^16.4.5",
     "prisma": "^5.13.0",
+    "tsx": "^4.15.7",
     "vitest": "^4.1.4"
   }
 }

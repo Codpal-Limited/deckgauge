@@ -44,3 +44,11 @@ export const UpdateJiraInstanceInputSchema = z.object({
 export type UpdateJiraInstanceInput = z.infer<
   typeof UpdateJiraInstanceInputSchema
 >;
+
+/** A machine-readable remedy attached to a failed connection test. */
+export const ConnectionHintSchema = z.object({
+  kind: z.literal("canonical-url"),
+  suggestedUrl: z.string().url(),
+});
+
+export type ConnectionHint = z.infer<typeof ConnectionHintSchema>;

@@ -84,8 +84,7 @@ async function upsertOnce(
 // The richer JiraIntelligencePort (used by jira-intelligence-sync.handler) fetches
 // all of that and writes directly. This helper exists so the processor can still
 // dual-write its basic data into the same jira_issues table using safe defaults
-// for missing fields. Mirrors the mapping in
-// packages/db/src/backfill-to-clickhouse.ts.
+// for missing fields, using the same column mapping the original backfill used.
 
 export interface BasicJiraEpic {
   id: string;

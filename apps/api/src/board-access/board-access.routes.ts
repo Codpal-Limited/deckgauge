@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
 import { z } from 'zod';
 import { BoardAccessService } from './board-access.service.js';
-import { requireBoardAccess } from './board-access.middleware.js';
+import { board, AUTHENTICATED } from '../auth/policy.js';
 
 const GrantBodySchema = z.object({
   userId: z.string().uuid(),
@@ -22,6 +22,7 @@ export async function boardAccessRoutes(
   // GET /boards/:boardId/my-role — get current user's role
   app.get<{ Params: { boardId: string } }>(
     '/boards/:boardId/my-role',
+    { config: { policy: AUTHENTICATED } },
     async (req, reply) => {
       if (!req.user) return reply.status(401).send({ error: 'Unauthorized' });
       const access = await prisma.boardAccess.findUnique({
@@ -34,7 +35,7 @@ export async function boardAccessRoutes(
   // GET /boards/:boardId/access — list all users + roles
   app.get<{ Params: { boardId: string } }>(
     '/boards/:boardId/access',
-    { preHandler: requireBoardAccess(prisma, 'VIEWER') },
+    { config: { policy: board('VIEWER') } },
     async (req, reply) => {
       const entries = await service.listAccess(req.params.boardId);
       return reply.send(entries);
@@ -44,7 +45,7 @@ export async function boardAccessRoutes(
   // POST /boards/:boardId/access — grant access
   app.post<{ Params: { boardId: string } }>(
     '/boards/:boardId/access',
-    { preHandler: requireBoardAccess(prisma, 'OWNER') },
+    { config: { policy: board('OWNER') } },
     async (req, reply) => {
       const parsed = GrantBodySchema.safeParse(req.body);
       if (!parsed.success) return reply.status(400).send({ error: parsed.error.flatten() });
@@ -72,7 +73,7 @@ export async function boardAccessRoutes(
   // PATCH /boards/:boardId/access/:userId — update role
   app.patch<{ Params: { boardId: string; userId: string } }>(
     '/boards/:boardId/access/:userId',
-    { preHandler: requireBoardAccess(prisma, 'OWNER') },
+    { config: { policy: board('OWNER') } },
     async (req, reply) => {
       const parsed = UpdateRoleBodySchema.safeParse(req.body);
       if (!parsed.success) return reply.status(400).send({ error: parsed.error.flatten() });
@@ -90,7 +91,7 @@ export async function boardAccessRoutes(
   // DELETE /boards/:boardId/access/:userId — revoke access
   app.delete<{ Params: { boardId: string; userId: string } }>(
     '/boards/:boardId/access/:userId',
-    { preHandler: requireBoardAccess(prisma, 'OWNER') },
+    { config: { policy: board('OWNER') } },
     async (req, reply) => {
       try {
         await service.revokeAccess(req.params.boardId, req.params.userId);

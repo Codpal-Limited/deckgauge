@@ -62,6 +62,33 @@ export class RoadmapGanttConfigService {
     return this.toPayload(view.id, view.ganttConfig as unknown as GanttConfigRow);
   }
 
+  /**
+   * Read-only companion to `ensure`: returns the current GANTT config if a
+   * row already exists, or the same defaults `ensure` would persist —
+   * without ever creating a view or a config row. For callers that must
+   * never write (the Advisor's page-state reads); callers that need the
+   * config to durably exist keep using `ensure`. `id`/`boardViewId` come
+   * back empty in the not-yet-materialized case since there is no real row
+   * to point at.
+   */
+  async peek(roadmapId: string): Promise<RoadmapConfigPayload> {
+    const view = await this.prisma.roadmapView.findFirst({
+      where: { roadmapId, type: 'GANTT' },
+      select: { id: true, ganttConfig: true },
+    });
+    if (view?.ganttConfig) {
+      return this.toPayload(view.id, view.ganttConfig as unknown as GanttConfigRow);
+    }
+    return this.toPayload('', {
+      id: '',
+      startDate: this.firstOfThisMonth(),
+      visibleQuarters: 4,
+      sizeDurations: {},
+      defaultSizeWeeks: DEFAULT_SIZE_WEEKS,
+      hiddenGroupIds: [],
+    });
+  }
+
   async update(
     roadmapId: string,
     patch: UpdateRoadmapConfigInput,

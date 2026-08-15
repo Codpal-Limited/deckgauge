@@ -1,10 +1,50 @@
 import type { PrismaClient } from '@deckgauge/db';
 import { reconcileRoadmapGroups } from '@deckgauge/shared';
+import {
+  BoardAccessDeniedError,
+  forbiddenBoardIds,
+  type BoardAccessLog,
+} from '../auth/board-access.js';
 
 export class RoadmapMembershipService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async addGroups(roadmapId: string, groupIds: string[]): Promise<void> {
+  /**
+   * Refuse unless the caller holds VIEWER on every board named. Creating a
+   * roadmap grants the creator RoadmapAccess.OWNER, so `roadmap(EDITOR)` on
+   * these routes is satisfied by anyone who just made one — it says nothing
+   * about the boards being attached. Without this, attaching a victim board
+   * hands the attacker its full project rows back through `GET /roadmaps/:id`.
+   *
+   * A group id that resolves to no board (missing row, board-less group) is
+   * refused too rather than skipped: unresolvable never means "no check
+   * needed", the same rule the policy evaluator follows.
+   */
+  private async assertBoardsVisible(
+    boardIds: ReadonlyArray<string | null | undefined>,
+    userId: string,
+    log?: BoardAccessLog,
+  ): Promise<void> {
+    if (boardIds.some((b) => !b)) throw new BoardAccessDeniedError(['<unresolved>']);
+    const forbidden = await forbiddenBoardIds(this.prisma, userId, boardIds as string[], 'VIEWER', log);
+    if (forbidden.length > 0) throw new BoardAccessDeniedError(forbidden);
+  }
+
+  async addGroups(
+    roadmapId: string,
+    groupIds: string[],
+    userId: string,
+    log?: BoardAccessLog,
+  ): Promise<void> {
+    const groups = await this.prisma.group.findMany({
+      where: { id: { in: groupIds } },
+      select: { id: true, boardId: true },
+    });
+    // A missing group row yields no entry here, so the length check below is
+    // what catches ids that don't exist at all.
+    if (groups.length !== new Set(groupIds).size) throw new BoardAccessDeniedError(['<unresolved>']);
+    await this.assertBoardsVisible(groups.map((g) => g.boardId), userId, log);
+
     const max = await this.prisma.roadmapGroup.aggregate({
       where: { roadmapId },
       _max: { position: true },
@@ -20,7 +60,13 @@ export class RoadmapMembershipService {
     await this.prisma.roadmapGroup.deleteMany({ where: { roadmapId, groupId } });
   }
 
-  async addSubscription(roadmapId: string, boardId: string): Promise<void> {
+  async addSubscription(
+    roadmapId: string,
+    boardId: string,
+    userId: string,
+    log?: BoardAccessLog,
+  ): Promise<void> {
+    await this.assertBoardsVisible([boardId], userId, log);
     await this.prisma.roadmapBoardSubscription.upsert({
       where: { roadmapId_boardId: { roadmapId, boardId } },
       create: { roadmapId, boardId },

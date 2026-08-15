@@ -1,35 +1,9 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
 import { UpdateRoadmapConfigInputSchema, SetScheduleInputSchema } from '@deckgauge/shared';
 import { RoadmapService } from './roadmap.service.js';
 import { RoadmapConfigService } from './roadmap-config.service.js';
-
-async function requireRole(
-  req: FastifyRequest,
-  reply: FastifyReply,
-  prisma: PrismaClient,
-  boardId: string,
-  minRole: 'VIEWER' | 'EDITOR' | 'OWNER',
-): Promise<boolean> {
-  const userId = req.user?.id;
-  if (!userId) {
-    reply.status(401).send({ error: 'Auth required' });
-    return false;
-  }
-  const access = await prisma.boardAccess.findUnique({
-    where: { boardId_userId: { boardId, userId } },
-  });
-  if (!access) {
-    reply.status(403).send({ error: 'Forbidden' });
-    return false;
-  }
-  const rank = { VIEWER: 0, EDITOR: 1, OWNER: 2 } as const;
-  if (rank[access.role] < rank[minRole]) {
-    reply.status(403).send({ error: 'Forbidden' });
-    return false;
-  }
-  return true;
-}
+import { board } from '../auth/policy.js';
 
 export async function roadmapRoutes(
   app: FastifyInstance,
@@ -41,9 +15,8 @@ export async function roadmapRoutes(
   // GET /api/boards/:boardId/roadmap?viewId=...
   app.get<{ Params: { boardId: string }; Querystring: { viewId: string } }>(
     '/boards/:boardId/roadmap',
+    { config: { policy: board('VIEWER') } },
     async (req, reply) => {
-      const ok = await requireRole(req, reply, prisma, req.params.boardId, 'VIEWER');
-      if (!ok) return;
       try {
         const payload = await roadmap.loadView(req.params.boardId, req.query.viewId);
         return reply.send(payload);
@@ -59,9 +32,8 @@ export async function roadmapRoutes(
   // PATCH /api/boards/:boardId/projects/:projectId/roadmap-schedule
   app.patch<{ Params: { boardId: string; projectId: string } }>(
     '/boards/:boardId/projects/:projectId/roadmap-schedule',
+    { config: { policy: board('EDITOR') } },
     async (req, reply) => {
-      const ok = await requireRole(req, reply, prisma, req.params.boardId, 'EDITOR');
-      if (!ok) return;
       const parsed = SetScheduleInputSchema.safeParse(req.body);
       if (!parsed.success) {
         return reply.status(400).send({ error: parsed.error.flatten() });
@@ -85,9 +57,8 @@ export async function roadmapRoutes(
   // GET /api/boards/:boardId/views/:viewId/roadmap-config
   app.get<{ Params: { boardId: string; viewId: string } }>(
     '/boards/:boardId/views/:viewId/roadmap-config',
+    { config: { policy: board('VIEWER') } },
     async (req, reply) => {
-      const ok = await requireRole(req, reply, prisma, req.params.boardId, 'VIEWER');
-      if (!ok) return;
       try {
         const config = await configService.getOrCreate(req.params.viewId);
         return reply.send({ config });
@@ -103,9 +74,8 @@ export async function roadmapRoutes(
   // PATCH /api/boards/:boardId/views/:viewId/roadmap-config
   app.patch<{ Params: { boardId: string; viewId: string } }>(
     '/boards/:boardId/views/:viewId/roadmap-config',
+    { config: { policy: board('EDITOR') } },
     async (req, reply) => {
-      const ok = await requireRole(req, reply, prisma, req.params.boardId, 'EDITOR');
-      if (!ok) return;
       const parsed = UpdateRoadmapConfigInputSchema.safeParse(req.body);
       if (!parsed.success) {
         return reply.status(400).send({ error: parsed.error.flatten() });
