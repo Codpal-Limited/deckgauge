@@ -4,6 +4,9 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { deleteComparison, renameComparison, type ComparisonSummary } from '../../../actions/comparison';
+import { ShareDialog } from '../../sharing/ShareDialog';
+import { fetchAccess, fetchMyRole } from '../../../actions/access';
+import type { AccessEntry, AccessRoleValue } from '@deckgauge/shared';
 import { PanelEmptyState } from './PanelEmptyState';
 
 interface ComparisonsPanelProps {
@@ -12,6 +15,30 @@ interface ComparisonsPanelProps {
 }
 
 export function ComparisonsPanel({ comparisons, activePath }: ComparisonsPanelProps) {
+  /**
+   * WHICH comparison the dialog is open for — an id, never a boolean. A sidebar
+   * of rows sharing one dialog is exactly where a boolean ends up sharing the
+   * wrong entity.
+   */
+  const [shareId, setShareId] = useState<string | null>(null);
+  const [shareRole, setShareRole] = useState<AccessRoleValue | null>(null);
+  const [shareUserId, setShareUserId] = useState<string | null>(null);
+  const [shareEntries, setShareEntries] = useState<AccessEntry[]>([]);
+
+  async function openShare(c: ComparisonSummary) {
+    setMenuId(null);
+    setShareId(c.id);
+    setShareRole(null);
+    setShareEntries([]);
+    // Fails closed: if either fetch rejects the dialog opens read-only.
+    const [role, access] = await Promise.all([
+      fetchMyRole('comparison', c.id),
+      fetchAccess('comparison', c.id),
+    ]).catch(() => [{ role: null, userId: null }, [] as AccessEntry[]] as const);
+    setShareRole(role.role);
+    setShareUserId(role.userId);
+    setShareEntries(access);
+  }
   const router = useRouter();
   const [menuId, setMenuId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -116,6 +143,15 @@ export function ComparisonsPanel({ comparisons, activePath }: ComparisonsPanelPr
                 <button
                   type="button"
                   role="menuitem"
+                  aria-label={`Share ${c.name}`}
+                  className="w-full px-3 py-1.5 text-left text-xs text-slate-600 hover:bg-slate-50"
+                  onClick={() => void openShare(c)}
+                >
+                  Share
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
                   className="w-full px-3 py-1.5 text-left text-xs text-slate-600 hover:bg-slate-50"
                   onClick={() => handleRename(c)}
                 >
@@ -134,6 +170,18 @@ export function ComparisonsPanel({ comparisons, activePath }: ComparisonsPanelPr
           </div>
         );
       })}
+
+      {shareId && (
+        <ShareDialog
+          kind="comparison"
+          entityId={shareId}
+          entityName={comparisons.find((c) => c.id === shareId)?.name ?? 'comparison'}
+          myRole={shareRole}
+          currentUserId={shareUserId}
+          initialEntries={shareEntries}
+          onClose={() => setShareId(null)}
+        />
+      )}
     </>
   );
 }

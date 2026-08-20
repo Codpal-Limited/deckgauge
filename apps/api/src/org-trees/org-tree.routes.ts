@@ -22,8 +22,9 @@ import { EmployeeCommentService } from './employee-comment.service.js';
 import type { ClickHouseClient, PrismaClient } from '@deckgauge/db';
 import type { Prisma } from '@deckgauge/db';
 import type { UploadService } from '../uploads/upload.service.js';
-import { AUTHENTICATED, orgTree, viaOrgEntity, fromParam, fromQueryCsv, parseCsvParam } from '../auth/policy.js';
+import { AUTHENTICATED, ORG_MEMBER, orgTree, viaOrgEntity, fromParam, fromQueryCsv, parseCsvParam, any, employeeBoardInTree } from '../auth/policy.js';
 import { accessibleOrgTreeIds } from '../auth/board-access.js';
+import { requireOrganizationId } from '../organizations/request-organization.js';
 
 /**
  * Employee-scoped routes carry an employee id in `:id`, not a tree id — this
@@ -42,10 +43,14 @@ export interface OrgTreeRoutesDeps {
   uploadService?: UploadService;
 }
 
+import { AccessService } from '../access/access.service.js';
+import { effectiveBoardRole } from '../authz/policy.js';
+
 const uuid = z.string().uuid();
 
 export function orgTreeRoutes(deps: OrgTreeRoutesDeps) {
   const service = deps.serviceFactory();
+  const access = new AccessService(deps.prisma);
   return async function plugin(app: FastifyInstance) {
     const activityService = deps.clickhouse
       ? new EmployeeActivityService(deps.clickhouse)
@@ -67,24 +72,61 @@ export function orgTreeRoutes(deps: OrgTreeRoutesDeps) {
       return service.list({ orgTreeIds: await accessibleOrgTreeIds(deps.prisma, req.user.id, req.log) });
     });
 
-    // Same reason this stays AUTHENTICATED: there is no tree yet to check a
-    // policy against. The service stamps the creator as OWNER atomically —
-    // see OrgTreeService.create. `req.user?.id` (not `!`), for the same
-    // single-user-mode reason as GET above: with no resolved user the tree
-    // is still created, just with no owner row — `create`'s second
-    // parameter is already optional for exactly this case.
-    app.post('/org-trees', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
+    // An org tree is a TENANT ROOT, so unlike GET above this cannot stay
+    // AUTHENTICATED: the new row needs an owning organization, and
+    // `requireOrganizationId` deliberately throws rather than guesses when the
+    // request carries no membership. `ORG_MEMBER` is what guarantees one is
+    // there — the floor for creating anything a tenant owns, and the same
+    // policy POST /boards declares for the same reason. It is not a check
+    // against the tree (there is no tree yet); it is a check against the
+    // tenant.
+    //
+    // The service stamps the creator as OWNER atomically — see
+    // OrgTreeService.create. `req.user?.id` (not `!`), for the same
+    // single-user-mode reason as GET above: with no resolved user the tree is
+    // still created, just with no owner row — `create`'s third parameter is
+    // optional for exactly this case, while single-user mode still resolves a
+    // membership through `singleUserMembership()` so the tenant is never
+    // missing.
+    app.post('/org-trees', { config: { policy: ORG_MEMBER } }, async (req, reply) => {
       const body = CreateOrgTreeSchema.safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
-      return service.create(body.data.name, req.user?.id);
+      return service.create(requireOrganizationId(req), body.data.name, req.user?.id);
     });
 
-    app.get<{ Params: { id: string } }>('/org-trees/:id', { config: { policy: orgTree('VIEWER') } }, async (req, reply) => {
-      if (!uuid.safeParse(req.params.id).success) return reply.code(400).send({ error: 'bad id' });
-      const tree = await service.getWithEmployees(req.params.id, { includeSalary: req.isAdmin });
-      if (!tree) return reply.code(404).send({ error: 'not found' });
-      return tree;
-    });
+    /**
+     * Two independent ways in (design D14): a grant on the tree, or a grant on
+     * any board INSIDE it. 403ing the shell for a board-only grantee would make
+     * their board unreachable, which would make per-board sharing useless.
+     */
+    app.get<{ Params: { id: string } }>(
+      '/org-trees/:id',
+      { config: { policy: any(orgTree('VIEWER'), employeeBoardInTree('VIEWER')) } },
+      async (req, reply) => {
+        if (!uuid.safeParse(req.params.id).success) return reply.code(400).send({ error: 'bad id' });
+
+        // Load first, so a tree that does not exist 404s without a second
+        // lookup — and so the role question is only asked when there is
+        // something to answer it about.
+        const tree = await service.getWithEmployees(req.params.id, { includeSalary: req.isAdmin });
+        if (!tree) return reply.code(404).send({ error: 'not found' });
+
+        // `any(...)` deliberately does not report WHICH branch admitted the
+        // caller — a combinator that returned provenance would invite handlers
+        // to re-implement authorization from it. So the handler asks the
+        // question it actually cares about: do they hold the TREE, or only a
+        // board inside it? A null tree role means the second branch is what let
+        // them in, and the chart is not theirs to see.
+        const grant = await access.getRole('orgTree', req.params.id, req.user?.id ?? '');
+        const treeRole = req.membership
+          ? effectiveBoardRole(req.membership.role, grant)
+          : (grant ?? null);
+        // Name and shape only. `employees` is emptied rather than the key being
+        // dropped, so the web layer needs no second payload variant.
+        if (!treeRole) return { ...tree, employees: [] };
+        return tree;
+      },
+    );
 
     app.patch<{ Params: { id: string } }>('/org-trees/:id', { config: { policy: orgTree('OWNER') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.id).success) return reply.code(400).send({ error: 'bad id' });

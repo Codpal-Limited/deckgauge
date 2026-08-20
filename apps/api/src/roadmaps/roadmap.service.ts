@@ -12,14 +12,24 @@ import {
 import { RoadmapMembershipService } from './roadmap-membership.service.js';
 import { RoadmapGanttConfigService } from './roadmap-gantt-config.service.js';
 import { accessibleBoardIds, type BoardAccessLog } from '../auth/board-access.js';
+import type { CallerMembership } from '../auth/board-access.js';
 
 export class RoadmapService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async create(userId: string, input: CreateRoadmapInput): Promise<RoadmapSummary> {
+  async create(
+    organizationId: string,
+    userId: string,
+    input: CreateRoadmapInput,
+  ): Promise<RoadmapSummary> {
     return this.prisma.$transaction(async (tx) => {
       const roadmap = await tx.roadmap.create({
-        data: { name: input.name, description: input.description ?? null, createdBy: userId },
+        data: {
+          organizationId,
+          name: input.name,
+          description: input.description ?? null,
+          createdBy: userId,
+        },
         select: { id: true, name: true },
       });
       await tx.roadmapAccess.create({
@@ -77,35 +87,8 @@ export class RoadmapService {
     return a ? (a.role as RoadmapAccessRoleValue) : null;
   }
 
-  async setAccess(roadmapId: string, userId: string, role: RoadmapAccessRoleValue): Promise<void> {
-    await this.prisma.roadmapAccess.upsert({
-      where: { roadmapId_userId: { roadmapId, userId } },
-      create: { roadmapId, userId, role },
-      update: { role },
-    });
-  }
 
-  async listAccess(roadmapId: string) {
-    return this.prisma.roadmapAccess.findMany({
-      where: { roadmapId },
-      include: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } },
-      orderBy: { createdAt: 'asc' },
-    });
-  }
 
-  async revokeAccess(roadmapId: string, userId: string): Promise<void> {
-    const access = await this.prisma.roadmapAccess.findUnique({
-      where: { roadmapId_userId: { roadmapId, userId } },
-    });
-    if (!access) return;
-    if (access.role === 'OWNER') {
-      const owners = await this.prisma.roadmapAccess.count({ where: { roadmapId, role: 'OWNER' } });
-      if (owners <= 1) throw new Error('Cannot remove the last roadmap owner');
-    }
-    await this.prisma.roadmapAccess.delete({
-      where: { roadmapId_userId: { roadmapId, userId } },
-    });
-  }
 
   /**
    * The roadmap with its groups and their project rows.
@@ -128,6 +111,7 @@ export class RoadmapService {
     role: RoadmapAccessRoleValue,
     userId: string,
     log?: BoardAccessLog,
+    membership: CallerMembership = null,
   ): Promise<RoadmapDetail> {
     await new RoadmapMembershipService(this.prisma).reconcile(roadmapId);
     // Restores `readDetail`'s pre-split behaviour exactly: before the split,
@@ -139,7 +123,7 @@ export class RoadmapService {
     // not just its return value — identical to before this task. One extra
     // query; buys exact parity.
     await new RoadmapGanttConfigService(this.prisma).ensure(roadmapId);
-    return this.readDetail(roadmapId, role, userId, log);
+    return this.readDetail(roadmapId, role, userId, log, membership);
   }
 
   /**
@@ -177,6 +161,7 @@ export class RoadmapService {
     role: RoadmapAccessRoleValue,
     userId: string,
     log?: BoardAccessLog,
+    membership: CallerMembership = null,
   ): Promise<RoadmapDetail> {
     const roadmap = await this.prisma.roadmap.findUnique({
       where: { id: roadmapId },
@@ -219,6 +204,10 @@ export class RoadmapService {
       allRows.map((r) => r.group.boardId).filter(Boolean) as string[],
       'VIEWER',
       log,
+      // Spec §13: without the membership an org ADMIN holding no BoardAccess
+      // rows saw an EMPTY roadmap, while the policy layer treated them as an
+      // implicit OWNER of the very same boards.
+      membership,
     );
     const rows = allRows.filter((r) => r.group.boardId && visibleBoardIds.has(r.group.boardId));
 

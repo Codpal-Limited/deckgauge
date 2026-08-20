@@ -30,6 +30,12 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    // Every integration suite here shares one Postgres, and the one-org cap
+    // (OrganizationService.bootstrap does an unfiltered findFirst) can only be
+    // asserted when no other file is creating organizations concurrently.
+    // Prefix-scoped cleanup cannot substitute: the assertion is global by
+    // nature, not per-fixture.
+    fileParallelism: false,
     env: loadTestEnv(),
   },
 });

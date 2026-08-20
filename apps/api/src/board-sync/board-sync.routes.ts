@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { PrismaClient } from '@deckgauge/db';
 import { RestoreBoardSyncExclusionsInputSchema } from '@deckgauge/shared';
@@ -15,6 +15,7 @@ import { JiraInstanceService } from '../jira-instances/jira-instance.service.js'
 import { GitHubService } from '../github/github.service.js';
 import { GitLabService } from '../gitlab/gitlab.service.js';
 import { AzureDevOpsService } from '../azure-devops/azure-devops.service.js';
+import { requireOrganizationId } from '../organizations/request-organization.js';
 
 interface Deps {
   prisma: PrismaClient;
@@ -26,17 +27,29 @@ export function boardSyncRoutes(deps: Deps) {
   return async function plugin(app: FastifyInstance) {
     const ParamsSchema = z.object({ boardId: z.string().uuid() });
 
-    const buildHealthService = () => {
+    // Takes the request so all four probes can be organization-scoped: every
+    // provider's `testConnection` now resolves the instance through
+    // (id, organizationId). `requireOrganizationId` sits AFTER the factory check
+    // on purpose — an injected fake probe needs no tenant, so tests that supply
+    // one are not forced to carry a membership.
+    //
+    // `BoardSourceProbes` still types a probe as `(instanceId) => …` and binds
+    // the tenant in these closures rather than in its own signature. That is
+    // deliberate: with organizationId now the FIRST required parameter of all
+    // four services, an unscoped probe body no longer compiles, which is a
+    // stronger guarantee than a parameter the health service would only forward.
+    const buildHealthService = (req: FastifyRequest) => {
       if (deps.healthServiceFactory) return deps.healthServiceFactory();
+      const organizationId = requireOrganizationId(req);
       const jira = new JiraInstanceService(deps.prisma);
       const github = new GitHubService(deps.prisma);
       const gitlab = new GitLabService(deps.prisma);
       const ado = new AzureDevOpsService(deps.prisma);
       const probes: BoardSourceProbes = {
-        jira: (id) => jira.testConnection(id),
-        github: (id) => github.testConnection(id),
-        gitlab: (id) => gitlab.testConnection(id),
-        ado: (id) => ado.testConnection(id),
+        jira: (id) => jira.testConnection(organizationId, id),
+        github: (id) => github.testConnection(organizationId, id),
+        gitlab: (id) => gitlab.testConnection(organizationId, id),
+        ado: (id) => ado.testConnection(organizationId, id),
       };
       return new BoardSourceHealthService(deps.prisma, probes);
     };
@@ -52,7 +65,7 @@ export function boardSyncRoutes(deps: Deps) {
           return reply.code(503).send({ error: 'sync queue not configured' });
         }
 
-        const health = await buildHealthService().probe(params.data.boardId);
+        const health = await buildHealthService(req).probe(params.data.boardId);
         // Named `expired` for wire compatibility, but it carries every
         // credential-blocked source — each entry keeps its own `state` so the UI
         // can say "reauthorize" where that is the real remedy.
@@ -74,7 +87,7 @@ export function boardSyncRoutes(deps: Deps) {
       async (req, reply) => {
         const params = ParamsSchema.safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
-        const health = await buildHealthService().probe(params.data.boardId);
+        const health = await buildHealthService(req).probe(params.data.boardId);
         return reply.code(200).send(health);
       },
     );

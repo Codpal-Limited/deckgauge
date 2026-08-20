@@ -2,6 +2,7 @@
 -- onto one canonical person via canonical_login.
 CREATE TABLE IF NOT EXISTS cockpit.developer_identity_map
 (
+    organization_id String,
     login           String,
     provider        String,
     display_name    Nullable(String),
@@ -11,5 +12,5 @@ CREATE TABLE IF NOT EXISTS cockpit.developer_identity_map
     synced_at       DateTime  DEFAULT now()
 )
 ENGINE = ReplacingMergeTree(synced_at)
-ORDER BY (provider, login)
+ORDER BY (organization_id, provider, login)
 SETTINGS index_granularity = 8192;

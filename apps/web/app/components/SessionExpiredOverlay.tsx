@@ -8,23 +8,6 @@ export function SessionExpiredOverlay() {
 
   if (!isSessionExpired) return null;
 
-  const keycloakIssuer =
-    process.env.NEXT_PUBLIC_KEYCLOAK_ISSUER ??
-    'http://localhost:8080/realms/vp-cockpit';
-  const keycloakClientId =
-    process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID ?? 'vp-cockpit-web';
-  const redirectUri =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/api/auth/callback/keycloak`
-      : 'http://localhost:3000/api/auth/callback/keycloak';
-
-  const registrationUrl =
-    `${keycloakIssuer}/protocol/openid-connect/registrations` +
-    `?client_id=${encodeURIComponent(keycloakClientId)}` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&response_type=code` +
-    `&scope=openid`;
-
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-xl bg-white p-8 text-center shadow-xl">
@@ -56,12 +39,15 @@ export function SessionExpiredOverlay() {
             </div>
           </div>
 
-          <a
-            href={registrationUrl}
-            className="btn-secondary inline-block w-full text-center"
+          {/* Routed through the provider, like the login page: a hand-built
+              /registrations link hard-codes the build-time issuer and skips the
+              PKCE verifier + state NextAuth needs for the callback to validate. */}
+          <button
+            onClick={() => signIn('keycloak-register')}
+            className="btn-secondary w-full"
           >
             Create an account
-          </a>
+          </button>
         </div>
       </div>
     </div>

@@ -48,16 +48,13 @@ import {
 } from '../../actions/connections';
 import type { RemoteProjectsResult } from '../../actions/board-sources';
 import { bulkAddGitHubRepos } from '../../actions/github-sources';
-import {
-  fetchJiraInstances,
-  discoverJiraProjects,
-  createJiraInstance,
-  testJiraConnection,
-  updateJiraInstance,
-} from '../../actions/jira';
-import { fetchGitHubInstances, discoverGitHubRepos, createGitHubInstance, testGitHubConnection } from '../../actions/github';
-import { fetchAzureDevOpsInstances, listAzureDevOpsRemoteProjects, createAzureDevOpsInstance, testAzureDevOpsConnection } from '../../actions/azure-devops';
-import { fetchGitLabInstances, listGitLabRemoteProjects, createGitLabInstanceReturning, testGitLabConnection } from '../../actions/gitlab';
+// Only reads here. Creating, editing and testing a connection require the
+// organization ADMIN role and live on Settings → Connections; this list is a
+// picker over connections the organization already has.
+import { fetchJiraInstances, discoverJiraProjects } from '../../actions/jira';
+import { fetchGitHubInstances, discoverGitHubRepos } from '../../actions/github';
+import { fetchAzureDevOpsInstances, listAzureDevOpsRemoteProjects } from '../../actions/azure-devops';
+import { fetchGitLabInstances, listGitLabRemoteProjects } from '../../actions/gitlab';
 import type { AddNewActions, Provider } from './BoardAddSource';
 
 interface Props {
@@ -68,6 +65,17 @@ interface Props {
   boardStatuses: BoardStatusOption[];
   /** GitHub connections available to this board; enables the live repo picker. */
   githubInstances?: GitHubInstanceOption[];
+  /**
+   * Whether the viewer holds the organization ADMIN role, which is what
+   * rotating a connection's token needs (`POST
+   * /:provider/instances/:id/refresh-token`). Withholding it hides both
+   * reconnect affordances on this tab: the card's inline fix box and the
+   * add-source wizard's auth-failure banner.
+   *
+   * Defaults to `true` — presentation only, the API enforces regardless, and the
+   * board Sources page always passes the viewer's real role.
+   */
+  canManageConnections?: boolean;
 }
 
 export function BoardSourcesList({
@@ -77,6 +85,7 @@ export function BoardSourcesList({
   readyProviders,
   boardStatuses,
   githubInstances = [],
+  canManageConnections = true,
 }: Props) {
   const [sources, setSources] = useState<SourceShape[]>(initialSources);
   const [addOpen, setAddOpen] = useState(false);
@@ -325,66 +334,6 @@ export function BoardSourcesList({
       // capped list isn't enough.
       return listGitLabRemoteProjects(connectionId, search);
     },
-    createConnection: async (provider: Provider, v: Record<string, string>) => {
-      if (provider === 'jira') {
-        const inst = (await createJiraInstance({
-          name: v.name,
-          atlassianUrl: v.atlassianUrl,
-          email: v.email,
-          apiToken: v.apiToken,
-          projectKeys: [],
-        })) as { id: string; name?: string };
-        return { id: inst.id, name: inst.name ?? v.name };
-      }
-      if (provider === 'github') {
-        const inst = (await createGitHubInstance({
-          baseUrl: v.baseUrl,
-          accessToken: v.accessToken,
-          repos: [],
-        })) as { id: string; baseUrl?: string };
-        return { id: inst.id, name: inst.baseUrl ?? 'GitHub' };
-      }
-      if (provider === 'ado') {
-        const inst = (await createAzureDevOpsInstance({
-          name: v.name,
-          orgUrl: v.orgUrl,
-          authMethod: (v.authMethod as 'PAT' | 'BASIC') ?? 'PAT',
-          accessToken: v.accessToken,
-          username: v.username ?? null,
-          projects: [],
-        })) as { id: string; name?: string };
-        return { id: inst.id, name: inst.name ?? v.name };
-      }
-      const inst = await createGitLabInstanceReturning({
-        name: v.name,
-        baseUrl: v.baseUrl,
-        accessToken: v.accessToken,
-        projects: [],
-      });
-      return { id: inst.id, name: v.name };
-    },
-    testConnection: async (provider: Provider, connectionId: string) => {
-      if (provider === 'jira') return testJiraConnection(connectionId);
-      if (provider === 'github') return testGitHubConnection(connectionId);
-      if (provider === 'ado') return testAzureDevOpsConnection(connectionId);
-      return testGitLabConnection(connectionId);
-    },
-    updateConnectionUrl: async (
-      provider: Provider,
-      connectionId: string,
-      url: string,
-    ): Promise<{ ok: boolean; error?: string }> => {
-      // Only Jira produces a canonical-url hint, so only Jira can get here.
-      if (provider !== 'jira') {
-        return { ok: false, error: 'Changing the URL is not supported for this provider.' };
-      }
-      try {
-        await updateJiraInstance(connectionId, { atlassianUrl: url });
-        return { ok: true };
-      } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : 'Could not update the URL.' };
-      }
-    },
     ensureSync: async (provider: Provider, connectionId: string, projectKey: string) => {
       if (provider === 'jira') {
         const { id } = await ensureJiraProjectSync(connectionId, projectKey);
@@ -432,7 +381,7 @@ export function BoardSourcesList({
           addNewActions={addNewActions}
           githubInstances={githubInstances}
           onBulkAttachGitHub={handleBulkAttachGitHub}
-          onReplaceToken={handleReplaceToken}
+          onReplaceToken={canManageConnections ? handleReplaceToken : undefined}
         />
       )}
 
@@ -452,6 +401,7 @@ export function BoardSourcesList({
             onDetach={() => handleDetach(s)}
             health={health[s.instanceId]}
             openFix={fixInstanceId === s.instanceId}
+            canManageConnections={canManageConnections}
           />
         ))
       )}

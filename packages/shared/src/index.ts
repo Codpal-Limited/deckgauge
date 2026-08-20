@@ -83,7 +83,7 @@ export {
   type SyncRunTrigger,
 } from "./jira-schemas";
 
-export type { JiraPort } from "./jira-port";
+export type { JiraPort, JiraIssueExistence, JiraCredentialState } from "./jira-port";
 
 export { FakeJiraAdapter } from "./fake-jira-adapter";
 
@@ -195,6 +195,8 @@ export {
 export {
   STATUS_COLORS,
   DEFAULT_BOARD_STATUSES,
+  DELETED_STATUS_LABEL,
+  DELETED_STATUS_COLOR,
   BoardStatusSchema,
   CreateBoardStatusInputSchema,
   UpdateBoardStatusInputSchema,
@@ -613,7 +615,7 @@ export type {
 } from './org-tree-schemas';
 
 export {
-  ACTIVE_WINDOW_DAYS, UNMAPPED, isWithinActiveWindow, reduceEmployeeSnapshot,
+  ACTIVE_WINDOW_DAYS, UNMAPPED, isWithinActiveWindow, reduceEmployeeSnapshot, toUtcIso,
 } from './org-employee-stats';
 export type { MatchedActivityRow } from './org-employee-stats';
 
@@ -762,7 +764,6 @@ export {
   AddGroupsInputSchema,
   AddSubscriptionInputSchema,
   ReorderRoadmapGroupsInputSchema,
-  SetRoadmapAccessInputSchema,
   type SystemColumnKey,
   type RoadmapAccessRoleValue,
   type CreateRoadmapInput,
@@ -770,7 +771,6 @@ export {
   type AddGroupsInput,
   type AddSubscriptionInput,
   type ReorderRoadmapGroupsInput,
-  type SetRoadmapAccessInput,
   type RoadmapItem,
   type RoadmapGroupResolved,
   type RoadmapSummary,
@@ -901,10 +901,68 @@ export {
   type JiraSourceLinks,
 } from './jira-source-links';
 
+
+// Organization tenancy contracts (spec §4). Named re-exports only — this barrel
+// must never use `export *`.
 export {
-  OrgTreeAccessRoleSchema,
-  GrantOrgTreeAccessSchema,
-  UpdateOrgTreeAccessSchema,
-  type GrantOrgTreeAccess,
-  type UpdateOrgTreeAccess,
-} from './org-tree-access';
+  ORG_ROLES,
+  OrgRoleSchema,
+  ORG_ROLE_RANK,
+  ORG_MEMBERSHIP_STATUSES,
+  OrgMembershipStatusSchema,
+  BootstrapOrganizationSchema,
+  InviteMemberSchema,
+  UpdateMemberRoleSchema,
+  UpdateMemberStatusSchema,
+} from './org';
+export type {
+  OrgRoleValue,
+  OrgMembershipStatusValue,
+  BootstrapOrganizationInput,
+  InviteMemberInput,
+  OrganizationDto,
+  OrgMemberDto,
+  OrgBoardDto,
+  UpdateMemberRoleInput,
+  UpdateMemberStatusInput,
+} from './org';
+
+export { slugify } from './slugify';
+
+// Sharing contracts — one vocabulary for all five shareable entities
+// (2026-08-18-monday-style-board-sharing-design.md §5).
+export {
+  ACCESS_ROLES,
+  AccessRoleSchema,
+  ACCESS_ROLE_RANK,
+  ACCESS_ENTITY_KINDS,
+  ACCESS_ROLE_LABELS,
+  ACCESS_ENTITY_NOUNS,
+  ACCESS_ROLE_HINTS,
+  OrgPersonSchema,
+  AccessEntrySchema,
+  GrantAccessSchema,
+  UpdateAccessRoleSchema,
+  MyRoleSchema,
+  canEditEntity,
+  canManageEntity,
+} from './access';
+export type {
+  AccessRoleValue,
+  AccessEntityKind,
+  OrgPerson,
+  AccessEntry,
+  GrantAccessInput,
+  UpdateAccessRoleInput,
+  MyRole,
+} from './access';
+
+export {
+  EditionNoticeSchema,
+  EditionNoticeActionSchema,
+  EditionNoticeSeverity,
+  MAX_NOTICES,
+  MAX_ACTIONS,
+  sanitiseEditionNotices,
+} from './edition-notice';
+export type { EditionNotice, EditionNoticeAction } from './edition-notice';

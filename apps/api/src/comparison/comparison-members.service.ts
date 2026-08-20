@@ -5,6 +5,7 @@ import {
   forbiddenBoardIds,
   type BoardAccessLog,
 } from '../auth/board-access.js';
+import type { CallerMembership } from '../auth/board-access.js';
 
 export interface ComparisonMemberEntry {
   boardId: string;
@@ -31,7 +32,12 @@ export class ComparisonMembersService {
    * creator able to save a corrected set, where a hard denial would strand the
    * comparison unreadable and un-editable.
    */
-  async list(comparisonId: string, userId: string, log?: BoardAccessLog): Promise<ComparisonMemberEntry[]> {
+  async list(
+    comparisonId: string,
+    userId: string,
+    log?: BoardAccessLog,
+    membership: CallerMembership = null,
+  ): Promise<ComparisonMemberEntry[]> {
     const members = await this.prisma.comparisonMember.findMany({
       where: { comparisonId },
       orderBy: { position: 'asc' },
@@ -43,6 +49,7 @@ export class ComparisonMembersService {
       members.map((m) => m.boardId),
       'VIEWER',
       log,
+      membership,
     );
     return members
       .filter((m) => visible.has(m.boardId))
@@ -62,17 +69,20 @@ export class ComparisonMembersService {
   // comparison is open to any signed-in user and its widgets read the member
   // set, so without this an attacker could name any board id here and read that
   // board's analytics back through `GET /boards/:comparisonId/widgets/…/data`
-  // — the comparisonCreator arm correctly allows them, because they really are
-  // the creator. The whole request is refused (never partially applied) so the
-  // attempt is visible rather than silently trimmed.
+  // — the comparisonAccess arm correctly allows them, because they really do
+  // hold the comparison. The whole request is refused (never partially applied)
+  // so the attempt is visible rather than silently trimmed. This per-board
+  // re-check is D16 and must never be relaxed: sharing a comparison must not
+  // become a back door into board contents.
   async replace(
     comparisonId: string,
     boardIds: string[],
     userId: string,
     log?: BoardAccessLog,
+    membership: CallerMembership = null,
   ): Promise<void> {
     const unique = boardIds.filter((id, i) => boardIds.indexOf(id) === i);
-    const forbidden = await forbiddenBoardIds(this.prisma, userId, unique, 'VIEWER', log);
+    const forbidden = await forbiddenBoardIds(this.prisma, userId, unique, 'VIEWER', log, membership);
     if (forbidden.length > 0) throw new BoardAccessDeniedError(forbidden);
 
     await this.prisma.$transaction(async (tx) => {

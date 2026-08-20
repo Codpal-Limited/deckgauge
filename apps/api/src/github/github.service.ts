@@ -5,6 +5,7 @@ import type {
   GitHubProjectsPort,
 } from '@deckgauge/shared';
 import { normalizeRepoFullName, GitHubProjectsGraphQLAdapter } from '@deckgauge/shared';
+import { logHostRepoint, type ConnectionAuditLog } from '../connections/host-repoint-audit.js';
 
 type FetchFn = typeof fetch;
 
@@ -27,17 +28,37 @@ export class GitHubService {
       new GitHubProjectsGraphQLAdapter(cfg),
   ) {}
 
-  async listInstances(): Promise<GitHubInstancePublic[]> {
-    const rows = await this.prisma.gitHubInstance.findMany({ orderBy: { createdAt: 'asc' } });
+  /**
+   * Reads are organization-scoped: a cross-organization id resolves to null,
+   * which routes surface as 404 rather than as another tenant's connection.
+   *
+   * `findFirst`, not `findUnique`: the predicate is `(id, organizationId)`, and
+   * `findUnique` only accepts a unique key, so it cannot express the compound
+   * tenant filter. Reverting one of these to `findUnique` would silently drop
+   * the tenant filter, which is exactly the hole closed here (org-tenancy
+   * design §11 precondition 4).
+   *
+   * `organizationId` is deliberately the FIRST parameter on every one of these:
+   * a mis-ordered call then fails to compile instead of quietly becoming a
+   * tenant bypass.
+   */
+  async listInstances(organizationId: string): Promise<GitHubInstancePublic[]> {
+    const rows = await this.prisma.gitHubInstance.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: 'asc' },
+    });
     return rows.map((r) => mask(r as GitHubInstance));
   }
 
+  /** `organizationId` is the tenant boundary, `createdById` ownership within it. */
   async createInstance(
+    organizationId: string,
     input: CreateGitHubInstanceInput,
     actingUserId?: string,
   ): Promise<GitHubInstancePublic> {
     const row = await this.prisma.gitHubInstance.create({
       data: {
+        organizationId,
         baseUrl: input.baseUrl,
         accessToken: input.accessToken,
         repos: (input.repos ?? []).map(normalizeRepoFullName),
@@ -47,12 +68,23 @@ export class GitHubService {
     return mask(row as GitHubInstance);
   }
 
+  /**
+   * Organization-scoped, like `deleteInstance` below. The `ORG_ADMIN` policy on
+   * their routes decides WHO may call them, not WHOSE row the call lands on — so
+   * without the predicate here an administrator of one organization could
+   * repoint or delete another's connection by id. A miss resolves to null, which
+   * the route answers as 404: indistinguishable from an id that names nothing,
+   * so the guard never confirms another tenant's ids.
+   */
   async updateInstanceRepos(
+    organizationId: string,
     id: string,
     repos: string[],
     actingUserId?: string,
   ): Promise<GitHubInstancePublic | null> {
-    const existing = await this.prisma.gitHubInstance.findUnique({ where: { id } });
+    const existing = await this.prisma.gitHubInstance.findFirst({
+      where: { id, organizationId },
+    });
     if (!existing) return null;
     // Claim-on-first-edit: an unclaimed (null owner) row is claimed by
     // whoever edits it first. An already-claimed row keeps its owner.
@@ -70,11 +102,19 @@ export class GitHubService {
    * recover from an expired/revoked PAT without recreating the connection.
    */
   async updateInstanceToken(
+    organizationId: string,
     id: string,
     data: { accessToken: string; baseUrl?: string },
     actingUserId?: string,
+    log?: ConnectionAuditLog,
   ): Promise<GitHubInstancePublic | null> {
-    const existing = await this.prisma.gitHubInstance.findUnique({ where: { id } });
+    // Scoped resolve first, so a cross-organization id cannot reach the
+    // `update` and overwrite another tenant's stored PAT. Read through Prisma
+    // rather than `getRawInstanceById` because the claim check below needs
+    // `createdById`, which the shared `GitHubInstance` shape does not carry.
+    const existing = await this.prisma.gitHubInstance.findFirst({
+      where: { id, organizationId },
+    });
     if (!existing) return null;
     const claim =
       existing.createdById === null && actingUserId ? { createdById: actingUserId } : {};
@@ -86,18 +126,38 @@ export class GitHubService {
         ...claim,
       },
     });
+    // After the write, so a rejected update is not recorded as a repoint. Note
+    // this is the ONLY GitHub path that can change the host: a baseUrl-only PATCH
+    // falls through to the repos branch and is rejected, so a repoint here always
+    // arrives together with a token.
+    logHostRepoint(log, {
+      provider: 'github',
+      instanceId: id,
+      organizationId,
+      actingUserId,
+      from: existing.baseUrl,
+      to: data.baseUrl,
+    });
     return mask(row as GitHubInstance);
   }
 
-  async deleteInstance(id: string): Promise<boolean> {
-    const existing = await this.prisma.gitHubInstance.findUnique({ where: { id } });
+  async deleteInstance(organizationId: string, id: string): Promise<boolean> {
+    const existing = await this.prisma.gitHubInstance.findFirst({
+      where: { id, organizationId },
+    });
     if (!existing) return false;
     await this.prisma.gitHubInstance.delete({ where: { id } });
     return true;
   }
 
-  async getRawInstanceById(id: string): Promise<GitHubInstance | null> {
-    const row = await this.prisma.gitHubInstance.findUnique({ where: { id } });
+  /** Returns the LIVE PAT. The tenant filter here is the credential boundary. */
+  async getRawInstanceById(
+    organizationId: string,
+    id: string,
+  ): Promise<GitHubInstance | null> {
+    const row = await this.prisma.gitHubInstance.findFirst({
+      where: { id, organizationId },
+    });
     return row ? (row as GitHubInstance) : null;
   }
 
@@ -151,31 +211,46 @@ export class GitHubService {
   }
 
   async testConnection(
+    organizationId: string,
     instanceId: string,
     fetchFn: FetchFn = fetch,
   ): Promise<{ ok: boolean; error?: string }> {
-    const instance = await this.getRawInstanceById(instanceId);
+    // Scoped resolve first: a cross-organization id must never reach the
+    // network as someone else's PAT.
+    const instance = await this.getRawInstanceById(organizationId, instanceId);
     if (!instance) return { ok: false, error: 'Instance not found' };
     return this.probeToken(instance.baseUrl, instance.accessToken, instance.org, fetchFn);
   }
 
   async refreshToken(
+    organizationId: string,
     id: string,
     newToken: string,
     fetchFn: FetchFn = fetch,
     actingUserId?: string,
   ): Promise<RefreshResult> {
-    const instance = await this.getRawInstanceById(id);
+    // The scoped resolve is what stops a cross-organization id from having its
+    // stored credential overwritten.
+    const instance = await this.getRawInstanceById(organizationId, id);
     if (!instance) return { ok: false, notFound: true, error: 'Instance not found' };
     const probe = await this.probeToken(instance.baseUrl, newToken, instance.org, fetchFn);
     if (!probe.ok) return probe;
-    const updated = await this.updateInstanceToken(id, { accessToken: newToken }, actingUserId);
+    const updated = await this.updateInstanceToken(
+      organizationId,
+      id,
+      { accessToken: newToken },
+      actingUserId,
+    );
     if (!updated) return { ok: false, notFound: true, error: 'Instance not found' };
     return { ok: true };
   }
 
-  async discoverRepos(instanceId: string, fetchFn: FetchFn = fetch): Promise<string[] | null> {
-    const instance = await this.getRawInstanceById(instanceId);
+  async discoverRepos(
+    organizationId: string,
+    instanceId: string,
+    fetchFn: FetchFn = fetch,
+  ): Promise<string[] | null> {
+    const instance = await this.getRawInstanceById(organizationId, instanceId);
     if (!instance) return null;
 
     const baseUrl = instance.baseUrl.replace(/\/+$/, '');
@@ -212,8 +287,12 @@ export class GitHubService {
     });
   }
 
-  async listProjectsForInstance(instanceId: string) {
-    const instance = await this.prisma.gitHubInstance.findUnique({ where: { id: instanceId } });
+  async listProjectsForInstance(organizationId: string, instanceId: string) {
+    // Same tenant filter as `getRawInstanceById` — this one hands the PAT to the
+    // GraphQL adapter, so an unscoped read here is a live exfiltration path.
+    const instance = await this.prisma.gitHubInstance.findFirst({
+      where: { id: instanceId, organizationId },
+    });
     if (!instance) throw new Error(`GitHub instance ${instanceId} not found`);
     const adapter = this.projectsAdapterFactory({
       accessToken: instance.accessToken,

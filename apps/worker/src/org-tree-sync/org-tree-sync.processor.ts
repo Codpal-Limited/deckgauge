@@ -89,6 +89,32 @@ function buildRankingByEmployee(
   return rankingByEmployee;
 }
 
+/**
+ * Boards an assignment credits.
+ *
+ * An assignment names an exact work item, so it resolves against the rows actually
+ * promoted onto a board rather than the project — several boards routinely slice one
+ * Jira/ADO project with different filters, and the project-level index credits all of
+ * them. When the item itself is on no board we fall back to its parent: boards commonly
+ * track Epics only while engineers are assigned the Stories underneath them, and those
+ * engineers are genuinely working the epic the board tracks.
+ *
+ * The fallback is an alternative, not an addition — the exact row is always the better
+ * signal when it resolves. The chain runs row -> parent -> epic because the hierarchy
+ * can be two deep: for a Jira sub-task the parent is the Story and the epic is above
+ * that, and it is usually the Epic the board tracks.
+ */
+function resolveAssignmentBoards(
+  boardIndex: BoardReverseIndex,
+  id: Pick<ActivityIdentityRow, 'kind' | 'rowKey' | 'parentKey' | 'epicKey'>,
+): string[] {
+  for (const key of [id.rowKey, id.parentKey, id.epicKey]) {
+    const hit = boardIndex.lookupRow(id.kind, key);
+    if (hit.length > 0) return hit;
+  }
+  return [];
+}
+
 export async function runOrgTreeSync(
   treeId: string,
   deps: RunDeps,
@@ -121,7 +147,10 @@ export async function runOrgTreeSync(
   for (const id of identities) {
     const employeeId = matchIdentity(id, matchIndex);
     if (!employeeId) continue;
-    const boards = boardIndex.lookup(id.kind, id.scopeKey);
+    const boards = id.isAssignment
+      ? resolveAssignmentBoards(boardIndex, id)
+      : // Code activity has no row to key on; the repo/project is the finest scope there is.
+        boardIndex.lookup(id.kind, id.scopeKey);
     const row: MatchedActivityRow = {
       employeeId,
       boards: boards.length ? boards : [UNMAPPED],

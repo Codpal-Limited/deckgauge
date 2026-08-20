@@ -6,6 +6,7 @@ import type { RoadmapDetail } from '@deckgauge/shared';
 import { RoadmapGrid } from './RoadmapGrid';
 import RoadmapEntityCanvas from './RoadmapEntityCanvas';
 import { RoadmapGroupPicker } from './RoadmapGroupPicker';
+import { EntityShareControls } from '../sharing/EntityShareControls';
 
 type ViewType = 'grid' | 'gantt';
 
@@ -27,6 +28,16 @@ export default function RoadmapPageContent({ roadmap }: RoadmapPageContentProps)
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">{roadmap.name}</h1>
         <div className="flex items-center gap-3">
+          {/* The first sharing UI a roadmap has ever had (design §8). The
+              per-group board re-check on every read stays exactly as it is
+              (D16) — a roadmap viewer sees the groups whose boards they can
+              read and no others. */}
+          <EntityShareControls
+            kind="roadmap"
+            entityId={roadmap.id}
+            entityName={roadmap.name}
+            nounLabel="Roadmap"
+          />
           <button
             onClick={() => setPickerOpen(true)}
             className="rounded-md bg-indigo-600 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"

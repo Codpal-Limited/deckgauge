@@ -39,8 +39,23 @@ export class GitLabService {
     private readonly fetchFn: typeof fetch = fetch,
   ) {}
 
-  async listInstances() {
+  /**
+   * `organizationId` is deliberately the FIRST parameter on every scoped read
+   * below: a mis-ordered call then fails to compile instead of silently becoming
+   * a tenant bypass.
+   *
+   * `findFirst`, not `findUnique`: the predicate is `(id, organizationId)`, and
+   * `findUnique` only accepts a unique key. Reverting these to `findUnique`
+   * reopens the cross-tenant credential hole.
+   *
+   * Unlike Jira/GitHub/Azure DevOps, this service has NO raw getter — it
+   * resolves a credential INLINE in testConnection, updateInstanceToken,
+   * refreshToken and listRemoteProjects. Every one of those sites carries its
+   * own filter, so adding a method here means adding the filter there too.
+   */
+  async listInstances(organizationId: string) {
     return this.prisma.gitLabInstance.findMany({
+      where: { organizationId },
       select: {
         id: true,
         name: true,
@@ -53,9 +68,15 @@ export class GitLabService {
     });
   }
 
-  async createInstance(input: CreateGitLabInstanceInput, actingUserId?: string) {
+  /** `organizationId` is the tenant boundary, `createdById` ownership within it. */
+  async createInstance(
+    organizationId: string,
+    input: CreateGitLabInstanceInput,
+    actingUserId?: string,
+  ) {
     return this.prisma.gitLabInstance.create({
       data: {
+        organizationId,
         name: input.name,
         baseUrl: gitlabApiBase(input.baseUrl ?? 'https://gitlab.com/api/v4'),
         accessToken: input.accessToken,
@@ -73,13 +94,45 @@ export class GitLabService {
     });
   }
 
-  async deleteInstance(id: string) {
+  /**
+   * Organization-scoped. The `ORG_ADMIN` policy on the route decides WHO may
+   * call this, not WHOSE row it lands on — so without the predicate here an
+   * administrator of one organization could delete another's connection by id,
+   * cascading away every board source built on it. A miss returns false, which
+   * the route answers as 404: indistinguishable from an id that names nothing.
+   *
+   * Reads before it deletes, rather than passing a compound `where` to `delete`
+   * (Prisma's `delete` takes a unique key only, so it cannot express the tenant
+   * filter). The read also removes the P2025-out-of-the-handler 500 that a
+   * nonexistent id used to produce.
+   */
+  async deleteInstance(organizationId: string, id: string): Promise<boolean> {
+    const existing = await this.prisma.gitLabInstance.findFirst({
+      where: { id, organizationId },
+      select: { id: true },
+    });
+    if (!existing) return false;
     await this.prisma.gitLabInstance.delete({ where: { id } });
+    return true;
   }
 
-  async listProjectSyncs(instanceId?: string) {
+  /**
+   * The project syncs of ONE organization, optionally narrowed to one instance.
+   *
+   * `instanceId` is caller-supplied (a query-string parameter), so the tenant
+   * predicate is ANDed with it rather than replaced by it: naming another
+   * organization's instance now yields nothing instead of their sync rows. With
+   * no predicate at all this listed every organization's rows at once.
+   *
+   * Scoped through the instance because the sync row carries no organization of
+   * its own. See gitlab.service.test.ts.
+   */
+  async listProjectSyncs(organizationId: string, instanceId?: string) {
     return this.prisma.gitLabProjectSync.findMany({
-      where: instanceId ? { gitlabInstanceId: instanceId } : undefined,
+      where: {
+        gitlabInstance: { organizationId },
+        ...(instanceId ? { gitlabInstanceId: instanceId } : {}),
+      },
       orderBy: { createdAt: 'asc' },
     });
   }
@@ -120,17 +173,33 @@ export class GitLabService {
     }
   }
 
-  async testConnection(instanceId: string): Promise<{ ok: boolean; error?: string }> {
-    const instance = await this.prisma.gitLabInstance.findUnique({
-      where: { id: instanceId },
+  async testConnection(
+    organizationId: string,
+    instanceId: string,
+  ): Promise<{ ok: boolean; error?: string; notFound?: boolean }> {
+    // Inline credential resolve #1 — tenant-filtered at the point the token is
+    // read, so a cross-organization id never reaches the network as someone
+    // else's PRIVATE-TOKEN.
+    const instance = await this.prisma.gitLabInstance.findFirst({
+      where: { id: instanceId, organizationId },
       select: { baseUrl: true, accessToken: true },
     });
-    if (!instance) return { ok: false, error: 'Instance not found' };
+    if (!instance) return { ok: false, notFound: true, error: 'Instance not found' };
     return this.probeToken(instance.baseUrl, instance.accessToken);
   }
 
-  async updateInstanceToken(id: string, accessToken: string, actingUserId?: string) {
-    const existing = await this.prisma.gitLabInstance.findUnique({ where: { id } });
+  async updateInstanceToken(
+    organizationId: string,
+    id: string,
+    accessToken: string,
+    actingUserId?: string,
+  ) {
+    // Inline credential resolve #2 — this one WRITES the stored token, so the
+    // tenant filter is what stops another organization's credential being
+    // replaced with the caller's.
+    const existing = await this.prisma.gitLabInstance.findFirst({
+      where: { id, organizationId },
+    });
     if (!existing) return null;
     // Claim-on-first-edit: an unclaimed (null owner) row is claimed by
     // whoever edits it first. An already-claimed row keeps its owner.
@@ -140,19 +209,22 @@ export class GitLabService {
   }
 
   async refreshToken(
+    organizationId: string,
     id: string,
     newToken: string,
     fetchFn = this.fetchFn,
     actingUserId?: string,
   ): Promise<RefreshResult> {
-    const instance = await this.prisma.gitLabInstance.findUnique({
-      where: { id },
+    // Inline credential resolve #3 — the scoped resolve is what stops a
+    // cross-organization id from having its stored token overwritten.
+    const instance = await this.prisma.gitLabInstance.findFirst({
+      where: { id, organizationId },
       select: { baseUrl: true, accessToken: true },
     });
     if (!instance) return { ok: false, notFound: true, error: 'Instance not found' };
     const probe = await this.probeToken(instance.baseUrl, newToken, fetchFn);
     if (!probe.ok) return probe;
-    const updated = await this.updateInstanceToken(id, newToken, actingUserId);
+    const updated = await this.updateInstanceToken(organizationId, id, newToken, actingUserId);
     if (!updated) return { ok: false, notFound: true, error: 'Instance not found' };
     return { ok: true };
   }
@@ -171,9 +243,15 @@ export class GitLabService {
    *
    * Capped at 100 rows; the search box is how you narrow past that.
    */
-  async listRemoteProjects(instanceId: string, search?: string): Promise<string[]> {
-    const instance = await this.prisma.gitLabInstance.findUnique({
-      where: { id: instanceId },
+  async listRemoteProjects(
+    organizationId: string,
+    instanceId: string,
+    search?: string,
+  ): Promise<string[]> {
+    // Inline credential resolve #4 — the picker spends the stored token against
+    // GitLab, so the tenant filter belongs on this resolve too.
+    const instance = await this.prisma.gitLabInstance.findFirst({
+      where: { id: instanceId, organizationId },
       select: { baseUrl: true, accessToken: true },
     });
     if (!instance) throw new Error(`GitLab instance not found: ${instanceId}`);

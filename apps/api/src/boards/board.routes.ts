@@ -6,7 +6,8 @@ import {
 } from './board.service.js';
 import type { PrismaClient } from '@deckgauge/db';
 import { HiddenSystemFieldsSchema, ColumnLayoutSchema } from '@deckgauge/shared';
-import { board, AUTHENTICATED } from '../auth/policy.js';
+import { AUTHENTICATED, ORG_MEMBER, board } from '../auth/policy.js';
+import { requireOrganizationId } from '../organizations/request-organization.js';
 
 export async function boardRoutes(
   app: FastifyInstance,
@@ -37,7 +38,7 @@ export async function boardRoutes(
 
   // POST /boards — must be authenticated; otherwise the board would be created
   // without an OWNER access entry and become orphaned (invisible to everyone).
-  app.post('/boards', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
+  app.post('/boards', { config: { policy: ORG_MEMBER } }, async (req, reply) => {
     const userId = req.user?.id;
     if (!userId) {
       return reply.status(401).send({ error: 'Authentication required' });
@@ -46,7 +47,7 @@ export async function boardRoutes(
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
-    const board = await service.create(parsed.data, userId);
+    const board = await service.create(requireOrganizationId(req), parsed.data, userId);
     return reply.status(201).send(board);
   });
 

@@ -1,6 +1,7 @@
 -- GitHub commits — including author (git identity) and committer (often the merge bot).
 CREATE TABLE IF NOT EXISTS cockpit.github_commits
 (
+    organization_id     String,
     id                  String,
     sha                 String,
     repo_full_name      String,
@@ -27,5 +28,5 @@ CREATE TABLE IF NOT EXISTS cockpit.github_commits
 )
 ENGINE = ReplacingMergeTree(synced_at)
 PARTITION BY toYYYYMM(committed_at)
-ORDER BY (repo_full_name, sha)
+ORDER BY (organization_id, repo_full_name, sha)
 SETTINGS index_granularity = 8192;

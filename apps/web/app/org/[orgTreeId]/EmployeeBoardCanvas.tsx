@@ -911,7 +911,10 @@ export function EmployeeBoardCanvas({ board, allEmployees, canSeeSalary, onChang
         </div>
       </div>
 
-      <div className="space-y-6">
+      {/* Horizontal scroll container, mirroring the project board's GroupList:
+          BoardShell cards are `w-max`, so without a scroller they spill past the
+          page container instead of scrolling. */}
+      <div className="space-y-6 overflow-x-auto pb-2">
         <SortableContext
           items={board.groups.map((g) => `grpHdr-${g.id}`)}
           strategy={verticalListSortingStrategy}

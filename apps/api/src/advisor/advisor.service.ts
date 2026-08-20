@@ -2,6 +2,7 @@ import { streamText, stepCountIs } from 'ai';
 import type { AdvisorHistoryMessage } from '@deckgauge/shared';
 import { buildAdvisorTools, type AdvisorToolDeps } from './tools.js';
 import type { LlmProvider } from './llm-provider.js';
+import { stepsForProvider, toolsForProvider } from './local-tier.js';
 import type { BoardScope } from '../intelligence/board-scope.js';
 
 // Hard iteration cap on the agentic loop (tool-call round trips per answer).
@@ -39,13 +40,20 @@ export class AdvisorService {
   constructor(private readonly deps: AdvisorToolDeps) {}
 
   ask(params: AdvisorAskParams): AdvisorRun {
-    const tools = buildAdvisorTools(this.deps, params.scope);
+    // Weak local models are unreliable multi-tool callers, so the Ollama tier gets
+    // one tool — the team overview, which answers the most common question — and a
+    // lower step ceiling. Rich providers are unaffected.
+    const tools = toolsForProvider(
+      params.provider,
+      buildAdvisorTools(this.deps, params.scope),
+      ['get_team_overview'],
+    );
     const focus = params.widgetType ? ` The user is looking at the ${params.widgetType} widget.` : '';
     const result = streamText({
       model: params.provider.model,
       system: SYSTEM + focus,
       tools,
-      stopWhen: stepCountIs(MAX_STEPS), // hard iteration cap
+      stopWhen: stepCountIs(stepsForProvider(params.provider)), // hard iteration cap, lower for local
       maxOutputTokens: MAX_TOKENS, // per-answer budget guardrail
       messages: [
         ...(params.history ?? []).map((turn) => ({ role: turn.role, content: turn.text })),

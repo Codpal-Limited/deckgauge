@@ -6,6 +6,7 @@
 --   vote = -10 → rejected
 CREATE TABLE IF NOT EXISTS cockpit.ado_reviews
 (
+    organization_id     String,
     id                  String,
     org_url             String,
     project             String,
@@ -25,5 +26,5 @@ CREATE TABLE IF NOT EXISTS cockpit.ado_reviews
 )
 ENGINE = ReplacingMergeTree(synced_at)
 PARTITION BY toYYYYMM(submitted_at)
-ORDER BY (repo_id, pull_request_id, reviewer_login)
+ORDER BY (organization_id, repo_id, pull_request_id, reviewer_login)
 SETTINGS index_granularity = 8192;

@@ -45,6 +45,14 @@ export interface ChClient {
   insertRows(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
 }
 
+/**
+ * Builds a ClickHouse client bound to one organization. See jira-dual-writer.ts
+ * for why handlers take the factory rather than a client: the instances this
+ * handler loops over can belong to different tenants, and `organization_id` is
+ * a sort-key column ClickHouse cannot correct afterwards.
+ */
+export type ChClientFactory = (organizationId: string) => ChClient;
+
 export interface AdoIntelligenceResult {
   instancesProcessed: number;
   projectsProcessed: number;
@@ -349,7 +357,12 @@ export async function handleAdoIntelligenceSync(
   db: PrismaClient,
   prFactory: AdoPrFactory,
   commitFactory: AdoCommitFactory,
-  ch: ChClient,
+  /**
+   * Builds a ClickHouse client bound to one organization. Called once per
+   * instance below, with THAT instance's organizationId — the ADO connections
+   * this job iterates can belong to different tenants.
+   */
+  chClientFor: ChClientFactory,
   throttle?: Throttle,
   // Optional so existing 5-arg callers keep working; when omitted, deployment
   // ingestion is simply skipped and DORA keeps using the merged-PR proxy.
@@ -369,6 +382,10 @@ export async function handleAdoIntelligenceSync(
 
   for (const instance of instances) {
     result.instancesProcessed++;
+    // Bind ClickHouse to the organization that owns THIS instance — inside the
+    // loop, so PRs, reviews, commits and deployments from a second instance on
+    // another tenant are written under that tenant, not this one.
+    const ch = chClientFor(instance.organizationId);
     const factoryCfg: AdoFactoryConfig = {
       orgUrl: instance.orgUrl,
       authMethod: instance.authMethod === 'BASIC' ? 'BASIC' : 'PAT',

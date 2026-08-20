@@ -28,12 +28,21 @@ export interface WsServerOptions {
    * app's own origin). Binding `127.0.0.1` does not stop a same-host
    * browser page from opening `new WebSocket('ws://127.0.0.1:<port>')` —
    * browsers set the `Origin` header on every WS handshake and page JS
-   * cannot forge it, so this allowlist is what actually blocks a
-   * cross-origin drive-by from reading board answers. Defaults to `[]`
-   * (only handshakes with no `Origin` header at all are accepted) when
-   * omitted.
+   * cannot forge it, so this check is what actually blocks a cross-origin
+   * drive-by from reading board answers. Defaults to `[]`, which is not
+   * "allow nothing" but "no explicit list": `isOriginAllowed` then accepts
+   * any loopback origin on any port. A non-empty list replaces that rule.
    */
   allowedOrigins?: string[];
+  /**
+   * Called with the `Origin` of every handshake turned away by
+   * `allowedOrigins`. Without this the rejection is invisible: `ws` answers a
+   * failed `verifyClient` with a bare 401, and browser JS cannot read the
+   * status off a failed WebSocket — so the panel can't tell "no bridge here"
+   * from "bridge refused me" and reports the advisor as unconfigured. This is
+   * the only place the real reason exists, so the CLI logs it.
+   */
+  onRejectedOrigin?: (origin: string) => void;
   /**
    * Called when the underlying socket fails to bind (e.g. `EADDRINUSE`),
    * instead of the default re-throw. A bind failure surfaces asynchronously
@@ -156,19 +165,67 @@ export function buildPrompt(params: {
 }
 
 /**
- * Pure allowlist check for a WS handshake's `Origin` header, kept separate
- * from `startWsServer` so it's directly unit-testable. A missing/empty
- * origin is always allowed — that's a non-browser client (CLI tooling, MCP
- * clients, this file's own tests), which never sends `Origin` and can't be
- * impersonated by a malicious web page the way a *present* mismatched
- * origin would be. Only a present `Origin` that isn't in `allowed` is
- * rejected.
+ * True for an origin served from this machine's loopback interface: the exact
+ * host `localhost`, any `*.localhost` subdomain (browsers resolve those to
+ * loopback too), anything in `127.0.0.0/8`, or IPv6 `[::1]` — over http or
+ * https only.
+ *
+ * Host comparison is on the parsed `URL.hostname`, never a prefix or
+ * substring test, so an attacker-controlled `localhost.evil.example` or
+ * `127.0.0.1.evil.example` does not pass.
+ */
+function isLoopbackOrigin(origin: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(origin);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return false;
+  }
+  const host = url.hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.localhost')) {
+    return true;
+  }
+  if (host === '[::1]' || host === '::1') {
+    return true;
+  }
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  return ipv4 !== null && ipv4[1] === '127' && ipv4.slice(1).every((part) => Number(part) <= 255);
+}
+
+/**
+ * Pure origin check for a WS handshake's `Origin` header, kept separate from
+ * `startWsServer` so it's directly unit-testable.
+ *
+ * Two policies, chosen by whether `allowed` has anything in it:
+ *
+ * - **Empty (the default).** Any loopback origin is accepted, whatever port.
+ *   This is what makes a fresh self-hosted install work: the previous default
+ *   hardcoded port 3000, so publishing the web app on any other port turned
+ *   the advisor off with no explanation. A malicious *remote* page still sends
+ *   its own origin and is rejected; what this policy does not defend against
+ *   is something else served from your own loopback interface (see the
+ *   security model in `docs/advisor-local-agent.md`).
+ * - **Non-empty (`ADVISOR_ALLOWED_ORIGINS`).** Exactly those origins, and the
+ *   loopback rule no longer applies — so an operator who wants to pin the
+ *   bridge to one origin can, and one who browses over a LAN hostname adds it
+ *   (along with their localhost origin, if they still use it).
+ *
+ * A missing/empty origin is always allowed under either policy — that's a
+ * non-browser client (CLI tooling, MCP clients, this file's own tests), which
+ * never sends `Origin` and so can't be impersonated by a web page the way a
+ * *present* mismatched origin would be.
  */
 export function isOriginAllowed(origin: string | undefined, allowed: string[]): boolean {
   if (!origin) {
     return true;
   }
-  return allowed.includes(origin);
+  if (allowed.length > 0) {
+    return allowed.includes(origin);
+  }
+  return isLoopbackOrigin(origin);
 }
 
 /**
@@ -289,8 +346,13 @@ export function startWsServer(bridge: BridgeLike, opts: WsServerOptions): WsServ
   const wss = new WebSocketServer({
     host: opts.host,
     port: opts.port,
-    verifyClient: (info: { origin: string }): boolean =>
-      isOriginAllowed(info.origin, allowedOrigins),
+    verifyClient: (info: { origin: string }): boolean => {
+      if (isOriginAllowed(info.origin, allowedOrigins)) {
+        return true;
+      }
+      opts.onRejectedOrigin?.(info.origin);
+      return false;
+    },
   });
   // A bind failure (e.g. EADDRINUSE) surfaces asynchronously, after this
   // function has already returned a handle — there's nothing left to throw

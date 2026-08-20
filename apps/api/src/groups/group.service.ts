@@ -1,5 +1,10 @@
 import type { PrismaClient, Group } from "@deckgauge/db";
 import { z } from "zod";
+import {
+  SYNC_EXCLUSION_SELECT,
+  recordSyncExclusions,
+  toSyncExclusions,
+} from "../board-sync/sync-exclusion.js";
 
 export const CreateGroupInputSchema = z.object({
   name: z.string().trim().min(1),
@@ -20,6 +25,13 @@ export const ReorderGroupsInputSchema = z.array(
   }),
 );
 export type ReorderGroupsInput = z.infer<typeof ReorderGroupsInputSchema>;
+
+// A group here can hold thousands of rows (one board carries 4,000+ in a single
+// group), and deleting it cascades through every child of every row. Prisma's
+// 5s interactive-transaction default is not enough for that, and timing out
+// would abort the delete entirely — so this one transaction gets its own budget.
+const DELETE_TIMEOUT_MS = 120_000;
+const DELETE_MAX_WAIT_MS = 10_000;
 
 export class GroupService {
   constructor(private readonly prisma: PrismaClient) {}
@@ -101,11 +113,25 @@ export class GroupService {
     return await this.prisma.group.update({ where: { id }, data });
   }
 
-  async delete(id: string): Promise<{ deleted: boolean; reason?: string }> {
+  // Deleting a group takes its rows with it — `Project.group` is
+  // `onDelete: Cascade`, so Postgres removes them without the project service
+  // ever seeing them. Record their sync exclusions here, in the same
+  // transaction, or a group delete silently un-deletes itself on the next sync.
+  async delete(id: string, userId?: string): Promise<{ deleted: boolean; reason?: string }> {
     const existing = await this.prisma.group.findUnique({ where: { id } });
     if (!existing) return { deleted: false, reason: "not_found" };
 
-    await this.prisma.group.delete({ where: { id } });
+    await this.prisma.$transaction(
+      async (tx) => {
+        const rows = await tx.project.findMany({
+          where: { groupId: id },
+          select: SYNC_EXCLUSION_SELECT,
+        });
+        await recordSyncExclusions(tx, toSyncExclusions(rows, userId));
+        await tx.group.delete({ where: { id } });
+      },
+      { timeout: DELETE_TIMEOUT_MS, maxWait: DELETE_MAX_WAIT_MS },
+    );
     return { deleted: true };
   }
 

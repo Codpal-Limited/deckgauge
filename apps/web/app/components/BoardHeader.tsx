@@ -2,36 +2,49 @@
 
 import { useState, useRef, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import type { AccessRoleValue } from "@deckgauge/shared";
+import { canEditEntity, canManageEntity } from "@deckgauge/shared";
 import { updateBoard, deleteBoard } from "../actions/projects";
-import { ShareBoardModal } from "./ShareBoardModal";
-import { AskAdvisorButton } from "../../components/advisor/AskAdvisorButton";
-
-interface BoardAccessEntry {
-  id: string;
-  boardId: string;
-  userId: string;
-  role: "OWNER" | "EDITOR" | "VIEWER";
-  user: { id: string; name: string; email: string; avatarUrl: string | null };
-}
+import { AutomationPanel } from "./AutomationPanel";
+import { ToolbarMenu, type ToolbarMenuItem } from "./board-header/ToolbarMenu";
+import { BoardDescriptionPopover } from "./board-header/BoardDescriptionPopover";
+import { BoardDeleteDialog } from "./board-header/BoardDeleteDialog";
+import { BoltIcon, PencilIcon, TextIcon, TrashIcon } from "./board-header/icons";
 
 interface BoardHeaderProps {
   board: { id: string; name: string; description?: string | null };
-  userRole?: "OWNER" | "EDITOR" | "VIEWER";
-  currentUserId?: string;
-  boardAccess?: BoardAccessEntry[];
+  userRole?: AccessRoleValue | null;
 }
 
-export function BoardHeader({ board, userRole, currentUserId, boardAccess }: BoardHeaderProps) {
+/**
+ * The board's identity block: its name, and the board-level actions behind one
+ * menu.
+ *
+ * Rename, description, automations and delete used to sit in the action bar as
+ * four separate affordances — a bare caret, a trash glyph, and two toolbar
+ * buttons. They are all board configuration, they are all rare, and they now
+ * live together behind the chevron next to the name. Click-to-rename on the
+ * title is kept, because it is the fastest path and the one people already know.
+ */
+export function BoardHeader({ board, userRole }: BoardHeaderProps) {
   const router = useRouter();
   const [isEditingName, setIsEditingName] = useState(false);
-  const [showShare, setShowShare] = useState(false);
   const [nameValue, setNameValue] = useState(board.name);
   const [showDescription, setShowDescription] = useState(false);
   const [descValue, setDescValue] = useState(board.description || "");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showAutomations, setShowAutomations] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [descError, setDescError] = useState<string | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // Match the server's own tiers (route-inventory.snapshot.json): renaming is
+  // `PATCH /boards/:id` -> board(EDITOR); deleting is `DELETE /boards/:id` ->
+  // board(OWNER). They are NOT the same tier — a viewer must not be offered
+  // either, and an editor may rename but must not be offered delete.
+  const canRenameBoard = canEditEntity(userRole ?? null);
+  const canDeleteBoard = canManageEntity(userRole ?? null);
 
   useEffect(() => {
     if (isEditingName) nameInputRef.current?.select();
@@ -51,10 +64,13 @@ export function BoardHeader({ board, userRole, currentUserId, boardAccess }: Boa
 
   const handleDescSave = () => {
     if (descValue !== (board.description || "")) {
+      setDescError(null);
       startTransition(async () => {
-        await updateBoard(board.id, {
-          description: descValue || null,
-        });
+        try {
+          await updateBoard(board.id, { description: descValue || null });
+        } catch {
+          setDescError("Failed to save description. Please try again.");
+        }
       });
     }
   };
@@ -71,9 +87,46 @@ export function BoardHeader({ board, userRole, currentUserId, boardAccess }: Boa
     });
   };
 
+  // Built by permission, so the chevron disappears entirely for a role with no
+  // board-level action available (ToolbarMenu renders nothing on an empty list).
+  const menuItems: ToolbarMenuItem[] = [
+    ...(canRenameBoard
+      ? [
+          {
+            label: "Rename board",
+            icon: <PencilIcon />,
+            onSelect: () => setIsEditingName(true),
+          },
+        ]
+      : []),
+    {
+      label: canRenameBoard ? "Edit description" : "View description",
+      icon: <TextIcon />,
+      onSelect: () => setShowDescription((prev) => !prev),
+    },
+    ...(canRenameBoard
+      ? [
+          {
+            label: "Automations",
+            icon: <BoltIcon />,
+            onSelect: () => setShowAutomations(true),
+          },
+        ]
+      : []),
+    ...(canDeleteBoard
+      ? [
+          {
+            label: "Delete board",
+            icon: <TrashIcon />,
+            danger: true,
+            onSelect: () => setShowDeleteConfirm(true),
+          },
+        ]
+      : []),
+  ];
+
   return (
-    <div className="flex items-center gap-3">
-      {/* Board name */}
+    <div className="relative flex min-w-0 items-center gap-1">
       {isEditingName ? (
         <input
           ref={nameInputRef}
@@ -88,102 +141,49 @@ export function BoardHeader({ board, userRole, currentUserId, boardAccess }: Boa
               setIsEditingName(false);
             }
           }}
-          className="text-xl font-semibold text-slate-800 bg-white border border-indigo-500 rounded-lg px-3 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+          aria-label="Board name"
+          className="min-w-0 rounded-lg border border-teal-500 bg-surface-1 px-2 py-0.5 text-xl font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
         />
-      ) : (
+      ) : canRenameBoard ? (
         <h1
-          className="text-xl font-semibold text-slate-800 cursor-pointer hover:text-indigo-500 transition-colors"
           onClick={() => setIsEditingName(true)}
+          title="Click to rename"
+          className="cursor-text truncate text-xl font-semibold leading-tight text-slate-800 transition-colors hover:text-teal-600"
         >
+          {board.name}
+        </h1>
+      ) : (
+        <h1 className="truncate text-xl font-semibold leading-tight text-slate-800">
           {board.name}
         </h1>
       )}
 
-      {/* Description toggle */}
-      <button
-        type="button"
-        onClick={() => setShowDescription(!showDescription)}
-        className="text-slate-500 hover:text-slate-600 text-xs transition-colors"
-        aria-label="Toggle description"
-      >
-        {showDescription ? "\u25B2" : "\u25BC"}
-      </button>
+      <ToolbarMenu label="Board actions" items={menuItems} />
 
-      {/* Ask the Advisor */}
-      <AskAdvisorButton boardId={board.id} variant="header" />
-
-      {/* Share button */}
-      {userRole === "OWNER" && (
-        <button
-          onClick={() => setShowShare(true)}
-          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          Share
-        </button>
-      )}
-      {showShare && currentUserId && (
-        <ShareBoardModal
-          boardId={board.id}
-          currentUserId={currentUserId}
-          initialAccess={boardAccess ?? []}
-          onClose={() => setShowShare(false)}
+      {showDescription && (
+        <BoardDescriptionPopover
+          value={descValue}
+          description={board.description ?? null}
+          canEdit={canRenameBoard}
+          error={descError}
+          onChange={setDescValue}
+          onCommit={handleDescSave}
+          onClose={() => setShowDescription(false)}
         />
       )}
 
-      {/* Delete button */}
-      <div className="relative">
-        {showDeleteConfirm ? (
-          <div className="flex items-center gap-2 glass-elevated px-3 py-2 animate-fade-in">
-            <span className="text-xs text-slate-400">
-              Delete &quot;{board.name}&quot; and all its groups/items?
-            </span>
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={isPending}
-              className="rounded-lg bg-red-50 border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-100"
-            >
-              Delete
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowDeleteConfirm(false)}
-              className="btn-ghost text-xs"
-            >
-              Cancel
-            </button>
-            {deleteError && (
-              <span className="text-xs text-red-500">{deleteError}</span>
-            )}
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowDeleteConfirm(true)}
-            className="text-xs text-slate-500 hover:text-red-600 transition-colors"
-            aria-label="Delete board"
-          >
-            {"\uD83D\uDDD1"}
-          </button>
-        )}
-      </div>
+      {showDeleteConfirm && canDeleteBoard && (
+        <BoardDeleteDialog
+          boardName={board.name}
+          isPending={isPending}
+          error={deleteError}
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
 
-      {/* Description panel */}
-      {showDescription && (
-        <div className="absolute mt-14 left-0 z-10 glass-elevated p-4 w-80 animate-slide-up">
-          <textarea
-            value={descValue}
-            onChange={(e) => setDescValue(e.target.value)}
-            onBlur={handleDescSave}
-            placeholder="Add a board description (up to 500 characters)..."
-            maxLength={500}
-            rows={3}
-            className="input-dark resize-none"
-          />
-          <p className="text-xs text-slate-500 mt-1.5">
-            {descValue.length}/500
-          </p>
-        </div>
+      {showAutomations && canRenameBoard && (
+        <AutomationPanel boardId={board.id} onClose={() => setShowAutomations(false)} />
       )}
     </div>
   );

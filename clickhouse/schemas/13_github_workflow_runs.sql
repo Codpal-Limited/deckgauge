@@ -1,6 +1,7 @@
 -- clickhouse/schemas/13_github_workflow_runs.sql
 CREATE TABLE IF NOT EXISTS cockpit.github_workflow_runs
 (
+    organization_id     String,
     id                  String,            -- "{owner}/{repo}#{run_id}"
     org                 String,
     repo_full_name      String,
@@ -23,5 +24,5 @@ CREATE TABLE IF NOT EXISTS cockpit.github_workflow_runs
 )
 ENGINE = ReplacingMergeTree(_ingested_at)
 PARTITION BY toYYYYMM(created_at)
-ORDER BY (repo_full_name, run_id)
+ORDER BY (organization_id, repo_full_name, run_id)
 SETTINGS index_granularity = 8192;

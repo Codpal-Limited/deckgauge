@@ -1,5 +1,19 @@
 import { JiraEpic, JiraIssue } from "./jira-schemas";
 
+/**
+ * What a single existence probe could establish about an issue key.
+ * `unknown` is load-bearing: it is what a Jira outage, a rejected credential or
+ * a network failure returns, and callers must treat it as "changed nothing".
+ */
+export type JiraIssueExistence = "exists" | "deleted" | "unknown";
+
+/**
+ * What a credential check could establish about the connection itself.
+ * `unknown` covers an outage or a network failure — anything that is not a
+ * definite answer from Jira about the credential.
+ */
+export type JiraCredentialState = "valid" | "invalid" | "unknown";
+
 export interface JiraPort {
   fetchEpics(projectKeys: string[]): Promise<JiraEpic[]>;
   fetchIssues(projectKeys: string[]): Promise<JiraIssue[]>;
@@ -12,4 +26,26 @@ export interface JiraPort {
    * can never be mistaken for "nothing matched".
    */
   fetchIssueKeys(jql: string): Promise<string[]>;
+  /**
+   * Whether one issue key still resolves in Jira. Answers the question a
+   * project-wide fetch cannot: an issue absent from the fetched payload may have
+   * been deleted, or may merely have stopped matching a board's filter.
+   *
+   * Optional so the many hand-built JiraPort doubles keep compiling; callers
+   * skip deletion detection entirely when an adapter does not implement it.
+   */
+  issueExists?(issueKey: string): Promise<JiraIssueExistence>;
+  /**
+   * Whether the connection's credential still authenticates.
+   *
+   * Needed because Jira does NOT reject an expired API token on the endpoints a
+   * sync uses — it serves them anonymously instead. A search then answers 200
+   * with an empty result set and a single-issue GET answers 404, both
+   * indistinguishable from "the project is empty" and "the issue is gone". Only
+   * an endpoint that requires a user (`/myself`) answers 401 and tells the
+   * truth, so the question has to be asked separately.
+   *
+   * Optional, like `issueExists`, so hand-built JiraPort doubles keep compiling.
+   */
+  checkCredentials?(): Promise<JiraCredentialState>;
 }

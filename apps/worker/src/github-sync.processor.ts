@@ -1,5 +1,6 @@
 import { PrismaClient } from '@deckgauge/db';
 import { GitHubPort, GitHubProjectsPort } from '@deckgauge/shared';
+import { githubRowKey } from './org-tree-sync/row-keys.js';
 import {
   GitHubPromoteService,
   type PromoteGitHubIssue,
@@ -108,7 +109,9 @@ export async function githubSyncProcessor(input: ProcessorInput): Promise<Proces
         const projIssueAcc = issuesByRepo[repo] ?? [];
         for (const item of projectItems) {
           if (!item.issue) continue; // skip drafts / non-issues
-          const id = `${item.issue.repoFullName}#${item.issue.number}`;
+          // Shared builder: org-tree sync joins this id back to ClickHouse activity,
+          // and a silent divergence there costs every assignment its board chip.
+          const id = githubRowKey(item.issue.repoFullName, item.issue.number);
           if (!projIssueAcc.some((e) => e.id === id)) {
             projIssueAcc.push({
               id,

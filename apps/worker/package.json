@@ -12,9 +12,10 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@octokit/rest": "^22.0.1",
+    "@clickhouse/client": "^1.19.0",
     "@deckgauge/db": "workspace:*",
     "@deckgauge/shared": "workspace:*",
+    "@octokit/rest": "^22.0.1",
     "bullmq": "^5.14.0",
     "dotenv": "^16.4.5"
   },

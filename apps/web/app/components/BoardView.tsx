@@ -2,13 +2,16 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import type { Group, Project, BoardColumn, BoardOwner, BoardStatus } from "@deckgauge/shared";
+import type { AccessEntry, Group, Project, BoardColumn, BoardOwner, BoardStatus } from "@deckgauge/shared";
+import { canEditEntity } from "@deckgauge/shared";
 import { KeyboardNavProvider, ShortcutHelpPanel } from "@deckgauge/ui";
 import type { SortConfig } from "../utils/sort-projects";
 import { BoardToolbar } from "./BoardToolbar";
 import type { SearchBarHandle } from "./SearchBar";
 import { BoardHeader } from "./BoardHeader";
 import { SyncControls } from "./SyncControls";
+import { BoardSharePill } from "./board-header/BoardSharePill";
+import { AskAdvisorButton } from "../../components/advisor/AskAdvisorButton";
 import { GroupList } from "./GroupList";
 import { ProjectModal } from "./ProjectModal";
 import { GitHubGroupSection } from "./GitHubGroupSection";
@@ -41,13 +44,15 @@ interface BoardViewProps {
   boardOwners?: BoardOwner[];
   boardStatuses?: BoardStatus[];
   userRole?: 'OWNER' | 'EDITOR' | 'VIEWER' | null;
+  currentUserId?: string | null;
+  boardAccess?: AccessEntry[];
   onProjectDeleted?: (projectId: string) => void;
   onGroupsChange?: (
     groups: (Group & { projects: (Project & { fieldValues?: Record<string, string> })[] })[]
   ) => void;
 }
 
-export function BoardView({ board, groups, columns, boardId, jiraLinks, hasGitHubIntegration, adoOrgUrls, hasAdoIntegration, commentCounts, boardOwners, boardStatuses, userRole, onProjectDeleted, onGroupsChange }: BoardViewProps) {
+export function BoardView({ board, groups, columns, boardId, jiraLinks, hasGitHubIntegration, adoOrgUrls, hasAdoIntegration, commentCounts, boardOwners, boardStatuses, userRole, currentUserId, boardAccess, onProjectDeleted, onGroupsChange }: BoardViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRules, setFilterRules] = useState<
     { column: string; condition: string; value: string }[]
@@ -74,7 +79,7 @@ export function BoardView({ board, groups, columns, boardId, jiraLinks, hasGitHu
 
   const searchRef = useRef<SearchBarHandle>(null);
 
-  const canToggleFields = userRole === 'OWNER' || userRole === 'EDITOR';
+  const canToggleFields = canEditEntity(userRole ?? null);
 
   const hiddenSet = useMemo(() => new Set(layout.hidden), [layout.hidden]);
 
@@ -181,32 +186,46 @@ export function BoardView({ board, groups, columns, boardId, jiraLinks, hasGitHu
   return (
     <KeyboardNavProvider items={navItems} cellCount={3 + (visibleColumns?.length ?? 0)}>
       <div className="space-y-5">
-        {/* Board header with toolbar */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            {board && <BoardHeader board={board} />}
-            <SyncControls boardId={boardId} userRole={userRole ?? null} />
+        {/* Action bar: identity + freshness on the left, controls on the right */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            {board && <BoardHeader board={board} userRole={userRole} />}
+            <div className="mt-1">
+              <SyncControls boardId={boardId} userRole={userRole ?? null} />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex shrink-0 items-center gap-2">
             <BoardToolbar
-              boardId={boardId}
               columns={columns}
               onSearch={setSearchQuery}
               onFilterChange={setFilterRules}
               sortConfig={sortConfig}
               onSortChange={setSortConfig}
               searchRef={searchRef}
+              columnsControl={
+                canToggleFields ? (
+                  <BoardColumnsPanel
+                    columns={columns}
+                    hidden={layout.hidden}
+                    hasIntegration={
+                      (hasAnyJiraLink(jiraLinks) || hasGitHubIntegration || hasAdoIntegration)
+                    }
+                    onToggle={toggleColumn}
+                    onAddColumn={() => setShowColumnManager(true)}
+                    onDeleteColumn={(id) => void deleteColumn(id, boardId)}
+                  />
+                ) : undefined
+              }
             />
-            {canToggleFields && (
-              <BoardColumnsPanel
-                columns={columns}
-                hidden={layout.hidden}
-                hasIntegration={
-                  (hasAnyJiraLink(jiraLinks) || hasGitHubIntegration || hasAdoIntegration)
-                }
-                onToggle={toggleColumn}
-                onAddColumn={() => setShowColumnManager(true)}
-                onDeleteColumn={(id) => void deleteColumn(id, boardId)}
+            {board && <AskAdvisorButton boardId={board.id} variant="header" />}
+            {board && (
+              <BoardSharePill
+                boardId={board.id}
+                boardName={board.name}
+                userRole={userRole}
+                currentUserId={currentUserId}
+                boardAccess={boardAccess}
               />
             )}
           </div>

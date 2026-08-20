@@ -33,3 +33,6 @@ Business Plan/
 # OSS_Staging throwaway snapshot (lives outside the repo; defensive)
 /deckgauge-oss-staging/
 ../deckgauge-oss-staging/
+
+# Hosted deployment secrets — never commit
+deploy/.env.hosted

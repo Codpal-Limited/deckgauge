@@ -7,12 +7,8 @@ import {
   UpdateAzureDevOpsInstanceInputSchema,
 } from '@deckgauge/shared';
 import { AzureDevOpsService } from './azure-devops.service.js';
-import {
-  AUTHENTICATED,
-  CONNECTION_OWNER,
-  CONNECTION_OWNER_CLAIMED,
-  connectionOwnerProtectingFields,
-} from '../auth/policy.js';
+import { AUTHENTICATED, ORG_ADMIN, ORG_MEMBER } from '../auth/policy.js';
+import { requireOrganizationId } from '../organizations/request-organization.js';
 
 export async function azureDevOpsRoutes(
   app: FastifyInstance,
@@ -21,39 +17,58 @@ export async function azureDevOpsRoutes(
   const service = new AzureDevOpsService(prisma);
 
   // GET /azure-devops/instances
-  app.get('/azure-devops/instances', { config: { policy: AUTHENTICATED } }, async (_req, reply) => {
-    const instances = await service.listInstances();
+  // ORG_MEMBER, not AUTHENTICATED: the read below is organization-scoped, and
+  // AUTHENTICATED returns ALLOW before any membership is resolved — a
+  // membership-less caller would reach `requireOrganizationId` and get a 500
+  // instead of a scoped result.
+  app.get('/azure-devops/instances', { config: { policy: ORG_MEMBER } }, async (req, reply) => {
+    const instances = await service.listInstances(requireOrganizationId(req));
     return reply.send(instances);
   });
 
   // POST /azure-devops/instances
-  app.post('/azure-devops/instances', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
+  // ORG_ADMIN: a connection is organization property, so adding one is
+  // organization administration. See connection-authz.test.ts.
+  app.post('/azure-devops/instances', { config: { policy: ORG_ADMIN } }, async (req, reply) => {
     const parsed = CreateAzureDevOpsInstanceInputSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
-    const instance = await service.createInstance(parsed.data, req.user?.id);
+    const instance = await service.createInstance(requireOrganizationId(req), parsed.data, req.user?.id);
     return reply.status(201).send(instance);
   });
 
   // PATCH /azure-devops/instances/:id
-  // `orgUrl` is withheld while the row is unclaimed — repointing the org while
-  // keeping the stored PAT aims it at an attacker's server. Claim the row with
-  // any other edit first; see UnclaimedGuard in auth/policy.ts.
+  //
+  // ORG_ADMIN replaces the per-row `connectionOwner` check. That gives up the
+  // guard which withheld `orgUrl` on an unclaimed row — repointing the org while
+  // keeping the stored PAT aims it at a server the caller controls. The boundary
+  // that also matters is reaching ANOTHER tenant's connection, and that is the
+  // service's tenant predicate below.
+  // Repointing is recorded. The claim that used to sit here — that an
+  // organization admin "can already read and replace that credential, so
+  // repointing gains them nothing" — is right about replacing and wrong about
+  // reading: every response masks the token (`accessToken: '***'`), so an admin
+  // cannot read it. Repointing the host while keeping the stored credential makes
+  // the next sync send that credential, in the clear, to whatever host was named
+  // — a capability an admin does not otherwise have. It stays allowed, because
+  // moving a connection to a new host is legitimate; it no longer happens
+  // silently. See connections/host-repoint-audit.ts.
   app.patch<{ Params: { id: string } }>(
     '/azure-devops/instances/:id',
-    {
-      config: {
-        policy: connectionOwnerProtectingFields(['orgUrl']),
-        connectionModel: 'azureDevOpsInstance',
-      },
-    },
+    { config: { policy: ORG_ADMIN } },
     async (req, reply) => {
       const parsed = UpdateAzureDevOpsInstanceInputSchema.safeParse(req.body);
       if (!parsed.success) {
         return reply.status(400).send({ error: parsed.error.flatten() });
       }
-      const instance = await service.updateInstance(req.params.id, parsed.data, req.user?.id);
+      const instance = await service.updateInstance(
+        requireOrganizationId(req),
+        req.params.id,
+        parsed.data,
+        req.user?.id,
+        req.log,
+      );
       if (!instance) return reply.status(404).send({ error: 'Instance not found' });
       return reply.send(instance);
     },
@@ -61,13 +76,14 @@ export async function azureDevOpsRoutes(
 
   // DELETE /azure-devops/instances/:id
   // Cascades to AzureDevOpsProjectSync → BoardAdoSource, wiping the ADO source
-  // configuration of every board using it — unclaimed rows must be claimed by
-  // a non-destructive edit first.
+  // configuration of every board using it — which is why it is organization
+  // administration, and why the service resolves the row through the caller's
+  // organization before deleting it.
   app.delete<{ Params: { id: string } }>(
     '/azure-devops/instances/:id',
-    { config: { policy: CONNECTION_OWNER_CLAIMED, connectionModel: 'azureDevOpsInstance' } },
+    { config: { policy: ORG_ADMIN } },
     async (req, reply) => {
-      const deleted = await service.deleteInstance(req.params.id);
+      const deleted = await service.deleteInstance(requireOrganizationId(req), req.params.id);
       if (!deleted) return reply.status(404).send({ error: 'Instance not found' });
       return reply.status(204).send();
     },
@@ -76,9 +92,11 @@ export async function azureDevOpsRoutes(
   // POST /azure-devops/instances/:id/test — verify credentials
   app.post<{ Params: { id: string } }>(
     '/azure-devops/instances/:id/test',
-    { config: { policy: AUTHENTICATED } },
+    // ORG_ADMIN, with the rest of connection management: an organization MEMBER
+    // no longer tests connections.
+    { config: { policy: ORG_ADMIN } },
     async (req, reply) => {
-      const instance = await service.getRawInstanceById(req.params.id);
+      const instance = await service.getRawInstanceById(requireOrganizationId(req), req.params.id);
       if (!instance) return reply.status(404).send({ error: 'Instance not found' });
 
       try {
@@ -115,11 +133,17 @@ export async function azureDevOpsRoutes(
   // POST /azure-devops/instances/:id/refresh-token — swap stored credential
   app.post<{ Params: { id: string } }>(
     '/azure-devops/instances/:id/refresh-token',
-    { config: { policy: CONNECTION_OWNER, connectionModel: 'azureDevOpsInstance' } },
+    { config: { policy: ORG_ADMIN } },
     async (req, reply) => {
       const body = z.object({ token: z.string().min(1) }).safeParse(req.body);
       if (!body.success) return reply.status(400).send({ error: body.error.flatten() });
-      const result = await service.refreshToken(req.params.id, body.data.token, fetch, req.user?.id);
+      const result = await service.refreshToken(
+        requireOrganizationId(req),
+        req.params.id,
+        body.data.token,
+        fetch,
+        req.user?.id,
+      );
       if (result.notFound) return reply.status(404).send({ error: 'Instance not found' });
       if (!result.ok) return reply.status(422).send({ ok: false, error: result.error });
       return reply.send({ ok: true });
@@ -129,11 +153,16 @@ export async function azureDevOpsRoutes(
   // GET /azure-devops/instances/:id/project-syncs/:project/production-config
   // Which release pipelines / stages count as a PRODUCTION deploy for DORA
   // deploy frequency. Both lists empty = fall back to the name heuristic.
+  //
+  // ORG_ADMIN on the GET as well as the PUT below: both were `connectionOwner`,
+  // and both are consumed only by the connections panel, so leaving the read
+  // member-visible would only expose it on a screen no member can reach.
   app.get<{ Params: { id: string; project: string } }>(
     '/azure-devops/instances/:id/project-syncs/:project/production-config',
-    { config: { policy: CONNECTION_OWNER, connectionModel: 'azureDevOpsInstance' } },
+    { config: { policy: ORG_ADMIN } },
     async (req, reply) => {
       const config = await service.getProductionConfig(
+        requireOrganizationId(req),
         req.params.id,
         decodeURIComponent(req.params.project),
       );
@@ -145,7 +174,7 @@ export async function azureDevOpsRoutes(
   // PUT /azure-devops/instances/:id/project-syncs/:project/production-config
   app.put<{ Params: { id: string; project: string } }>(
     '/azure-devops/instances/:id/project-syncs/:project/production-config',
-    { config: { policy: CONNECTION_OWNER, connectionModel: 'azureDevOpsInstance' } },
+    { config: { policy: ORG_ADMIN } },
     async (req, reply) => {
       const body = z
         .object({
@@ -155,6 +184,7 @@ export async function azureDevOpsRoutes(
         .safeParse(req.body);
       if (!body.success) return reply.status(400).send({ error: body.error.flatten() });
       const config = await service.setProductionConfig(
+        requireOrganizationId(req),
         req.params.id,
         decodeURIComponent(req.params.project),
         body.data,
@@ -174,7 +204,11 @@ export async function azureDevOpsRoutes(
   });
 
   // POST /azure-devops/sync — enqueue manual sync
-  app.post('/azure-devops/sync', { config: { policy: AUTHENTICATED } }, async (_req, reply) => {
+  //
+  // ORG_MEMBER, for the same reason as POST /github/sync: the job spends the
+  // stored Azure DevOps credentials, and `authenticated` checked neither
+  // membership nor tenancy. See sync-config-authz.test.ts.
+  app.post('/azure-devops/sync', { config: { policy: ORG_MEMBER } }, async (_req, reply) => {
     const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
     const queue = new Queue('azure-devops-sync', { connection: { url: redisUrl } });
     try {
@@ -188,9 +222,9 @@ export async function azureDevOpsRoutes(
   // GET /azure-devops/instances/:id/projects — list real team projects
   app.get<{ Params: { id: string } }>(
     '/azure-devops/instances/:id/projects',
-    { config: { policy: AUTHENTICATED } },
+    { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
-      const instance = await service.getRawInstanceById(req.params.id);
+      const instance = await service.getRawInstanceById(requireOrganizationId(req), req.params.id);
       if (!instance) return reply.status(404).send({ error: 'Instance not found' });
 
       try {
@@ -214,14 +248,14 @@ export async function azureDevOpsRoutes(
   // GET /azure-devops/instances/:id/work-item-types?project=X
   app.get<{ Params: { id: string }; Querystring: { project?: string } }>(
     '/azure-devops/instances/:id/work-item-types',
-    { config: { policy: AUTHENTICATED } },
+    { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
       const { project } = req.query;
       if (!project) {
         return reply.status(400).send({ error: 'project query param is required' });
       }
 
-      const instance = await service.getRawInstanceById(req.params.id);
+      const instance = await service.getRawInstanceById(requireOrganizationId(req), req.params.id);
       if (!instance) return reply.status(404).send({ error: 'Instance not found' });
 
       try {

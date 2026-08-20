@@ -4,8 +4,6 @@ import { resolveProvider } from './llm-provider.js';
 import { advisorConfigFromEnv, sourceLookupEnabledFromEnv } from './advisor-config-env.js';
 import type { AdvisorConfigInput } from '@deckgauge/shared';
 
-const SINGLETON_ID = 'advisor-config-singleton';
-
 export interface AdvisorConfigServiceOptions {
   /** Injectable for tests; defaults to the process environment. */
   env?: Record<string, string | undefined>;
@@ -28,8 +26,18 @@ export class AdvisorConfigService {
     this.env = opts.env ?? process.env;
   }
 
-  async getConfig(): Promise<AdvisorConfigInput | null> {
-    const row = await this.prisma.advisorConfig.findFirst();
+  /**
+   * The advisor config used to be a process-wide singleton row keyed by a
+   * hardcoded id. It is now one row per organization — `AdvisorConfig`
+   * carries `organizationId String @unique`, so the uniqueness that made the
+   * singleton work is now per-tenant and the hardcoded id is gone.
+   *
+   * This also closes §11 precondition 4's highest-consequence remaining row:
+   * `findFirst()` with no filter and no `orderBy` meant org B's advisor made LLM
+   * calls on org A's API key, model and `baseUrl`, silently ignoring B's own row.
+   */
+  async getConfig(organizationId: string): Promise<AdvisorConfigInput | null> {
+    const row = await this.prisma.advisorConfig.findUnique({ where: { organizationId } });
     // No saved row: fall back to the deployment's env config so a fresh
     // stack (Docker staging, a fresh clone) answers questions without anyone
     // opening the settings page first. A row always wins — saving in the UI
@@ -41,7 +49,7 @@ export class AdvisorConfigService {
     return { provider: 'ollama', baseUrl: row.baseUrl ?? '', model: row.model };
   }
 
-  async saveConfig(input: AdvisorConfigInput): Promise<void> {
+  async saveConfig(organizationId: string, input: AdvisorConfigInput): Promise<void> {
     const data = {
       provider: input.provider,
       model: input.model,
@@ -49,8 +57,8 @@ export class AdvisorConfigService {
       baseUrl: input.provider === 'ollama' ? input.baseUrl : null,
     };
     await this.prisma.advisorConfig.upsert({
-      where: { id: SINGLETON_ID },
-      create: { id: SINGLETON_ID, ...data },
+      where: { organizationId },
+      create: { organizationId, ...data },
       update: data,
     });
   }
@@ -58,13 +66,17 @@ export class AdvisorConfigService {
   /**
    * Whether the help route may offer `search_source`/`read_source` at all.
    *
+   * Scoped like `getConfig`, and for the same reason: the row is per-organization
+   * now, so an unfiltered `findFirst` would answer with whichever tenant's row
+   * happened to come back first.
+   *
    * Precedence mirrors `getConfig` exactly — a saved row is the operator's
    * explicit override, the environment is the deployment default — so an
    * operator does not have to reason about two different precedence rules for
    * two settings that live on the same row.
    */
-  async isSourceLookupEnabled(): Promise<boolean> {
-    const row = await this.prisma.advisorConfig.findFirst();
+  async isSourceLookupEnabled(organizationId: string): Promise<boolean> {
+    const row = await this.prisma.advisorConfig.findUnique({ where: { organizationId } });
     if (row) return row.sourceLookupEnabled;
     return sourceLookupEnabledFromEnv(this.env);
   }
@@ -76,11 +88,11 @@ export class AdvisorConfigService {
    * have to fabricate provider credentials. A deployment with no row switches
    * source lookup off through `ADVISOR_SOURCE_LOOKUP` instead.
    */
-  async setSourceLookupEnabled(enabled: boolean): Promise<boolean> {
-    const row = await this.prisma.advisorConfig.findFirst();
+  async setSourceLookupEnabled(organizationId: string, enabled: boolean): Promise<boolean> {
+    const row = await this.prisma.advisorConfig.findUnique({ where: { organizationId } });
     if (!row) return false;
     await this.prisma.advisorConfig.update({
-      where: { id: row.id },
+      where: { organizationId },
       data: { sourceLookupEnabled: enabled },
     });
     return true;

@@ -33,8 +33,11 @@ export function buildTimesheetDeps(prisma: PrismaClient, clickhouse: ChQueryClie
         aliases: r.aliases,
       }));
     },
-    loadRules: async () => {
-      const rows = await prisma.timesheetStatusRule.findMany();
+    // Scoped, and this one corrupts computation rather than merely exposing
+    // rows: another organization's in-progress status rules would decide which
+    // of THIS organization's spans counted as work.
+    loadRules: async (organizationId: string) => {
+      const rows = await prisma.timesheetStatusRule.findMany({ where: { organizationId } });
       return rows.map((r) => ({
         scope: r.scope,
         role: r.role,
@@ -51,8 +54,11 @@ export function buildTimesheetDeps(prisma: PrismaClient, clickhouse: ChQueryClie
       return cfg ? cfg.dailyCapHours : null;
     },
     fetchTransitions: (toMs: number) => fetchTransitions(clickhouse, toMs),
-    loadRetiredProjects: async () => {
+    // Also computation-corrupting, not just a disclosure: one organization's
+    // retirement cutoff would clip another organization's timesheet hours.
+    loadRetiredProjects: async (organizationId: string) => {
       const rows = await prisma.retiredJiraProject.findMany({
+        where: { organizationId },
         select: { projectKey: true, cutoffDate: true },
       });
       return new Map(rows.map((r) => [r.projectKey.toUpperCase(), r.cutoffDate.getTime()]));

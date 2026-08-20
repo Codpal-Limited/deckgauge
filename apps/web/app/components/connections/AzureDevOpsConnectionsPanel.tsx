@@ -10,6 +10,18 @@ import {
 
 interface Props {
   initialSyncs: AdoProjectSyncRow[];
+  /**
+   * Whether the caller may manage connections — organization ADMIN.
+   *
+   * Everything else on this panel is project-sync management, which an
+   * organization MEMBER may do (`orgRole(MEMBER)`). The production-deploy
+   * allow-lists are the exception: they are keyed by the INSTANCE and their
+   * endpoint is `orgRole(ADMIN)`, so a member must never be offered inputs whose
+   * save the server will refuse. Defaults to true, like the other connection
+   * surfaces (BoardSourceCard, BoardSourcesList), so callers that have no role to
+   * pass keep today's behaviour.
+   */
+  canManageConnections?: boolean;
 }
 
 interface EditDraft {
@@ -21,6 +33,29 @@ interface EditDraft {
   prodStagesText: string;
 }
 
+/**
+ * What a response actually guarantees. Both `listAdoProjectSyncs` and
+ * `createAdoProjectSync` hand back `res.json()`, so the declared row type is an
+ * assertion rather than a check and the production allow-lists may simply be
+ * absent.
+ */
+type UncheckedSyncRow = Omit<AdoProjectSyncRow, 'prodReleaseDefinitions' | 'prodStages'> &
+  Partial<Pick<AdoProjectSyncRow, 'prodReleaseDefinitions' | 'prodStages'>>;
+
+/**
+ * Normalises a row on its way INTO state, so the render can rely on the arrays
+ * being there. An absent allow-list means the same thing as an empty one — the
+ * stage-name heuristic decides — and collapsing the two here keeps that single
+ * uncertainty out of the three places that read them.
+ */
+function withProdLists(row: UncheckedSyncRow): AdoProjectSyncRow {
+  return {
+    ...row,
+    prodReleaseDefinitions: row.prodReleaseDefinitions ?? [],
+    prodStages: row.prodStages ?? [],
+  };
+}
+
 function parseCsv(text: string): string[] {
   return text
     .split(',')
@@ -28,8 +63,56 @@ function parseCsv(text: string): string[] {
     .filter((r) => r.length > 0);
 }
 
-export function AzureDevOpsConnectionsPanel({ initialSyncs }: Props) {
-  const [syncs, setSyncs] = useState(initialSyncs);
+function sameList(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((value, i) => value === b[i]);
+}
+
+/**
+ * The read-only view of the production-deploy allow-lists, shared by the
+ * non-editing row and by the edit row of a caller who may not change them. The
+ * lists arrive on the member-visible `GET /project-syncs/ado` read, so gating the
+ * INPUTS must not hide the VALUES: dropping the column for members would take
+ * away a read the API still grants.
+ */
+function ProductionDeploysSummary({ sync }: { sync: AdoProjectSyncRow }) {
+  if (sync.prodReleaseDefinitions.length === 0 && sync.prodStages.length === 0) {
+    // Nothing configured. Say WHICH rule is running rather than leaving the cell
+    // blank — a blank reads as "no deploys", when in fact the stage-name
+    // heuristic is deciding, and on a project whose stages are all named
+    // "Stage 1" it cannot.
+    return (
+      <span
+        className="text-xs text-slate-500"
+        title="Deploy frequency and change failure rate infer production from the release stage name. Projects whose stages are all named ADO's default 'Stage 1' cannot be classified — list their pipelines or stages here."
+      >
+        Auto (stage names)
+      </span>
+    );
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      {[...sync.prodReleaseDefinitions, ...sync.prodStages].map((v) => (
+        <span
+          key={v}
+          className="rounded border border-slate-300 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-700"
+        >
+          {v}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export function AzureDevOpsConnectionsPanel({
+  initialSyncs,
+  canManageConnections = true,
+}: Props) {
+  // `withProdLists` (from main) normalises rows whose production allow-lists are
+  // absent. Both sides of this merge fixed that crash by different means and both
+  // are kept: main made the COMPONENT tolerate a row without the lists, which is
+  // what a real API response can be; this branch corrected the create MOCK that
+  // had been hiding it in the suite. Dropping either one loses a real fix.
+  const [syncs, setSyncs] = useState(() => initialSyncs.map((s) => withProdLists(s)));
   const [isPending, startTransition] = useTransition();
   const [instanceId, setInstanceId] = useState('');
   const [adoProject, setAdoProject] = useState('');
@@ -54,7 +137,7 @@ export function AzureDevOpsConnectionsPanel({ initialSyncs }: Props) {
           syncRepos,
           syncAllRepos,
         });
-        setSyncs((prev) => [{ ...row, boardCount: 0 }, ...prev]);
+        setSyncs((prev) => [withProdLists({ ...row, boardCount: 0 }), ...prev]);
         setInstanceId('');
         setAdoProject('');
         setReposText('');
@@ -112,19 +195,40 @@ export function AzureDevOpsConnectionsPanel({ initialSyncs }: Props) {
       prodReleaseDefinitions: parseCsv(editDraft.prodDefinitionsText),
       prodStages: parseCsv(editDraft.prodStagesText),
     };
+    // Two endpoints, deliberately: the sync flags are keyed by the sync row
+    // (`PATCH /project-syncs/ado/:id`, orgRole(MEMBER)) while production config is
+    // keyed by the INSTANCE (`PUT .../production-config`, orgRole(ADMIN)). There
+    // is no transaction across them, so the second call is issued only when it is
+    // both PERMITTED and NEEDED:
+    //
+    //   - permitted: without the `canManageConnections` guard a member's save
+    //     persisted the flags, then 403'd on the production config, and the panel
+    //     reported failure — telling the user nothing was saved while half of it
+    //     had been. The inputs are gated on the same flag, so this is belt and
+    //     braces rather than the only guard;
+    //   - needed: skipping an unchanged write narrows the untransactional window
+    //     for an ADMIN too. A save that only touches the sync flags now issues one
+    //     request, so there is no second one left to fail after the first landed.
+    const writesProdConfig =
+      canManageConnections &&
+      (!sameList(prodPatch.prodReleaseDefinitions, row.prodReleaseDefinitions) ||
+        !sameList(prodPatch.prodStages, row.prodStages));
     startTransition(async () => {
       try {
-        // Two endpoints, deliberately: the sync flags are AUTHENTICATED and keyed
-        // by the sync row, while production config is keyed by the INSTANCE so
-        // the connection-ownership policy applies. Local state is updated only
-        // after BOTH succeed — a user who lacks ownership must not be shown a
-        // production config the server refused to store.
         await updateAdoProjectSync(id, patch);
-        await saveAdoProductionConfig(row.azureDevOpsInstanceId, row.adoProject, {
-          definitions: prodPatch.prodReleaseDefinitions,
-          stages: prodPatch.prodStages,
-        });
-        setSyncs((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch, ...prodPatch } : s)));
+        if (writesProdConfig) {
+          // Local state is updated only after BOTH succeed — a caller whose
+          // production config the server refused must not be shown it as stored.
+          await saveAdoProductionConfig(row.azureDevOpsInstanceId, row.adoProject, {
+            definitions: prodPatch.prodReleaseDefinitions,
+            stages: prodPatch.prodStages,
+          });
+        }
+        setSyncs((prev) =>
+          prev.map((s) =>
+            s.id === id ? { ...s, ...patch, ...(writesProdConfig ? prodPatch : {}) } : s,
+          ),
+        );
         setEditingId(null);
         setEditDraft(null);
       } catch (e) {
@@ -223,7 +327,7 @@ export function AzureDevOpsConnectionsPanel({ initialSyncs }: Props) {
                     )}
                   </td>
                   <td className="py-2">
-                    {isEditing && editDraft ? (
+                    {isEditing && editDraft && canManageConnections ? (
                       <div className="flex flex-col gap-1">
                         <input
                           value={editDraft.prodDefinitionsText}
@@ -245,27 +349,14 @@ export function AzureDevOpsConnectionsPanel({ initialSyncs }: Props) {
                           Comma-separated. Leave both empty to infer production from stage names.
                         </span>
                       </div>
-                    ) : s.prodReleaseDefinitions.length === 0 && s.prodStages.length === 0 ? (
-                      // Nothing configured. Say WHICH rule is running rather than
-                      // leaving the cell blank — a blank reads as "no deploys",
-                      // when in fact the stage-name heuristic is deciding, and on
-                      // a project whose stages are all named "Stage 1" it cannot.
-                      <span
-                        className="text-xs text-slate-500"
-                        title="Deploy frequency and change failure rate infer production from the release stage name. Projects whose stages are all named ADO's default 'Stage 1' cannot be classified — list their pipelines or stages here."
-                      >
-                        Auto (stage names)
-                      </span>
                     ) : (
-                      <div className="flex flex-wrap gap-1">
-                        {[...s.prodReleaseDefinitions, ...s.prodStages].map((v) => (
-                          <span
-                            key={v}
-                            className="rounded border border-slate-300 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-700"
-                          >
-                            {v}
+                      <div className="flex flex-col gap-1">
+                        <ProductionDeploysSummary sync={s} />
+                        {isEditing ? (
+                          <span className="text-[11px] text-slate-500">
+                            Only an organization administrator can change production deploys.
                           </span>
-                        ))}
+                        ) : null}
                       </div>
                     )}
                   </td>

@@ -12,7 +12,7 @@ import { PrismaClient } from '@deckgauge/db';
 import { RateLimiter } from './github-rate-limiter.js';
 import {
   runIntelligenceSync,
-  type ChClient,
+  type ChClientFactory,
   type OctokitLike,
   type RunIntelligenceSyncDeps,
 } from './github-intelligence-sync.handler.js';
@@ -48,7 +48,13 @@ export async function handleGithubIntelligenceSync(
   db: PrismaClient,
   octokitFactory: GithubOctokitFactory,
   rateLimiter: RateLimiter,
-  ch: ChClient,
+  /**
+   * Forwarded to the per-repo runner untouched. The repos this fans out over can
+   * belong to different tenants, so the runner binds the factory to the
+   * organization owning each repo's GitHub instance rather than the fan-out
+   * choosing one here.
+   */
+  chClientFor: ChClientFactory,
   runOne: PerRepoRunner = runIntelligenceSync,
 ): Promise<GithubIntelligenceResult> {
   const result: GithubIntelligenceResult = { reposProcessed: 0, errors: [] };
@@ -68,7 +74,7 @@ export async function handleGithubIntelligenceSync(
   for (const sync of syncs) {
     try {
       const octokit = octokitFactory(sync.githubInstance);
-      await runOne({ prisma: db, octokit, rateLimiter, ch }, sync.id);
+      await runOne({ prisma: db, octokit, rateLimiter, chClientFor }, sync.id);
       result.reposProcessed += 1;
     } catch (e) {
       result.errors.push({ repoFullName: sync.repoFullName, message: errMsg(e) });

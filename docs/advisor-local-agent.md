@@ -166,8 +166,14 @@ explaining that no model is configured, with a link to the settings page.
 
 ## Config (env)
 
-The bridge reads its entire configuration from environment variables — there
-is no config file.
+The bridge reads its entire configuration from environment variables. It also
+picks these same variables up from the repo's `.env` — searching upward from
+its own location, so it finds the file whichever directory you started it from
+— and a variable already set in your shell always wins over the file. Only the
+variables in the table below are taken from `.env`, never the rest of it: the
+bridge spawns your local agent as a child process, which inherits its
+environment, and that agent has no business seeing the stack's `DATABASE_URL`
+or Keycloak client secret.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -176,7 +182,12 @@ is no config file.
 | `ADVISOR_BRIDGE_PORT` | `4779` | Localhost port the bridge's WebSocket server listens on. |
 | `ADVISOR_PREFER` | *(none)* | `claude` or `codex` — tries that agent first when both are set up. It orders the candidates; it cannot select an agent you don't have. |
 | `ADVISOR_AGENT` | *(none)* | `claude` or `codex` — selects that agent outright, skipping the check for whether this machine looks like it has one. The escape hatch for a machine detection reads wrong. |
-| `ADVISOR_ALLOWED_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated list of `Origin` headers the bridge's WebSocket server accepts a handshake from. See [Security model](#security-model). |
+| `ADVISOR_ALLOWED_ORIGINS` | *(none — any loopback origin)* | Comma-separated list of `Origin` headers the bridge's WebSocket server accepts a handshake from. Unset, it accepts any loopback origin (`localhost`, `*.localhost`, `127.0.0.0/8`, `[::1]`) on **any** port, so the Advisor works whatever port you publish the web app on. A non-empty list **replaces** that rule with exactly those origins — the way to pin the bridge, or to allow a LAN hostname you browse from (include your local origin too if you still use it). See [Security model](#security-model). |
+
+The bridge prints the policy in force at startup (`Origin policy: …`), and logs
+a line naming any handshake it turns away — worth knowing about, because that
+rejection is otherwise completely mute on the browser side (see
+[Troubleshooting](#troubleshooting)).
 
 `DECKGAUGE_TOKEN` is optional, not required — that's the default, zero-config
 path. Leave it unset and the bridge starts, detects the agent, and waits for
@@ -238,9 +249,15 @@ local agent drive Deckgauge questions actually exposes:
    process you run next to `pnpm dev`, not something reachable from another
    machine. The bridge's WebSocket server also only accepts handshakes whose
    `Origin` header (browsers set this on every WS connection and page JS
-   can't forge it) is on an allowlist — by default the Deckgauge web app's
-   own origin — so a malicious page you happen to have open in the same
-   browser can't drive-by connect to the bridge and read board answers.
+   can't forge it) passes an origin check — by default any origin served from
+   your own loopback interface, on any port — so a malicious page you happen
+   to have open in the same browser can't drive-by connect to the bridge and
+   read board answers. That default is deliberately about *your machine*
+   rather than one port: pinning it to `:3000` silently disabled the Advisor
+   for anyone self-hosting the web app on a different port. The trade-off is
+   that it does not distinguish between things served from your own loopback
+   interface — if you want the bridge pinned to exactly one origin, set
+   `ADVISOR_ALLOWED_ORIGINS`, which replaces the loopback rule outright.
    Note the allowlist deliberately accepts a handshake with *no* `Origin`
    header at all (that's how non-browser clients connect), so it is not a
    defence against another **local process**: one can connect, send its own
@@ -427,6 +444,27 @@ local agent drive Deckgauge questions actually exposes:
   authenticates: `stdio via mcp-remote` means the agent has no http MCP support
   and you're on the fallback path, which reports auth failures poorly. Also
   look for a warning about the session mode.
+- **The panel says no advisor model is configured, but the bridge is running** —
+  Two different things produce that one message, because a browser cannot read
+  the HTTP status off a failed WebSocket handshake: the panel can't tell "no
+  bridge here" from "the bridge refused me", and falls back to the server-side
+  provider flow either way.
+
+  Check the bridge is up and listening: `lsof -nP -iTCP:4779 -sTCP:LISTEN`
+  (a `curl` of that port answering `426 Upgrade Required` is also healthy — it
+  only speaks WebSocket). If it is up, look in its output for
+  `Refused an advisor WebSocket handshake from Origin …`: that names the origin
+  turned away by the Origin policy, and the fix is to browse Deckgauge from a
+  loopback origin or to add that origin to `ADVISOR_ALLOWED_ORIGINS`. The most
+  common cause is browsing over a LAN hostname or IP (`http://192.168.1.10:3000`,
+  `http://my-box.local:3000`) rather than `localhost` — that's not loopback, so
+  it needs allowing explicitly. Also check the `Origin policy: …` line the
+  bridge prints at startup, in case an `ADVISOR_ALLOWED_ORIGINS` you set
+  elsewhere is pinning it tighter than you meant.
+
+  Where that output lands depends on how the bridge was started: the terminal
+  in the foreground, otherwise `.advisor-bridge.log`, or your service manager's
+  log if you run it as one.
 - **The panel shows "Run `pnpm deckgauge:advisor` to use your local Claude
   Code" instead of "Connected"** — The bridge isn't running (or the panel's
   connection attempt timed out). Start it with `pnpm deckgauge:advisor` and

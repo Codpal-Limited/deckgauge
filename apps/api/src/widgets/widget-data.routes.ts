@@ -11,6 +11,7 @@ import { WidgetDataService } from './widget-data.service.js';
 import { WidgetCache } from './widget-cache.js';
 import { board, viaBranch, type IdExtractor } from '../auth/policy.js';
 import { forbiddenBoardIds } from '../auth/board-access.js';
+import type { CallerMembership } from '../auth/board-access.js';
 import { mapWithConcurrency } from './map-with-concurrency.js';
 import { WIDGET_TYPES } from './dashboard-widgets.service.js';
 
@@ -171,7 +172,14 @@ export async function widgetDataRoutes(
     boardId: string,
     widgetType: string,
     config: Record<string, unknown>,
-    ctx: { userId: string | undefined; singleUser: boolean; log: FastifyBaseLogger }
+    ctx: {
+      userId: string | undefined;
+      singleUser: boolean;
+      log: FastifyBaseLogger;
+      // Spec §13: the per-board re-check below must apply the same org-role
+      // ceiling the policy layer does, or an org ADMIN sees an empty widget.
+      membership?: CallerMembership;
+    }
   ): Promise<WidgetResolution> {
     if (!KNOWN_WIDGET_TYPES.has(widgetType)) {
       return { ok: false, status: 400, error: `Unknown widget type: ${widgetType}` };
@@ -214,7 +222,7 @@ export async function widgetDataRoutes(
       const memberBoardIds = members.map((m) => m.boardId);
       if (!ctx.singleUser) {
         if (!ctx.userId) return { ok: false, status: 403, error: 'Forbidden' };
-        const forbidden = await forbiddenBoardIds(prisma, ctx.userId, memberBoardIds, 'VIEWER', ctx.log);
+        const forbidden = await forbiddenBoardIds(prisma, ctx.userId, memberBoardIds, 'VIEWER', ctx.log, ctx.membership ?? null);
         if (forbidden.length > 0) {
           return {
             ok: false,
@@ -247,13 +255,13 @@ export async function widgetDataRoutes(
   // discriminator (the same `widgetType` signal the handler reads) matches —
   // a comparison request never falls through to a board-access check, and
   // vice versa; an absent or split-decision widget type matches neither arm
-  // and denies. See policy.ts's `comparisonCreator`/`boardId` branch arms.
+  // and denies. See policy.ts's `comparisonAccess`/`boardId` branch arms.
   app.get<{ Params: { boardId: string; widgetType: string }; Querystring: { config?: string } }>(
     '/boards/:boardId/widgets/:widgetType/data',
     {
       config: {
         policy: board('VIEWER', viaBranch([
-          { when: widgetTypeFromParam(true), then: 'comparisonCreator' },
+          { when: widgetTypeFromParam(true), then: 'comparisonAccess' },
           { when: widgetTypeFromParam(false), then: 'boardId' },
         ])),
       },
@@ -266,6 +274,7 @@ export async function widgetDataRoutes(
         userId: req.user?.id,
         singleUser,
         log: req.log,
+        membership: req.membership ?? null,
       });
       if (!resolved.ok) return reply.status(resolved.status).send({ error: resolved.error });
       return resolved.data;
@@ -287,7 +296,7 @@ export async function widgetDataRoutes(
     {
       config: {
         policy: board('VIEWER', viaBranch([
-          { when: widgetTypesFromBatchBody(true), then: 'comparisonCreator' },
+          { when: widgetTypesFromBatchBody(true), then: 'comparisonAccess' },
           { when: widgetTypesFromBatchBody(false), then: 'boardId' },
         ])),
       },
@@ -309,6 +318,7 @@ export async function widgetDataRoutes(
               userId: req.user?.id,
               singleUser,
               log: req.log,
+              membership: req.membership ?? null,
             });
             return resolved.ok
               ? { widgetType, config, data: resolved.data }

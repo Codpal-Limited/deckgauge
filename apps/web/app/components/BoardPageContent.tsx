@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { JiraSourceLinks } from '@deckgauge/shared';
+import type { AccessEntry, JiraSourceLinks } from '@deckgauge/shared';
 import { BoardUnifiedTabs } from './tabs/BoardUnifiedTabs';
 import { BoardView } from './BoardView';
 import { fetchProjectsPage, fetchCommentCounts } from '../actions/projects';
@@ -42,7 +42,9 @@ interface BoardPageContentProps {
     boardOwners: any[];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     boardStatuses: any[];
-    userRole: 'OWNER' | 'EDITOR' | 'VIEWER';
+    userRole: 'OWNER' | 'EDITOR' | 'VIEWER' | null;
+    currentUserId?: string | null;
+    boardAccess?: AccessEntry[];
   };
 }
 

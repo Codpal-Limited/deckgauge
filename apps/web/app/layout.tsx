@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Suspense } from "react";
 import { cookies } from "next/headers";
-import { Header } from "./components/Header";
-import { LastLocationTracker } from "./components/LastLocationTracker";
+import { OrgGate } from "./components/OrgGate";
 import { Providers } from "./components/Providers";
 import { SessionExpiredOverlay } from "./components/SessionExpiredOverlay";
-import { BoardSidebarContainer } from "./components/sidebar/BoardSidebarContainer";
 import { LAST_BOARD_COOKIE } from "./utils/last-board-cookie";
 import { Toaster } from "sonner";
 
@@ -37,20 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen bg-slate-50">
         <Providers>
-          <Suspense fallback={null}>
-            <Header />
-          </Suspense>
-          <Suspense fallback={null}>
-            <LastLocationTracker />
-          </Suspense>
-          <div className="flex">
-            <Suspense fallback={null}>
-              <BoardSidebarContainer activeBoardId={activeBoardId} />
-            </Suspense>
-            <main className="flex-1 px-6 py-6">
-              <div className="mx-auto max-w-[1400px]">{children}</div>
-            </main>
-          </div>
+          <OrgGate activeBoardId={activeBoardId}>{children}</OrgGate>
           <SessionExpiredOverlay />
           <Toaster position="bottom-right" richColors closeButton offset={80} />
         </Providers>

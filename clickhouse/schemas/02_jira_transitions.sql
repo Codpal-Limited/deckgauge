@@ -1,6 +1,7 @@
 -- Full Jira status-transition changelog.
 CREATE TABLE IF NOT EXISTS cockpit.jira_transitions
 (
+    organization_id     String,
     id                  String,
     issue_key           String,
     project_key         String,
@@ -17,5 +18,5 @@ CREATE TABLE IF NOT EXISTS cockpit.jira_transitions
 )
 ENGINE = ReplacingMergeTree(synced_at)
 PARTITION BY toYYYYMM(transitioned_at)
-ORDER BY (project_key, issue_key, transitioned_at)
+ORDER BY (organization_id, project_key, issue_key, transitioned_at)
 SETTINGS index_granularity = 8192;

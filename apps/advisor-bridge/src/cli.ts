@@ -1,7 +1,9 @@
 #!/usr/bin/env node
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AcpClient } from './acp/acp-client.js';
 import { AdvisorBridge, NoLocalAgentError } from './bridge.js';
+import { loadEnvFile } from './env-file.js';
 import { startWsServer, type WsServerHandle } from './ws-server.js';
 
 /** Agents `detectAgent` (via `AdvisorBridge`) knows how to look for. */
@@ -30,17 +32,16 @@ export interface CliConfig {
    */
   force?: PreferAgent;
   /**
-   * Origins allowed to open the bridge's WebSocket (see
-   * `ws-server.ts`'s `allowedOrigins`). Defaults to the Deckgauge web
-   * app's own origin so a same-host malicious page can't drive-by connect
-   * and read board answers.
+   * Origins allowed to open the bridge's WebSocket (see `ws-server.ts`'s
+   * `isOriginAllowed`). Empty — the default — means no explicit list, and any
+   * loopback origin on any port is accepted; a non-empty list replaces that
+   * rule with exactly those origins.
    */
   allowedOrigins: string[];
 }
 
 const DEFAULT_API_URL = 'http://localhost:3001';
 const DEFAULT_PORT = 4779;
-const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
 function parsePort(raw: string | undefined): number {
   if (raw === undefined || raw.trim() === '') {
@@ -51,19 +52,18 @@ function parsePort(raw: string | undefined): number {
 }
 
 /**
- * Comma-separated `ADVISOR_ALLOWED_ORIGINS` → a trimmed, non-empty list of
- * origins. Falls back to `DEFAULT_ALLOWED_ORIGINS` when unset, blank, or
- * left with nothing after trimming/dropping empty entries.
+ * Comma-separated `ADVISOR_ALLOWED_ORIGINS` → a trimmed list of origins.
+ * Unset, blank, or nothing left after trimming all yield `[]`, which
+ * `isOriginAllowed` reads as "no explicit list — accept any loopback origin".
  */
 function parseAllowedOrigins(raw: string | undefined): string[] {
   if (raw === undefined || raw.trim() === '') {
-    return DEFAULT_ALLOWED_ORIGINS;
+    return [];
   }
-  const origins = raw
+  return raw
     .split(',')
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);
-  return origins.length > 0 ? origins : DEFAULT_ALLOWED_ORIGINS;
 }
 
 function parsePrefer(raw: string | undefined): PreferAgent | undefined {
@@ -170,6 +170,65 @@ export function formatPortInUse(port: number): string {
   );
 }
 
+/**
+ * Printed at startup so the Origin policy in force is never a guess.
+ *
+ * Worth a line of output because the failure it explains is otherwise mute: a
+ * browser can't read the 401 off a refused WebSocket handshake, so the panel
+ * falls back to the server-side provider flow and reports the advisor as
+ * unconfigured — the same message it shows when no bridge is running at all.
+ */
+export function formatOriginPolicy(allowedOrigins: string[]): string {
+  if (allowedOrigins.length === 0) {
+    return (
+      'Origin policy: any loopback origin (localhost / 127.0.0.0/8 / [::1], any port). ' +
+      'Set ADVISOR_ALLOWED_ORIGINS to pin an exact list, or to allow a LAN hostname.'
+    );
+  }
+  return `Origin policy: only ${allowedOrigins.join(', ')} (ADVISOR_ALLOWED_ORIGINS).`;
+}
+
+/** Printed for each WebSocket handshake the Origin policy turned away. */
+export function formatRejectedOrigin(origin: string): string {
+  return (
+    `Refused an advisor WebSocket handshake from Origin "${origin}": not a loopback origin. ` +
+    'The Advisor panel cannot see why a handshake failed, so it will report that no advisor ' +
+    'model is configured. Add this origin to ADVISOR_ALLOWED_ORIGINS to allow it.'
+  );
+}
+
+/**
+ * Wraps `formatRejectedOrigin` in a once-per-origin guard.
+ *
+ * Nothing rate-limits inbound handshakes, and the bridge's output is a file on
+ * disk (`.advisor-bridge.log`, or whatever a service manager captures) — so a
+ * page looping `new WebSocket(...)` against a refused origin would otherwise
+ * write to it without bound. One refused origin repeated is a single fact to
+ * the operator anyway.
+ */
+export function createRejectedOriginReporter(
+  print: (message: string) => void
+): (origin: string) => void {
+  const reported = new Set<string>();
+  return (origin: string): void => {
+    if (reported.has(origin)) {
+      return;
+    }
+    reported.add(origin);
+    print(formatRejectedOrigin(origin));
+  };
+}
+
+/** Printed when bridge variables were taken from the repo's `.env`. */
+export function formatEnvFileApplied(path: string, applied: string[]): string {
+  return `Read ${applied.join(', ')} from ${path}.`;
+}
+
+/** Printed when a `.env` was found but could not be read or parsed. */
+export function formatEnvFileUnreadable(path: string, message: string): string {
+  return `Could not read ${path} (${message}) — continuing with the environment as given.`;
+}
+
 // A small status-logger layer: the CLI entrypoint is the one place in this
 // package allowed to print (see CLAUDE.md conventions) — every library
 // module (bridge/acp/ws/mcp-config) stays console-free.
@@ -213,6 +272,19 @@ export function handlePortInUseError(params: {
  * are what `cli.test.ts` exercises directly.
  */
 export async function main(): Promise<void> {
+  // Before readConfig: the operator edits the repo's `.env`, and until this
+  // the bridge read process.env only — so a documented knob like
+  // ADVISOR_ALLOWED_ORIGINS or DECKGAUGE_API_URL set there did nothing at all,
+  // whether the bridge was started by `pnpm deckgauge:advisor` or the shell
+  // script. Only the bridge's own variables are taken, and never over one the
+  // real environment already set (see `env-file.ts`).
+  const envFile = loadEnvFile(dirname(fileURLToPath(import.meta.url)));
+  if (envFile.kind === 'loaded' && envFile.applied.length > 0) {
+    printLine(formatEnvFileApplied(envFile.path, envFile.applied));
+  } else if (envFile.kind === 'unreadable') {
+    printErrorLine(formatEnvFileUnreadable(envFile.path, envFile.message));
+  }
+
   const config = readConfig(process.env);
 
   const agentOverride = process.env.ADVISOR_AGENT?.trim();
@@ -256,12 +328,14 @@ export async function main(): Promise<void> {
     port: config.port,
     agent: agentDisplayName,
     allowedOrigins: config.allowedOrigins,
+    onRejectedOrigin: createRejectedOriginReporter(printErrorLine),
     onError: (_error: Error) => {
       handlePortInUseError({ bridge, handle, port: config.port });
     },
   });
 
   printLine(formatReady(agentDisplayName, config.port));
+  printLine(formatOriginPolicy(config.allowedOrigins));
 }
 
 /**

@@ -100,11 +100,22 @@ export class OrgTreeService {
    * the same transaction — a tree whose access row didn't land would be
    * invisible to its own creator and recoverable only by an admin.
    */
-  async create(name: string, createdByUserId?: string): Promise<{ id: string }> {
+  async create(
+    organizationId: string,
+    name: string,
+    createdByUserId?: string,
+  ): Promise<{ id: string }> {
     return this.prisma.$transaction(async (tx) => {
-      const max = await tx.orgTree.aggregate({ _max: { position: true } });
+      // The aggregate is scoped too, not just the create. §11 precondition 4 of
+      // the tenancy design lists this unscoped `_max` as a live defect: a new
+      // tree's position would otherwise be pushed up by another tenant's trees,
+      // leaving gaps in this organization's ordering.
+      const max = await tx.orgTree.aggregate({
+        where: { organizationId },
+        _max: { position: true },
+      });
       const row = await tx.orgTree.create({
-        data: { name, position: (max._max.position ?? -1) + 1 },
+        data: { organizationId, name, position: (max._max.position ?? -1) + 1 },
       });
       if (createdByUserId) {
         await tx.orgTreeAccess.create({

@@ -49,13 +49,18 @@ export class BoardService {
     return board;
   }
 
-  async create(input: CreateBoardInput, createdByUserId?: string): Promise<Board> {
+  async create(
+    organizationId: string,
+    input: CreateBoardInput,
+    createdByUserId?: string,
+  ): Promise<Board> {
     const validated = CreateBoardInputSchema.parse(input);
     const template = getBoardTemplate(validated.template ?? DEFAULT_BOARD_KIND);
 
     return this.prisma.$transaction(async (tx) => {
       const board = await tx.board.create({
         data: {
+          organizationId,
           name: validated.name,
           kind: template.kind,
           ...(validated.description !== undefined && { description: validated.description }),

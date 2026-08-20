@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: vp-cockpit-postgres
+    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-postgres
     restart: unless-stopped
     deploy:
       resources:
@@ -31,8 +31,8 @@ services:
       start_period: 10s
 
   clickhouse:
-    image: clickhouse/clickhouse-server:24.3-alpine
-    container_name: vp-cockpit-clickhouse
+    image: clickhouse/clickhouse-server:24.8-alpine
+    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-clickhouse
     restart: unless-stopped
     deploy:
       resources:
@@ -49,6 +49,17 @@ services:
       CLICKHOUSE_DB: cockpit
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-cockpit}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-cockpit}
+      # Organization isolation is enforced by ClickHouse ROW POLICIES, and
+      # CREATE ROW POLICY / CREATE ROLE are access-management statements. Without
+      # this the migration's policy baseline fails with
+      #   Code 497 ... it's necessary to have the grant CREATE ROW POLICY
+      # and it fails LOUDLY on purpose, because skipping it would leave every
+      # table world-readable (ClickHouse row policies are permissive by default:
+      # an object covered by no policy is readable in full by any identity).
+      #
+      # The image's entrypoint rewrites users.d/default-user.xml on every start,
+      # so this takes effect on a container recreate — no volume reset needed.
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: ${CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT:-1}
     healthcheck:
       test: ["CMD-SHELL", "clickhouse-client --user ${CLICKHOUSE_USER:-cockpit} --password ${CLICKHOUSE_PASSWORD:-cockpit} --query 'SELECT 1'"]
       interval: 10s
@@ -58,7 +69,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: vp-cockpit-redis
+    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-redis
     restart: unless-stopped
     deploy:
       resources:
@@ -88,7 +99,7 @@ services:
 
   keycloak-db:
     image: postgres:16-alpine
-    container_name: vp-cockpit-keycloak-db
+    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-keycloak-db
     restart: unless-stopped
     deploy:
       resources:
@@ -109,7 +120,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
-    container_name: vp-cockpit-keycloak
+    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-keycloak
     restart: unless-stopped
     deploy:
       resources:
@@ -125,9 +136,19 @@ services:
       # Cap JVM heap — default uses ~1.9 GB which is excessive for local dev
       JAVA_OPTS_APPEND: "-Xms128m -Xmx384m"
       # Use localhost so browser redirects work; server-side calls use Docker service name
-      KC_HOSTNAME: localhost
-      KC_HOSTNAME_PORT: "8080"
-      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME: ${KC_HOSTNAME:-localhost}
+      # NOTE the single dash: `-` substitutes only when the variable is UNSET,
+      # whereas `:-` would also substitute for an explicitly EMPTY value. A
+      # hosted deployment behind a TLS-terminating tunnel on :443 must be able
+      # to CLEAR this so Keycloak builds URLs with no explicit port, so `:-`
+      # would make that impossible. This is the one place the distinction matters.
+      KC_HOSTNAME_PORT: "${KC_HOSTNAME_PORT-8080}"
+      KC_HOSTNAME_STRICT: "${KC_HOSTNAME_STRICT:-false}"
+      # Hosted deployments set this to the public web origin (e.g.
+      # https://app.deckgauge.com); the entrypoint substitutes it into the
+      # vp-cockpit-web client's __PUBLIC_ORIGIN__ placeholder. Empty resolves to
+      # http://localhost:3000, i.e. unchanged self-host behaviour.
+      KEYCLOAK_PUBLIC_ORIGIN: ${KEYCLOAK_PUBLIC_ORIGIN:-}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       # Microsoft Entra ID SSO (optional — leave blank to disable)
@@ -137,7 +158,11 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm.json
+      # Read-only, and NOT at the import path: the entrypoint processes this into
+      # /opt/keycloak/data/import/realm.json inside the container. Mounting it at
+      # the import path (writable) is what let the entrypoint write a processed
+      # realm back over the committed file.
+      - ./keycloak/realm-export.json:/opt/keycloak/realm-src/realm.json:ro
       - ./keycloak/configure-microsoft-idp.sh:/opt/keycloak/configure-microsoft-idp.sh:ro
       - ./keycloak/themes:/opt/keycloak/themes:ro
     depends_on:
@@ -148,7 +173,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    container_name: vp-cockpit-api
+    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-api
     restart: unless-stopped
     deploy:
       resources:
@@ -162,8 +187,33 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-cockpit}:${POSTGRES_PASSWORD:-cockpit}@postgres:5432/${POSTGRES_DB:-cockpit}"
       REDIS_URL: "redis://redis:6379"
       CLICKHOUSE_URL: "http://${CLICKHOUSE_USER:-cockpit}:${CLICKHOUSE_PASSWORD:-cockpit}@clickhouse:8123/cockpit"
+      # The SEPARATE login the API scopes per-organization reads through, activating
+      # one ClickHouse role per query (design doc D3). Empty by default, which means
+      # "this deployment has not split its read path yet" — reads then run through
+      # CLICKHOUSE_URL above, which spans every organization. Passed through here and
+      # deliberately NOT to the worker: the worker is the cross-tenant ingest identity
+      # by design (D1), and this is also the container that provisions an
+      # organization's ClickHouse role, so it is the one that has to know which login
+      # to grant it to. It must never name the same user as CLICKHOUSE_URL — that user
+      # carries a permissive `USING 1` policy on every object, which ORs past every
+      # tenant predicate, and provisioning refuses the combination outright.
+      CLICKHOUSE_READ_URL: "${CLICKHOUSE_READ_URL:-}"
       JIRA_CONFIG_PATH: "/app/config/jira.yaml"
-      KEYCLOAK_ISSUER: "http://localhost:8080/realms/vp-cockpit"
+      # Must equal the `iss` claim Keycloak stamps into tokens, which is driven
+      # by the keycloak service's KC_HOSTNAME. Hosted deployments set both.
+      KEYCLOAK_ISSUER: "${KEYCLOAK_ISSUER:-http://localhost:8080/realms/vp-cockpit}"
+      # Server-side only — stays on the container network even when hosted.
+      # NOT browser-facing: the api fetches this from inside its own container, so
+      # it must use the compose service name and it takes no override. Deliberately
+      # NOT "${KEYCLOAK_JWKS_URI:-...}" — .env, .env.example and apps/web/.env.local
+      # all carry the localhost form for host-side `pnpm dev`, and inside the api
+      # container localhost:8080 is the container itself. Interpolating this lets a
+      # stale .env win, and every JWT verification then dies with ECONNREFUSED
+      # 127.0.0.1:8080 while /health stays green — which presents as a fully loaded
+      # app whose every board is empty, i.e. reads as data loss.
+      #
+      # Restored twice now (c17af07b, then again here after 87baadc7 reverted it).
+      # scripts/check-pinned-env.sh exists to stop a third time.
       KEYCLOAK_JWKS_URI: "http://keycloak:8080/realms/vp-cockpit/protocol/openid-connect/certs"
     volumes:
       - uploads_data:/app/uploads
@@ -185,7 +235,7 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    container_name: vp-cockpit-web
+    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-web
     restart: unless-stopped
     deploy:
       resources:
@@ -199,15 +249,22 @@ services:
       # verification disabled (apps/worker/Dockerfile). The web server now also makes
       # an outbound call to graph.microsoft.com (saveGraphToken validates the pasted
       # token via /me), so it needs the same, or that fetch fails ("token not accepted").
-      NODE_TLS_REJECT_UNAUTHORIZED: "0"
-      API_URL: "http://api:3001"
-      NEXT_PUBLIC_API_URL: "http://localhost:3001"
-      KEYCLOAK_ISSUER: "http://localhost:8080/realms/vp-cockpit"
-      KEYCLOAK_INTERNAL_URL: "http://keycloak:8080/realms/vp-cockpit"
+      NODE_TLS_REJECT_UNAUTHORIZED: "${NODE_TLS_REJECT_UNAUTHORIZED:-0}"
+      # Server-side (RSC / server actions) — container network, unchanged when hosted.
+      API_URL: "${API_URL:-http://api:3001}"
+      # BROWSER-FACING. apps/web/next.config.ts defines no rewrites, so this must
+      # be a URL the user's browser can resolve. Hosted deployments point it at
+      # the public API hostname and add a matching tunnel ingress route.
+      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:3001}"
+      # BROWSER-FACING (OIDC redirects). Must match KC_HOSTNAME and the realm's
+      # redirectUris — see KEYCLOAK_PUBLIC_ORIGIN.
+      KEYCLOAK_ISSUER: "${KEYCLOAK_ISSUER:-http://localhost:8080/realms/vp-cockpit}"
+      # Server-side token exchange — container network.
+      KEYCLOAK_INTERNAL_URL: "${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080/realms/vp-cockpit}"
       KEYCLOAK_CLIENT_ID: "vp-cockpit-web"
       KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_CLIENT_SECRET:-vp-cockpit-secret}"
       NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-vp-cockpit-nextauth-secret}"
-      NEXTAUTH_URL: "http://localhost:3000"
+      NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
       AUTH_TRUST_HOST: "true"
       # Microsoft Graph "Connect" OAuth (org-tree directory sync). Empty = the
       # Source tab shows a "not configured" note; no errors.
@@ -225,7 +282,7 @@ services:
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
-    container_name: vp-cockpit-worker
+    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-worker
     restart: unless-stopped
     deploy:
       resources:
@@ -236,6 +293,17 @@ services:
       REDIS_URL: "redis://redis:6379"
       CLICKHOUSE_URL: "http://${CLICKHOUSE_USER:-cockpit}:${CLICKHOUSE_PASSWORD:-cockpit}@clickhouse:8123/cockpit"
       JIRA_CONFIG_PATH: "/app/config/jira.yaml"
+      # The escape hatch for the blast-radius cap (MASS_DELETION_SHARE in
+      # jira-promote.service.ts): a sync that confirms most of a board has been
+      # deleted writes nothing unless this is 1. Set it for the one run that
+      # drains a genuine bulk deletion, then put it back — a container that
+      # leaves it on has no cap at all.
+      JIRA_ALLOW_MASS_DELETION: "${JIRA_ALLOW_MASS_DELETION:-0}"
+      # Overrides the image's build-time default (apps/worker/Dockerfile) without
+      # a rebuild. Default 0 for corporate-MITM local dev; hosted sets 1, because
+      # a public box has no MITM proxy and 0 would accept a forged certificate
+      # for any provider while the worker holds customer tokens.
+      NODE_TLS_REJECT_UNAUTHORIZED: "${NODE_TLS_REJECT_UNAUTHORIZED:-0}"
       # Microsoft Graph app-registration creds — used to redeem each tree's stored
       # per-user refresh token for a Graph access token during org-source sync.
       MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-}

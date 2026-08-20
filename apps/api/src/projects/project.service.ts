@@ -2,44 +2,16 @@ import type { PrismaClient } from "@deckgauge/db";
 import { ProjectSchema, ProjectStatusEnum, CostClassificationEnum, DURATION_RE, type Project } from "@deckgauge/shared";
 import { z } from "zod";
 import { mirrorClassification } from './classification-mirror.js';
-
-interface SyncExclusionInput {
-  boardId: string;
-  source: 'ADO' | 'GITHUB' | 'JIRA';
-  externalId: string;
-  excludedBy: string | null;
-}
-
-interface DeletableRow {
-  boardId: string | null;
-  adoWorkItemId: number | null;
-  githubIssueId: string | null;
-  jiraKey: string | null;
-}
-
-// Derive the sync-exclusion row for a project being deleted. Returns null for
-// native rows (no source) and for rows with no board (exclusions are board-scoped).
-function toSyncExclusion(row: DeletableRow, userId?: string): SyncExclusionInput | null {
-  if (!row.boardId) return null;
-  const excludedBy = userId ?? null;
-  if (row.adoWorkItemId != null) {
-    return { boardId: row.boardId, source: 'ADO', externalId: String(row.adoWorkItemId), excludedBy };
-  }
-  if (row.githubIssueId != null) {
-    return { boardId: row.boardId, source: 'GITHUB', externalId: row.githubIssueId, excludedBy };
-  }
-  if (row.jiraKey != null) {
-    return { boardId: row.boardId, source: 'JIRA', externalId: row.jiraKey, excludedBy };
-  }
-  return null;
-}
+import {
+  SYNC_EXCLUSION_SELECT,
+  recordSyncExclusions,
+  toSyncExclusion,
+  toSyncExclusions,
+} from '../board-sync/sync-exclusion.js';
 
 const DELETE_ROW_SELECT = {
   id: true,
-  boardId: true,
-  adoWorkItemId: true,
-  githubIssueId: true,
-  jiraKey: true,
+  ...SYNC_EXCLUSION_SELECT,
 } as const;
 
 /**
@@ -326,15 +298,31 @@ export class ProjectService {
 
     if (input.costClassification !== undefined) {
       try {
-        await mirrorClassification({
-          id: row.id,
-          boardId: row.boardId,
-          jiraKey: row.jiraKey,
-          adoWorkItemId: row.adoWorkItemId,
-          adoProject: row.adoProject,
-          githubIssueId: row.githubIssueId,
-          costClassification: row.costClassification,
-        });
+        // mirrorClassification only ever inserts when row.boardId is set
+        // (buildClassificationRow's own guard), so the organization that
+        // owns that board is the real tenant for this row — not a
+        // placeholder, but the one piece of plumbing this write actually
+        // needs. A boardless project has no tenant to mirror into.
+        const board = row.boardId
+          ? await this.prisma.board.findUnique({
+              where: { id: row.boardId },
+              select: { organizationId: true },
+            })
+          : null;
+        if (board) {
+          await mirrorClassification(
+            {
+              id: row.id,
+              boardId: row.boardId,
+              jiraKey: row.jiraKey,
+              adoWorkItemId: row.adoWorkItemId,
+              adoProject: row.adoProject,
+              githubIssueId: row.githubIssueId,
+              costClassification: row.costClassification,
+            },
+            board.organizationId,
+          );
+        }
       } catch (err) {
         // Mirror failure is non-fatal: Postgres has already committed the update.
         // Log at error level (same pattern as the automation-trigger block in
@@ -359,9 +347,7 @@ export class ProjectService {
 
     await this.prisma.$transaction(async (tx) => {
       const exclusion = toSyncExclusion(existing, userId);
-      if (exclusion) {
-        await tx.boardSyncExclusion.createMany({ data: [exclusion], skipDuplicates: true });
-      }
+      await recordSyncExclusions(tx, exclusion ? [exclusion] : []);
       await tx.project.delete({ where: { id } });
     });
     return true;
@@ -382,12 +368,7 @@ export class ProjectService {
           where: { id: { in: chunk } },
           select: DELETE_ROW_SELECT,
         });
-        const exclusions = rows
-          .map((r) => toSyncExclusion(r, userId))
-          .filter((e): e is SyncExclusionInput => e !== null);
-        if (exclusions.length > 0) {
-          await tx.boardSyncExclusion.createMany({ data: exclusions, skipDuplicates: true });
-        }
+        await recordSyncExclusions(tx, toSyncExclusions(rows, userId));
         const result = await tx.project.deleteMany({ where: { id: { in: chunk } } });
         return result.count;
       });

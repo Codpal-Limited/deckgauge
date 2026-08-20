@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@deckgauge/db';
 import { forbiddenBoardIds, type BoardAccessLog } from '../auth/board-access.js';
+import type { CallerMembership } from '../auth/board-access.js';
 
 export type SyncKind = 'jira' | 'github' | 'ado' | 'gitlab';
 
@@ -66,6 +67,7 @@ export async function denySyncDetach(
   userId: string | undefined,
   singleUser: boolean,
   log?: BoardAccessLog,
+  membership: CallerMembership = null,
 ): Promise<SyncDetachDenial | null> {
   if (singleUser) return null;
   if (!userId) return { boardIds: [], message: 'Forbidden' };
@@ -81,7 +83,7 @@ export async function denySyncDetach(
   const boardIds = rows.map((r) => r.boardId);
   if (boardIds.length === 0) return null;
 
-  const forbidden = await forbiddenBoardIds(prisma, userId, boardIds, 'EDITOR', log);
+  const forbidden = await forbiddenBoardIds(prisma, userId, boardIds, 'EDITOR', log, membership);
   if (forbidden.length === 0) return null;
 
   return {

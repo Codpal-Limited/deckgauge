@@ -1,6 +1,7 @@
 -- GitLab issues (parity with github_issues; scoped by project_path).
 CREATE TABLE IF NOT EXISTS cockpit.gitlab_issues
 (
+    organization_id     String,
     id                  String,
     project_path        String,
     iid                 UInt32,
@@ -19,5 +20,5 @@ CREATE TABLE IF NOT EXISTS cockpit.gitlab_issues
 )
 ENGINE = ReplacingMergeTree(synced_at)
 PARTITION BY toYYYYMM(created_at)
-ORDER BY (project_path, iid)
+ORDER BY (organization_id, project_path, iid)
 SETTINGS index_granularity = 8192;

@@ -27,6 +27,19 @@ export const DEFAULT_BOARD_STATUSES = [
   { label: "Done",        color: "#00C875", icon: "\u2713", order: 4, isDefault: false },
 ] as const;
 
+/**
+ * The status a sync applies to a board row whose source issue is gone from the
+ * upstream tracker. Deliberately absent from both DEFAULT_BOARD_STATUSES (boards
+ * that never lose an issue never show the option) and STATUS_COLORS (so
+ * pickUnusedColor can never hand black to an unrelated status — black means
+ * "the source issue is gone" and nothing else).
+ *
+ * The white pill text is not configured here: DynamicStatusPill renders every
+ * status label in `text-white`, so black background gives white-on-black.
+ */
+export const DELETED_STATUS_LABEL = "Deleted";
+export const DELETED_STATUS_COLOR = "#000000";
+
 export const BoardStatusSchema = z.object({
   id: z.string().uuid(),
   boardId: z.string().uuid(),

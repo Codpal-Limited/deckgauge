@@ -3,16 +3,19 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type {
+  AccessRoleValue,
   OrgTreeDto,
   EmployeeBoardSummaryDto,
   EmployeeBoardDetailDto,
 } from '@deckgauge/shared';
+import { canEditEntity, canManageEntity } from '@deckgauge/shared';
 import { OrgTreeView } from './OrgTreeView';
 import { EmployeeBoardCanvas } from './EmployeeBoardCanvas';
 import { EmployeeDetailDrawer } from './EmployeeDetailDrawer';
 import { createEmployeeBoard, getEmployeeBoard } from '../../actions/employee-boards';
 import dynamic from 'next/dynamic';
 import { SourceTab } from './SourceTab';
+import { EmployeeBoardShareControls } from './EmployeeBoardShareControls';
 
 // Lazy-loaded: the timesheet/report views pull in recharts, so defer that bundle
 // until a user actually opens the Timesheet or Report tab (keeps the default
@@ -45,16 +48,42 @@ function TableIcon({ className }: { className?: string }) {
   );
 }
 
-export function OrgTabs({ tree, boards }: { tree: OrgTreeDto; boards: EmployeeBoardSummaryDto[] }) {
+export function OrgTabs({
+  tree,
+  boards,
+  treeRole = null,
+}: {
+  tree: OrgTreeDto;
+  boards: EmployeeBoardSummaryDto[];
+  /**
+   * The caller's effective role on the TREE, which is a different question from
+   * their role on any board inside it (design D12). `null` means they reached
+   * this page through D14's second branch — a grant on a board, not the tree —
+   * so the tree-level tabs are not theirs and rendering them would produce tabs
+   * that 403 on click.
+   */
+  treeRole?: AccessRoleValue | null;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   // Open the Source tab directly when the URL requests it (?tab=source) — e.g. a
   // deep link into a tree's Source/connection settings.
   const requestedTab = searchParams.get('tab') as OrgLevelTab | null;
+  const canSeeTree = treeRole !== null;
+  // Source is OWNER-tier because GET /org-trees/:id/source is orgTree(OWNER);
+  // creating a board is EDITOR-tier (POST /org-trees/:treeId/employee-boards).
+  const canSeeSource = canManageEntity(treeRole);
+  const canCreateBoard = canEditEntity(treeRole);
+
   const [orgTab, setOrgTab] = useState<OrgLevelTab>(
-    requestedTab && DEEP_LINK_TABS.includes(requestedTab) ? requestedTab : 'chart',
+    requestedTab && DEEP_LINK_TABS.includes(requestedTab) && canSeeTree ? requestedTab : 'chart',
   );
-  const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
+  // A board-only grantee has no chart to land on, so the shell opens on the
+  // first board they can actually see. Without this they would arrive at an
+  // empty page with every tab hidden.
+  const [activeBoardId, setActiveBoardId] = useState<string | null>(
+    canSeeTree ? null : (boards[0]?.id ?? null),
+  );
   const [boardDetail, setBoardDetail] = useState<EmployeeBoardDetailDto | null>(null);
   const [chartSelectedId, setChartSelectedId] = useState<string | null>(null);
 
@@ -97,7 +126,7 @@ export function OrgTabs({ tree, boards }: { tree: OrgTreeDto; boards: EmployeeBo
         role="tablist"
         className="mb-4 flex flex-wrap items-end gap-0 pl-4 pr-4 bg-white border-b border-slate-200"
       >
-        {(() => {
+        {canSeeTree && (() => {
           const active = !activeBoardId && orgTab === 'chart';
           return (
             <div
@@ -137,7 +166,7 @@ export function OrgTabs({ tree, boards }: { tree: OrgTreeDto; boards: EmployeeBo
           );
         })}
 
-        {(['timesheet', 'report'] as const).map((t) => {
+        {canSeeTree && (['timesheet', 'report'] as const).map((t) => {
           const active = !activeBoardId && orgTab === t;
           return (
             <div
@@ -156,16 +185,18 @@ export function OrgTabs({ tree, boards }: { tree: OrgTreeDto; boards: EmployeeBo
           );
         })}
 
-        <div
-          role="tab"
-          aria-selected={false}
-          aria-disabled={true}
-          className={`${TAB_BASE} ${TAB_INACTIVE} cursor-not-allowed opacity-40`}
-          title="Coming soon"
-        >
-          <span>Vacation Planner</span>
-        </div>
-        {(() => {
+        {canSeeTree && (
+          <div
+            role="tab"
+            aria-selected={false}
+            aria-disabled={true}
+            className={`${TAB_BASE} ${TAB_INACTIVE} cursor-not-allowed opacity-40`}
+            title="Coming soon"
+          >
+            <span>Vacation Planner</span>
+          </div>
+        )}
+        {canSeeSource && (() => {
           const active = !activeBoardId && orgTab === 'source';
           return (
             <div
@@ -183,13 +214,27 @@ export function OrgTabs({ tree, boards }: { tree: OrgTreeDto; boards: EmployeeBo
           );
         })()}
 
-        <button
-          type="button"
-          onClick={newBoard}
-          className="ml-auto mb-1 flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[13px] text-slate-600 hover:bg-slate-50"
-        >
-          ＋ New board
-        </button>
+        <div className="ml-auto mb-1 flex items-center gap-2">
+          {/* Per-board sharing — a second, independent decision from the
+              tree's (design D12). Only while a board is open: it is about
+              THAT board, not the tree. */}
+          {activeBoardId && (
+            <EmployeeBoardShareControls
+              key={activeBoardId}
+              boardId={activeBoardId}
+              boardName={boards.find((b) => b.id === activeBoardId)?.name ?? 'board'}
+            />
+          )}
+          {canCreateBoard && (
+            <button
+              type="button"
+              onClick={newBoard}
+              className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[13px] text-slate-600 hover:bg-slate-50"
+            >
+              ＋ New board
+            </button>
+          )}
+        </div>
       </div>
 
       {activeBoardId ? (

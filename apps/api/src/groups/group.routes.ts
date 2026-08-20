@@ -82,7 +82,7 @@ export async function groupRoutes(
     "/groups/:id",
     { config: { policy: board("EDITOR", viaEntity("group", fromParam("id"))) } },
     async (req, reply) => {
-      const result = await service.delete(req.params.id);
+      const result = await service.delete(req.params.id, req.user?.id);
       if (result.deleted) return reply.status(204).send();
       return reply.status(404).send({ error: "Not found" });
     },

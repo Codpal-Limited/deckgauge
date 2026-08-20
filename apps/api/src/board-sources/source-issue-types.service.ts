@@ -13,6 +13,15 @@
 // with access to board A from probing the types of a source attached to board
 // B (defense-in-depth — route auth already gates by board, but the service
 // shouldn't trust the caller).
+//
+// `organizationId` leads every method for the same reason it leads the adapter
+// factories: each factory resolves a STORED provider credential from an
+// instance id, and that id is row-derived (it comes off the source's sync row,
+// never off the request). A board source should never point at another
+// organization's connection — Task 6's `attach()` guard is what stops one being
+// created — so passing the caller's tenant down here is the second line: even a
+// row that already crosses tenants cannot get a credential handed out, and the
+// tenant also lands in the discovery cache key.
 
 import type { PrismaClient } from '@deckgauge/db';
 import type { AzureDevOpsPort, GitHubPort, JiraPort } from '@deckgauge/shared';
@@ -28,9 +37,11 @@ export class SourceIssueTypesNotFoundError extends Error {
 interface Deps {
   prisma: PrismaClient;
   cache: TypeCache;
-  jiraAdapterFor: (instanceId: string) => Promise<JiraPort>;
-  adoAdapterFor: (instanceId: string) => Promise<AzureDevOpsPort>;
-  githubAdapterFor: (instanceId: string) => Promise<GitHubPort>;
+  // `organizationId` first, deliberately: a mis-ordered call fails to compile
+  // rather than silently becoming a tenant bypass.
+  jiraAdapterFor: (organizationId: string, instanceId: string) => Promise<JiraPort>;
+  adoAdapterFor: (organizationId: string, instanceId: string) => Promise<AzureDevOpsPort>;
+  githubAdapterFor: (organizationId: string, instanceId: string) => Promise<GitHubPort>;
 }
 
 // GitHub doesn't have a dedicated "org login" field on `GitHubInstance` — it
@@ -49,7 +60,11 @@ export class SourceIssueTypesService {
     this.deps = deps;
   }
 
-  async listJira(boardId: string, boardJiraSourceId: string): Promise<string[]> {
+  async listJira(
+    organizationId: string,
+    boardId: string,
+    boardJiraSourceId: string,
+  ): Promise<string[]> {
     const row = await this.deps.prisma.boardJiraSource.findUnique({
       where: { id: boardJiraSourceId },
       include: { jiraProjectSync: true },
@@ -62,16 +77,20 @@ export class SourceIssueTypesService {
     const instanceId = row.jiraProjectSync.jiraInstanceId;
 
     return this.deps.cache.getOrFetch(
-      { provider: 'jira', kind: 'issue-types', resource: projectKey },
+      { organizationId, instanceId, provider: 'jira', kind: 'issue-types', resource: projectKey },
       async () => {
-        const adapter = await this.deps.jiraAdapterFor(instanceId);
+        const adapter = await this.deps.jiraAdapterFor(organizationId, instanceId);
         const types = await adapter.fetchProjectIssueTypes(projectKey);
         return Array.from(new Set(types)).sort();
       },
     );
   }
 
-  async listGitHubLabels(boardId: string, boardGitHubSourceId: string): Promise<string[]> {
+  async listGitHubLabels(
+    organizationId: string,
+    boardId: string,
+    boardGitHubSourceId: string,
+  ): Promise<string[]> {
     const row = await this.deps.prisma.boardGitHubSource.findUnique({
       where: { id: boardGitHubSourceId },
       include: { gitHubRepoSync: true },
@@ -84,16 +103,20 @@ export class SourceIssueTypesService {
     const instanceId = row.gitHubRepoSync.githubInstanceId;
 
     return this.deps.cache.getOrFetch(
-      { provider: 'github', kind: 'labels', resource: repoFullName },
+      { organizationId, instanceId, provider: 'github', kind: 'labels', resource: repoFullName },
       async () => {
-        const adapter = await this.deps.githubAdapterFor(instanceId);
+        const adapter = await this.deps.githubAdapterFor(organizationId, instanceId);
         const labels = await adapter.fetchRepoLabels(repoFullName);
         return Array.from(new Set(labels)).sort();
       },
     );
   }
 
-  async listGitHubIssueTypes(boardId: string, boardGitHubSourceId: string): Promise<string[]> {
+  async listGitHubIssueTypes(
+    organizationId: string,
+    boardId: string,
+    boardGitHubSourceId: string,
+  ): Promise<string[]> {
     const row = await this.deps.prisma.boardGitHubSource.findUnique({
       where: { id: boardGitHubSourceId },
       include: { gitHubRepoSync: true },
@@ -106,16 +129,26 @@ export class SourceIssueTypesService {
     const orgLogin = orgLoginFromRepo(row.gitHubRepoSync.repoFullName);
 
     return this.deps.cache.getOrFetch(
-      { provider: 'github', kind: 'org-issue-types', resource: orgLogin },
+      {
+        organizationId,
+        instanceId,
+        provider: 'github',
+        kind: 'org-issue-types',
+        resource: orgLogin,
+      },
       async () => {
-        const adapter = await this.deps.githubAdapterFor(instanceId);
+        const adapter = await this.deps.githubAdapterFor(organizationId, instanceId);
         const types = await adapter.fetchOrgIssueTypes(orgLogin);
         return Array.from(new Set(types)).sort();
       },
     );
   }
 
-  async listAdo(boardId: string, boardAdoSourceId: string): Promise<string[]> {
+  async listAdo(
+    organizationId: string,
+    boardId: string,
+    boardAdoSourceId: string,
+  ): Promise<string[]> {
     const row = await this.deps.prisma.boardAdoSource.findUnique({
       where: { id: boardAdoSourceId },
       include: { azureDevOpsProjectSync: true },
@@ -128,9 +161,9 @@ export class SourceIssueTypesService {
     const instanceId = row.azureDevOpsProjectSync.azureDevOpsInstanceId;
 
     return this.deps.cache.getOrFetch(
-      { provider: 'ado', kind: 'work-item-types', resource: project },
+      { organizationId, instanceId, provider: 'ado', kind: 'work-item-types', resource: project },
       async () => {
-        const adapter = await this.deps.adoAdapterFor(instanceId);
+        const adapter = await this.deps.adoAdapterFor(organizationId, instanceId);
         const types = await adapter.fetchWorkItemTypes(project);
         return Array.from(new Set(types)).sort();
       },

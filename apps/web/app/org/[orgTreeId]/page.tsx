@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
-import { getOrgTreeOrDenied, listOrgTreeAccess } from '@/app/actions/org-trees';
+import { getOrgTreeOrDenied } from '@/app/actions/org-trees';
+import { fetchAccess, fetchMyRole } from '@/app/actions/access';
 import { listEmployeeBoards } from '@/app/actions/employee-boards';
 import { OrgTreeToolbar } from './OrgTreeToolbar';
 import { OrgTabs } from './OrgTabs';
@@ -34,19 +35,33 @@ export default async function OrgTreePage({ params }: OrgTreePageProps) {
   }
   const tree = result.tree;
 
-  const [boards, access] = await Promise.all([
+  // One round of parallel fetches, as before. `fetchMyRole` fails closed — a
+  // non-OK response yields { role: null, userId: null }, which renders the
+  // header read-only rather than offering controls that then 403.
+  const [boards, access, { role: myRole, userId: currentUserId }] = await Promise.all([
     listEmployeeBoards(tree.id),
-    listOrgTreeAccess(tree.id),
+    fetchAccess('orgTree', tree.id),
+    fetchMyRole('orgTree', tree.id),
   ]);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
+    // No width cap of its own: the app shell already caps page content at
+    // 1400px. An inner cap here (added when this page only held the org chart)
+    // left the employee board — which sizes to its own columns — wider than the
+    // page header it sits under.
+    <main className="py-6">
       <div className="mb-4 flex items-center justify-between gap-4">
         <h1 className="text-xl font-semibold text-gray-800">{tree.name}</h1>
-        <OrgTreeHeaderActions treeId={tree.id} treeName={tree.name} initialAccess={access} />
+        <OrgTreeHeaderActions
+          treeId={tree.id}
+          treeName={tree.name}
+          myRole={myRole}
+          currentUserId={currentUserId}
+          initialAccess={access}
+        />
       </div>
       <OrgTreeToolbar treeId={tree.id} lastSyncedAt={tree.lastSyncedAt} />
-      <OrgTabs tree={tree} boards={boards} />
+      <OrgTabs tree={tree} boards={boards} treeRole={myRole} />
     </main>
   );
 }

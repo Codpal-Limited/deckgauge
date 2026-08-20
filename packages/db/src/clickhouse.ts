@@ -28,15 +28,57 @@ export const clickhouse: ClickHouseClient = createClient({
 // HTTP request stays well below the server cap, regardless of repo size.
 const CH_INSERT_CHUNK = 500;
 
+interface InsertCapable {
+  insert(params: {
+    table: string;
+    values: Array<Record<string, unknown>>;
+    format: 'JSONEachRow';
+  }): Promise<unknown>;
+}
+
+/**
+ * Testable core of chInsertMany: same rules, but takes an injectable client
+ * so tests can verify the tenant stamp and validation without a ClickHouse
+ * container.
+ */
+export async function chInsertManyWith<T extends Record<string, unknown>>(
+  client: InsertCapable,
+  table: string,
+  organizationId: string,
+  rows: ReadonlyArray<T>,
+): Promise<void> {
+  if (organizationId.trim() === '') {
+    // organization_id leads every ClickHouse table's sort key. A row that
+    // lands without one matches no tenant's predicate, and because the
+    // column is part of the sort key, ClickHouse has no UPDATE path (Code
+    // 420 CANNOT_UPDATE_COLUMN) to fix it afterwards — the row would be
+    // orphaned and undiscoverable forever. Fail before the network call
+    // rather than write it.
+    throw new Error(
+      `chInsertMany(${table}): organizationId is required — a row written without one ` +
+        'matches no tenant predicate, and because organization_id is a sort-key column it ' +
+        'cannot be corrected after the fact',
+    );
+  }
+  if (rows.length === 0) return;
+
+  for (let i = 0; i < rows.length; i += CH_INSERT_CHUNK) {
+    const chunk = rows
+      .slice(i, i + CH_INSERT_CHUNK)
+      // Spread the row first, then stamp — so a caller-supplied
+      // organization_id in the row object can never win. The bound
+      // organizationId is the only authority on which tenant owns this row.
+      .map((row) => ({ ...row, organization_id: organizationId }));
+    await client.insert({ table, values: chunk, format: 'JSONEachRow' });
+  }
+}
+
 export async function chInsertMany<T extends Record<string, unknown>>(
   table: string,
+  organizationId: string,
   rows: T[],
 ): Promise<void> {
-  if (rows.length === 0) return;
-  for (let i = 0; i < rows.length; i += CH_INSERT_CHUNK) {
-    const chunk = rows.slice(i, i + CH_INSERT_CHUNK);
-    await clickhouse.insert({ table, values: chunk, format: 'JSONEachRow' });
-  }
+  return chInsertManyWith(clickhouse as unknown as InsertCapable, table, organizationId, rows);
 }
 
 export type { ClickHouseClient };

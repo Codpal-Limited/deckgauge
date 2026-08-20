@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@deckgauge/db';
+import { CrossOrganizationSyncError } from './cross-organization-sync-error.js';
 
 // Surface the project sync's `syncPrs/syncCommits/lastSyncedAt` so the
 // board-sources UI can render the connection's code-sync state and last
@@ -27,13 +28,29 @@ export class BoardGitLabSourceService {
     });
   }
 
-  async attach(input: {
-    boardId: string;
-    gitlabProjectSyncId: string;
-    targetGroupId?: string | null;
-    syncIssuesToBoard?: boolean;
-    syncMrsToBoard?: boolean;
-  }) {
+  /**
+   * `organizationId` first — see BoardJiraSourceService.attach for the full rule.
+   *
+   * GitLab's spelling differs from the other three providers: the client accessor
+   * is `gitLabProjectSync` (capital L) while its instance RELATION field is
+   * `gitlabInstance` (lower-case l), matching the `gitlabInstanceId` column.
+   */
+  async attach(
+    organizationId: string,
+    input: {
+      boardId: string;
+      gitlabProjectSyncId: string;
+      targetGroupId?: string | null;
+      syncIssuesToBoard?: boolean;
+      syncMrsToBoard?: boolean;
+    },
+  ) {
+    const sync = await this.prisma.gitLabProjectSync.findFirst({
+      where: { id: input.gitlabProjectSyncId, gitlabInstance: { organizationId } },
+      select: { id: true },
+    });
+    if (!sync) throw new CrossOrganizationSyncError('gitlab', input.gitlabProjectSyncId);
+
     return this.prisma.boardGitLabSource.create({ data: input, include: GITLAB_SYNC_INCLUDE });
   }
 

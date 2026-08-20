@@ -49,13 +49,26 @@ export interface ChClient {
   insertRows(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
 }
 
+/**
+ * Builds a ClickHouse client bound to one organization. See jira-dual-writer.ts
+ * for why handlers take the factory rather than a client: the instances this
+ * handler loops over can belong to different tenants, and `organization_id` is a
+ * sort-key column ClickHouse cannot correct afterwards.
+ */
+export type ChClientFactory = (organizationId: string) => ChClient;
+
 export async function handleGitLabSyncJob(
   job: GitLabSyncJobData,
   db: PrismaClient,
   prAdapterFactory: GitLabPrAdapterFactory,
   commitAdapterFactory: GitLabCommitAdapterFactory,
   issueAdapterFactory: GitLabIssueAdapterFactory,
-  ch: ChClient,
+  /**
+   * Builds a ClickHouse client bound to one organization. Called once per
+   * instance below, with THAT instance's organizationId — the GitLab connections
+   * this job iterates can belong to different tenants.
+   */
+  chClientFor: ChClientFactory,
 ): Promise<GitLabSyncResult> {
   const result: GitLabSyncResult = {
     instancesProcessed: 0,
@@ -89,6 +102,10 @@ export async function handleGitLabSyncJob(
   for (const [instanceId, syncs] of byInstance.entries()) {
     result.instancesProcessed++;
     const instance = syncs[0]!.gitlabInstance;
+    // Bind ClickHouse to the organization that owns THIS connection. Inside the
+    // loop, never outside it: merge requests, reviews, commits and issues from a
+    // second instance on another tenant must be written under that tenant.
+    const ch = chClientFor(instance.organizationId);
     const prAdapter = prAdapterFactory({
       accessToken: instance.accessToken,
       baseUrl: instance.baseUrl,

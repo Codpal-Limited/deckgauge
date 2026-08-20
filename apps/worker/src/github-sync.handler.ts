@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@deckgauge/db';
 import type { GitHubPort, GitHubProjectsPort } from '@deckgauge/shared';
 import { normalizeRepoFullName } from '@deckgauge/shared';
-import type { ChClient } from './jira-dual-writer.js';
+import type { ChClientFactory } from './jira-dual-writer.js';
 import { githubSyncProcessor } from './github-sync.processor.js';
 
 export interface GitHubSyncJobData {
@@ -39,7 +39,12 @@ export async function handleGitHubSyncJob(
   db: PrismaClient,
   adapterFactory: GitHubAdapterFactory,
   projectsAdapterFactory?: GitHubProjectsAdapterFactory,
-  ch?: ChClient,
+  /**
+   * Builds a ClickHouse client bound to one organization. Called once per
+   * instance below, with THAT instance's organizationId — the GitHub connections
+   * this job iterates can belong to different tenants.
+   */
+  chClientFor?: ChClientFactory,
 ): Promise<GitHubSyncJobResult[]> {
   const trigger = jobData.trigger || 'scheduled';
   const scopedInstanceId = jobData.instanceId;
@@ -77,6 +82,11 @@ export async function handleGitHubSyncJob(
     }
 
     try {
+      // Bind ClickHouse to the organization that owns THIS connection. Inside
+      // the loop, never outside it: two instances here can belong to two
+      // different tenants.
+      const ch = chClientFor?.(instance.organizationId);
+
       const adapter = adapterFactory({
         baseUrl: instance.baseUrl,
         accessToken: instance.accessToken,

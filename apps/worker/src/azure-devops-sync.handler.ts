@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@deckgauge/db';
 import type { AzureDevOpsPort } from '@deckgauge/shared';
-import type { ChClient } from './jira-dual-writer.js';
+import type { ChClientFactory } from './jira-dual-writer.js';
 import { azureDevOpsSyncProcessor } from './azure-devops-sync.processor.js';
 
 export interface AzureDevOpsSyncJobData {
@@ -31,7 +31,12 @@ export async function handleAzureDevOpsSyncJob(
   jobData: AzureDevOpsSyncJobData,
   db: PrismaClient,
   adapterFactory: AzureDevOpsAdapterFactory,
-  ch?: ChClient,
+  /**
+   * Builds a ClickHouse client bound to one organization. Called once per
+   * instance below, with THAT instance's organizationId — the ADO connections
+   * this job iterates can belong to different tenants.
+   */
+  chClientFor?: ChClientFactory,
 ): Promise<AzureDevOpsSyncJobResult[]> {
   const trigger = jobData.trigger || 'scheduled';
   const scopedInstanceId = jobData.instanceId;
@@ -68,6 +73,10 @@ export async function handleAzureDevOpsSyncJob(
     }
 
     try {
+      // Bind ClickHouse to the organization that owns THIS instance — inside the
+      // loop, so a second instance on another tenant gets its own client.
+      const ch = chClientFor?.(instance.organizationId);
+
       const adapter = adapterFactory({
         orgUrl: instance.orgUrl,
         authMethod: instance.authMethod as 'PAT' | 'BASIC',

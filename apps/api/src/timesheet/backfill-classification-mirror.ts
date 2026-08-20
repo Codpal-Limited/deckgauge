@@ -21,6 +21,16 @@ async function runFromCli(): Promise<void> {
   const { PrismaClient, chInsertMany } = await import('@deckgauge/db');
   const prisma = new PrismaClient();
   try {
+    // Connections are an organization property now, and this CLI script has
+    // no request to take an organization from. Under the enforced
+    // single-organization cap there is at most one, so resolving it here is
+    // unambiguous (same reasoning as the worker's bootstrapAdoFromYaml).
+    const organization = await prisma.organization.findFirst({ select: { id: true } });
+    if (!organization) {
+      throw new Error(
+        'backfill-classification-mirror: no organization exists yet — there is no tenant to mirror rows into',
+      );
+    }
     const result = await backfillClassificationMirror({
       listClassifiedProjects: () =>
         prisma.project.findMany({
@@ -35,7 +45,10 @@ async function runFromCli(): Promise<void> {
             costClassification: true,
           },
         }) as Promise<ClassifiableRow[]>,
-      insert: (table, rows) => chInsertMany(table, rows as Record<string, unknown>[]),
+      // organizationId is bound here by closure, not threaded through
+      // BackfillDeps — matches the bind-not-pass pattern used for the
+      // worker's chClientFor.
+      insert: (table, rows) => chInsertMany(table, organization.id, rows as Record<string, unknown>[]),
     });
     console.log(`Backfill complete: scanned ${result.scanned}, mirrored ${result.mirrored}`);
   } finally {

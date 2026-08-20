@@ -8,9 +8,11 @@ import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
 import { advisorHelpAskRequestSchema } from '@deckgauge/shared';
 import { hasBoardAccess } from '../board-access/board-access.middleware.js';
-import { AUTHENTICATED } from '../auth/policy.js';
+import { orgRole } from '../auth/policy.js';
+import { requireOrganizationId } from '../organizations/request-organization.js';
 import { RoadmapService } from '../roadmaps/roadmap.service.js';
 import { AdvisorHelpService } from './advisor-help.service.js';
+import { inferenceLock } from './inference-lock.js';
 import { AdvisorConfigService } from './advisor-config.service.js';
 import { resolveProvider } from './llm-provider.js';
 import { isMappedPageKey } from './page-state/page-state.resolver.js';
@@ -38,7 +40,7 @@ export function advisorHelpRoutes({ prisma }: { prisma: PrismaClient }) {
     // mid-question would surface as a mysteriously degraded answer.
     const sourceAllowlist = createPathAllowlist(await resolveSourceRoots());
 
-    app.post('/advisor/help/ask', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
+    app.post('/advisor/help/ask', { config: { policy: orgRole('VIEWER') } }, async (req, reply) => {
       // This route has no board or entity to scope against — it's a global
       // help assistant — so `AUTHENTICATED` (declared above) is the right
       // policy kind. Inside `protectedApp`, `buildPolicyPlugin`'s preHandler
@@ -105,7 +107,7 @@ export function advisorHelpRoutes({ prisma }: { prisma: PrismaClient }) {
         verifiedRoadmapId = parsed.data.roadmapId;
       }
 
-      const config = await configService.getConfig();
+      const config = await configService.getConfig(requireOrganizationId(req));
       if (!config) return reply.code(409).send({ error: 'advisor_not_configured' });
 
       const pageKey = parsed.data.pageContext.key;
@@ -151,7 +153,7 @@ export function advisorHelpRoutes({ prisma }: { prisma: PrismaClient }) {
       // no readable roots at all — there is nothing for the tools to search, so
       // offering them would be the same empty round trip.
       const sourceLookup =
-        sourceAllowlist.roots.length > 0 && (await configService.isSourceLookupEnabled())
+        sourceAllowlist.roots.length > 0 && (await configService.isSourceLookupEnabled(requireOrganizationId(req)))
           ? {
               allowlist: sourceAllowlist,
               // Synchronous, like the page-state seam above and for the same
@@ -163,18 +165,11 @@ export function advisorHelpRoutes({ prisma }: { prisma: PrismaClient }) {
             }
           : undefined;
 
-      const run = help.ask({
-        provider: resolveProvider(config),
-        question: parsed.data.question,
-        pageLabel: parsed.data.pageContext.label,
-        pageKey,
-        history: parsed.data.history,
-        pageState,
-        sourceLookup,
-      });
-
       // Same manual SSE hijack as the board route — Fastify must not try to
       // send its own reply once frames start going out by hand.
+      //
+      // Headers go out BEFORE the lock is acquired: a queued caller then holds an
+      // open, quiet SSE stream rather than a request that looks hung.
       reply.hijack();
       reply.raw.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -183,11 +178,26 @@ export function advisorHelpRoutes({ prisma }: { prisma: PrismaClient }) {
       });
 
       try {
-        for await (const chunk of run.textStream) {
-          reply.raw.write(`data: ${JSON.stringify({ type: 'delta', text: chunk })}\n\n`);
-        }
-        const toolCalls = await run.toolCalls;
-        reply.raw.write(`data: ${JSON.stringify({ type: 'done', toolCalls })}\n\n`);
+        // Shares the single process-wide lock with the board route, so a board
+        // question and a help question cannot run inference concurrently. Spans
+        // ask() AND the drain, because ask() returns an AsyncIterable and the
+        // inference happens while it is consumed.
+        await inferenceLock.run(async () => {
+          const run = help.ask({
+            provider: resolveProvider(config),
+            question: parsed.data.question,
+            pageLabel: parsed.data.pageContext.label,
+            pageKey,
+            history: parsed.data.history,
+            pageState,
+            sourceLookup,
+          });
+          for await (const chunk of run.textStream) {
+            reply.raw.write(`data: ${JSON.stringify({ type: 'delta', text: chunk })}\n\n`);
+          }
+          const toolCalls = await run.toolCalls;
+          reply.raw.write(`data: ${JSON.stringify({ type: 'done', toolCalls })}\n\n`);
+        });
       } catch (err) {
         reply.raw.write(
           `data: ${JSON.stringify({

@@ -1,6 +1,7 @@
 -- clickhouse/schemas/14_github_deployments.sql
 CREATE TABLE IF NOT EXISTS cockpit.github_deployments
 (
+    organization_id   String,
     id                String,             -- "{owner}/{repo}#{deployment_id}"
     org               String,
     repo_full_name    String,
@@ -20,5 +21,5 @@ CREATE TABLE IF NOT EXISTS cockpit.github_deployments
 )
 ENGINE = ReplacingMergeTree(_ingested_at)
 PARTITION BY toYYYYMM(created_at)
-ORDER BY (repo_full_name, deployment_id)
+ORDER BY (organization_id, repo_full_name, deployment_id)
 SETTINGS index_granularity = 8192;

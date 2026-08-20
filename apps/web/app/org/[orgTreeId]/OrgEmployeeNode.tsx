@@ -11,6 +11,7 @@ import {
   formatActivityLabel,
   getInitials,
   rankBadgeView,
+  splitBoardChips,
   type ActivityStatus,
 } from './employee-presentation';
 
@@ -228,7 +229,7 @@ export function OrgEmployeeNode({
     });
   };
 
-  const boards = employee.isVacancy ? [] : (employee.stats?.boards ?? []);
+  const boards = splitBoardChips(employee.isVacancy ? [] : (employee.stats?.boards ?? []));
 
   return (
     <div data-testid="org-node" className="mt-2">
@@ -325,8 +326,12 @@ export function OrgEmployeeNode({
           )}
         </div>
 
-        {/* Chips */}
-        <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-1.5">
+        {/* Chip rail. Must stay shrinkable and width-capped: it shares the row with the
+            name/meta column, which indentation already narrows at depth. */}
+        <div
+          data-testid="node-chips"
+          className="flex min-w-0 max-w-[55%] flex-wrap items-center justify-end gap-1.5"
+        >
           {!employee.isVacancy && !employee.isDeparted && employee.ranking && (
             <RankBadge ranking={employee.ranking} />
           )}
@@ -350,14 +355,15 @@ export function OrgEmployeeNode({
               assigned
             </span>
           )}
-          {boards.map((b) => (
+          {boards.visible.map((b) => (
             <Link
               key={b.boardId}
               href={`/?boardId=${b.boardId}`}
-              className={`${CHIP_BASE} border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100`}
+              title={b.boardName}
+              className={`${CHIP_BASE} max-w-[9rem] border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100`}
             >
               <svg
-                className="h-3 w-3"
+                className="h-3 w-3 flex-shrink-0"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -366,9 +372,17 @@ export function OrgEmployeeNode({
                 <rect x="3" y="4" width="18" height="16" rx="2" />
                 <path d="M3 9h18" />
               </svg>
-              {b.boardName}
+              <span className="truncate">{b.boardName}</span>
             </Link>
           ))}
+          {boards.hiddenCount > 0 && (
+            <span
+              title={boards.hiddenLabel}
+              className={`${CHIP_BASE} border-slate-200 bg-slate-50 text-slate-500`}
+            >
+              +{boards.hiddenCount}
+            </span>
+          )}
         </div>
 
         {/* Action menu */}

@@ -1,6 +1,7 @@
 -- GitLab commits — author and committer per commit.
 CREATE TABLE IF NOT EXISTS cockpit.gitlab_commits
 (
+    organization_id     String,
     id                  String,
     sha                 String,
     project_path        String,
@@ -24,5 +25,5 @@ CREATE TABLE IF NOT EXISTS cockpit.gitlab_commits
 )
 ENGINE = ReplacingMergeTree(synced_at)
 PARTITION BY toYYYYMM(committed_at)
-ORDER BY (project_path, sha)
+ORDER BY (organization_id, project_path, sha)
 SETTINGS index_granularity = 8192;

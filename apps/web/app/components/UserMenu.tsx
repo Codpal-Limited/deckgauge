@@ -3,8 +3,21 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useRef, useEffect } from 'react';
 
-const KEYCLOAK_ISSUER =
-  process.env.NEXT_PUBLIC_KEYCLOAK_ISSUER ?? 'http://localhost:8080/realms/vp-cockpit';
+const LOGOUT_URL_ENDPOINT = '/api/logout-url';
+
+// The end-session URL is assembled by the server, which knows the runtime Keycloak
+// issuer. Building it here would mean NEXT_PUBLIC_KEYCLOAK_ISSUER, which Next inlines
+// at build time — sending every self-hosted install to the build machine's Keycloak.
+async function fetchLogoutUrl(fallbackUrl: string): Promise<string> {
+  try {
+    const res = await fetch(LOGOUT_URL_ENDPOINT);
+    if (!res.ok) return fallbackUrl;
+    const { url } = (await res.json()) as { url?: string };
+    return url ?? fallbackUrl;
+  } catch {
+    return fallbackUrl;
+  }
+}
 
 function getInitials(name?: string | null, email?: string | null): string {
   if (name) {
@@ -39,15 +52,11 @@ export function UserMenu() {
   // Keycloak SSO session, so the next sign-in shows a fresh login/registration
   // screen instead of silently re-authenticating the same account.
   async function handleSignOut() {
-    // Capture id_token before signOut clears the session; it lets Keycloak skip
-    // the logout-confirmation prompt.
-    const idTokenHint = session?.idToken;
-    const params = new URLSearchParams({
-      post_logout_redirect_uri: `${window.location.origin}/login`,
-    });
-    if (idTokenHint) params.set('id_token_hint', idTokenHint);
+    // Ask for the URL first: the server reads the id_token from the session cookie,
+    // which signOut is about to delete.
+    const logoutUrl = await fetchLogoutUrl(`${window.location.origin}/login`);
     await signOut({ redirect: false });
-    window.location.href = `${KEYCLOAK_ISSUER}/protocol/openid-connect/logout?${params.toString()}`;
+    window.location.href = logoutUrl;
   }
 
   return (

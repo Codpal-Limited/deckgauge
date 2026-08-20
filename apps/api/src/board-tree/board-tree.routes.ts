@@ -8,7 +8,8 @@ import {
 } from '@deckgauge/shared';
 import { RoadmapPrefsService } from '../roadmaps/roadmap-prefs.service.js';
 import { BoardTreeService } from './board-tree.service.js';
-import { AUTHENTICATED } from '../auth/policy.js';
+import { AUTHENTICATED, ORG_MEMBER } from '../auth/policy.js';
+import { requireOrganizationId } from '../organizations/request-organization.js';
 
 export async function boardTreeRoutes(
   app: FastifyInstance,
@@ -22,13 +23,13 @@ export async function boardTreeRoutes(
     return reply.send(await service.getTree(userId));
   });
 
-  app.post('/me/board-folders', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
+  app.post('/me/board-folders', { config: { policy: ORG_MEMBER } }, async (req, reply) => {
     const userId = req.user?.id;
     if (!userId) return reply.status(401).send({ error: 'Authentication required' });
     const parsed = CreateBoardFolderInputSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: parsed.error.flatten() });
     try {
-      const folder = await service.createFolder(userId, parsed.data);
+      const folder = await service.createFolder(requireOrganizationId(req), userId, parsed.data);
       return reply.status(201).send(folder);
     } catch (err) {
       return reply.status(400).send({ error: (err as Error).message });

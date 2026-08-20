@@ -5,6 +5,7 @@ import {
   forbiddenBoardIds,
   type BoardAccessLog,
 } from '../auth/board-access.js';
+import type { CallerMembership } from '../auth/board-access.js';
 
 export class RoadmapMembershipService {
   constructor(private readonly prisma: PrismaClient) {}
@@ -24,9 +25,10 @@ export class RoadmapMembershipService {
     boardIds: ReadonlyArray<string | null | undefined>,
     userId: string,
     log?: BoardAccessLog,
+    membership: CallerMembership = null,
   ): Promise<void> {
     if (boardIds.some((b) => !b)) throw new BoardAccessDeniedError(['<unresolved>']);
-    const forbidden = await forbiddenBoardIds(this.prisma, userId, boardIds as string[], 'VIEWER', log);
+    const forbidden = await forbiddenBoardIds(this.prisma, userId, boardIds as string[], 'VIEWER', log, membership);
     if (forbidden.length > 0) throw new BoardAccessDeniedError(forbidden);
   }
 

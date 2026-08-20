@@ -5,7 +5,13 @@ import { BoardGitLabSourceService } from './board-gitlab-source.service.js';
 import { PreviewCountService, PreviewSourceNotFoundError } from './preview-count.service.js';
 import { clickhouse as defaultClickhouse } from '@deckgauge/db';
 import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
-import { board } from '../auth/policy.js';
+import { all, board, ORG_MEMBER } from '../auth/policy.js';
+import { requireOrganizationId } from '../organizations/request-organization.js';
+import { CrossOrganizationSyncError } from './cross-organization-sync-error.js';
+
+// Why this is not a bare `board('EDITOR')`, and why ORG_MEMBER rather than
+// orgRole('VIEWER') — see the identical constant in board-jira-source.routes.ts.
+const ATTACH_POLICY = all(board('EDITOR'), ORG_MEMBER);
 
 export function boardGitLabSourceRoutes(deps: {
   prisma: PrismaClient;
@@ -29,7 +35,7 @@ export function boardGitLabSourceRoutes(deps: {
 
     app.post<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/gitlab',
-      { config: { policy: board('EDITOR') } },
+      { config: { policy: ATTACH_POLICY } },
       async (req, reply) => {
         const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -38,8 +44,15 @@ export function boardGitLabSourceRoutes(deps: {
           boardId: params.data.boardId,
         });
         if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
-        const row = await service.attach(body.data);
-        return reply.code(201).send(row);
+        try {
+          const row = await service.attach(requireOrganizationId(req), body.data);
+          return reply.code(201).send(row);
+        } catch (err) {
+          if (err instanceof CrossOrganizationSyncError) {
+            return reply.code(404).send({ error: err.message });
+          }
+          throw err;
+        }
       },
     );
 

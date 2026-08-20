@@ -46,7 +46,7 @@ import type {
   ProjectStatus,
 } from '@deckgauge/shared';
 import { hasAnyJiraLink, type JiraSourceLinks } from '@deckgauge/shared';
-import { resolveColumnWidth, buildBoardGridTemplate } from '@deckgauge/shared';
+import { resolveColumnWidth, buildBoardGridTemplate, canEditEntity } from '@deckgauge/shared';
 import type { GridColumnSpec } from '@deckgauge/shared';
 import {
   reorderItems,
@@ -297,7 +297,10 @@ export function GroupList({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showStatusManager, setShowStatusManager] = useState(false);
 
-  const isViewer = userRole === 'VIEWER';
+  // Allowlist via canEditEntity, not a `=== 'VIEWER'` denylist: a role fetch
+  // that fails closed returns `null`, which must render read-only, not full
+  // edit mode.
+  const isViewer = !canEditEntity(userRole ?? null);
 
   // Keyboard navigation context
   const { state: navState, dispatch: navDispatch, cellCount } = useKeyboardNavContext();

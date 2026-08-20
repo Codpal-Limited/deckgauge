@@ -18,6 +18,14 @@ export interface ChClient {
   insertRows(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
 }
 
+/**
+ * Builds a ClickHouse client bound to one organization. See
+ * jira-dual-writer.ts for why handlers take the factory rather than a client:
+ * the instances this handler loops over can belong to different tenants, and
+ * `organization_id` is a sort-key column ClickHouse cannot correct afterwards.
+ */
+export type ChClientFactory = (organizationId: string) => ChClient;
+
 export interface JiraIntelligenceResult {
   instancesProcessed: number;
   issuesWritten: number;
@@ -49,7 +57,7 @@ export async function handleJiraIntelligenceSync(
   job: JiraIntelligenceJobData,
   db: PrismaClient,
   factory: JiraIntelligenceFactory,
-  ch: ChClient,
+  chClientFor: ChClientFactory,
   opts: { syncWorklogs?: boolean } = {},
 ): Promise<JiraIntelligenceResult> {
   const result: JiraIntelligenceResult = {
@@ -66,6 +74,10 @@ export async function handleJiraIntelligenceSync(
   for (const instance of instances) {
     result.instancesProcessed++;
     try {
+      // Bind ClickHouse to the organization that owns THIS connection — inside
+      // the loop, so a second instance on another tenant gets its own client.
+      const ch = chClientFor(instance.organizationId);
+
       const adapter = factory({
         atlassianUrl: instance.atlassianUrl,
         email: instance.email,

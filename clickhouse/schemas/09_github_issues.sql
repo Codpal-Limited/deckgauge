@@ -1,6 +1,7 @@
 -- GitHub issues (replaces github_issues Postgres table).
 CREATE TABLE IF NOT EXISTS cockpit.github_issues
 (
+    organization_id     String,
     id                  String,
     repo_full_name      String,
     number              UInt32,
@@ -23,5 +24,5 @@ CREATE TABLE IF NOT EXISTS cockpit.github_issues
 )
 ENGINE = ReplacingMergeTree(synced_at)
 PARTITION BY toYYYYMM(created_at)
-ORDER BY (repo_full_name, number)
+ORDER BY (organization_id, repo_full_name, number)
 SETTINGS index_granularity = 8192;

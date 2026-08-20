@@ -1,5 +1,5 @@
 import type { ClickHouseClient } from '@deckgauge/db';
-import { DONE_STATUS_NAMES } from '@deckgauge/shared';
+import { DONE_STATUS_NAMES, toUtcIso } from '@deckgauge/shared';
 
 export interface ActivityIdentityRow {
   provider: 'github' | 'ado' | 'jira';
@@ -7,10 +7,49 @@ export interface ActivityIdentityRow {
   name: string | null;
   email: string | null;
   kind: 'gh' | 'ado' | 'jira';
+  /** The repo / project the activity happened in. Coarse: boards can share one. */
   scopeKey: string;
+  /**
+   * The specific work item, keyed the way board rows are keyed (Jira issue key,
+   * ADO work-item id, GitHub "repo#number"). Set on assignment rows only — code
+   * activity belongs to a repo, not to a board row.
+   */
+  rowKey: string | null;
+  /**
+   * The assigned item's parent (Jira parent/epic, ADO parent work item), used as a
+   * fallback when the item itself is on no board. Boards commonly track Epics only
+   * while engineers are assigned the Stories underneath them; without this those
+   * engineers would show no chips at all.
+   */
+  parentKey: string | null;
+  /**
+   * The epic above the parent, where the hierarchy is deeper than one level. For a Jira
+   * sub-task `parent_key` is the Story and `epic_key` the Epic, and it is the Epic that
+   * boards usually track — so board resolution falls through row -> parent -> epic.
+   */
+  epicKey: string | null;
   lastTs: string | null;
   isAssignment: boolean;
   contributedCode: boolean;
+}
+
+/**
+ * Force a ClickHouse timestamp to explicit UTC, or null for an absent one.
+ *
+ * ClickHouse stores UTC but its default `toString` renders "YYYY-MM-DD HH:MM:SS" with
+ * no zone, and `new Date()` reads that as LOCAL time. West of UTC that makes recent
+ * activity look future-dated, and `isWithinActiveWindow`'s `ms >= 0` guard then drops
+ * the freshest chips — the exact rows that matter most.
+ *
+ * Normalised here rather than in SQL on purpose: ClickHouse's `formatDateTime` uses
+ * `%M` for the MONTH NAME (minutes are `%i`), so the obvious `'%Y-%m-%dT%H:%M:%SZ'`
+ * silently yields "2026-08-14T17:August:16Z" and every timestamp becomes unparseable.
+ *
+ * The normalisation itself lives in @deckgauge/shared alongside the window check that
+ * consumes it — a local copy drifted from that one once already.
+ */
+function normalizeTs(ts: string | null | undefined): string | null {
+  return ts ? toUtcIso(ts) : null;
 }
 
 interface Spec {
@@ -61,21 +100,58 @@ const SPECS: Spec[] = [
     // Jira `assignee` is a display name (e.g. "Valentin Nagacevschi"), not an email —
     // route it by shape so the name-based matcher can resolve it (an '@'-form assignee
     // still lands in the email slot). ADO's assignment spec already projects to `name`.
-    sql: `SELECT '' login, if(assignee LIKE '%@%', '', assignee) name, if(assignee LIKE '%@%', lower(assignee), '') email, project_key scopeKey, toString(max(updated_at)) lastTs FROM jira_issues WHERE assignee != '' GROUP BY 1,2,3,4`,
+    // Reduced to ONE row per issue before the assignee is read. These are
+    // ReplacingMergeTrees whose parts are not guaranteed merged, so grouping BY the
+    // assignee would emit a row per historical assignee and let someone who has since
+    // handed a ticket over keep earning a live chip. argMax(..., updated_at) takes the
+    // newest revision's value instead — correct without paying for FINAL.
+    //
+    // Defensive, not corrective: measured on staging, zero Jira issues and zero
+    // (org, project, work-item) triples currently carry more than one assignee. (A
+    // count of 3,406 appears if you group ADO by bare `ado_id`, but that is ids
+    // colliding ACROSS projects, not stale assignees — see the row key note below.)
+    sql: `SELECT '' login, if(assignee LIKE '%@%', '', assignee) name, if(assignee LIKE '%@%', lower(assignee), '') email, rowKey, parentKey, epicKey, scopeKey, lastTs FROM (
+      SELECT key rowKey,
+             argMax(ifNull(assignee, ''), updated_at) assignee,
+             argMax(ifNull(parent_key, ''), updated_at) parentKey,
+             argMax(ifNull(epic_key, ''), updated_at) epicKey,
+             argMax(project_key, updated_at) scopeKey,
+             toString(max(updated_at)) lastTs
+      FROM jira_issues GROUP BY key
+    ) WHERE assignee != ''`,
   },
   {
     provider: 'ado',
     kind: 'ado',
     isAssignment: true,
     contributedCode: false,
-    sql: `SELECT '' login, ifNull(assigned_to,'') name, lower(ifNull(assigned_to_email,'')) email, project scopeKey, toString(max(updated_at)) lastTs FROM ado_work_items WHERE assigned_to IS NOT NULL GROUP BY 1,2,3,4`,
+    // Keyed project#id, not the bare id: ADO work-item ids are unique only within a
+    // project, so bare ids would let two projects cross-credit each other's boards.
+    // `parentKey` must carry the SAME shape — it is looked up in the same map, and a
+    // bare id there resolves to nothing at all, silently disabling the parent fallback.
+    sql: `SELECT '' login, name, email, rowKey, parentKey, '' epicKey, scopeKey, lastTs FROM (
+      SELECT concat(project, '#', toString(ado_id)) rowKey,
+             argMax(ifNull(assigned_to, ''), updated_at) name,
+             lower(argMax(ifNull(assigned_to_email, ''), updated_at)) email,
+             argMax(if(parent_ado_id IS NULL, '', concat(project, '#', toString(parent_ado_id))), updated_at) parentKey,
+             argMax(project, updated_at) scopeKey,
+             toString(max(updated_at)) lastTs
+      FROM ado_work_items GROUP BY org_url, project, ado_id
+    ) WHERE name != ''`,
   },
   {
     provider: 'github',
     kind: 'gh',
     isAssignment: true,
     contributedCode: false,
-    sql: `SELECT ifNull(assignee_login,'') login, ifNull(assignee_name,'') name, '' email, repo_full_name scopeKey, toString(max(updated_at)) lastTs FROM github_issues WHERE assignee_login IS NOT NULL GROUP BY 1,2,3,4`,
+    sql: `SELECT login, name, '' email, rowKey, '' parentKey, '' epicKey, scopeKey, lastTs FROM (
+      SELECT concat(repo_full_name, '#', toString(number)) rowKey,
+             argMax(ifNull(assignee_login, ''), updated_at) login,
+             argMax(ifNull(assignee_name, ''), updated_at) name,
+             argMax(repo_full_name, updated_at) scopeKey,
+             toString(max(updated_at)) lastTs
+      FROM github_issues GROUP BY repo_full_name, number
+    ) WHERE login != ''`,
   },
 ];
 
@@ -354,7 +430,7 @@ export async function fetchActivityIdentities(
 ): Promise<ActivityIdentityRow[]> {
   const out: ActivityIdentityRow[] = [];
   for (const spec of SPECS) {
-    let rows: Array<{ login: string; name: string; email: string; scopeKey: string; lastTs: string }>;
+    let rows: Array<{ login: string; name: string; email: string; rowKey?: string; parentKey?: string; epicKey?: string; scopeKey: string; lastTs: string }>;
     try {
       const res = await ch.query({ query: spec.sql, format: 'JSONEachRow' });
       rows = (await res.json()) as typeof rows;
@@ -370,7 +446,10 @@ export async function fetchActivityIdentities(
         name: r.name || null,
         email: r.email || null,
         scopeKey: r.scopeKey,
-        lastTs: r.lastTs || null,
+        rowKey: r.rowKey || null,
+        parentKey: r.parentKey || null,
+        epicKey: r.epicKey || null,
+        lastTs: normalizeTs(r.lastTs),
         isAssignment: spec.isAssignment,
         contributedCode: spec.contributedCode,
       });

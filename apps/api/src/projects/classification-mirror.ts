@@ -42,8 +42,8 @@ export function buildClassificationRow(row: ClassifiableRow): BoardItemClassific
   };
 }
 
-export async function mirrorClassification(row: ClassifiableRow): Promise<void> {
+export async function mirrorClassification(row: ClassifiableRow, organizationId: string): Promise<void> {
   const mirrorRow = buildClassificationRow(row);
   if (!mirrorRow) return;
-  await chInsertMany('board_item_classification', [mirrorRow]);
+  await chInsertMany('board_item_classification', organizationId, [mirrorRow]);
 }

@@ -5,6 +5,7 @@
 -- sync run; downstream analytics treat (repo_url, sha) as the identity.
 CREATE TABLE IF NOT EXISTS cockpit.ado_commits
 (
+    organization_id     String,
     id                  String,
     sha                 String,
     org_url             String,
@@ -35,5 +36,5 @@ CREATE TABLE IF NOT EXISTS cockpit.ado_commits
 )
 ENGINE = ReplacingMergeTree(synced_at)
 PARTITION BY toYYYYMM(committed_at)
-ORDER BY (repo_url, sha)
+ORDER BY (organization_id, repo_url, sha)
 SETTINGS index_granularity = 8192;

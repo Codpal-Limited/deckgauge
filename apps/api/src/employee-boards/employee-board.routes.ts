@@ -17,7 +17,7 @@ import {
 } from '@deckgauge/shared';
 import type { EmployeeBoardService } from './employee-board.service.js';
 import { OrgTreeCycleError, CrossTreeEmployeeError } from '../org-trees/org-tree.service.js';
-import { orgTree, viaOrgEntity, fromParam, fromBodyField } from '../auth/policy.js';
+import { orgTree, employeeBoard, employeeBoardInTree, any, VIA_MEMBER, viaOrgEntity, fromParam, fromBodyField } from '../auth/policy.js';
 
 export interface EmployeeBoardRoutesDeps {
   serviceFactory: () => EmployeeBoardService;
@@ -26,8 +26,18 @@ export interface EmployeeBoardRoutesDeps {
 const uuid = z.string().uuid();
 const badId = (reply: FastifyReply) => reply.code(400).send({ error: 'bad id' });
 
-const VIA_EB = viaOrgEntity('employeeBoard', fromParam('boardId'));
-const VIA_EB_MEMBER = viaOrgEntity('employeeBoardMember', fromParam('memberId'));
+/**
+ * Phase C: these routes decide on the BOARD, not the tree it lives in (design
+ * D12). `employeeBoard(...)` with no source reads `:boardId` directly; the
+ * three sources below walk the same `ORG_ENTITY_PATH` hops the old
+ * `viaOrgEntity` sources did, but answer with a board id rather than a tree id.
+ *
+ * `VIA_MEMBER` is exported from the policy module because the hop it names is
+ * the one the spec calls out (§7.3); the group and column hops are local
+ * because nothing else needs them.
+ */
+const EB_VIA_GROUP = { model: 'employeeGroup' as const, ids: fromParam('groupId') };
+const EB_VIA_COLUMN = { model: 'employeeColumn' as const, ids: fromParam('columnId') };
 
 export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
   const service = deps.serviceFactory();
@@ -35,9 +45,32 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
     // No board/tree id lives on this request other than :treeId itself, which
     // is already covered by resolveOrgTreeIds's no-source default (orgTreeId,
     // then treeId, then id) — no explicit source needed.
-    app.get<{ Params: { treeId: string } }>('/org-trees/:treeId/employee-boards', { config: { policy: orgTree('VIEWER') } }, async (req, reply) => {
+    /**
+     * The same two ways in as the shell (design D14), and for the same reason.
+     *
+     * The spec's §7.3 leaves this route on `orgTree(VIEWER)` — "listing and
+     * creating are tree-level operations, and the list is filtered per-caller
+     * instead of gated". The filtering half is right, the gate is not: a
+     * board-only grantee passes `GET /org-trees/:id` through `any(...)` and was
+     * then 403'd HERE, so they reached the shell and still could not see the
+     * board tab that is the entire point of per-board sharing. Found by the
+     * phase C end-to-end pass.
+     *
+     * Admitting them exposes nothing: `listVisibleForUser` returns only boards
+     * they hold effective access on, so a caller with no reachable board gets
+     * an empty array rather than a 403 — which is the honest answer to "which
+     * boards in this tree may I see?".
+     */
+    app.get<{ Params: { treeId: string } }>('/org-trees/:treeId/employee-boards', { config: { policy: any(orgTree('VIEWER'), employeeBoardInTree('VIEWER')) } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.treeId).success) return badId(reply);
-      return service.listBoards(req.params.treeId);
+      // The gate says "you may ask about this tree"; the handler decides what
+      // comes back. Filtering here rather than gating is what lets a board-only
+      // grantee reach exactly their board (design D12/D14).
+      return service.listVisibleForUser(
+        req.params.treeId,
+        req.user?.id ?? '',
+        req.membership ?? null,
+      );
     });
 
     app.post<{ Params: { treeId: string } }>('/org-trees/:treeId/employee-boards', { config: { policy: orgTree('EDITOR') } }, async (req, reply) => {
@@ -47,7 +80,7 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
       return reply.code(201).send(await service.createBoard(req.params.treeId, body.data));
     });
 
-    app.get<{ Params: { boardId: string } }>('/employee-boards/:boardId', { config: { policy: orgTree('VIEWER', VIA_EB) } }, async (req, reply) => {
+    app.get<{ Params: { boardId: string } }>('/employee-boards/:boardId', { config: { policy: employeeBoard('VIEWER') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.boardId).success) return badId(reply);
       // orgTree(VIEWER) above only gates *reaching* the board; `isAdmin` is an
       // independent, second check on whether salary is visible once inside it.
@@ -57,7 +90,7 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
       return board;
     });
 
-    app.patch<{ Params: { boardId: string } }>('/employee-boards/:boardId', { config: { policy: orgTree('EDITOR', VIA_EB) } }, async (req, reply) => {
+    app.patch<{ Params: { boardId: string } }>('/employee-boards/:boardId', { config: { policy: employeeBoard('EDITOR') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.boardId).success) return badId(reply);
       const body = RenameEmployeeBoardSchema.safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
@@ -67,13 +100,13 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
 
     // OWNER, not EDITOR — matching DELETE /org-trees/:id: destroying a board's
     // layout is not an editing action.
-    app.delete<{ Params: { boardId: string } }>('/employee-boards/:boardId', { config: { policy: orgTree('OWNER', VIA_EB) } }, async (req, reply) => {
+    app.delete<{ Params: { boardId: string } }>('/employee-boards/:boardId', { config: { policy: employeeBoard('OWNER') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.boardId).success) return badId(reply);
       await service.deleteBoard(req.params.boardId);
       return reply.code(204).send();
     });
 
-    app.post<{ Params: { boardId: string } }>('/employee-boards/:boardId/groups', { config: { policy: orgTree('EDITOR', VIA_EB) } }, async (req, reply) => {
+    app.post<{ Params: { boardId: string } }>('/employee-boards/:boardId/groups', { config: { policy: employeeBoard('EDITOR') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.boardId).success) return badId(reply);
       const body = CreateEmployeeGroupSchema.safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
@@ -82,7 +115,7 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
 
     app.patch<{ Params: { groupId: string } }>(
       '/employee-groups/:groupId',
-      { config: { policy: orgTree('EDITOR', viaOrgEntity('employeeGroup', fromParam('groupId'))) } },
+      { config: { policy: employeeBoard('EDITOR', EB_VIA_GROUP) } },
       async (req, reply) => {
         if (!uuid.safeParse(req.params.groupId).success) return badId(reply);
         const body = UpdateEmployeeGroupSchema.safeParse(req.body);
@@ -94,7 +127,7 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
 
     app.delete<{ Params: { groupId: string } }>(
       '/employee-groups/:groupId',
-      { config: { policy: orgTree('EDITOR', viaOrgEntity('employeeGroup', fromParam('groupId'))) } },
+      { config: { policy: employeeBoard('EDITOR', EB_VIA_GROUP) } },
       async (req, reply) => {
         if (!uuid.safeParse(req.params.groupId).success) return badId(reply);
         await service.deleteGroup(req.params.groupId);
@@ -102,7 +135,7 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
       },
     );
 
-    app.patch<{ Params: { boardId: string } }>('/employee-boards/:boardId/groups/reorder', { config: { policy: orgTree('EDITOR', VIA_EB) } }, async (req, reply) => {
+    app.patch<{ Params: { boardId: string } }>('/employee-boards/:boardId/groups/reorder', { config: { policy: employeeBoard('EDITOR') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.boardId).success) return badId(reply);
       const body = ReorderEmployeeGroupsSchema.safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
@@ -116,7 +149,7 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
     // by nothing, so the service confirms every id belongs to this board's own
     // org tree and refuses the whole request otherwise — 403, not 400: the
     // request is well-formed, the caller simply may not reach those rows.
-    app.post<{ Params: { boardId: string } }>('/employee-boards/:boardId/members', { config: { policy: orgTree('EDITOR', VIA_EB) } }, async (req, reply) => {
+    app.post<{ Params: { boardId: string } }>('/employee-boards/:boardId/members', { config: { policy: employeeBoard('EDITOR') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.boardId).success) return badId(reply);
       const body = AddExistingMembersSchema.safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
@@ -131,7 +164,7 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
       return reply.code(204).send();
     });
 
-    app.post<{ Params: { boardId: string } }>('/employee-boards/:boardId/employees', { config: { policy: orgTree('EDITOR', VIA_EB) } }, async (req, reply) => {
+    app.post<{ Params: { boardId: string } }>('/employee-boards/:boardId/employees', { config: { policy: employeeBoard('EDITOR') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.boardId).success) return badId(reply);
       const body = AddNewEmployeeSchema.safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
@@ -147,7 +180,7 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
       }
     });
 
-    app.patch<{ Params: { memberId: string } }>('/employee-board-members/:memberId/move', { config: { policy: orgTree('EDITOR', VIA_EB_MEMBER) } }, async (req, reply) => {
+    app.patch<{ Params: { memberId: string } }>('/employee-board-members/:memberId/move', { config: { policy: employeeBoard('EDITOR', VIA_MEMBER) } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.memberId).success) return badId(reply);
       const body = MoveMemberSchema.safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
@@ -155,13 +188,13 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
       return reply.code(204).send();
     });
 
-    app.delete<{ Params: { memberId: string } }>('/employee-board-members/:memberId', { config: { policy: orgTree('EDITOR', VIA_EB_MEMBER) } }, async (req, reply) => {
+    app.delete<{ Params: { memberId: string } }>('/employee-board-members/:memberId', { config: { policy: employeeBoard('EDITOR', VIA_MEMBER) } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.memberId).success) return badId(reply);
       await service.removeMember(req.params.memberId);
       return reply.code(204).send();
     });
 
-    app.patch<{ Params: { boardId: string } }>('/employee-boards/:boardId/columns', { config: { policy: orgTree('EDITOR', VIA_EB) } }, async (req, reply) => {
+    app.patch<{ Params: { boardId: string } }>('/employee-boards/:boardId/columns', { config: { policy: employeeBoard('EDITOR') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.boardId).success) return badId(reply);
       const body = EmployeeBoardColumnConfigSchema.safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
@@ -197,7 +230,7 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
       },
     );
 
-    app.post<{ Params: { boardId: string } }>('/employee-boards/:boardId/custom-columns', { config: { policy: orgTree('EDITOR', VIA_EB) } }, async (req, reply) => {
+    app.post<{ Params: { boardId: string } }>('/employee-boards/:boardId/custom-columns', { config: { policy: employeeBoard('EDITOR') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.boardId).success) return badId(reply);
       const body = CreateEmployeeColumnSchema.safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
@@ -206,7 +239,7 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
 
     app.patch<{ Params: { columnId: string } }>(
       '/employee-columns/:columnId',
-      { config: { policy: orgTree('EDITOR', viaOrgEntity('employeeColumn', fromParam('columnId'))) } },
+      { config: { policy: employeeBoard('EDITOR', EB_VIA_COLUMN) } },
       async (req, reply) => {
         if (!uuid.safeParse(req.params.columnId).success) return badId(reply);
         const body = UpdateEmployeeColumnSchema.safeParse(req.body);
@@ -218,7 +251,7 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
 
     app.delete<{ Params: { columnId: string } }>(
       '/employee-columns/:columnId',
-      { config: { policy: orgTree('EDITOR', viaOrgEntity('employeeColumn', fromParam('columnId'))) } },
+      { config: { policy: employeeBoard('EDITOR', EB_VIA_COLUMN) } },
       async (req, reply) => {
         if (!uuid.safeParse(req.params.columnId).success) return badId(reply);
         await service.deleteColumn(req.params.columnId);

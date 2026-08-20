@@ -15,6 +15,7 @@ import {
   refreshAdoToken,
   refreshGitLabToken,
 } from '../../actions/connections';
+import { ORG_ADMIN_REQUIRED_TO_RECONNECT } from '../../lib/connection-permission';
 import type { SourceHealth } from '../../actions/board-sync';
 
 const HEALTH_BADGE: Record<SourceHealth, { label: string; cls: string }> = {
@@ -103,6 +104,15 @@ interface Props {
   onDetach: () => Promise<void> | void;
   health?: SourceHealth;
   openFix?: boolean;
+  /**
+   * Whether the viewer may rotate this connection's token. Rotating is
+   * orgRole(ADMIN); the health badge is not gated, only the fix.
+   *
+   * Defaults to `true`: this is presentation, the API is the enforcement point,
+   * and the board Sources page — the only place this card is rendered — always
+   * passes the viewer's real role.
+   */
+  canManageConnections?: boolean;
 }
 
 function BadgeFor({ provider }: { provider: ProviderName }) {
@@ -184,6 +194,7 @@ export function BoardSourceCard({
   onDetach,
   health,
   openFix,
+  canManageConnections = true,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState(source.zoneValue);
@@ -287,12 +298,18 @@ export function BoardSourceCard({
 
       {(openFix || (health && health !== 'valid')) && (
         <div className="px-3 pb-3 space-y-2">
-          <TokenTutorial provider={source.provider} mode="reconnect" />
-          <TokenRefreshBox
-            autoFocus={openFix}
-            note="This token is shared by every board using this connection."
-            onRefresh={(tok) => REFRESH_BY_PROVIDER[source.provider](source.instanceId, tok)}
-          />
+          {canManageConnections ? (
+            <>
+              <TokenTutorial provider={source.provider} mode="reconnect" />
+              <TokenRefreshBox
+                autoFocus={openFix}
+                note="This token is shared by every board using this connection."
+                onRefresh={(tok) => REFRESH_BY_PROVIDER[source.provider](source.instanceId, tok)}
+              />
+            </>
+          ) : (
+            <p className="text-xs text-slate-600">{ORG_ADMIN_REQUIRED_TO_RECONNECT}</p>
+          )}
         </div>
       )}
 

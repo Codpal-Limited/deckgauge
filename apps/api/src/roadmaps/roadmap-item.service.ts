@@ -4,6 +4,7 @@ import { ProjectService, type UpdateProjectInput } from '../projects/project.ser
 import { ColumnService } from '../columns/column.service.js';
 import { RoadmapMembershipService } from './roadmap-membership.service.js';
 import { forbiddenBoardIds, type BoardAccessLog } from '../auth/board-access.js';
+import type { CallerMembership } from '../auth/board-access.js';
 
 const BUILT_IN_FIELDS = new Set(['name', 'description', 'status', 'owner']);
 
@@ -60,6 +61,9 @@ export class RoadmapItemService {
     projectId: string,
     userId: string,
     log?: BoardAccessLog,
+    // NOT `membership`: that name is already the roadmapGroup row below, and
+    // this is the caller's standing in their organization.
+    callerMembership: CallerMembership = null,
   ): Promise<{ boardId: string; groupId: string }> {
     await this._reconcile(roadmapId);
 
@@ -75,7 +79,7 @@ export class RoadmapItemService {
     });
     if (!membership) throw new Error('ROADMAP_ITEM_FORBIDDEN');
 
-    const forbidden = await forbiddenBoardIds(this.prisma, userId, [project.boardId], 'EDITOR', log);
+    const forbidden = await forbiddenBoardIds(this.prisma, userId, [project.boardId], 'EDITOR', log, callerMembership);
     if (forbidden.length > 0) throw new Error('ROADMAP_ITEM_FORBIDDEN');
 
     return { boardId: project.boardId, groupId: project.groupId };

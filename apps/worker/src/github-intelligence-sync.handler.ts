@@ -17,6 +17,14 @@ export interface ChClient {
   insertRows(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
 }
 
+/**
+ * Builds a ClickHouse client bound to one organization. See jira-dual-writer.ts
+ * for why the ingest path takes the factory rather than a client: the repos this
+ * runner is called for can belong to different tenants, and `organization_id` is
+ * a sort-key column ClickHouse cannot correct afterwards.
+ */
+export type ChClientFactory = (organizationId: string) => ChClient;
+
 // Structural type — avoids hard-deping @octokit/rest in the worker. Real Octokit
 // instances satisfy this automatically. The api builds the real client and
 // hands it in via deps.
@@ -32,7 +40,13 @@ export interface RunIntelligenceSyncDeps {
   prisma: PrismaClient;
   octokit: OctokitLike;
   rateLimiter: RateLimiter;
-  ch: ChClient;
+  /**
+   * Builds a ClickHouse client bound to one organization. Bound below, from the
+   * organization owning the GitHub instance THIS repo belongs to — a client
+   * bound by the caller would let either entry point (the three-tier workers or
+   * the manual fan-out) write one tenant's repo under another's id.
+   */
+  chClientFor: ChClientFactory;
 }
 
 // Minimal structural views of the GitHub REST shapes we consume. Only the
@@ -143,8 +157,18 @@ export async function runIntelligenceSync(
   deps: RunIntelligenceSyncDeps,
   repoSyncId: string,
 ): Promise<void> {
-  const sync = await deps.prisma.gitHubRepoSync.findUniqueOrThrow({ where: { id: repoSyncId } });
+  const sync = await deps.prisma.gitHubRepoSync.findUniqueOrThrow({
+    where: { id: repoSyncId },
+    // The owning tenant travels with the repo: a GitHubRepoSync has no
+    // organization of its own, its instance does.
+    include: { githubInstance: { select: { organizationId: true } } },
+  });
   if (sync.disabledAt) return;
+
+  // Bind ClickHouse to the organization that owns THIS repo's GitHub connection.
+  // Resolved here rather than by the caller so both entry points — the
+  // three-tier workers and the manual fan-out — are correct by construction.
+  const ch = deps.chClientFor(sync.githubInstance.organizationId);
 
   const [owner, repo] = sync.repoFullName.split('/');
   const projectKeys = (
@@ -247,7 +271,7 @@ export async function runIntelligenceSync(
       // and raw UPPERCASE state, which silently dropped every review from the
       // PR join in Review Mix / Review Pickup.
       if (reviewRows.length > 0)
-        await deps.ch.insertRows(
+        await ch.insertRows(
           'github_reviews',
           reviewRows as unknown as Array<Record<string, unknown>>,
         );
@@ -261,12 +285,12 @@ export async function runIntelligenceSync(
       });
     }
     if (prRows.length > 0)
-      await deps.ch.insertRows(
+      await ch.insertRows(
         'github_pull_requests',
         prRows as unknown as Array<Record<string, unknown>>,
       );
     if (prCommitRows.size > 0)
-      await deps.ch.insertRows('github_commits', [...prCommitRows.values()]);
+      await ch.insertRows('github_commits', [...prCommitRows.values()]);
 
     const newWm = filtered.reduce<Date | null>(
       (max, p) => {
@@ -303,7 +327,7 @@ export async function runIntelligenceSync(
       });
       return buildCommitRow(sync.repoFullName, c, ai);
     });
-    if (rows.length > 0) await deps.ch.insertRows('github_commits', rows);
+    if (rows.length > 0) await ch.insertRows('github_commits', rows);
     const maxDate = commits.reduce<Date | null>(
       (max, c) => {
         const d = new Date(c.commit.author.date);
@@ -357,7 +381,7 @@ export async function runIntelligenceSync(
           ? new Date(r.updated_at).getTime() - new Date(r.run_started_at).getTime()
           : null,
     }));
-    if (rows.length > 0) await deps.ch.insertRows('github_workflow_runs', rows);
+    if (rows.length > 0) await ch.insertRows('github_workflow_runs', rows);
     await deps.prisma.gitHubRepoSync.update({
       where: { id: sync.id },
       data: { workflowRunsWatermark: new Date() },
@@ -392,7 +416,7 @@ export async function runIntelligenceSync(
       latest_status: null,
       latest_status_at: null,
     }));
-    if (rows.length > 0) await deps.ch.insertRows('github_deployments', rows);
+    if (rows.length > 0) await ch.insertRows('github_deployments', rows);
     await deps.prisma.gitHubRepoSync.update({
       where: { id: sync.id },
       data: { deploymentsWatermark: new Date() },
@@ -426,7 +450,7 @@ export async function runIntelligenceSync(
       closed_at: i.closed_at,
       labels: (i.labels ?? []).map((l) => (typeof l === 'string' ? l : l.name)),
     }));
-    if (rows.length > 0) await deps.ch.insertRows('github_issues', rows);
+    if (rows.length > 0) await ch.insertRows('github_issues', rows);
     const maxUpd = realIssues.reduce<Date | null>(
       (max, i) => {
         const d = new Date(i.updated_at);

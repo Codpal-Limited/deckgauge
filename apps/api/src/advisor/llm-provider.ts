@@ -8,8 +8,12 @@ export type AdvisorProviderConfig =
 
 export interface LlmProvider {
   model: LanguageModel;
-  // Weak local models are poor at multi-tool calling; the loop uses this to
-  // trim the tool set and simplify prompting for the Ollama tier.
+  // Weak local models are poor at multi-tool calling. `local-tier.ts` reads this
+  // to trim the tool set and lower the step ceiling for the Ollama tier; both
+  // advisor services go through those helpers.
+  //
+  // This comment previously claimed "the loop uses this" while no production code
+  // read the flag at all — declared, set, tested, and never connected.
   supportsRichTools: boolean;
 }
 

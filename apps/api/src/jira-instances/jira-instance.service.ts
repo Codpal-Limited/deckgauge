@@ -7,6 +7,7 @@ import type {
   ConnectionHint,
 } from "@deckgauge/shared";
 import { Agent } from "undici";
+import { logHostRepoint, type ConnectionAuditLog } from '../connections/host-repoint-audit.js';
 
 // Some corporate Jira instances sit behind self-signed/lenient TLS. Scope the
 // leniency to this single request via an undici dispatcher — never mutate
@@ -25,31 +26,68 @@ type RefreshResult = { ok: boolean; error?: string; notFound?: boolean };
 export class JiraInstanceService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async list(): Promise<JiraInstancePublic[]> {
+  /**
+   * Reads are organization-scoped: a cross-organization id resolves to null,
+   * which routes surface as 404 rather than as another tenant's connection.
+   *
+   * `findFirst`, not `findUnique`: the predicate is `(id, organizationId)`, and
+   * `findUnique` only accepts a unique key. Reverting these to `findUnique`
+   * would silently drop the tenant filter, which is precisely the hole closed
+   * here (org-tenancy design §11 precondition 4).
+   *
+   * `organizationId` is deliberately the FIRST parameter on every one of these:
+   * a mis-ordered call then fails to compile instead of quietly becoming a
+   * tenant bypass.
+   */
+  async list(organizationId: string): Promise<JiraInstancePublic[]> {
     const rows = await this.prisma.jiraInstance.findMany({
+      where: { organizationId },
       orderBy: { createdAt: "asc" },
     });
     return rows.map((r) => mask(r as JiraInstance));
   }
 
-  async getById(id: string): Promise<JiraInstancePublic | null> {
-    const row = await this.prisma.jiraInstance.findUnique({ where: { id } });
+  async getById(
+    organizationId: string,
+    id: string,
+  ): Promise<JiraInstancePublic | null> {
+    const row = await this.prisma.jiraInstance.findFirst({
+      where: { id, organizationId },
+    });
     if (!row) return null;
     return mask(row as JiraInstance);
   }
 
-  async getRawById(id: string): Promise<JiraInstance | null> {
-    const row = await this.prisma.jiraInstance.findUnique({ where: { id } });
+  /** Returns the LIVE apiToken. The tenant filter here is the credential boundary. */
+  async getRawById(
+    organizationId: string,
+    id: string,
+  ): Promise<JiraInstance | null> {
+    const row = await this.prisma.jiraInstance.findFirst({
+      where: { id, organizationId },
+    });
     if (!row) return null;
     return row as JiraInstance;
   }
 
+  /**
+   * `organizationId` is the tenant boundary; `createdById` is ownership *within*
+   * that organization. Both axes are load-bearing and neither replaces the
+   * other — see the org-tenancy ruling in planning/STATE.md.
+   *
+   * `update`/`delete` below are organization-scoped as well. The `ORG_ADMIN`
+   * policy on their routes decides WHO may call them, not WHOSE row the call
+   * lands on — so without the predicate here an administrator of one
+   * organization could repoint or delete another's connection by id.
+   */
   async create(
+    organizationId: string,
     input: CreateJiraInstanceInput,
     actingUserId?: string,
   ): Promise<JiraInstancePublic> {
     const row = await this.prisma.jiraInstance.create({
       data: {
+        organizationId,
         name: input.name,
         atlassianUrl: input.atlassianUrl,
         email: input.email,
@@ -62,12 +100,17 @@ export class JiraInstanceService {
   }
 
   async update(
+    organizationId: string,
     id: string,
     input: UpdateJiraInstanceInput,
     actingUserId?: string,
+    log?: ConnectionAuditLog,
   ): Promise<JiraInstancePublic | null> {
-    const existing = await this.prisma.jiraInstance.findUnique({
-      where: { id },
+    // Resolved THROUGH the organization, so a cross-organization id resolves to
+    // null and the route answers 404 — indistinguishable from an id that names
+    // nothing, which keeps the guard from confirming another tenant's ids.
+    const existing = await this.prisma.jiraInstance.findFirst({
+      where: { id, organizationId },
     });
     if (!existing) return null;
 
@@ -93,12 +136,21 @@ export class JiraInstanceService {
         ...claim,
       },
     });
+    // After the write, so a rejected update is not recorded as a repoint.
+    logHostRepoint(log, {
+      provider: 'jira',
+      instanceId: id,
+      organizationId,
+      actingUserId,
+      from: existing.atlassianUrl,
+      to: input.atlassianUrl,
+    });
     return mask(row as JiraInstance);
   }
 
-  async delete(id: string): Promise<boolean> {
-    const existing = await this.prisma.jiraInstance.findUnique({
-      where: { id },
+  async delete(organizationId: string, id: string): Promise<boolean> {
+    const existing = await this.prisma.jiraInstance.findFirst({
+      where: { id, organizationId },
     });
     if (!existing) return false;
 
@@ -179,6 +231,7 @@ export class JiraInstanceService {
   }
 
   async testConnection(
+    organizationId: string,
     id: string,
     fetchFn: FetchFn = fetch,
   ): Promise<{
@@ -187,7 +240,9 @@ export class JiraInstanceService {
     hint?: ConnectionHint;
     notFound?: boolean;
   }> {
-    const instance = await this.getRawById(id);
+    // Scoped resolve first: a cross-organization id must never reach the
+    // network as someone else's Basic credential.
+    const instance = await this.getRawById(organizationId, id);
     if (!instance) return { ok: false, notFound: true, error: "Instance not found" };
     const probe = await this.probeToken(
       { atlassianUrl: instance.atlassianUrl, email: instance.email, token: instance.apiToken },
@@ -204,19 +259,22 @@ export class JiraInstanceService {
   }
 
   async refreshToken(
+    organizationId: string,
     id: string,
     newToken: string,
     fetchFn: FetchFn = fetch,
     actingUserId?: string,
   ): Promise<RefreshResult> {
-    const instance = await this.getRawById(id);
+    // The scoped resolve is what stops a cross-organization id from having its
+    // stored credential overwritten.
+    const instance = await this.getRawById(organizationId, id);
     if (!instance) return { ok: false, notFound: true, error: "Instance not found" };
     const probe = await this.probeToken(
       { atlassianUrl: instance.atlassianUrl, email: instance.email, token: newToken },
       fetchFn,
     );
     if (!probe.ok) return probe;
-    const updated = await this.update(id, { apiToken: newToken }, actingUserId);
+    const updated = await this.update(organizationId, id, { apiToken: newToken }, actingUserId);
     if (!updated) return { ok: false, notFound: true, error: "Instance not found" };
     return { ok: true };
   }

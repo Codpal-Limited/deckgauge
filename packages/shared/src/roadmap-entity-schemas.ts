@@ -40,12 +40,6 @@ export const ReorderRoadmapGroupsInputSchema = z.object({
 });
 export type ReorderRoadmapGroupsInput = z.infer<typeof ReorderRoadmapGroupsInputSchema>;
 
-export const SetRoadmapAccessInputSchema = z.object({
-  userId: z.string().uuid(),
-  role: RoadmapAccessRoleEnum,
-});
-export type SetRoadmapAccessInput = z.infer<typeof SetRoadmapAccessInputSchema>;
-
 // ---- Resolved payload DTOs (output of getRoadmap, Phase 6) ----
 export interface RoadmapItem {
   id: string;

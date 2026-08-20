@@ -3,8 +3,9 @@ import type { PrismaClient } from '@deckgauge/db';
 import { z } from 'zod';
 import { ComparisonMembersService } from './comparison-members.service.js';
 import { ComparisonService } from './comparison.service.js';
-import { AUTHENTICATED, COMPARISON_CREATOR } from '../auth/policy.js';
+import { AUTHENTICATED, comparison, ORG_MEMBER } from '../auth/policy.js';
 import { BoardAccessDeniedError } from '../auth/board-access.js';
+import { requireOrganizationId } from '../organizations/request-organization.js';
 
 function requireUser(req: FastifyRequest, reply: FastifyReply): string | null {
   const userId = req.user?.id;
@@ -42,69 +43,72 @@ export async function comparisonRoutes(
   app.get('/comparisons', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
     const userId = requireUser(req, reply);
     if (!userId) return;
-    return reply.send(await comparisons.listForUser(userId));
+    return reply.send(await comparisons.listForUser(userId, req.membership ?? null));
   });
 
   // POST /api/comparisons — create a comparison.
-  app.post('/comparisons', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
+  app.post('/comparisons', { config: { policy: ORG_MEMBER } }, async (req, reply) => {
     const userId = requireUser(req, reply);
     if (!userId) return;
     const parsed = CreateComparisonSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
-    const created = await comparisons.create(userId, parsed.data.name);
+    const created = await comparisons.create(requireOrganizationId(req), userId, parsed.data.name);
     return reply.status(201).send(created);
   });
 
   // GET /api/comparisons/:id
-  app.get<{ Params: { id: string } }>('/comparisons/:id', { config: { policy: COMPARISON_CREATOR } }, async (req, reply) => {
+  app.get<{ Params: { id: string } }>('/comparisons/:id', { config: { policy: comparison('VIEWER') } }, async (req, reply) => {
     const userId = requireUser(req, reply);
     if (!userId) return;
-    const comparison = await comparisons.getForUser(req.params.id, userId);
-    if (!comparison) return reply.status(404).send({ error: 'Not found' });
-    return reply.send(comparison);
+    // No access predicate here: `comparison('VIEWER')` already decided. `null`
+    // means the id names nothing, which is a 404 either way.
+    const found = await comparisons.getById(req.params.id);
+    if (!found) return reply.status(404).send({ error: 'Not found' });
+    return reply.send(found);
   });
 
   // PATCH /api/comparisons/:id — rename.
-  app.patch<{ Params: { id: string } }>('/comparisons/:id', { config: { policy: COMPARISON_CREATOR } }, async (req, reply) => {
+  app.patch<{ Params: { id: string } }>('/comparisons/:id', { config: { policy: comparison('EDITOR') } }, async (req, reply) => {
     const userId = requireUser(req, reply);
     if (!userId) return;
     const parsed = RenameComparisonSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
-    const ok = await comparisons.rename(req.params.id, userId, parsed.data.name);
+    const ok = await comparisons.rename(req.params.id, parsed.data.name);
     if (!ok) return reply.status(404).send({ error: 'Not found' });
-    const comparison = await comparisons.getForUser(req.params.id, userId);
-    return reply.send(comparison);
+    return reply.send(await comparisons.getById(req.params.id));
   });
 
   // DELETE /api/comparisons/:id
-  app.delete<{ Params: { id: string } }>('/comparisons/:id', { config: { policy: COMPARISON_CREATOR } }, async (req, reply) => {
+  app.delete<{ Params: { id: string } }>('/comparisons/:id', { config: { policy: comparison('OWNER') } }, async (req, reply) => {
     const userId = requireUser(req, reply);
     if (!userId) return;
-    const ok = await comparisons.delete(req.params.id, userId);
+    const ok = await comparisons.delete(req.params.id);
     if (!ok) return reply.status(404).send({ error: 'Not found' });
     return reply.status(204).send();
   });
 
   // GET /api/comparisons/:id/members
-  app.get<{ Params: { id: string } }>('/comparisons/:id/members', { config: { policy: COMPARISON_CREATOR } }, async (req, reply) => {
+  app.get<{ Params: { id: string } }>('/comparisons/:id/members', { config: { policy: comparison('VIEWER') } }, async (req, reply) => {
     const userId = requireUser(req, reply);
     if (!userId) return;
-    if (!(await comparisons.isOwner(req.params.id, userId))) {
+    if (!(await comparisons.exists(req.params.id))) {
       return reply.status(404).send({ error: 'Not found' });
     }
-    const list = await members.list(req.params.id, userId, req.log);
+    // `members.list` still filters the member boards per caller — design D16.
+    // Holding the comparison says nothing about the boards inside it.
+    const list = await members.list(req.params.id, userId, req.log, req.membership ?? null);
     return reply.send({ members: list });
   });
 
   // PUT /api/comparisons/:id/members — replace the full ordered board set.
-  app.put<{ Params: { id: string } }>('/comparisons/:id/members', { config: { policy: COMPARISON_CREATOR } }, async (req, reply) => {
+  app.put<{ Params: { id: string } }>('/comparisons/:id/members', { config: { policy: comparison('EDITOR') } }, async (req, reply) => {
     const userId = requireUser(req, reply);
     if (!userId) return;
-    if (!(await comparisons.isOwner(req.params.id, userId))) {
+    if (!(await comparisons.exists(req.params.id))) {
       return reply.status(404).send({ error: 'Not found' });
     }
     const parsed = SetComparisonMembersSchema.safeParse(req.body);
@@ -112,16 +116,22 @@ export async function comparisonRoutes(
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
     try {
-      await members.replace(req.params.id, parsed.data.boardIds, userId, req.log);
+      await members.replace(
+        req.params.id,
+        parsed.data.boardIds,
+        userId,
+        req.log,
+        req.membership ?? null,
+      );
     } catch (err) {
-      // Being the comparison's creator says nothing about the boards named in
-      // the body — refuse the whole request naming what was rejected.
+      // Holding the comparison says nothing about the boards named in the body
+      // (design D16) — refuse the whole request, naming what was rejected.
       if (err instanceof BoardAccessDeniedError) {
         return reply.status(403).send({ error: err.message, boardIds: err.boardIds });
       }
       throw err;
     }
-    const list = await members.list(req.params.id, userId, req.log);
+    const list = await members.list(req.params.id, userId, req.log, req.membership ?? null);
     return reply.send({ members: list });
   });
 }

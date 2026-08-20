@@ -1,9 +1,12 @@
 // apps/worker/src/ado-dual-writer.ts
-import type { ChClient } from './jira-dual-writer.js';
+import type { ChClient, ChClientFactory } from './jira-dual-writer.js';
 import type { DeveloperProfileSink } from './developer-profile-sink.js';
 import type { AzureDevOpsWorkItem } from '@deckgauge/shared';
 
-export type { ChClient };
+// The dual-writer stays tenant-agnostic: it receives an already-bound client and
+// never sees an organizationId. Binding happens one level up, in the handler's
+// per-instance loop (see ChClientFactory).
+export type { ChClient, ChClientFactory };
 
 export interface AdoDualWritePayload {
   workItems: ReadonlyArray<Record<string, unknown>>;

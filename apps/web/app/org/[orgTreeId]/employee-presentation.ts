@@ -131,6 +131,38 @@ export function rankBadgeView(ranking: { rank: number; tier: RankingTier }): Ran
   return { emoji: style.emoji, label, className: style.className };
 }
 
+// --- Board chip overflow ----------------------------------------------------
+
+/**
+ * How many board chips a row shows before collapsing the rest into a "+N" pill.
+ * The chip rail shares one row with the name/meta column, so an uncapped rail on
+ * a person who sits on eight boards leaves nothing for their name.
+ */
+export const MAX_VISIBLE_BOARD_CHIPS = 3;
+
+export interface BoardChipSplit<T> {
+  visible: T[];
+  hiddenCount: number;
+  /** Comma-separated names of the hidden boards, for the overflow pill's tooltip. */
+  hiddenLabel: string;
+}
+
+/** Split an employee's boards into the chips to render and a hidden remainder. */
+export function splitBoardChips<T extends { boardName: string }>(
+  boards: readonly T[],
+  max: number = MAX_VISIBLE_BOARD_CHIPS,
+): BoardChipSplit<T> {
+  if (boards.length <= max) {
+    return { visible: [...boards], hiddenCount: 0, hiddenLabel: '' };
+  }
+  const hidden = boards.slice(max);
+  return {
+    visible: boards.slice(0, max),
+    hiddenCount: hidden.length,
+    hiddenLabel: hidden.map((b) => b.boardName).join(', '),
+  };
+}
+
 /** Human labels for the four ranking metrics, shown in the Ranking tab breakdown. */
 export const RANKING_METRIC_LABELS = {
   ticketsClosed: 'Tickets closed',

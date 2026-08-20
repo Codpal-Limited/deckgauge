@@ -71,8 +71,10 @@ export async function loadBoardColumns(boardId: string): Promise<BoardColumn[]> 
 export async function getBoardRole(
   _boardId: string,
 ): Promise<'OWNER' | 'EDITOR' | 'VIEWER'> {
-  // V1 is single-user / local Keycloak; default to OWNER when authenticated,
-  // VIEWER otherwise. Mirrors the pattern used in app/page.tsx.
+  // KNOWN PHANTOM-OWNER SITE: still grants OWNER to any authenticated caller.
+  // app/page.tsx no longer does this (see fetchMyRole) — roadmaps have no
+  // equivalent `GET /roadmaps/:id/my-role` endpoint yet, so there is nothing
+  // real to wire up until roadmap sharing lands in a later phase.
   try {
     const session = await auth();
     return session ? 'OWNER' : 'VIEWER';

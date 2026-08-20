@@ -1,5 +1,6 @@
 'use server';
 import { authFetch } from './api';
+import { forbiddenMessage } from '../lib/connection-permission';
 
 export interface JiraProjectSyncRow {
   id: string;
@@ -127,10 +128,18 @@ export async function createAdoProjectSync(input: {
  * Set which release pipelines / stages count as a production deploy.
  *
  * Separate from updateAdoProjectSync because it is a different endpoint with a
- * different guard: the sync flags are AUTHENTICATED, while production config is
- * keyed by the INSTANCE id so the connection-ownership policy applies. Passing
- * two empty lists clears the override and returns the project to the stage-name
- * heuristic.
+ * different guard: the sync flags are orgRole(MEMBER) and keyed by the sync ROW,
+ * while production config is keyed by the INSTANCE id and requires the
+ * organization ADMIN role. Passing two empty lists clears the override and
+ * returns the project to the stage-name heuristic.
+ *
+ * Because the two writes span two policies with no transaction across them, the
+ * caller must not issue this one unconditionally — see the `writesProdConfig`
+ * guard in AzureDevOpsConnectionsPanel.
+ *
+ * Throws rather than returning a result, because its only caller already catches
+ * and renders `error.message` — so a refusal must arrive as a message a member
+ * can act on, not as `Forbidden`.
  */
 export async function saveAdoProductionConfig(
   instanceId: string,
@@ -145,7 +154,17 @@ export async function saveAdoProductionConfig(
       body: JSON.stringify(input),
     }
   );
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const text = await res.text();
+    let code: string | undefined;
+    try {
+      const body = JSON.parse(text) as { error?: unknown };
+      if (typeof body.error === 'string') code = body.error;
+    } catch {
+      // Non-JSON body — fall through to the raw text below.
+    }
+    throw new Error(forbiddenMessage(res.status, code) ?? text);
+  }
   return res.json();
 }
 
@@ -233,6 +252,28 @@ export interface RefreshResult {
   error?: string;
 }
 
+/**
+ * One failure shape for every connection mutation.
+ *
+ * These routes are gated on the organization ADMIN role, so a refusal is the
+ * one error a member can still provoke from a stale tab or a direct link.
+ * `Forbidden` / `Request failed: 403` reads as a broken app; the permission copy
+ * reads as something the person can act on. Every other status keeps the API's
+ * own message, falling back to `<fallback>: <status>`.
+ */
+async function failureFrom(res: Response, fallback: string): Promise<RefreshResult> {
+  let code: string | undefined;
+  try {
+    const body = (await res.json()) as { error?: unknown };
+    if (typeof body.error === 'string') code = body.error;
+  } catch {
+    // Non-JSON body — the status-derived fallback below is the best available.
+  }
+  const refused = forbiddenMessage(res.status, code);
+  if (refused) return { ok: false, error: refused };
+  return { ok: false, error: code ?? `${fallback}: ${res.status}` };
+}
+
 async function refreshTokenAt(path: string, token: string): Promise<RefreshResult> {
   const res = await authFetch(path, {
     method: 'POST',
@@ -240,23 +281,13 @@ async function refreshTokenAt(path: string, token: string): Promise<RefreshResul
     body: JSON.stringify({ token }),
   });
   if (res.ok) return { ok: true };
-  try {
-    const body = (await res.json()) as { error?: string };
-    return { ok: false, error: body.error ?? `Request failed: ${res.status}` };
-  } catch {
-    return { ok: false, error: `Request failed: ${res.status}` };
-  }
+  return failureFrom(res, 'Request failed');
 }
 
 async function testConnectionAt(path: string): Promise<RefreshResult> {
   const res = await authFetch(path, { method: 'POST' });
   if (res.ok) return { ok: true };
-  try {
-    const body = (await res.json()) as { error?: string };
-    return { ok: false, error: body.error ?? `Request failed: ${res.status}` };
-  } catch {
-    return { ok: false, error: `Request failed: ${res.status}` };
-  }
+  return failureFrom(res, 'Request failed');
 }
 
 async function listInstancesRaw(path: string): Promise<Record<string, unknown>[]> {
@@ -314,11 +345,51 @@ export async function testGitLabConnection(id: string) {
 async function deleteInstanceAt(path: string): Promise<RefreshResult> {
   const res = await authFetch(path, { method: 'DELETE' });
   if (res.ok) return { ok: true };
+  return failureFrom(res, 'Delete failed');
+}
+
+// ---- Instances: create ----
+
+export type ConnectionProvider = 'jira' | 'github' | 'ado' | 'gitlab';
+
+/** Where each provider's create endpoint lives, and the empty scope it starts with. */
+const CREATE_ENDPOINT: Record<ConnectionProvider, { path: string; scope: Record<string, string[]> }> = {
+  jira: { path: '/jira/instances', scope: { projectKeys: [] } },
+  github: { path: '/github/instances', scope: { repos: [] } },
+  ado: { path: '/azure-devops/instances', scope: { projects: [] } },
+  gitlab: { path: '/gitlab/instances', scope: { projects: [] } },
+};
+
+/**
+ * Creates a connection. Requires the organization ADMIN role.
+ *
+ * Returns its failure rather than throwing: a server action that throws reaches
+ * the client as an opaque Next.js digest with no message, and the message is the
+ * whole point here — a refused create must say the administrator role is missing,
+ * and a rejected credential must say so in the provider's own words.
+ */
+export async function createConnection(
+  provider: ConnectionProvider,
+  values: Record<string, string>,
+): Promise<RefreshResult & { id?: string }> {
+  const { path, scope } = CREATE_ENDPOINT[provider];
+  let res: Response;
   try {
-    const body = (await res.json()) as { error?: string };
-    return { ok: false, error: body.error ?? `Delete failed: ${res.status}` };
+    res = await authFetch(path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...values, ...scope }),
+      cache: 'no-store',
+    });
   } catch {
-    return { ok: false, error: `Delete failed: ${res.status}` };
+    return { ok: false, error: 'Could not reach the server. Try again.' };
+  }
+  if (!res.ok) return failureFrom(res, 'Could not create the connection');
+  try {
+    const body = (await res.json()) as { id?: unknown };
+    return { ok: true, id: typeof body.id === 'string' ? body.id : undefined };
+  } catch {
+    return { ok: true };
   }
 }
 

@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
-  AzureDevOpsRestAdapter,
   BoardAdoSourceCreateSchema,
   BoardAdoSourcePatchSchema,
   type AzureDevOpsPort,
@@ -17,35 +16,31 @@ import {
   SourceIssueTypesNotFoundError,
 } from './source-issue-types.service.js';
 import { createTypeCache, type TypeCache } from './type-cache.js';
+import { SourceConnectionNotFoundError, defaultAdoAdapterFor } from './source-adapters.js';
+import { CrossOrganizationSyncError } from './cross-organization-sync-error.js';
 import { clickhouse as defaultClickhouse } from '@deckgauge/db';
 import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
-import { board } from '../auth/policy.js';
+import { all, board, orgRole, ORG_MEMBER } from '../auth/policy.js';
+import { requireOrganizationId } from '../organizations/request-organization.js';
+
+// Why this is not a bare `board('VIEWER')` — see the identical constant in
+// board-jira-source.routes.ts.
+const DISCOVERY_POLICY = all(board('VIEWER'), orgRole('VIEWER'));
+
+// Why this is not a bare `board('EDITOR')`, and why ORG_MEMBER rather than
+// orgRole('VIEWER') — see the identical constant in board-jira-source.routes.ts.
+const ATTACH_POLICY = all(board('EDITOR'), ORG_MEMBER);
 
 // Same 60s TTL as Jira — see board-jira-source.routes.ts for rationale.
 const TYPE_CACHE_TTL_MS = 60_000;
 
 const defaultTypeCache: TypeCache = createTypeCache({ ttlMs: TYPE_CACHE_TTL_MS });
 
-async function defaultAdoAdapterFor(
-  prisma: PrismaClient,
-  instanceId: string,
-): Promise<AzureDevOpsPort> {
-  const instance = await prisma.azureDevOpsInstance.findUniqueOrThrow({
-    where: { id: instanceId },
-  });
-  return new AzureDevOpsRestAdapter({
-    orgUrl: instance.orgUrl,
-    authMethod: instance.authMethod as 'PAT' | 'BASIC',
-    accessToken: instance.accessToken,
-    username: instance.username ?? undefined,
-  });
-}
-
 export function boardAdoSourceRoutes(deps: {
   prisma: PrismaClient;
   clickhouse?: ClickHouseClient;
   typeCache?: TypeCache;
-  adoAdapterFor?: (instanceId: string) => Promise<AzureDevOpsPort>;
+  adoAdapterFor?: (organizationId: string, instanceId: string) => Promise<AzureDevOpsPort>;
 }) {
   const service = new BoardAdoSourceService(deps.prisma);
   const ch = deps.clickhouse ?? defaultClickhouse;
@@ -59,7 +54,9 @@ export function boardAdoSourceRoutes(deps: {
       throw new Error('jiraAdapterFor not configured on ADO routes');
     },
     adoAdapterFor:
-      deps.adoAdapterFor ?? ((instanceId) => defaultAdoAdapterFor(deps.prisma, instanceId)),
+      deps.adoAdapterFor ??
+      ((organizationId, instanceId) =>
+        defaultAdoAdapterFor(deps.prisma, organizationId, instanceId)),
     githubAdapterFor: () => {
       throw new Error('githubAdapterFor not configured on ADO routes');
     },
@@ -90,7 +87,7 @@ export function boardAdoSourceRoutes(deps: {
 
     app.post<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/ado',
-      { config: { policy: board('EDITOR') } },
+      { config: { policy: ATTACH_POLICY } },
       async (req, reply) => {
         const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -99,8 +96,15 @@ export function boardAdoSourceRoutes(deps: {
           boardId: params.data.boardId,
         });
         if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
-        const row = await service.attach(body.data);
-        return reply.code(201).send(row);
+        try {
+          const row = await service.attach(requireOrganizationId(req), body.data);
+          return reply.code(201).send(row);
+        } catch (err) {
+          if (err instanceof CrossOrganizationSyncError) {
+            return reply.code(404).send({ error: err.message });
+          }
+          throw err;
+        }
       },
     );
 
@@ -172,18 +176,25 @@ export function boardAdoSourceRoutes(deps: {
 
     app.get<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/ado/:id/work-item-types',
-      { config: { policy: board('VIEWER') } },
+      { config: { policy: DISCOVERY_POLICY } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
           .safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
         try {
-          const types = await issueTypesSvc.listAdo(params.data.boardId, params.data.id);
+          const types = await issueTypesSvc.listAdo(
+            requireOrganizationId(req),
+            params.data.boardId,
+            params.data.id,
+          );
           reply.header('Cache-Control', 'max-age=60, must-revalidate');
           return { types };
         } catch (err) {
-          if (err instanceof SourceIssueTypesNotFoundError) {
+          if (
+            err instanceof SourceIssueTypesNotFoundError ||
+            err instanceof SourceConnectionNotFoundError
+          ) {
             return reply.code(404).send({ error: err.message });
           }
           throw err;

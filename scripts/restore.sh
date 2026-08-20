@@ -127,23 +127,48 @@ ch_import_table() {
     log_info "  skipping $table (no backup file found)"
     return 0
   fi
-  local rows
-  rows=$(wc -c < "$src" || echo 0)
-  if [ "$rows" -eq 0 ]; then
+  local bytes
+  bytes=$(wc -c < "$src" || echo 0)
+  if [ "$bytes" -eq 0 ]; then
     log_info "  $table: empty backup file — skipping"
     return 0
   fi
-  # Truncate existing data, then bulk insert
+
+  # Truncate existing data, then bulk insert.
+  #
+  # This order means a FAILED import leaves the table empty, so the import below
+  # must be loud. It did not used to be: `curl -sf … > /dev/null` swallowed the
+  # response, and a whole-table Native insert spanning more than 100 monthly
+  # partitions is rejected with `Code 252 TOO_MANY_PARTS`. On staging that hit
+  # ado_transitions (282,722 rows) and ado_work_items (85,884) — 79% of all data —
+  # and the restore printed "0 rows restored" and carried on to report success.
+  # A restore that destroys data and calls it success is worse than no restore.
+  #
+  # max_partitions_per_insert_block=0 lifts that limit for the import. It is a
+  # per-query setting, so it does not relax anything for normal ingest.
   ch_query "TRUNCATE TABLE IF EXISTS ${CH_DB}.${table}" > /dev/null
-  # Query goes in URL params (ClickHouse convention); binary body via stdin.
-  # Note: `--get --data-urlencode` would force the body into the URL, breaking
-  # large binary inserts — do not reintroduce that pattern.
-  gunzip -c "$src" | curl -sf --max-time 600 \
+
+  local response
+  response=$(gunzip -c "$src" | curl -s --max-time 900 \
     --data-binary @- \
-    "http://${CH_USER}:${CH_PASS}@${CH_HOST}:${CH_PORT}/?database=${CH_DB}&query=INSERT+INTO+${table}+FORMAT+Native" \
-    > /dev/null
+    "http://${CH_USER}:${CH_PASS}@${CH_HOST}:${CH_PORT}/?database=${CH_DB}&max_partitions_per_insert_block=0&query=INSERT+INTO+${table}+FORMAT+Native" 2>&1)
+
+  if printf '%s' "$response" | grep -q "DB::Exception"; then
+    log_fail "  $table: import FAILED and the table is now EMPTY (it was truncated first):"
+    printf '%s\n' "$response" | head -3
+    log_fail "  Aborting: the archive is intact, but this database is now missing $table."
+    exit 1
+  fi
+
   local count
-  count=$(ch_query "SELECT count() FROM ${CH_DB}.${table}")
+  count=$(ch_query "SELECT count() FROM ${CH_DB}.${table}" | tr -d '[:space:]')
+
+  # A non-empty export that lands zero rows is a silent failure by another name.
+  if [ "${count:-0}" -eq 0 ]; then
+    log_fail "  $table: export was ${bytes} bytes but 0 rows are present after import."
+    log_fail "  Aborting rather than reporting a successful restore."
+    exit 1
+  fi
   log_info "  $table: $count rows restored"
 }
 
@@ -297,22 +322,36 @@ if [ "$SKIP_CLICKHOUSE" = false ]; then
       done
     fi
 
-    # Restore each table
-    # Raw data tables first, MV state tables last
-    RAW_TABLES=(
-      jira_issues jira_transitions jira_worklogs
-      github_issues github_milestones github_pull_requests github_commits github_reviews
-      github_workflow_runs github_deployments
-      gitlab_merge_requests gitlab_commits gitlab_reviews gitlab_issues
-      ado_work_items ado_transitions ado_pull_requests ado_commits ado_reviews
-      developer_identity_map
-      board_item_classification
-    )
-    MV_STATE_TABLES=(
-      developer_weekly_pr_state
-      jira_flow_efficiency_state
-      commit_activity_state
-    )
+    # Which tables to restore is derived from what the ARCHIVE contains, not
+    # from a literal list.
+    #
+    # Both this script and backup.sh used to hardcode the set, and both had
+    # drifted: ado_deployments was in neither, so 21,426 rows of DORA deploy data
+    # on staging was un-backed-up and unrestorable. Deriving from the archive
+    # means a restore replays exactly what was captured — including tables added
+    # after this code was written.
+    #
+    # Ordering still matters: raw tables before materialized-view state tables, so
+    # a state table is never repopulated from a half-loaded source.
+    ALL_BACKUP_TABLES=()
+    while IFS= read -r f; do
+      [ -n "$f" ] && ALL_BACKUP_TABLES+=("$(basename "$f" .native.gz)")
+    done < <(ls "$CH_BACKUP_DIR"/*.native.gz 2>/dev/null | sort)
+
+    if [ ${#ALL_BACKUP_TABLES[@]} -eq 0 ]; then
+      log_fail "clickhouse/ directory present but contains no .native.gz exports — refusing a silent no-op restore."
+      exit 1
+    fi
+
+    RAW_TABLES=()
+    MV_STATE_TABLES=()
+    for table in "${ALL_BACKUP_TABLES[@]}"; do
+      case "$table" in
+        *_state) MV_STATE_TABLES+=("$table") ;;
+        *)       RAW_TABLES+=("$table") ;;
+      esac
+    done
+    log_info "  ${#RAW_TABLES[@]} raw tables, ${#MV_STATE_TABLES[@]} MV state tables in archive"
 
     for table in "${RAW_TABLES[@]}"; do
       ch_import_table "$table" "$CH_BACKUP_DIR/${table}.native.gz"
@@ -324,6 +363,58 @@ if [ "$SKIP_CLICKHOUSE" = false ]; then
 
     TOTAL_CH=$(ch_query "SELECT sum(total_rows) FROM system.tables WHERE database='${CH_DB}' AND engine NOT LIKE '%View%'" 2>/dev/null || echo "?")
     log_info "ClickHouse total rows across all tables: $TOTAL_CH"
+
+    # ── Tenant-key sanity check ──────────────────────────────────────────────
+    #
+    # An archive taken BEFORE ClickHouse tables gained organization_id will import
+    # cleanly into the post-tenancy schema and report success — while writing
+    # organization_id = '' into every row. Verified: 21,422 ado_deployments rows
+    # imported that way with an empty tenant key.
+    #
+    # That is the worst possible outcome for a restore. The rows exist, the counts
+    # look right, and the application can never see any of them, because '' matches
+    # no organization predicate. And organization_id is part of the sorting key, so
+    # ClickHouse refuses to correct it (Code 420 "Cannot UPDATE key column") — the
+    # damage is permanent.
+    #
+    # So a restore that lands untenanted rows must FAIL, loudly, with the two
+    # procedures that actually work.
+    UNTENANTED_TOTAL=0
+    UNTENANTED_TABLES=""
+    TENANT_KEYED_TABLES=$(ch_query "SELECT table FROM system.columns WHERE database = '${CH_DB}' AND name = 'organization_id' ORDER BY table FORMAT TSV" 2>/dev/null || true)
+    for utable in $TENANT_KEYED_TABLES; do
+      ucount=$(ch_query "SELECT count() FROM ${CH_DB}.${utable} WHERE organization_id = '' FORMAT TSV" 2>/dev/null | tr -d '[:space:]')
+      case "$ucount" in ''|*[!0-9]*) continue ;; esac
+      if [ "$ucount" -gt 0 ]; then
+        UNTENANTED_TOTAL=$((UNTENANTED_TOTAL + ucount))
+        UNTENANTED_TABLES="${UNTENANTED_TABLES}\n    ${utable}: ${ucount} rows"
+      fi
+    done
+
+    if [ "$UNTENANTED_TOTAL" -gt 0 ]; then
+      log_fail "Restore left ${UNTENANTED_TOTAL} rows with an EMPTY organization_id:"
+      printf "%b\n" "$UNTENANTED_TABLES"
+      cat <<'REMEDY'
+
+  This archive predates organization tenancy, and organization_id is a key column,
+  so those rows can NOT be repaired in place (ClickHouse Code 420).
+
+  Do one of these instead:
+
+    A. Restore against the pre-tenancy schema, then migrate:
+         git checkout 12b82680 -- clickhouse/schemas
+         ./scripts/restore.sh <archive>            # old shape, data intact
+         git checkout HEAD -- clickhouse/schemas
+         CH_MIGRATE_URL=... CH_MIGRATE_ORG_ID=<org> \
+           pnpm --filter @deckgauge/db exec tsx src/scripts/ch-org-tenancy-migrate.ts
+
+    B. Take a fresh post-tenancy backup and restore that one.
+
+  The database is currently NOT usable by the application. Nothing was lost from
+  the archive — it can be restored again by route A.
+REMEDY
+      exit 1
+    fi
   fi
 else
   log_info "Skipping ClickHouse restore (--skip-clickhouse)."

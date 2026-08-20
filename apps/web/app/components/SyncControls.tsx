@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { canEditEntity } from '@deckgauge/shared';
+import { RefreshIcon, WarningIcon } from './board-header/icons';
 import {
   triggerBoardSync,
   fetchBoardSyncStatus,
@@ -57,7 +59,7 @@ export function SyncControls({ boardId, userRole }: SyncControlsProps) {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const canTrigger = userRole === 'OWNER' || userRole === 'EDITOR';
+  const canTrigger = canEditEntity(userRole ?? null);
   // Drives the copy: a dead token needs replacing, a lapsed SSO session needs
   // re-authorizing. Mixed sets get the stronger "expired" wording.
   const hasTrulyExpired = expired.some((s) => s.state === 'expired');
@@ -117,35 +119,48 @@ export function SyncControls({ boardId, userRole }: SyncControlsProps) {
   };
 
   const lastSyncedLabel = status?.finishedAt
-    ? `Last synced ${formatRelativeTime(new Date(status.finishedAt))}`
+    ? `Synced ${formatRelativeTime(new Date(status.finishedAt))}`
     : 'Not synced yet';
 
+  // The freshness caption IS the trigger: one control instead of a label plus a
+  // button, which is what lets sync sit under the board title as a subtitle
+  // rather than take a slot in the action row. A viewer cannot trigger a sync,
+  // so for them the same content renders as plain text.
+  const syncFace = (
+    <>
+      <RefreshIcon className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+      <span>{isSyncing ? 'Syncing…' : lastSyncedLabel}</span>
+    </>
+  );
+
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs text-slate-500">{lastSyncedLabel}</span>
-      {canTrigger && (
+    <div className="flex items-center gap-2 text-xs">
+      {canTrigger ? (
         <button
           type="button"
           onClick={handleSync}
           disabled={isSyncing}
-          className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
           aria-label="Sync now"
+          title="Sync now"
+          className="-ml-1.5 inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40"
         >
-          <span className={isSyncing ? 'animate-spin' : ''}>↻</span>
-          {isSyncing ? 'Syncing...' : 'Sync Now'}
+          {syncFace}
         </button>
+      ) : (
+        <span className="inline-flex items-center gap-1.5 text-slate-500">{syncFace}</span>
       )}
       {expired.length > 0 && (
         <button
           type="button"
           onClick={() => goFix(expired[0])}
-          className={`rounded px-2 py-0.5 text-xs font-medium ${
+          className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium transition-colors ${
             hasTrulyExpired
-              ? 'bg-rose-100 text-rose-700 hover:bg-rose-200'
-              : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+              ? 'text-rose-600 hover:bg-rose-50'
+              : 'text-amber-600 hover:bg-amber-50'
           }`}
         >
-          {hasTrulyExpired ? '⚠ Token expired' : '⚠ Reauthorize connection'}
+          <WarningIcon className="h-3.5 w-3.5" />
+          <span>{hasTrulyExpired ? 'Token expired' : 'Reauthorize connection'}</span>
         </button>
       )}
       {toast && (

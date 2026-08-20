@@ -1,6 +1,7 @@
 -- Azure DevOps work items (Epic, Feature, User Story, Task, Bug, ...).
 CREATE TABLE IF NOT EXISTS cockpit.ado_work_items
 (
+    organization_id     String,
     id                  String,
     ado_id              UInt32,
     org_url             String,
@@ -33,5 +34,5 @@ CREATE TABLE IF NOT EXISTS cockpit.ado_work_items
 )
 ENGINE = ReplacingMergeTree(synced_at)
 PARTITION BY toYYYYMM(created_at)
-ORDER BY (org_url, project, ado_id)
+ORDER BY (organization_id, org_url, project, ado_id)
 SETTINGS index_granularity = 8192;

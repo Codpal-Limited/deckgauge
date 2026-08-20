@@ -1,9 +1,13 @@
-import { JiraPort } from "./jira-port";
+import { JiraPort, JiraIssueExistence, JiraCredentialState } from "./jira-port";
 import { JiraEpic, JiraIssue } from "./jira-schemas";
 
 export class FakeJiraAdapter implements JiraPort {
   public fixtureIssueTypesByProject: Record<string, string[]> = {};
   public fixtureKeysByJql: Record<string, string[]> = {};
+  /** Keys a test has declared deleted in Jira — see {@link issueExists}. */
+  public fixtureDeletedKeys: Set<string> = new Set();
+  /** What a test wants the connection's credential to answer. */
+  public fixtureCredentialState: JiraCredentialState = "valid";
 
   private readonly epicData: Record<string, JiraEpic[]> = {
     BWAY: [
@@ -185,5 +189,24 @@ export class FakeJiraAdapter implements JiraPort {
    */
   async fetchIssueKeys(jql: string): Promise<string[]> {
     return this.fixtureKeysByJql[jql] ?? [];
+  }
+
+  /**
+   * Deleted only when a test says so. A key the fixture data knows exists; any
+   * other key is `unknown`, which reads as "this fake cannot say" — the same
+   * refusal-to-guess as fetchIssueKeys, and the direction that cannot cause a
+   * caller to mark a row deleted by accident.
+   */
+  async checkCredentials(): Promise<JiraCredentialState> {
+    return this.fixtureCredentialState;
+  }
+
+  async issueExists(issueKey: string): Promise<JiraIssueExistence> {
+    if (this.fixtureDeletedKeys.has(issueKey)) return "deleted";
+    const known = [
+      ...Object.values(this.epicData).flat().map((e) => e.key),
+      ...Object.values(this.issueData).flat().map((i) => i.key),
+    ];
+    return known.includes(issueKey) ? "exists" : "unknown";
   }
 }

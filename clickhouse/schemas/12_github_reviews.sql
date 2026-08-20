@@ -1,6 +1,7 @@
 -- GitHub PR reviews (approved / changes_requested / commented / dismissed).
 CREATE TABLE IF NOT EXISTS cockpit.github_reviews
 (
+    organization_id     String,
     id                  String,
     repo_full_name      String,
     pull_request_number UInt32,
@@ -15,5 +16,5 @@ CREATE TABLE IF NOT EXISTS cockpit.github_reviews
 )
 ENGINE = ReplacingMergeTree(synced_at)
 PARTITION BY toYYYYMM(submitted_at)
-ORDER BY (repo_full_name, pull_request_number, id)
+ORDER BY (organization_id, repo_full_name, pull_request_number, id)
 SETTINGS index_granularity = 8192;

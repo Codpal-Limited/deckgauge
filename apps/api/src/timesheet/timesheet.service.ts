@@ -36,13 +36,13 @@ interface LoadedEmployee {
 
 export interface TimesheetDeps {
   loadEmployees: (orgTreeId: string) => Promise<LoadedEmployee[]>;
-  loadRules: () => Promise<StatusRule[]>;
+  loadRules: (organizationId: string) => Promise<StatusRule[]>;
   loadOrgTreeActiveStatuses: (orgTreeId: string) => Promise<string[] | null>;
   /** Per-day working-hours cap in hours for a tree; null when unconfigured (→ engine default). */
   loadOrgTreeDailyCapHours: (orgTreeId: string) => Promise<number | null>;
   fetchTransitions: (toMs: number) => Promise<RawTransition[]>;
   /** UPPERCASE Jira project key -> cutoff epoch-ms; issues of these projects stop accruing after the cutoff. */
-  loadRetiredProjects: () => Promise<RetiredProjectMap>;
+  loadRetiredProjects: (organizationId: string) => Promise<RetiredProjectMap>;
   fetchParentLinks: () => Promise<Map<string, string>>;
   fetchClassificationMap: () => Promise<Map<string, 'CAPEX' | 'OPEX'>>;
   /** issueKey -> { title, source deep link }. One fetch, cached in the engine run. */
@@ -75,6 +75,7 @@ export class TimesheetService {
   }
 
   private async runEngine(
+    organizationId: string,
     orgTreeId: string,
     fromMs: number,
     toMs: number,
@@ -83,7 +84,13 @@ export class TimesheetService {
   ): Promise<EngineRun> {
     // Like activeStatuses, the per-tree daily cap is baked into the cached
     // result rather than the key; a cap change takes effect within the TTL.
-    const key = `${orgTreeId}|${fromMs}|${toMs}|${granularity}|${mode}`;
+    // `organizationId` is part of the key, not just the queries. The engine's
+    // RESULT is organization-dependent — status rules and retirement cutoffs are
+    // both scoped below — so an organization-agnostic key would let an org-A
+    // request compute with A's rules and cache the result under a key an org-B
+    // request also matches, serving A's numbers to B for the whole TTL.
+    // (§11 precondition 6 of the tenancy design.)
+    const key = `${organizationId}|${orgTreeId}|${fromMs}|${toMs}|${granularity}|${mode}`;
     const cached = this.cache.get(key);
     if (cached) return cached;
 
@@ -100,14 +107,14 @@ export class TimesheetService {
       retired,
     ] = await Promise.all([
       this.deps.loadEmployees(orgTreeId),
-      this.deps.loadRules(),
+      this.deps.loadRules(organizationId),
       this.deps.loadOrgTreeActiveStatuses(orgTreeId),
       this.deps.loadOrgTreeDailyCapHours(orgTreeId),
       this.deps.fetchTransitions(toMs),
       this.deps.fetchParentLinks(),
       this.deps.fetchClassificationMap(),
       this.deps.loadIssueMeta(),
-      this.deps.loadRetiredProjects(),
+      this.deps.loadRetiredProjects(organizationId),
     ]);
 
     const titleByIssueKey = new Map<string, string>();
@@ -145,8 +152,9 @@ export class TimesheetService {
     return run;
   }
 
-  async getGrid(q: TimesheetGridQuery): Promise<TimesheetGridResponse> {
+  async getGrid(organizationId: string, q: TimesheetGridQuery): Promise<TimesheetGridResponse> {
     const run = await this.runEngine(
+      organizationId,
       q.orgTreeId,
       Date.parse(q.from),
       Date.parse(q.to),
@@ -165,8 +173,9 @@ export class TimesheetService {
     };
   }
 
-  async getCapexReport(q: CapexReportQuery): Promise<CapexReportResponse> {
+  async getCapexReport(organizationId: string, q: CapexReportQuery): Promise<CapexReportResponse> {
     const run = await this.runEngine(
+      organizationId,
       q.orgTreeId,
       Date.parse(q.from),
       Date.parse(q.to),
@@ -182,11 +191,12 @@ export class TimesheetService {
     return { from: q.from, to: q.to, totals, byBucket, byGroup };
   }
 
-  async getEpicBreakdown(q: EpicBreakdownQuery): Promise<EpicBreakdownResponse> {
+  async getEpicBreakdown(organizationId: string, q: EpicBreakdownQuery): Promise<EpicBreakdownResponse> {
     // The rollup ignores display buckets, so 'month' granularity is an arbitrary
     // but valid choice for the engine run (the epic window rarely matches the
     // report/grid window, so this run is typically computed on its own).
     const run = await this.runEngine(
+      organizationId,
       q.orgTreeId,
       Date.parse(q.from),
       Date.parse(q.to),
@@ -212,7 +222,7 @@ export class TimesheetService {
     return { from: q.from, to: q.to, epics, total };
   }
 
-  async getIntervals(q: IntervalsQuery): Promise<IntervalsResponse> {
+  async getIntervals(organizationId: string, q: IntervalsQuery): Promise<IntervalsResponse> {
     const fromMs = Date.parse(q.from);
     const toMs = Date.parse(q.to);
     const nowMs = this.now();
@@ -220,9 +230,9 @@ export class TimesheetService {
     const [transitions, loaded, rules, orgTreeActiveStatuses, retired] = await Promise.all([
       this.deps.fetchTransitions(toMs),
       this.deps.loadEmployees(''),
-      this.deps.loadRules(),
+      this.deps.loadRules(organizationId),
       this.deps.loadOrgTreeActiveStatuses(q.orgTreeId),
-      this.deps.loadRetiredProjects(),
+      this.deps.loadRetiredProjects(organizationId),
     ]);
     const resolve = makeAssigneeResolver(loaded);
     // Resolve the in-progress config exactly like the grid engine so the drawer's

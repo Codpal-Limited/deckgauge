@@ -15,9 +15,10 @@
       "redirectUris": [
         "http://localhost:3000/*",
         "http://localhost:3010/*",
-        "http://localhost:3030/*"
+        "http://localhost:3030/*",
+        "__PUBLIC_ORIGIN__/*"
       ],
-      "webOrigins": ["http://localhost:3000", "http://localhost:3010", "http://localhost:3030"],
+      "webOrigins": ["http://localhost:3000", "http://localhost:3010", "http://localhost:3030", "__PUBLIC_ORIGIN__"],
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "protocol": "openid-connect",

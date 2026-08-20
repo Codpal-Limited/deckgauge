@@ -23,6 +23,24 @@ export interface ChQueryClient {
   }>;
 }
 
+/**
+ * ClickHouse serialises UInt64 as a JSON *string* (the range exceeds a
+ * double-precision integer), and `castRows` is an unchecked cast, so the counts
+ * arrive as strings while the DTO declares numbers. That lie is not cosmetic:
+ * the web layer sums and compares these, where `"3" + 1` is `"31"`.
+ *
+ * Applied at every `getTeamOverview` return path rather than inside the SQL, so
+ * the aggregate stays exact in the database and is narrowed only on the way out.
+ */
+function toTeamOverview(row: TeamOverviewDto): TeamOverviewDto {
+  return {
+    prs_merged: Number(row.prs_merged),
+    median_cycle_h: row.median_cycle_h === null ? null : Number(row.median_cycle_h),
+    active_devs: Number(row.active_devs),
+    ai_pct: Number(row.ai_pct),
+  };
+}
+
 export interface TeamOverviewDto {
   prs_merged: number;
   median_cycle_h: number | null;
@@ -125,7 +143,10 @@ export class ClickhouseIntelligenceService {
         format: 'JSONEachRow',
       });
       const rows = castRows<TeamOverviewDto>(await result.json());
-      return rows[0] ?? { prs_merged: 0, median_cycle_h: null, active_devs: 0, ai_pct: 0 };
+      const row = rows[0];
+      return row
+        ? toTeamOverview(row)
+        : { prs_merged: 0, median_cycle_h: null, active_devs: 0, ai_pct: 0 };
     }
 
     // Unscoped (and the original) path — aggregates over deduplicated FINAL
@@ -153,7 +174,10 @@ export class ClickhouseIntelligenceService {
       format: 'JSONEachRow',
     });
     const rows = castRows<TeamOverviewDto>(await result.json());
-    return rows[0] ?? { prs_merged: 0, median_cycle_h: null, active_devs: 0, ai_pct: 0 };
+    const row = rows[0];
+    return row
+      ? toTeamOverview(row)
+      : { prs_merged: 0, median_cycle_h: null, active_devs: 0, ai_pct: 0 };
   }
 
   async getDeveloperWeeklyTimeSeries(

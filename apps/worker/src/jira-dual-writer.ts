@@ -2,7 +2,30 @@ import type { DeveloperProfileSink } from './developer-profile-sink.js';
 
 export interface ChClient {
   insertRows(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
+  /**
+   * Drop every analytics row belonging to these Jira issue keys. Like
+   * `insertRows`, the organization is already bound into the client, which is
+   * what keeps a purge from reaching across tenants.
+   *
+   * Optional so the many hand-built ChClient doubles keep compiling; a client
+   * without it simply leaves the analytics rows in place.
+   */
+  purgeJiraIssueKeys?(issueKeys: string[]): Promise<void>;
 }
+
+/**
+ * Binds a ClickHouse client to one organization. Handlers take the FACTORY, not
+ * a client, and call it once per synced instance with that instance's own
+ * `organizationId` — different connections on the same worker can belong to
+ * different tenants, so a single client resolved at wiring time (or from a
+ * `findFirst()`) would silently stamp one tenant's rows with another's id.
+ * `organization_id` leads every ClickHouse sort key, so such a row is
+ * uncorrectable after the fact (Code 420 CANNOT_UPDATE_COLUMN).
+ *
+ * `insertRows(table, rows)` deliberately keeps its two-argument signature: the
+ * tenant is closed over here, not threaded through ~40 call sites.
+ */
+export type ChClientFactory = (organizationId: string) => ChClient;
 
 export interface JiraDualWritePayload {
   issues: ReadonlyArray<Record<string, unknown>>;

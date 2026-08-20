@@ -76,15 +76,88 @@ enum TimesheetRuleScope {
   @@map("timesheet_rule_scope")
 }
 
+// ── Organization tenancy ──────────────────────────────────────────────────────
+// See docs/superpowers/specs/2026-08-05-org-tenancy-foundation-design.md §4.
+
+enum OrgRole {
+  ADMIN
+  MEMBER
+  VIEWER
+
+  @@map("org_role")
+}
+
+enum OrgMembershipStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+
+  @@map("org_membership_status")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  memberships OrgMembership[]
+
+  // One back-relation per tenant root (spec §4.2 Class A). Models added since
+  // the spec was written are all Class B — they inherit tenancy through a
+  // parent listed here: OrgTreeAccess via orgTreeId, AdvisorSession via
+  // boardId, AdvisorMessage via its session. None needs a column of its own.
+  boards               Board[]
+  roadmaps             Roadmap[]
+  orgTrees             OrgTree[]
+  comparisons          Comparison[]
+  boardFolders         BoardFolder[]
+  jiraInstances        JiraInstance[]
+  githubInstances      GitHubInstance[]
+  azureDevOpsInstances AzureDevOpsInstance[]
+  gitlabInstances      GitLabInstance[]
+  advisorConfig        AdvisorConfig?
+  timesheetStatusRules TimesheetStatusRule[]
+  retiredJiraProjects  RetiredJiraProject[]
+
+  @@map("organizations")
+}
+
+model OrgMembership {
+  id              String              @id @default(uuid())
+  organizationId  String              @map("organization_id")
+  email           String // lowercased; the invite key
+  userId          String?             @map("user_id") // null until first login binds it
+  role            OrgRole
+  status          OrgMembershipStatus @default(PENDING)
+  invitedByUserId String?             @map("invited_by_user_id")
+  invitedAt       DateTime            @default(now()) @map("invited_at")
+  activatedAt     DateTime?           @map("activated_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy    User?        @relation("InvitedMemberships", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, email])
+  @@unique([organizationId, userId])
+  @@index([organizationId, status])
+  @@index([userId])
+  @@index([email])
+  @@map("org_memberships")
+}
+
 model Board {
-  id                String   @id @default(uuid())
-  name              String
-  description       String?
+  id                 String   @id @default(uuid())
+  name               String
+  description        String?
   // Board template the board was seeded from / behaves as. "development" = the
   // historical default board (dashboard + roadmap); "blank" = empty board;
   // "recruitment" = a candidate pipeline (seeded groups/columns + opt-in
   // calendar/onboard capabilities). Drives boardCapabilities() gating.
-  kind              String   @default("development")
+  kind               String   @default("development")
   // Phase 3 (EI-001): ticket-key prefixes the board cares about (e.g. ["BWAY","DOS"]).
   // Used by the intelligence layer to scope ClickHouse queries to the boards
   // that should see a given linked_ticket_keys[] entry.
@@ -93,30 +166,34 @@ model Board {
   // Monday-style per-board grid layout: { hidden: string[], widths: Record<colKey, number> }.
   // Column keys are the SYSTEM_COLUMN_KEYS (packages/shared) or a custom BoardColumn.id.
   columnLayout       Json?    @map("column_layout")
+  organizationId     String   @map("organization_id")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  groups             Group[]
-  projects           Project[]
-  columns            BoardColumn[]
-  automations        AutomationRule[]
+  groups                Group[]
+  projects              Project[]
+  columns               BoardColumn[]
+  automations           AutomationRule[]
   // Phase 3 multi-board sync: one row per (board × project-sync).
-  boardJiraSources   BoardJiraSource[]
-  boardGithubSources BoardGitHubSource[]
-  boardAdoSources    BoardAdoSource[]
-  boardGitlabSources BoardGitLabSource[]
-  owners             BoardOwner[]
-  statuses           BoardStatus[]
-  accessEntries      BoardAccess[]
-  views              BoardView[]
-  userPrefs          UserBoardPref[]
-  syncExclusions     BoardSyncExclusion[]
-  roadmapSubscriptions RoadmapBoardSubscription[]
-  calendarEvents     BoardCalendarEvent[]
+  boardJiraSources      BoardJiraSource[]
+  boardGithubSources    BoardGitHubSource[]
+  boardAdoSources       BoardAdoSource[]
+  boardGitlabSources    BoardGitLabSource[]
+  owners                BoardOwner[]
+  statuses              BoardStatus[]
+  accessEntries         BoardAccess[]
+  views                 BoardView[]
+  userPrefs             UserBoardPref[]
+  syncExclusions        BoardSyncExclusion[]
+  roadmapSubscriptions  RoadmapBoardSubscription[]
+  calendarEvents        BoardCalendarEvent[]
   comparisonMemberships ComparisonMember[]
-  calendarSource     BoardCalendarSource?
-  advisorSessions    AdvisorSession[]
+  calendarSource        BoardCalendarSource?
+  advisorSessions       AdvisorSession[]
+  organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@index([organizationId])
+  @@index([organizationId, createdAt], map: "boards_organization_id_created_at_idx")
   @@map("boards")
 }
 
@@ -229,6 +306,18 @@ model Project {
   jiraType                String?             @map("jira_type")
   jiraSyncedFields        Json?               @map("jira_synced_fields")
   jiraRemovedFromSource   Boolean             @default(false) @map("jira_removed_from_source")
+  /// Set once the Jira sync has CONFIRMED (via a per-key existence probe, not
+  /// mere absence from a fetch) that this row's Jira issue is gone. Distinct
+  /// from jiraRemovedFromSource, which also covers a row dropped by a board's
+  /// JQL or issue-type filter. Also the record of which keys were purged from
+  /// ClickHouse, since that purge is not reversible.
+  jiraDeletedAt           DateTime?           @map("jira_deleted_at")
+  /// When the deleted issue's analytics rows were actually dropped from
+  /// ClickHouse. Deletion and purge are two steps and the second can fail
+  /// (ClickHouse down) after the first has committed; a row deleted-but-not-
+  /// purged is the next sync's retry list, which is why this is not just a flag
+  /// on jiraDeletedAt.
+  jiraAnalyticsPurgedAt   DateTime?           @map("jira_analytics_purged_at")
   githubIssueId           String?             @map("github_issue_id")
   githubRepoFullName      String?             @map("github_repo_full_name")
   githubSyncedFields      String[]            @default([]) @map("github_synced_fields")
@@ -344,15 +433,21 @@ model JiraInstance {
   projectKeys  String[]
   createdAt    DateTime @default(now())
 
-  // Creator-scoped ownership (authz hardening). Null means "unclaimed" —
-  // pre-existing rows from before this column existed, or rows whose creator
-  // was later deleted (onDelete: SetNull). CONNECTION_OWNER treats a null
-  // owner as editable by any signed-in user; the first edit claims it.
-  createdById String? @map("created_by_id")
-  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  // Two orthogonal ownership axes, deliberately both present:
+  // `organizationId` is the TENANT boundary — a cross-organization id resolves
+  // to 404, never to another tenant's token. `createdById` is ownership WITHIN
+  // that organization (authz hardening). Null means "unclaimed" — pre-existing
+  // rows from before this column existed, or rows whose creator was later
+  // deleted (onDelete: SetNull). CONNECTION_OWNER treats a null owner as
+  // editable by any signed-in user; the first edit claims it.
+  organizationId String  @map("organization_id")
+  createdById    String? @map("created_by_id")
+  createdBy      User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   projectSyncs JiraProjectSync[] // Phase 3
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@index([organizationId])
   @@map("jira_instances")
 }
 
@@ -382,19 +477,19 @@ model SyncRun {
 }
 
 model Upload {
-  id        String          @id @default(uuid())
-  filename  String
-  mimeType  String          @map("mime_type")
-  sizeBytes Int             @map("size_bytes")
-  commentId String?         @map("comment_id")
-  comment   ProjectComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  projectId String?  @map("project_id")
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id                String              @id @default(uuid())
+  filename          String
+  mimeType          String              @map("mime_type")
+  sizeBytes         Int                 @map("size_bytes")
+  commentId         String?             @map("comment_id")
+  comment           ProjectComment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  projectId         String?             @map("project_id")
+  project           Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   orgEmployeeId     String?             @map("org_employee_id")
   orgEmployee       OrgEmployee?        @relation(fields: [orgEmployeeId], references: [id], onDelete: Cascade)
   employeeCommentId String?             @map("employee_comment_id")
   employeeComment   OrgEmployeeComment? @relation(fields: [employeeCommentId], references: [id], onDelete: Cascade)
-  createdAt DateTime        @default(now()) @map("created_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
 
   @@index([projectId])
   @@index([commentId])
@@ -414,12 +509,15 @@ model GitHubInstance {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  // Creator-scoped ownership (authz hardening) — see JiraInstance.createdById.
-  createdById String? @map("created_by_id")
-  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  // Tenant boundary + within-org ownership — see JiraInstance for the full rule.
+  organizationId String  @map("organization_id")
+  createdById    String? @map("created_by_id")
+  createdBy      User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
-  repoSyncs GitHubRepoSync[] // Phase 3
+  repoSyncs    GitHubRepoSync[] // Phase 3
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@index([organizationId])
   @@map("github_instances")
 }
 
@@ -434,12 +532,15 @@ model AzureDevOpsInstance {
   createdAt   DateTime              @default(now()) @map("created_at")
   updatedAt   DateTime              @updatedAt @map("updated_at")
 
-  // Creator-scoped ownership (authz hardening) — see JiraInstance.createdById.
-  createdById String? @map("created_by_id")
-  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  // Tenant boundary + within-org ownership — see JiraInstance for the full rule.
+  organizationId String  @map("organization_id")
+  createdById    String? @map("created_by_id")
+  createdBy      User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   projectSyncs AzureDevOpsProjectSync[] // Phase 3
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@index([organizationId])
   @@map("azure_devops_instances")
 }
 
@@ -460,7 +561,6 @@ enum BoardViewType {
   @@map("board_view_type")
 }
 
-
 model User {
   id         String   @id @default(uuid())
   keycloakId String   @unique @map("keycloak_id")
@@ -475,17 +575,19 @@ model User {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  boardAccess       BoardAccess[]
-  boardOwners       BoardOwner[]
-  comments          ProjectComment[]
-  developerProfiles DeveloperProfile[]
-  boardFolders      BoardFolder[]
-  boardPrefs        UserBoardPref[]
-  roadmapAccess     RoadmapAccess[]
-  roadmapPrefs      UserRoadmapPref[]
-  employeeComments  OrgEmployeeComment[]
-  orgTreeAccess     OrgTreeAccess[]
-  advisorSessions   AdvisorSession[]
+  boardAccess         BoardAccess[]
+  boardOwners         BoardOwner[]
+  comments            ProjectComment[]
+  developerProfiles   DeveloperProfile[]
+  boardFolders        BoardFolder[]
+  boardPrefs          UserBoardPref[]
+  roadmapAccess       RoadmapAccess[]
+  roadmapPrefs        UserRoadmapPref[]
+  employeeComments    OrgEmployeeComment[]
+  orgTreeAccess       OrgTreeAccess[]
+  employeeBoardAccess EmployeeBoardAccess[]
+  comparisonAccess    ComparisonAccess[]
+  advisorSessions     AdvisorSession[]
 
   // Creator-scoped provider connections (authz hardening). A deleted user's
   // connections become unclaimed (createdById set null), not destroyed —
@@ -494,6 +596,11 @@ model User {
   createdGitHubInstances      GitHubInstance[]
   createdAzureDevOpsInstances AzureDevOpsInstance[]
   createdGitLabInstances      GitLabInstance[]
+
+  // Membership is the join — User itself is intentionally untenanted (spec §4.2
+  // Class C): one person can hold memberships in several organizations.
+  orgMemberships     OrgMembership[]
+  invitedMemberships OrgMembership[] @relation("InvitedMemberships")
 
   @@map("users")
 }
@@ -543,9 +650,9 @@ model BoardView {
   createdAt DateTime      @default(now()) @map("created_at")
   updatedAt DateTime      @updatedAt @map("updated_at")
 
-  board              Board               @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  board              Board             @relation(fields: [boardId], references: [id], onDelete: Cascade)
   widgets            DashboardWidget[]
-  roadmapConfigGantt RoadmapConfig?      @relation("RoadmapGanttConfig")
+  roadmapConfigGantt RoadmapConfig?    @relation("RoadmapGanttConfig")
 
   @@index([boardId])
   @@index([presetKey])
@@ -557,16 +664,45 @@ model BoardView {
 // kept lean like OrgTree (no per-entity ACL / favorites). Its member boards are
 // the developers' boards being compared.
 model Comparison {
-  id        String   @id @default(uuid())
-  name      String   @db.VarChar(100)
-  createdBy String   @map("created_by")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid())
+  name           String   @db.VarChar(100)
+  /// Provenance only. NOT an access check — ComparisonAccess decides that as of
+  /// design D15. Any query that reaches for this as a gate reintroduces
+  /// creator-only behaviour for that path.
+  createdBy      String   @map("created_by")
+  organizationId String   @map("organization_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  members ComparisonMember[]
+  members      ComparisonMember[]
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Class B: ComparisonAccess inherits tenancy through this comparison's own
+  // organization_id, so it carries none of its own (tenancy D6).
+  access       ComparisonAccess[]
 
   @@index([createdBy])
+  @@index([organizationId])
   @@map("comparisons")
+}
+
+/// A comparison's per-user ACL, replacing creator-only access (design D15).
+/// Uses BoardAccessRole: a third enum for the same three values would be the
+/// divergence D10 exists to remove.
+model ComparisonAccess {
+  id           String          @id @default(uuid())
+  comparisonId String          @map("comparison_id")
+  userId       String          @map("user_id")
+  role         BoardAccessRole
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  comparison Comparison @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([comparisonId, userId])
+  @@index([comparisonId])
+  @@index([userId])
+  @@map("comparison_access")
 }
 
 // The ordered board set for a Comparison. FK cascade so deleting the comparison
@@ -585,7 +721,6 @@ model ComparisonMember {
   @@index([comparisonId, position])
   @@map("comparison_members")
 }
-
 
 model RoadmapConfig {
   id               String    @id @default(uuid())
@@ -650,12 +785,15 @@ model GitLabInstance {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  // Creator-scoped ownership (authz hardening) — see JiraInstance.createdById.
-  createdById String? @map("created_by_id")
-  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  // Tenant boundary + within-org ownership — see JiraInstance for the full rule.
+  organizationId String  @map("organization_id")
+  createdById    String? @map("created_by_id")
+  createdBy      User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   projectSyncs GitLabProjectSync[]
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@index([organizationId])
   @@map("gitlab_instances")
 }
 
@@ -711,36 +849,36 @@ model BoardJiraSource {
 // ── GitHub ────────────────────────────────────────────────────────────────────
 
 model GitHubRepoSync {
-  id                       String   @id @default(cuid())
-  githubInstanceId         String   @map("github_instance_id")
-  repoFullName             String   @map("repo_full_name")
-  defaultBranch            String   @default("main") @map("default_branch")
-  archived                 Boolean  @default(false)
-  language                 String?
-  topics                   String[] @default([])
-  lastPushedAt             DateTime? @map("last_pushed_at")
-  openIssuesCount          Int      @default(0) @map("open_issues_count")
+  id               String    @id @default(cuid())
+  githubInstanceId String    @map("github_instance_id")
+  repoFullName     String    @map("repo_full_name")
+  defaultBranch    String    @default("main") @map("default_branch")
+  archived         Boolean   @default(false)
+  language         String?
+  topics           String[]  @default([])
+  lastPushedAt     DateTime? @map("last_pushed_at")
+  openIssuesCount  Int       @default(0) @map("open_issues_count")
 
-  tier                     String   @default("warm") // hot | warm | cold
+  tier String @default("warm") // hot | warm | cold
 
-  prsWatermark             DateTime? @map("prs_watermark")
-  commitsWatermark         DateTime? @map("commits_watermark")
-  reviewsWatermark         DateTime? @map("reviews_watermark")
-  workflowRunsWatermark    DateTime? @map("workflow_runs_watermark")
-  deploymentsWatermark     DateTime? @map("deployments_watermark")
-  issuesWatermark          DateTime? @map("issues_watermark")
+  prsWatermark          DateTime? @map("prs_watermark")
+  commitsWatermark      DateTime? @map("commits_watermark")
+  reviewsWatermark      DateTime? @map("reviews_watermark")
+  workflowRunsWatermark DateTime? @map("workflow_runs_watermark")
+  deploymentsWatermark  DateTime? @map("deployments_watermark")
+  issuesWatermark       DateTime? @map("issues_watermark")
 
-  backfillMonths           Int      @default(12) @map("backfill_months")
-  backfillCompleteAt       DateTime? @map("backfill_complete_at")
+  backfillMonths     Int       @default(12) @map("backfill_months")
+  backfillCompleteAt DateTime? @map("backfill_complete_at")
 
-  lastSuccessAt            DateTime? @map("last_success_at")
-  lastErrorAt              DateTime? @map("last_error_at")
-  lastErrorMessage         String?  @map("last_error_message")
+  lastSuccessAt    DateTime? @map("last_success_at")
+  lastErrorAt      DateTime? @map("last_error_at")
+  lastErrorMessage String?   @map("last_error_message")
 
-  disabledAt               DateTime? @map("disabled_at")
+  disabledAt DateTime? @map("disabled_at")
 
-  createdAt                DateTime @default(now()) @map("created_at")
-  updatedAt                DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   githubInstance GitHubInstance      @relation(fields: [githubInstanceId], references: [id], onDelete: Cascade)
   boardSources   BoardGitHubSource[]
@@ -752,13 +890,13 @@ model GitHubRepoSync {
 }
 
 model PrJiraLink {
-  id           String   @id @default(cuid())
-  prId         String   @map("pr_id")
-  repoFullName String   @map("repo_full_name")
-  jiraKey      String   @map("jira_key")
-  source       String                            // "pr_title" | "commit_message"
+  id           String    @id @default(cuid())
+  prId         String    @map("pr_id")
+  repoFullName String    @map("repo_full_name")
+  jiraKey      String    @map("jira_key")
+  source       String // "pr_title" | "commit_message"
   mergedAt     DateTime? @map("merged_at")
-  createdAt    DateTime @default(now()) @map("created_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   @@unique([prId, jiraKey, source])
   @@index([jiraKey])
@@ -961,23 +1099,26 @@ model BoardGitLabSource {
 // ── Boards Sidebar ────────────────────────────────────────────────────────────
 
 model BoardFolder {
-  id         String   @id @default(uuid())
-  userId     String   @map("user_id")
-  parentId   String?  @map("parent_id")
-  name       String
-  color      String   @default("#6366F1")
-  position   Float
-  isExpanded Boolean  @default(true) @map("is_expanded")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  parentId       String?  @map("parent_id")
+  name           String
+  color          String   @default("#6366F1")
+  position       Float
+  isExpanded     Boolean  @default(true) @map("is_expanded")
+  organizationId String   @map("organization_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  parent       BoardFolder?    @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
-  children     BoardFolder[]   @relation("FolderTree")
-  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       BoardFolder?      @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children     BoardFolder[]     @relation("FolderTree")
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   prefs        UserBoardPref[]
   roadmapPrefs UserRoadmapPref[]
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([userId, parentId, position])
+  @@index([organizationId])
   @@map("board_folders")
 }
 
@@ -1002,18 +1143,26 @@ model UserBoardPref {
 }
 
 model OrgTree {
-  id           String    @id @default(uuid())
-  name         String
-  position     Int       @default(0)
-  lastSyncedAt DateTime? @map("last_synced_at")
-  lastSyncSummary Json?   @map("last_sync_summary")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  employees        OrgEmployee[]
-  employeeBoards   EmployeeBoard[]
-  timesheetConfig  OrgTreeTimesheetConfig?
-  source           OrgTreeSource?
-  access           OrgTreeAccess[]
+  id              String    @id @default(uuid())
+  name            String
+  position        Int       @default(0)
+  lastSyncedAt    DateTime? @map("last_synced_at")
+  lastSyncSummary Json?     @map("last_sync_summary")
+  organizationId  String    @map("organization_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  employees       OrgEmployee[]
+  employeeBoards  EmployeeBoard[]
+  timesheetConfig OrgTreeTimesheetConfig?
+  source          OrgTreeSource?
+  // Class B: OrgTreeAccess inherits tenancy through this tree, so it carries no
+  // organization_id of its own.
+  access          OrgTreeAccess[]
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([organizationId, position])
   @@map("org_trees")
 }
 
@@ -1035,45 +1184,46 @@ model OrgTreeAccess {
 }
 
 model OrgEmployee {
-  id                 String    @id @default(uuid())
-  orgTreeId          String    @map("org_tree_id")
-  externalId         String?   @map("external_id")
-  name               String
-  role               String?
-  email              String?
-  managerExternalId  String?   @map("manager_external_id")
-  managerId          String?   @map("manager_id")
-  position           Int       @default(0)
-  isVacancy          Boolean   @default(false) @map("is_vacancy")
-  matched            Boolean   @default(false)
-  isActive           Boolean   @default(false) @map("is_active")
-  lastContributionAt DateTime? @map("last_contribution_at")
-  hasAssignment      Boolean   @default(false) @map("has_assignment")
-  employeeDisplayId  String?   @map("employee_display_id")
-  businessTitle      String?   @map("business_title")
-  hireDate           DateTime? @map("hire_date")
-  location           String?
-  employeeType       String?   @map("employee_type")
-  timeType           String?   @map("time_type")
-  phone              String?
-  workAddress        String?   @map("work_address")
-  salaryCurrent      Int?      @map("salary_current")
-  salaryCurrency     String?   @map("salary_currency")
-  statsJson          Json?     @map("stats_json")
-  syncedAt           DateTime? @map("synced_at")
-  msGraphId          String?   @map("ms_graph_id")
-  departedAt         DateTime? @map("departed_at")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
-  orgTree      OrgTree       @relation(fields: [orgTreeId], references: [id], onDelete: Cascade)
-  manager      OrgEmployee?  @relation("Reports", fields: [managerId], references: [id], onDelete: SetNull)
-  reports      OrgEmployee[] @relation("Reports")
-  aliases      OrgEmployeeAlias[]
+  id                  String                @id @default(uuid())
+  orgTreeId           String                @map("org_tree_id")
+  externalId          String?               @map("external_id")
+  name                String
+  role                String?
+  email               String?
+  managerExternalId   String?               @map("manager_external_id")
+  managerId           String?               @map("manager_id")
+  position            Int                   @default(0)
+  isVacancy           Boolean               @default(false) @map("is_vacancy")
+  matched             Boolean               @default(false)
+  isActive            Boolean               @default(false) @map("is_active")
+  lastContributionAt  DateTime?             @map("last_contribution_at")
+  hasAssignment       Boolean               @default(false) @map("has_assignment")
+  employeeDisplayId   String?               @map("employee_display_id")
+  businessTitle       String?               @map("business_title")
+  hireDate            DateTime?             @map("hire_date")
+  location            String?
+  employeeType        String?               @map("employee_type")
+  timeType            String?               @map("time_type")
+  phone               String?
+  workAddress         String?               @map("work_address")
+  salaryCurrent       Int?                  @map("salary_current")
+  salaryCurrency      String?               @map("salary_currency")
+  statsJson           Json?                 @map("stats_json")
+  syncedAt            DateTime?             @map("synced_at")
+  msGraphId           String?               @map("ms_graph_id")
+  departedAt          DateTime?             @map("departed_at")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
+  orgTree             OrgTree               @relation(fields: [orgTreeId], references: [id], onDelete: Cascade)
+  manager             OrgEmployee?          @relation("Reports", fields: [managerId], references: [id], onDelete: SetNull)
+  reports             OrgEmployee[]         @relation("Reports")
+  aliases             OrgEmployeeAlias[]
   boardScopes         EmployeeBoard[]       @relation("BoardScope")
   boardMembers        EmployeeBoardMember[]
   employeeFieldValues EmployeeFieldValue[]
-  comments     OrgEmployeeComment[]
-  uploads      Upload[]
+  comments            OrgEmployeeComment[]
+  uploads             Upload[]
+
   @@unique([orgTreeId, externalId])
   @@unique([orgTreeId, msGraphId])
   @@index([orgTreeId])
@@ -1082,14 +1232,14 @@ model OrgEmployee {
 }
 
 model OrgTreeSource {
-  id              String    @id @default(uuid())
-  orgTreeId       String    @unique @map("org_tree_id")
-  provider        String    @default("microsoft")
-  rootUpn         String    @map("root_upn")
-  rootGraphId     String?   @map("root_graph_id")
-  status          String    @default("idle")
-  lastSyncedAt    DateTime? @map("last_synced_at")
-  lastSyncSummary Json?     @map("last_sync_summary")
+  id               String    @id @default(uuid())
+  orgTreeId        String    @unique @map("org_tree_id")
+  provider         String    @default("microsoft")
+  rootUpn          String    @map("root_upn")
+  rootGraphId      String?   @map("root_graph_id")
+  status           String    @default("idle")
+  lastSyncedAt     DateTime? @map("last_synced_at")
+  lastSyncSummary  Json?     @map("last_sync_summary")
   // Microsoft Graph connection tokens (plaintext, matching the repo's existing
   // Jira/GitHub/ADO/GitLab token convention; localhost-only). msAccessToken is a
   // user-pasted Graph token (no app registration — the primary path); msRefreshToken
@@ -1099,18 +1249,19 @@ model OrgTreeSource {
   microsoftUpn     String?   @map("microsoft_upn")
   connectedByEmail String?   @map("connected_by_email")
   connectedAt      DateTime? @map("connected_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  orgTree         OrgTree   @relation(fields: [orgTreeId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  orgTree          OrgTree   @relation(fields: [orgTreeId], references: [id], onDelete: Cascade)
+
   @@map("org_tree_sources")
 }
 
 model BoardCalendarSource {
-  id           String    @id @default(uuid())
-  boardId      String    @unique @map("board_id")
-  provider     String    @default("microsoft")
+  id               String    @id @default(uuid())
+  boardId          String    @unique @map("board_id")
+  provider         String    @default("microsoft")
   // Whose calendar to read interviews from (email / UPN).
-  calendarUpn  String    @default("") @map("calendar_upn")
+  calendarUpn      String    @default("") @map("calendar_upn")
   // Microsoft Graph connection tokens (plaintext, matching the repo's existing
   // Jira/GitHub/ADO/GitLab/OrgTreeSource token convention; localhost-only).
   // msAccessToken is a user-pasted Graph token (no app registration — the primary
@@ -1126,17 +1277,19 @@ model BoardCalendarSource {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
   board            Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
   @@map("board_calendar_sources")
 }
 
 model OrgEmployeeAlias {
-  id         String @id @default(uuid())
-  employeeId String @map("employee_id")
+  id         String      @id @default(uuid())
+  employeeId String      @map("employee_id")
   provider   String
   kind       String
   value      String
-  createdAt  DateTime @default(now()) @map("created_at")
+  createdAt  DateTime    @default(now()) @map("created_at")
   employee   OrgEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
   @@unique([employeeId, provider, kind, value])
   @@index([employeeId])
   @@map("org_employee_aliases")
@@ -1155,6 +1308,7 @@ model OrgEmployeeComment {
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
   uploads       Upload[]
+
   @@index([orgEmployeeId, pinned, createdAt])
   @@index([authorId])
   @@map("org_employee_comments")
@@ -1170,14 +1324,38 @@ model EmployeeBoard {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  orgTree OrgTree              @relation(fields: [orgTreeId], references: [id], onDelete: Cascade)
-  scope   OrgEmployee?         @relation("BoardScope", fields: [scopeEmployeeId], references: [id], onDelete: SetNull)
+  orgTree OrgTree               @relation(fields: [orgTreeId], references: [id], onDelete: Cascade)
+  scope   OrgEmployee?          @relation("BoardScope", fields: [scopeEmployeeId], references: [id], onDelete: SetNull)
   groups  EmployeeGroup[]
   members EmployeeBoardMember[]
   columns EmployeeColumn[]
+  // Class B: EmployeeBoardAccess inherits tenancy through this board's tree, so
+  // it carries no organization_id of its own (tenancy D6).
+  access  EmployeeBoardAccess[]
 
   @@index([orgTreeId])
   @@map("employee_boards")
+}
+
+/// Each board inside an org tree is its own sharing decision (design D12).
+/// Org-tree access deliberately does NOT reach it; org ADMINs and org-tree
+/// OWNERs are implicit OWNERs so administration still works and an org-tree
+/// owner can never create a board they cannot open.
+model EmployeeBoardAccess {
+  id              String          @id @default(uuid())
+  employeeBoardId String          @map("employee_board_id")
+  userId          String          @map("user_id")
+  role            BoardAccessRole
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  employeeBoard EmployeeBoard @relation(fields: [employeeBoardId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeBoardId, userId])
+  @@index([employeeBoardId])
+  @@index([userId])
+  @@map("employee_board_access")
 }
 
 model EmployeeGroup {
@@ -1276,6 +1454,7 @@ model Roadmap {
   description         String?
   createdBy           String   @map("created_by")
   hiddenSystemColumns Json     @default("[]") @map("hidden_system_columns")
+  organizationId      String   @map("organization_id")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
@@ -1284,7 +1463,9 @@ model Roadmap {
   groupRefs     RoadmapGroup[]
   views         RoadmapView[]
   prefs         UserRoadmapPref[]
+  organization  Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@index([organizationId])
   @@map("roadmaps")
 }
 
@@ -1394,10 +1575,15 @@ model TimesheetStatusRule {
   role               String?
   employeeId         String?            @map("employee_id")
   inProgressStatuses String[]           @default([]) @map("in_progress_statuses")
+  organizationId     String             @map("organization_id")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
-  @@unique([scope, role, employeeId])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Explicitly named: the Prisma default would exceed Postgres' 63-char identifier limit.
+  @@unique([organizationId, scope, role, employeeId], map: "timesheet_status_rules_org_scope_role_employee_key")
+  @@index([organizationId])
   @@map("timesheet_status_rules")
 }
 
@@ -1414,26 +1600,33 @@ model OrgTreeTimesheetConfig {
 }
 
 model RetiredJiraProject {
-  projectKey String   @id @map("project_key")
-  cutoffDate DateTime @map("cutoff_date")
-  note       String?
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  projectKey     String   @map("project_key")
+  cutoffDate     DateTime @map("cutoff_date")
+  note           String?
+  organizationId String   @map("organization_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Composite PK: a project key is only unique within one organization.
+  @@id([organizationId, projectKey])
+  @@index([organizationId])
   @@map("retired_jira_projects")
 }
 
 // ── Advisor ───────────────────────────────────────────────────────────────────
 
-// Single instance-level row (OSS installs are single-tenant). Stores the
-// advisor's LLM provider config. apiKey is stored as-is for v1 (encrypted-at-rest
-// is a follow-up) and must never be returned to the client.
+// One row per organization. Stores the advisor's LLM provider config. apiKey is
+// stored as-is for v1 (encrypted-at-rest is a follow-up) and must never be
+// returned to the client.
 model AdvisorConfig {
-  id        String   @id @default(cuid())
-  provider  String
-  apiKey    String?
-  baseUrl   String?
-  model     String
+  id             String  @id @default(cuid())
+  provider       String
+  apiKey         String?
+  baseUrl        String?
+  model          String
+  organizationId String  @unique @map("organization_id")
 
   /// Operator off switch for the Advisor's source-lookup tools (`search_source`
   /// / `read_source`). Default ON: those tools read only source this repo
@@ -1445,6 +1638,8 @@ model AdvisorConfig {
   sourceLookupEnabled Boolean @default(true)
 
   updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
 
 // One advisor conversation, owned by a single user and pinned to one board.

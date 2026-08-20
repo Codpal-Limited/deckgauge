@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { isSystemColumnVisible } from '@deckgauge/shared';
+import { ColumnsIcon } from './board-header/icons';
 import type { BoardColumn } from '@deckgauge/shared';
 
 // System columns split around the custom columns to mirror the board's grid
@@ -87,7 +88,7 @@ export function BoardColumnsPanel({
   ) => (
     <div
       key={key}
-      className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+      className="flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100"
     >
       <label className="flex flex-1 items-center gap-2 cursor-pointer">
         <input
@@ -96,16 +97,16 @@ export function BoardColumnsPanel({
           checked={isSystemColumnVisible(key, hiddenSet)}
           disabled={disabled || opts?.locked}
           onChange={() => onToggle(key)}
-          className="rounded"
+          className="rounded accent-teal-600"
         />
-        <span className={opts?.locked ? 'text-gray-400' : ''}>{label}</span>
+        <span className={opts?.locked ? 'text-slate-400' : ''}>{label}</span>
       </label>
       {opts?.onDelete && (
         <button
           type="button"
           aria-label={`Delete ${label}`}
           onClick={opts.onDelete}
-          className="text-gray-300 hover:text-red-500"
+          className="text-slate-400 hover:text-rose-500"
         >
           ×
         </button>
@@ -114,30 +115,35 @@ export function BoardColumnsPanel({
   );
 
   return (
-    <div ref={containerRef} className="relative inline-block">
+    <div ref={containerRef} className="relative inline-flex">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         disabled={disabled}
-        className="rounded border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="Manage columns"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        className={`inline-flex h-full items-center rounded-r-lg px-2.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-500/40 ${
+          isOpen ? 'bg-teal-500/10 text-teal-600' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+        }`}
       >
-        Columns
+        <ColumnsIcon className="h-3.5 w-3.5" />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1 max-h-96 w-56 overflow-y-auto rounded border border-gray-200 bg-white shadow-lg z-20">
-          {LEADING_SYSTEM.map((r) => renderRow(r.key, r.label, { locked: r.locked }))}
+        <div className="absolute right-0 top-full mt-1.5 flex max-h-96 w-60 flex-col overflow-hidden rounded-xl border border-slate-200 bg-surface-1 shadow-dropdown z-50 animate-fade-in">
+          <div className="overflow-y-auto py-1">
+            {LEADING_SYSTEM.map((r) => renderRow(r.key, r.label, { locked: r.locked }))}
 
-          {customColumns.length > 0 && <div className="my-1 border-t border-gray-100" />}
-          {customColumns.map((col) =>
-            renderRow(col.id, col.name, { onDelete: () => onDeleteColumn(col.id) }),
-          )}
+            {customColumns.length > 0 && <div className="my-1 border-t border-slate-200" />}
+            {customColumns.map((col) =>
+              renderRow(col.id, col.name, { onDelete: () => onDeleteColumn(col.id) }),
+            )}
 
-          <div className="my-1 border-t border-gray-100" />
-          {trailing.map((r) => renderRow(r.key, r.label))}
+            <div className="my-1 border-t border-slate-200" />
+            {trailing.map((r) => renderRow(r.key, r.label))}
+          </div>
 
-          <div className="border-t border-gray-100" />
           <button
             type="button"
             onClick={() => {
@@ -145,7 +151,7 @@ export function BoardColumnsPanel({
               setIsOpen(false);
             }}
             disabled={disabled}
-            className="w-full px-3 py-2 text-left text-xs font-medium text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
+            className="shrink-0 border-t border-slate-200 px-3 py-2 text-left text-xs font-medium text-teal-600 transition-colors hover:bg-teal-500/10 disabled:opacity-50"
           >
             ＋ Add column
           </button>

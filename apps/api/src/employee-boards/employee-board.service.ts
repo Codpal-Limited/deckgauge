@@ -8,6 +8,8 @@ import {
   type EmployeeColumnDto,
 } from '@deckgauge/shared';
 import { toOrgEmployeeDto } from '../org-trees/org-employee-dto.js';
+import { effectiveBoardRole } from '../authz/policy.js';
+import type { OrgRoleValue } from '@deckgauge/shared';
 import { OrgTreeService, computeTreeRanking, CrossTreeEmployeeError } from '../org-trees/org-tree.service.js';
 
 export class EmployeeBoardService {
@@ -295,6 +297,53 @@ export class EmployeeBoardService {
       scopeEmployeeId: b.scopeEmployeeId,
       position: b.position,
     }));
+  }
+
+  /**
+   * The boards in `orgTreeId` this caller may see (design D12).
+   *
+   * `GET /org-trees/:treeId/employee-boards` stays gated on `orgTree(VIEWER)`
+   * because the set to return IS the answer — the gate says "you may ask about
+   * this tree", and this decides what comes back. A board-only grantee reaches
+   * it through D14's `any(...)` on the shell and sees exactly their board.
+   *
+   * One query, not N: each row carries the caller's own grant and their grant on
+   * the parent tree, and the ceiling is applied in memory. An org-tree OWNER
+   * sees every board with no per-board grant — D12's implicit ownership, which
+   * is why owners never have to grant themselves access to boards they made.
+   */
+  async listVisibleForUser(
+    orgTreeId: string,
+    userId: string,
+    membership: { organizationId: string; role: OrgRoleValue } | null,
+  ): Promise<EmployeeBoardSummaryDto[]> {
+    if (!userId) return [];
+    const rows = await this.prisma.employeeBoard.findMany({
+      where: { orgTreeId },
+      orderBy: { position: 'asc' },
+      include: {
+        access: { where: { userId }, select: { role: true } },
+        orgTree: { select: { access: { where: { userId }, select: { role: true } } } },
+      },
+    });
+
+    return rows
+      .filter((row) => {
+        const treeGrant = row.orgTree.access[0]?.role ?? null;
+        const grant = treeGrant === 'OWNER' ? 'OWNER' : (row.access[0]?.role ?? null);
+        // No membership is the break-glass path: no ceiling to apply, so the
+        // raw grant decides — mirroring the policy layer's own null-membership
+        // branch rather than inventing a second rule.
+        if (!membership) return grant !== null;
+        return effectiveBoardRole(membership.role, grant) !== null;
+      })
+      .map((b) => ({
+        id: b.id,
+        orgTreeId: b.orgTreeId,
+        name: b.name,
+        scopeEmployeeId: b.scopeEmployeeId,
+        position: b.position,
+      }));
   }
 
   async getBoard(

@@ -3,7 +3,6 @@ import { z } from 'zod';
 import {
   BoardJiraSourceCreateSchema,
   BoardJiraSourcePatchSchema,
-  JiraCloudAdapter,
   type JiraPort,
 } from '@deckgauge/shared';
 import { BoardJiraSourceService } from './board-jira-source.service.js';
@@ -17,9 +16,43 @@ import {
   SourceIssueTypesNotFoundError,
 } from './source-issue-types.service.js';
 import { createTypeCache, type TypeCache } from './type-cache.js';
+import {
+  SourceConnectionNotFoundError,
+  defaultJiraAdapterFor,
+} from './source-adapters.js';
+import { CrossOrganizationSyncError } from './cross-organization-sync-error.js';
 import { clickhouse as defaultClickhouse } from '@deckgauge/db';
 import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
-import { board } from '../auth/policy.js';
+import { all, board, orgRole, ORG_MEMBER } from '../auth/policy.js';
+import { requireOrganizationId } from '../organizations/request-organization.js';
+
+/**
+ * Type discovery spends the connection's stored credential, so its handler needs
+ * the caller's organization to scope the connection resolve with. `board(VIEWER)`
+ * cannot supply one: it allows a membership-less caller through on a bare board
+ * grant (see its "no membership … the grant decides alone" branch), which would
+ * reach `requireOrganizationId` and 500. `orgRole('VIEWER')` is the floor that
+ * guarantees a membership — VIEWER rather than MEMBER because this is a read and
+ * an org VIEWER may legitimately perform it.
+ */
+const DISCOVERY_POLICY = all(board('VIEWER'), orgRole('VIEWER'));
+
+/**
+ * Attaching a source takes a caller-supplied sync id and writes a row keyed to
+ * it, so its handler needs the caller's organization to scope the sync resolve
+ * with. `board('EDITOR')` cannot supply one: it deliberately admits a
+ * membership-less caller on a bare BoardAccess grant (see its "the grant decides
+ * alone" branch), which would reach `requireOrganizationId` and 500.
+ *
+ * `ORG_MEMBER` rather than `orgRole('VIEWER')` — the opposite choice from
+ * DISCOVERY_POLICY, and for a reason that only holds here. `effectiveBoardRole`
+ * caps an organization VIEWER at board VIEWER whatever their board grant says, so
+ * no VIEWER can pass `board('EDITOR')` in the first place: MEMBER removes no
+ * reachable capability, while it IS the documented floor for creating something a
+ * tenant owns. On the VIEWER-level discovery reads MEMBER would have been a
+ * regression, which is why they use `orgRole('VIEWER')` instead.
+ */
+const ATTACH_POLICY = all(board('EDITOR'), ORG_MEMBER);
 
 // Type-cache TTL: 60s. Provider type lists change rarely (admin-edited issue
 // types) so 60s is plenty fresh while still cutting the request rate ~60x for
@@ -31,24 +64,11 @@ const TYPE_CACHE_TTL_MS = 60_000;
 // "what issue types does this Jira project expose".
 const defaultTypeCache: TypeCache = createTypeCache({ ttlMs: TYPE_CACHE_TTL_MS });
 
-async function defaultJiraAdapterFor(
-  prisma: PrismaClient,
-  instanceId: string,
-): Promise<JiraPort> {
-  const instance = await prisma.jiraInstance.findUniqueOrThrow({ where: { id: instanceId } });
-  return new JiraCloudAdapter({
-    atlassianUrl: instance.atlassianUrl,
-    email: instance.email,
-    apiToken: instance.apiToken,
-    projectKeys: instance.projectKeys,
-  });
-}
-
 export function boardJiraSourceRoutes(deps: {
   prisma: PrismaClient;
   clickhouse?: ClickHouseClient;
   typeCache?: TypeCache;
-  jiraAdapterFor?: (instanceId: string) => Promise<JiraPort>;
+  jiraAdapterFor?: (organizationId: string, instanceId: string) => Promise<JiraPort>;
 }) {
   const service = new BoardJiraSourceService(deps.prisma);
   const ch = deps.clickhouse ?? defaultClickhouse;
@@ -58,7 +78,9 @@ export function boardJiraSourceRoutes(deps: {
     prisma: deps.prisma,
     cache: deps.typeCache ?? defaultTypeCache,
     jiraAdapterFor:
-      deps.jiraAdapterFor ?? ((instanceId) => defaultJiraAdapterFor(deps.prisma, instanceId)),
+      deps.jiraAdapterFor ??
+      ((organizationId, instanceId) =>
+        defaultJiraAdapterFor(deps.prisma, organizationId, instanceId)),
     // ADO not used by Jira routes; supply a stub that the service never calls
     // on this path so the Deps shape stays satisfied.
     adoAdapterFor: () => {
@@ -84,17 +106,24 @@ export function boardJiraSourceRoutes(deps: {
     // link from the Jira site it actually synced from, instead of one global URL.
     app.get<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/jira/atlassian-urls',
-      { config: { policy: board('VIEWER') } },
+      // Reads every JiraInstance in the organization to compute `fallback`, so it
+      // needs a tenant to scope that read to — see DISCOVERY_POLICY for why
+      // `board('VIEWER')` alone cannot supply one, and R4 in the service for what
+      // the unscoped read leaked.
+      { config: { policy: DISCOVERY_POLICY } },
       async (req, reply) => {
         const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
-        return service.atlassianUrlsByProjectKey(params.data.boardId);
+        return service.atlassianUrlsByProjectKey(
+          requireOrganizationId(req),
+          params.data.boardId,
+        );
       },
     );
 
     app.post<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/jira',
-      { config: { policy: board('EDITOR') } },
+      { config: { policy: ATTACH_POLICY } },
       async (req, reply) => {
         const params = z.object({ boardId: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
@@ -103,8 +132,17 @@ export function boardJiraSourceRoutes(deps: {
           boardId: params.data.boardId,
         });
         if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
-        const row = await service.attach(body.data);
-        return reply.code(201).send(row);
+        try {
+          const row = await service.attach(requireOrganizationId(req), body.data);
+          return reply.code(201).send(row);
+        } catch (err) {
+          // 404, not 403: see CrossOrganizationSyncError. The same answer an
+          // unknown id gets, so the response cannot be used to enumerate.
+          if (err instanceof CrossOrganizationSyncError) {
+            return reply.code(404).send({ error: err.message });
+          }
+          throw err;
+        }
       },
     );
 
@@ -176,18 +214,25 @@ export function boardJiraSourceRoutes(deps: {
 
     app.get<{ Params: { boardId: string; id: string } }>(
       '/boards/:boardId/sources/jira/:id/issue-types',
-      { config: { policy: board('VIEWER') } },
+      { config: { policy: DISCOVERY_POLICY } },
       async (req, reply) => {
         const params = z
           .object({ boardId: z.string().uuid(), id: z.string().uuid() })
           .safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
         try {
-          const types = await issueTypesSvc.listJira(params.data.boardId, params.data.id);
+          const types = await issueTypesSvc.listJira(
+            requireOrganizationId(req),
+            params.data.boardId,
+            params.data.id,
+          );
           reply.header('Cache-Control', 'max-age=60, must-revalidate');
           return { types };
         } catch (err) {
-          if (err instanceof SourceIssueTypesNotFoundError) {
+          if (
+            err instanceof SourceIssueTypesNotFoundError ||
+            err instanceof SourceConnectionNotFoundError
+          ) {
             return reply.code(404).send({ error: err.message });
           }
           throw err;

@@ -1,4 +1,5 @@
 import type { PrismaClient, User } from '@deckgauge/db';
+import type { OrgPerson } from '@deckgauge/shared';
 
 export interface UpsertInput {
   keycloakId: string;
@@ -58,16 +59,46 @@ export class UserService {
     return this.prisma.user.count({ where: { isAdmin: true } });
   }
 
-  async search(query: string): Promise<User[]> {
-    return this.prisma.user.findMany({
+  /**
+   * ACTIVE members of ONE organization, for the sharing people picker.
+   *
+   * `organizationId` is not optional and not decoration: the previous version
+   * searched every User row in the deployment, so a board owner could grant
+   * access to a user in another organization (design §1.3). The route's
+   * `orgRole('VIEWER')` policy guarantees a membership, so there is no
+   * null-organization case to fall back to here.
+   *
+   * `userId: { not: null }` excludes PENDING invites: no bound user means
+   * nothing that can hold an access row, so offering them would produce a
+   * grant that cannot be created.
+   */
+  async search(query: string, organizationId: string): Promise<OrgPerson[]> {
+    const memberships = await this.prisma.orgMembership.findMany({
       where: {
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { email: { contains: query, mode: 'insensitive' } },
-        ],
+        organizationId,
+        status: 'ACTIVE',
+        userId: { not: null },
+        ...(query
+          ? {
+              user: {
+                OR: [
+                  { name: { contains: query, mode: 'insensitive' as const } },
+                  { email: { contains: query, mode: 'insensitive' as const } },
+                ],
+              },
+            }
+          : {}),
+      },
+      select: {
+        role: true,
+        user: { select: { id: true, name: true, email: true, avatarUrl: true } },
       },
       take: 20,
-      orderBy: { name: 'asc' },
+      orderBy: { user: { name: 'asc' } },
     });
+
+    return memberships.flatMap((m) =>
+      m.user ? [{ ...m.user, orgRole: m.role as OrgPerson['orgRole'] }] : [],
+    );
   }
 }

@@ -1,10 +1,11 @@
 import { Suspense } from "react";
 import type { Group, BoardColumn, BoardOwner, BoardStatus } from "@deckgauge/shared";
+import { canEditEntity } from "@deckgauge/shared";
 import type { JiraSourceLinks } from "@deckgauge/shared";
 import { BoardView } from "./components/BoardView";
 import BoardPageContent from "./components/BoardPageContent";
-import { auth } from "@/auth";
 import { authFetch } from "./actions/api";
+import { fetchMyRole, fetchAccess } from "./actions/access";
 import { boardsListTag, boardTag, commentsTag } from "./utils/cache-tags";
 import { bucketProjectsIntoGroups } from "./utils/bucket-projects";
 import { cookies } from "next/headers";
@@ -244,17 +245,23 @@ export default async function BoardPage({ searchParams }: PageProps) {
   const allProjectIds = groups.flatMap((g) => (g.projects ?? []).map((p: any) => p.id));
   const commentCounts = await fetchCommentCounts(allProjectIds);
 
-  // Determine user role. Default to OWNER if logged in — V1 is single-user mode
-  // and the my-role API may fail when SSR auth tokens aren't forwarded in Docker.
-  const session = await auth();
-  const userRole: 'OWNER' | 'EDITOR' | 'VIEWER' = session ? 'OWNER' : 'VIEWER';
+  // The caller's real effective role, resolved by the API through the org-role
+  // ceiling. This replaced `session ? 'OWNER' : 'VIEWER'`, whose comment claimed
+  // SSR tokens might not reach the API — every other fetch on this page is
+  // board(VIEWER)-gated and succeeds, so they demonstrably do. fetchMyRole fails
+  // closed, so a genuine failure renders the board read-only rather than
+  // granting phantom ownership.
+  const [{ role: userRole, userId: currentUserId }, boardAccess] = await Promise.all([
+    fetchMyRole('board', selectedBoardId),
+    fetchAccess('board', selectedBoardId),
+  ]);
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <BoardPageContent
         boardId={selectedBoardId}
         views={views}
-        canEdit={userRole !== 'VIEWER'}
+        canEdit={canEditEntity(userRole)}
         projectTotal={projectTotal}
         boardViewProps={{
           board,
@@ -269,6 +276,8 @@ export default async function BoardPage({ searchParams }: PageProps) {
           boardOwners,
           boardStatuses,
           userRole,
+          currentUserId,
+          boardAccess,
         }}
       />
     </Suspense>

@@ -165,41 +165,32 @@ log_info "Keycloak DB: $KC_SIZE"
 log_step "Backing up ClickHouse tables..."
 mkdir -p "$WORK_DIR/clickhouse"
 
-# All tables that hold integration data + identity mapping
-# Materialized view state tables are included so they don't need to be rebuilt
-CH_TABLES=(
-  # Jira
-  jira_issues
-  jira_transitions
-  jira_worklogs
-  # GitHub
-  github_issues
-  github_milestones
-  github_pull_requests
-  github_commits
-  github_reviews
-  github_workflow_runs
-  github_deployments
-  # GitLab
-  gitlab_merge_requests
-  gitlab_commits
-  gitlab_reviews
-  gitlab_issues
-  # ADO
-  ado_work_items
-  ado_transitions
-  ado_pull_requests
-  ado_commits
-  ado_reviews
-  # Identity
-  developer_identity_map
-  # Classification (manually-set CapEx/OpEx overrides — no rebuild path if lost)
-  board_item_classification
-  # Materialized view state tables (pre-aggregations)
-  developer_weekly_pr_state
-  jira_flow_efficiency_state
-  commit_activity_state
-)
+# Which tables to export is asked of the SERVER, not hardcoded here.
+#
+# This list used to be a literal array, and it had silently fallen behind the
+# schema: ado_deployments (21,426 rows of DORA deploy data on staging) was absent
+# from both this script and restore.sh, so it was neither backed up nor
+# restorable. ADO history backfill is opt-in and forward watermarks cannot heal a
+# gap, so that data was not necessarily re-syncable either. A backup whose
+# coverage depends on someone remembering to edit an array is not a backup.
+#
+# Any MergeTree-family table in the database is included, which means a table
+# added by a future migration is covered the day it appears. _ch_migrations is
+# included deliberately: restoring the ledger keeps a restored database from
+# re-applying schema files it already has.
+CH_TABLE_QUERY="SELECT name FROM system.tables WHERE database='${CH_DB}' AND engine LIKE '%MergeTree%' ORDER BY name FORMAT TSV"
+CH_TABLES=()
+while IFS= read -r line; do
+  [ -n "$line" ] && CH_TABLES+=("$line")
+done < <(curl -sf --max-time 30 "http://${CH_USER}:${CH_PASS}@${CH_HOST}:${CH_PORT}/" --data "$CH_TABLE_QUERY")
+
+# Fail loudly. A backup that silently captures zero tables is worse than one that
+# refuses to run, because it looks like success until the day it is needed.
+if [ ${#CH_TABLES[@]} -eq 0 ]; then
+  log_fail "Could not enumerate ClickHouse tables in '${CH_DB}' — refusing to write a backup that may be empty."
+  exit 1
+fi
+log_info "  ${#CH_TABLES[@]} ClickHouse tables to export (enumerated from the server)"
 
 TOTAL_CH_ROWS=0
 for table in "${CH_TABLES[@]}"; do

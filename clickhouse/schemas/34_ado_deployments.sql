@@ -22,6 +22,7 @@
 -- worse than the merged-PR proxy it replaces.
 CREATE TABLE IF NOT EXISTS cockpit.ado_deployments
 (
+    organization_id     String,
     id                  String,            -- "{org_url}/{project}#{kind}#{deployment_id}"
     deployment_id       UInt64,
     kind                String,            -- 'release' | 'environment'
@@ -56,5 +57,5 @@ ENGINE = ReplacingMergeTree(synced_at)
 -- completed_at is Nullable and cannot be partitioned on directly; started_at is
 -- always present on a deployment record that has begun.
 PARTITION BY toYYYYMM(coalesce(started_at, toDateTime(0)))
-ORDER BY (org_url, project, kind, deployment_id)
+ORDER BY (organization_id, org_url, project, kind, deployment_id)
 SETTINGS index_granularity = 8192;

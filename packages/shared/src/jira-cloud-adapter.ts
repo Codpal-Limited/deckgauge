@@ -1,4 +1,4 @@
-import { JiraPort } from "./jira-port";
+import { JiraPort, JiraIssueExistence, JiraCredentialState } from "./jira-port";
 import { JiraEpic, JiraIssue } from "./jira-schemas";
 import { JiraConfig } from "./jira-config-schema";
 import { extractPlainText } from './adf-to-plain-text';
@@ -37,6 +37,20 @@ interface JiraIssueResponse {
   };
 }
 
+/** What a project lookup could establish about the caller's view of a project. */
+type JiraProjectVisibility = "visible" | "unavailable" | "unknown";
+
+/**
+ * The project key an issue key belongs to. Jira project keys are alphanumeric
+ * and carry no hyphen, so everything before the LAST hyphen is the project.
+ * Anything that is not shaped like an issue key yields null, and a null is never
+ * corroborated into a deletion.
+ */
+function projectKeyOf(issueKey: string): string | null {
+  const match = /^([A-Za-z][A-Za-z0-9]*)-\d+$/.exec(issueKey.trim());
+  return match?.[1] ?? null;
+}
+
 export class JiraCloudAdapter implements JiraPort {
   private config: JiraConfig;
   private delayFn: (ms: number) => Promise<void>;
@@ -66,6 +80,147 @@ export class JiraCloudAdapter implements JiraPort {
 
   async fetchIssueKeys(jql: string): Promise<string[]> {
     return this.fetchPaginated(jql, (issue) => issue.key, "key");
+  }
+
+  /**
+   * One issue, one request, no retries: a 404 is the answer, not a failure.
+   *
+   * Jira answers 404 both for a deleted issue and for one this connection may no
+   * longer see (issue-level security, a move into a restricted project) — the
+   * response body is identical, so the two are indistinguishable and both read
+   * as `deleted`. An issue MOVED to another project keeps resolving by its old
+   * key, so a move alone answers 200 / `exists`.
+   *
+   * Every other outcome is `unknown` rather than an exception: the caller uses
+   * this to decide whether to mark a board row deleted, and an outage must never
+   * be able to do that. An open circuit answers `unknown` for the same reason.
+   */
+  /**
+   * Whether this connection's credential still authenticates.
+   *
+   * `/myself` rather than anything a sync already calls, because Jira serves an
+   * expired token ANONYMOUSLY on the sync's endpoints: `/search/jql` answers 200
+   * with an empty result set and `GET /issue/{key}` answers 404, so a dead
+   * credential is indistinguishable from an empty project and a deleted issue.
+   * `/myself` requires a user and answers 401 when there is not one.
+   *
+   * Anything other than a definite answer about the credential is `unknown` —
+   * an outage must never be reported as an expired token.
+   */
+  /**
+   * Corroboration memos, deliberately per ADAPTER INSTANCE — one is built per
+   * sync run, so these answer once a run rather than once a key. A board
+   * draining a deletion backlog probes up to 200 keys in a run; paying two extra
+   * requests each would be a self-inflicted rate limit.
+   */
+  private credentialMemo: Promise<JiraCredentialState> | null = null;
+  private projectMemos = new Map<string, Promise<JiraProjectVisibility>>();
+
+  async checkCredentials(): Promise<JiraCredentialState> {
+    const baseUrl = this.config.atlassianUrl.replace(/\/+$/, "");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(`${baseUrl}/rest/api/3/myself`, {
+        method: "GET",
+        headers: {
+          Authorization: this.getBasicAuthHeader(),
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+      });
+      if (res.ok) return "valid";
+      if (res.status === 401 || res.status === 403) return "invalid";
+      return "unknown";
+    } catch {
+      return "unknown";
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async issueExists(issueKey: string): Promise<JiraIssueExistence> {
+    if (this.circuitOpen) return "unknown";
+
+    const baseUrl = this.config.atlassianUrl.replace(/\/+$/, "");
+    const url = `${baseUrl}/rest/api/3/issue/${encodeURIComponent(issueKey)}?fields=key`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: this.getBasicAuthHeader(),
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+      });
+      if (res.ok) return "exists";
+      // A 404 is the ambiguous answer, never the final one — see confirmDeletion.
+      if (res.status === 404) return this.confirmDeletion(issueKey);
+      return "unknown";
+    } catch {
+      return "unknown";
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  /**
+   * Whether a 404 on an issue may be read as "deleted".
+   *
+   * Jira words two very different situations identically — "Issue does not exist
+   * or you do not have permission to see it" — and answers 404 for both. It does
+   * so for a deleted issue, for an issue hidden by an issue-level security
+   * scheme, for a project that has been archived or taken out of view, and for
+   * an EXPIRED CREDENTIAL, which Jira serves anonymously on this endpoint rather
+   * than rejecting. On 2026-08-19 the last of those turned 392 live board rows
+   * black.
+   *
+   * So the 404 is corroborated before it is believed: the credential must still
+   * authenticate (`/myself`, the endpoint that does answer 401), and the issue's
+   * project must still be visible to it. Anything less is `unknown`, which
+   * leaves board rows exactly as they are.
+   *
+   * The deliberate cost: deleting an entire Jira project no longer blacks out
+   * its board rows, because the project check cannot then tell "you deleted the
+   * project" from "you lost sight of it". Those rows simply stop updating, which
+   * is the recoverable half of the trade.
+   */
+  private async confirmDeletion(issueKey: string): Promise<JiraIssueExistence> {
+    this.credentialMemo ??= this.checkCredentials();
+    if ((await this.credentialMemo) !== "valid") return "unknown";
+
+    const projectKey = projectKeyOf(issueKey);
+    if (projectKey === null) return "unknown";
+    if (!this.projectMemos.has(projectKey)) {
+      this.projectMemos.set(projectKey, this.projectVisibility(projectKey));
+    }
+    return (await this.projectMemos.get(projectKey)) === "visible" ? "deleted" : "unknown";
+  }
+
+  /** Whether this credential can still see a project at all. */
+  private async projectVisibility(projectKey: string): Promise<JiraProjectVisibility> {
+    const baseUrl = this.config.atlassianUrl.replace(/\/+$/, "");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(`${baseUrl}/rest/api/3/project/${encodeURIComponent(projectKey)}`, {
+        method: "GET",
+        headers: {
+          Authorization: this.getBasicAuthHeader(),
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+      });
+      if (res.ok) return "visible";
+      if (res.status === 404 || res.status === 403) return "unavailable";
+      return "unknown";
+    } catch {
+      return "unknown";
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   private buildJql(projectKeys: string[], isEpic: boolean): string {

@@ -1,6 +1,7 @@
 -- ADO work item state transitions (the changelog).
 CREATE TABLE IF NOT EXISTS cockpit.ado_transitions
 (
+    organization_id     String,
     id                  String,
     work_item_id        UInt32,
     project             String,
@@ -15,5 +16,5 @@ CREATE TABLE IF NOT EXISTS cockpit.ado_transitions
 )
 ENGINE = ReplacingMergeTree(synced_at)
 PARTITION BY toYYYYMM(changed_at)
-ORDER BY (project, work_item_id, changed_at)
+ORDER BY (organization_id, project, work_item_id, changed_at)
 SETTINGS index_granularity = 8192;

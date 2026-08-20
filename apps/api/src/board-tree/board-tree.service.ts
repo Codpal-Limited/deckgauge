@@ -46,6 +46,7 @@ export class BoardTreeService {
   }
 
   async createFolder(
+    organizationId: string,
     userId: string,
     input: CreateBoardFolderInput,
   ): Promise<BoardFolder> {
@@ -63,7 +64,7 @@ export class BoardTreeService {
       data.position ?? (await this.nextSiblingPosition(userId, parentId));
 
     return this.prisma.boardFolder.create({
-      data: { userId, name: data.name, color: data.color, parentId, position },
+      data: { organizationId, userId, name: data.name, color: data.color, parentId, position },
     });
   }
 

@@ -1,4 +1,14 @@
 import type { PrismaClient, BoardAccessRole } from '@deckgauge/db';
+import type { OrgRoleValue } from '@deckgauge/shared';
+import { effectiveBoardRole } from '../authz/policy.js';
+
+/**
+ * The caller's standing in their organization. **Optional and trailing** on the
+ * functions below: a call site that has no membership to hand keeps the
+ * historical raw-grant behaviour rather than failing to compile, and the
+ * fail-closed contract holds either way.
+ */
+export type CallerMembership = { organizationId: string; role: OrgRoleValue } | null;
 
 /** Board roles are totally ordered; a higher rank satisfies every lower one. */
 export const ROLE_RANK: Record<BoardAccessRole, number> = { VIEWER: 0, EDITOR: 1, OWNER: 2 };
@@ -41,16 +51,43 @@ export async function accessibleBoardIds(
   boardIds: readonly string[],
   required: BoardAccessRole,
   log?: BoardAccessLog,
+  membership: CallerMembership = null,
 ): Promise<Set<string>> {
   if (!userId) return new Set();
   const unique = [...new Set(boardIds)].filter((id) => id.length > 0);
   if (unique.length === 0) return new Set();
+
+  // The org-role ceiling (design D3), the same rule `evaluatePolicy` applies —
+  // applied here too so the two cannot disagree. Before this, an org ADMIN with
+  // no BoardAccess rows saw an EMPTY roadmap and was refused a sync detach,
+  // while the policy layer treated them as an implicit OWNER of those same
+  // boards. Under-permissive, so this closes a usability gap, not a hole.
+  //
+  // Deliberately AFTER the `!userId` and empty-set guards: a caller with no user
+  // id must get nothing, membership or not.
+  //
+  // Boards are NOT re-read through the caller's organization here. That check
+  // belongs with the entity load and is a documented, deferred multi-org
+  // precondition — adding half of it here would make this helper disagree with
+  // `evaluatePolicy` in the other direction.
+  if (membership?.role === 'ADMIN') return new Set(unique);
+
   try {
     const rows = await prisma.boardAccess.findMany({
       where: { userId, boardId: { in: unique } },
       select: { boardId: true, role: true },
     });
-    return new Set(rows.filter((r) => meetsRole(r.role, required)).map((r) => r.boardId));
+    return new Set(
+      rows
+        .filter((r) => {
+          // With no membership the raw grant decides, exactly as before —
+          // mirroring the policy layer's own null-membership branch rather than
+          // inventing a second rule.
+          const effective = membership ? effectiveBoardRole(membership.role, r.role) : r.role;
+          return effective !== null && meetsRole(effective, required);
+        })
+        .map((r) => r.boardId),
+    );
   } catch (err) {
     log?.error(err, 'board-access: bulk access lookup failed — treating every board as inaccessible');
     return new Set();
@@ -68,8 +105,9 @@ export async function forbiddenBoardIds(
   boardIds: readonly string[],
   required: BoardAccessRole,
   log?: BoardAccessLog,
+  membership: CallerMembership = null,
 ): Promise<string[]> {
-  const allowed = await accessibleBoardIds(prisma, userId, boardIds, required, log);
+  const allowed = await accessibleBoardIds(prisma, userId, boardIds, required, log, membership);
   return [...new Set(boardIds)].filter((id) => !allowed.has(id));
 }
 

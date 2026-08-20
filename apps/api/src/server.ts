@@ -1,10 +1,11 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import { resolveCorsOrigin } from "./cors-origins.js";
 import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { PrismaClient, clickhouse } from "@deckgauge/db";
+import { PrismaClient, chExecutorFromClient, clickhouse } from "@deckgauge/db";
 import { ClickhouseIntelligenceService } from "./intelligence/clickhouse-intelligence.service.js";
 import { intelligenceRoutes } from "./intelligence/intelligence.routes.js";
 import { buildIntelligenceQueues } from "./intelligence/queues.js";
@@ -17,6 +18,8 @@ import { columnRoutes } from "./columns/column.routes.js";
 import { automationRoutes } from "./automations/automation.routes.js";
 import { jiraInstanceRoutes } from "./jira-instances/jira-instance.routes.js";
 import { retiredProjectsRoutes } from "./retired-projects/retired-projects.routes.js";
+import { organizationRoutes } from "./organizations/organization.routes.js";
+import { orgBoardsRoutes } from "./organizations/org-boards.routes.js";
 import { commentRoutes } from "./comments/comment.routes.js";
 import { ownerRoutes } from "./owners/owner.routes.js";
 import { boardStatusRoutes } from "./board-statuses/board-status.routes.js";
@@ -43,7 +46,7 @@ import { boardAdoSourceRoutes } from "./board-sources/board-ado-source.routes.js
 import { boardGitLabSourceRoutes } from "./board-sources/board-gitlab-source.routes.js";
 import { buildKeycloakAuthPlugin } from "./auth/keycloak-auth.plugin.js";
 import { buildPolicyPlugin } from "./auth/policy.plugin.js";
-import { PUBLIC } from "./auth/policy.js";
+import { AUTHENTICATED, PUBLIC } from "./auth/policy.js";
 import { boardAccessRoutes } from "./board-access/board-access.routes.js";
 import { userRoutes } from "./users/user.routes.js";
 import { boardViewRoutes } from "./widgets/board-views.routes.js";
@@ -63,6 +66,9 @@ import { comparisonRoutes } from "./comparison/comparison.routes.js";
 import { orgTreeRoutes } from "./org-trees/org-tree.routes.js";
 import { orgTreeTimesheetRoutes } from "./org-trees/org-tree-timesheet.routes.js";
 import { buildOrgTreeAccessRoutes } from "./org-trees/org-tree-access.routes.js";
+import { buildEmployeeBoardAccessRoutes } from "./employee-boards/employee-board-access.routes.js";
+import { buildComparisonAccessRoutes } from "./comparison/comparison-access.routes.js";
+import { buildRoadmapAccessRoutes } from "./roadmaps/roadmap-access.routes.js";
 import { OrgTreeService } from "./org-trees/org-tree.service.js";
 import { OrgSourceService } from "./org-trees/org-source.service.js";
 import { employeeBoardRoutes } from "./employee-boards/employee-board.routes.js";
@@ -100,7 +106,7 @@ export function buildServer(prisma: PrismaClient) {
     }
   });
 
-  app.register(cors, { origin: true });
+  app.register(cors, { origin: resolveCorsOrigin(process.env) });
   app.register(rateLimit, {
     max: Number(process.env.RATE_LIMIT_MAX ?? 300),
     timeWindow: process.env.RATE_LIMIT_WINDOW ?? "1 minute",
@@ -140,10 +146,16 @@ export function buildServer(prisma: PrismaClient) {
     protectedApp.register(
       buildKeycloakAuthPlugin(prisma, {
         onUserAuthenticated: enterprise?.onUserAuthenticated?.bind(enterprise),
+        restrictMembership: enterprise?.restrictMembership?.bind(enterprise),
       }),
     );
     const singleUser = process.env.DECKGAUGE_SINGLE_USER === "true";
-    await protectedApp.register(buildPolicyPlugin(prisma, { singleUser }));
+    await protectedApp.register(
+      buildPolicyPlugin(prisma, {
+        singleUser,
+        restrictDenial: enterprise?.restrictDenial?.bind(enterprise),
+      }),
+    );
     protectedApp.register(boardAccessRoutes, { prisma });
     protectedApp.register(userRoutes, { prisma });
     protectedApp.register(commentRoutes, { prisma, uploadService });
@@ -171,6 +183,19 @@ export function buildServer(prisma: PrismaClient) {
     protectedApp.register(automationRoutes, { prisma });
     protectedApp.register(jiraInstanceRoutes, { prisma });
     protectedApp.register(retiredProjectsRoutes, { prisma });
+    // The one place the live ClickHouse client is bound to organization
+    // provisioning. Kept out of organization.routes.ts so route tests that
+    // register the plugin cannot reach the server behind clickhouse.ts's
+    // hard-coded localhost:8123 fallback.
+    protectedApp.register(organizationRoutes, {
+      prisma,
+      chExec: chExecutorFromClient(clickhouse),
+      // Open-core seam: an edition may have something to tell this caller. The
+      // route sanitises the result and omits the field entirely when there is
+      // nothing, so the Community payload is unchanged.
+      notices: enterprise?.notices?.bind(enterprise),
+    });
+    protectedApp.register(orgBoardsRoutes, { prisma });
     protectedApp.register(ownerRoutes, { prisma });
     protectedApp.register(boardStatusRoutes, { prisma });
     protectedApp.register(uploadRoutes, { service: uploadService });
@@ -262,6 +287,9 @@ export function buildServer(prisma: PrismaClient) {
       }),
     );
     protectedApp.register(buildOrgTreeAccessRoutes(prisma));
+    protectedApp.register(buildEmployeeBoardAccessRoutes(prisma));
+    protectedApp.register(buildComparisonAccessRoutes(prisma));
+    protectedApp.register(buildRoadmapAccessRoutes(prisma));
 
     // EI-019 — Phase 3 intelligence routes. clickhouse is the shared
     // @clickhouse/client singleton exported from @deckgauge/db; its
@@ -295,6 +323,33 @@ export function buildServer(prisma: PrismaClient) {
     protectedApp.register(timesheetRoutes({ service: timesheetService, prisma }));
     protectedApp.register(orgTreeTimesheetRoutes({ prisma, clickhouse }));
     protectedApp.register(locationRoutes);
+
+    // Open-core seam, authenticated half. The public half (registerRoutes, below)
+    // serves the unauthenticated status endpoint, so a route that reads
+    // request.membership has to be registered here instead — after the auth and
+    // policy plugins above. A no-op in Community, where the module is absent.
+    if (enterprise?.registerProtectedRoutes) {
+      const status = await enterprise.verifyLicense();
+      // `RouteHost.get`/`post` take a path and a handler and nothing else, so an
+      // edition has no way to declare `config: { policy }` — while the policy
+      // plugin refuses to finish booting if any route in this context declares
+      // none. The core therefore supplies it, which is the right side of the seam
+      // for it to live on: an edition cannot forget it, and cannot widen it.
+      //
+      // AUTHENTICATED rather than an org-scoped policy because these handlers do
+      // their own tenant check and answer NO_ORGANIZATION for a caller without a
+      // membership — a policy-level rejection would replace that answer with a
+      // generic refusal.
+      const policedHost: RouteHost = {
+        get: (path, handler) =>
+          protectedApp.get(path, { config: { policy: AUTHENTICATED } }, handler as never),
+        post: (path, handler) =>
+          protectedApp.post(path, { config: { policy: AUTHENTICATED } }, handler as never),
+        addContentTypeParser: (contentType, options, parser) =>
+          protectedApp.addContentTypeParser(contentType, options, parser as never),
+      };
+      await enterprise.registerProtectedRoutes(policedHost, status);
+    }
   });
 
   // Open-core seam. When DECKGAUGE_EDITION=enterprise and the private

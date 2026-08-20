@@ -24,6 +24,8 @@ import { fetchGroups } from '../../../actions/projects';
 import { fetchBoardStatuses } from '../../../actions/board-statuses';
 import { fetchGitHubInstances } from '../../../actions/github';
 import { getBoardKind } from '../../../actions/board-tree';
+import { getBootstrapState } from '../../../actions/organization';
+import { isOrganizationAdmin } from '../../../lib/org-role';
 import { boardCapabilities } from '@deckgauge/shared';
 import { CalendarSourceScreen } from '../../../components/CalendarSourceScreen';
 
@@ -56,7 +58,16 @@ export default async function BoardSourcesPage({ params }: { params: { boardId: 
     ),
   ]);
 
-  const board = await getBoardKind(params.boardId).catch(() => null);
+  // This tab is a picker over connections the organization already has, which a
+  // member may use. Rotating a connection's token is not: refresh-token is
+  // orgRole(ADMIN), so the reconnect affordances are withheld from members
+  // rather than shown and answered with a 403.
+  const [orgState, board] = await Promise.all([
+    getBootstrapState(),
+    getBoardKind(params.boardId).catch(() => null),
+  ]);
+  const canManageConnections = isOrganizationAdmin(orgState);
+
   const showCalendarSource = boardCapabilities(board?.kind ?? '').calendarSource;
 
   const githubInstances = (await fetchGitHubInstances().catch(() => [])) as Array<{
@@ -118,6 +129,7 @@ export default async function BoardSourcesPage({ params }: { params: { boardId: 
           id: i.id,
           label: i.baseUrl ?? i.id,
         }))}
+        canManageConnections={canManageConnections}
       />
     </>
   );

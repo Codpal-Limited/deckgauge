@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@deckgauge/db';
+import { CrossOrganizationSyncError } from './cross-organization-sync-error.js';
 import type { BulkBindResponse } from '@deckgauge/shared';
 import { computeTier, estimateBackfillCost } from '@deckgauge/shared';
 
@@ -29,18 +30,34 @@ export class BoardGitHubSourceService {
     });
   }
 
-  async attach(input: {
-    boardId: string;
-    gitHubRepoSyncId: string;
-    targetGroupId?: string | null;
-    allowedLabels?: string[];
-    allowedTypes?: string[];
-    includeClosedIssues?: boolean;
-    statusMapping?: Record<string, string>;
-    defaultSyncedFields?: string[];
-    syncIssuesToBoard?: boolean;
-    useForIntelligence?: boolean;
-  }) {
+  /**
+   * `organizationId` first — see BoardJiraSourceService.attach for the full rule.
+   *
+   * Note the two spellings GitHub uses: the board-source column is
+   * `gitHubRepoSyncId` (capital H) while GitHubRepoSync's own column and instance
+   * relation are `githubInstanceId` / `githubInstance` (lower-case h).
+   */
+  async attach(
+    organizationId: string,
+    input: {
+      boardId: string;
+      gitHubRepoSyncId: string;
+      targetGroupId?: string | null;
+      allowedLabels?: string[];
+      allowedTypes?: string[];
+      includeClosedIssues?: boolean;
+      statusMapping?: Record<string, string>;
+      defaultSyncedFields?: string[];
+      syncIssuesToBoard?: boolean;
+      useForIntelligence?: boolean;
+    },
+  ) {
+    const sync = await this.prisma.gitHubRepoSync.findFirst({
+      where: { id: input.gitHubRepoSyncId, githubInstance: { organizationId } },
+      select: { id: true },
+    });
+    if (!sync) throw new CrossOrganizationSyncError('github', input.gitHubRepoSyncId);
+
     return this.prisma.boardGitHubSource.create({ data: input, include: GITHUB_SYNC_INCLUDE });
   }
 
@@ -73,6 +90,8 @@ export interface QueueClient {
 export interface BulkBindArgs {
   prisma: PrismaClient;
   queueClient: QueueClient;
+  /** The caller's organization — `instanceId` must belong to it. */
+  organizationId: string;
   boardId: string;
   instanceId: string;
   repos: string[];
@@ -90,7 +109,21 @@ export interface BulkBindArgs {
   >;
 }
 
+/**
+ * The bulk attach path, and the SECOND entry point this guard has to cover:
+ * `instanceId` comes off the request body just like `attach()`'s sync id, but
+ * bulkBind does not merely reference the named connection — it UPSERTS
+ * GitHubRepoSync rows onto it, enrolling repos for ingestion under that
+ * instance's stored token. Unguarded it was therefore strictly worse than an
+ * unguarded `attach()`, so it is checked the same way and before any write.
+ */
 export async function bulkBind(args: BulkBindArgs): Promise<BulkBindResponse> {
+  const instance = await args.prisma.gitHubInstance.findFirst({
+    where: { id: args.instanceId, organizationId: args.organizationId },
+    select: { id: true },
+  });
+  if (!instance) throw new CrossOrganizationSyncError('github', args.instanceId);
+
   let added = 0;
   let reEnabled = 0;
   let skipped = 0;

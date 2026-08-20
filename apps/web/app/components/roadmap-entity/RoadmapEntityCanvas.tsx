@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { BoardColumn, RoadmapDetail } from '@deckgauge/shared';
+import { canEditEntity } from '@deckgauge/shared';
 import { RoadmapCanvas, type RoadmapViewPayloadShape } from '../roadmap/RoadmapCanvas';
 import { loadBoardColumns } from '../../actions/roadmap';
 import { createRoadmapAdapter } from './roadmap-entity-adapter';
@@ -11,7 +12,13 @@ interface Props {
 }
 
 export default function RoadmapEntityCanvas({ roadmap }: Props) {
-  const canEdit = roadmap.role !== 'VIEWER';
+  // An ALLOWLIST (`canEditEntity`), not `role !== 'VIEWER'`: today
+  // `getBoardRole` hands this a phantom `'OWNER'` (never null), so the two
+  // forms behave identically now. But `roadmap.role` is a real, nullable
+  // role once roadmap sharing lands — `null !== 'VIEWER'` is `true`, so the
+  // negative form would fail OPEN on a lookup failure. `canEditEntity` is the
+  // allowlist that stays safe when that day comes.
+  const canEdit = canEditEntity(roadmap.role);
 
   // itemId → home boardId, and the set of distinct boards to load columns for.
   const boardByItem = useMemo(() => {

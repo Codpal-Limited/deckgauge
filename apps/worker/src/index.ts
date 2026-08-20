@@ -3,6 +3,9 @@ import { fileURLToPath } from 'url'
 import { config } from 'dotenv'
 import { Queue, Worker } from 'bullmq'
 import { PrismaClient, clickhouse, chInsertMany } from '@deckgauge/db'
+import { loadEdition, type WorkerEditionModule } from './edition-loader.js'
+import { createIngestPermission } from './ingest-permission.js'
+import { startPeriodicWork } from './periodic-work.js'
 import {
   FakeJiraAdapter,
   JiraCloudAdapter,
@@ -30,6 +33,7 @@ import {
 } from '@deckgauge/shared'
 import { loadAzureDevOpsConfig } from '@deckgauge/shared/azure-devops-config'
 import { handleSyncJob } from './jira-sync.handler.js'
+import { purgeJiraIssueKeys as purgeJiraKeysFromCh } from './jira-deleted-purge.js'
 import { handleGitHubSyncJob, GitHubProjectsAdapterFactory } from './github-sync.handler.js'
 import { handleAzureDevOpsSyncJob } from './azure-devops-sync.handler.js'
 import { handleGitLabSyncJob } from './gitlab-sync.handler.js'
@@ -97,6 +101,22 @@ async function bootstrapAdoFromYaml() {
   const instanceCount = await db.azureDevOpsInstance.count();
   if (instanceCount > 0) return;
 
+  // Connections are organization property now, and the worker has no request to
+  // take an organization from. Under the enforced single-organization cap there
+  // is at most one, so resolving it here is unambiguous.
+  //
+  // No organization yet means a fresh install nobody has logged into: there is
+  // no tenant to own these rows, so skip rather than invent one. The next worker
+  // start after bootstrap picks the YAML up, because the `instanceCount > 0`
+  // guard above is still unsatisfied.
+  const organization = await db.organization.findFirst({ select: { id: true } });
+  if (!organization) {
+    console.log(
+      'No organization exists yet — skipping ADO YAML bootstrap until one is created',
+    );
+    return;
+  }
+
   try {
     const configPath = process.env.ADO_CONFIG_PATH
       ? path.join(rootDir, process.env.ADO_CONFIG_PATH)
@@ -105,6 +125,7 @@ async function bootstrapAdoFromYaml() {
     for (const inst of yamlConfig.instances) {
       await db.azureDevOpsInstance.create({
         data: {
+          organizationId: organization.id,
           name: inst.name,
           orgUrl: inst.orgUrl,
           authMethod: inst.authMethod as 'PAT' | 'BASIC',
@@ -124,22 +145,62 @@ await bootstrapAdoFromYaml();
 
 const connection = { url: REDIS_URL }
 
-// Thin ChClient wrapper around the shared @clickhouse/client singleton.
-// Defined here (rather than next to GitLab) so the jira-sync worker below can
-// reuse it for the P4.4 dual-write into ClickHouse.
-const chClient = {
-  async insertRows(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void> {
-    if (rows.length === 0) return
-    await chInsertMany(table, rows as Array<Record<string, unknown>>)
-  },
-  // Read-back path. The incremental ADO revisions sweep uses this to recover the
-  // state each work item was already in before its window, so a status change at
-  // the window boundary keeps its true from_state and dwell time instead of
-  // re-reading history from Azure DevOps.
-  async queryRows<T>(sql: string): Promise<T[]> {
-    const result = await clickhouse.query({ query: sql, format: 'JSONEachRow' })
-    return (await result.json()) as T[]
-  },
+// The ONLY way this worker gets a ClickHouse client. There is deliberately no
+// unbound variant any more: every ingest path takes this factory and calls it
+// with the organizationId of the instance (or repo) it is syncing, so a write
+// without a tenant is not something a future handler can express.
+//
+// The organization is bound at construction, not passed per call: insertRows
+// keeps its two-argument (table, rows) signature, so the ~40 handler call
+// sites and the duplicated ChClient interface declarations across the handler
+// files stay untouched. Binding here — rather than threading a third argument
+// through every call site — makes writing to the wrong tenant inexpressible
+// instead of merely avoidable.
+// Open-core seam, resolved BEFORE any Worker below is constructed — those start
+// consuming as soon as they exist, and a job that ran against a not-yet-loaded
+// module would read as "no restrictions", which is the wrong default for ingest.
+//
+// Null in Community, which is the free product's only behaviour: there is no
+// disabled feature here, there is no feature.
+const edition: WorkerEditionModule | null = await loadEdition()
+
+function chClientFor(organizationId: string) {
+  // The edition seam for ingest sits HERE rather than in each handler, because this
+  // is already the one place every ClickHouse write passes through with a tenant
+  // bound (see the note above). One call site covers all ~40 handler writes; eight
+  // per-handler edits would be eight chances to miss one.
+  //
+  // In Community `edition` is null and the permission always allows, so the free
+  // product is unchanged. Memoised, so this costs at most one check per job rather
+  // than one per batch insert.
+  const permission = createIngestPermission(organizationId, edition)
+  return {
+    async insertRows(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void> {
+      if (rows.length === 0) return
+      if (!(await permission.allowed())) {
+        console.log(
+          `[edition] ingest not permitted for organization ${organizationId} — skipping ${rows.length} row(s) for ${table}`,
+        )
+        return
+      }
+      await chInsertMany(table, organizationId, rows as Array<Record<string, unknown>>)
+    },
+    // Read-back path, unchanged for this task — reads are Task 10's concern.
+    // The incremental ADO revisions sweep uses it to recover the state each work
+    // item was already in before its window, so a status change at the window
+    // boundary keeps its true from_state and dwell time instead of re-reading
+    // history from Azure DevOps.
+    async queryRows<T>(sql: string): Promise<T[]> {
+      const result = await clickhouse.query({ query: sql, format: 'JSONEachRow' })
+      return (await result.json()) as T[]
+    },
+    // Jira deletion purge. Org-scoped here, in one place, for the same reason
+    // insertRows is: the caller never sees an organizationId and so cannot pick
+    // the wrong one.
+    async purgeJiraIssueKeys(issueKeys: string[]): Promise<void> {
+      await purgeJiraKeysFromCh(clickhouse, organizationId, issueKeys)
+    },
+  }
 }
 
 const queue = new Queue('jira-sync', { connection })
@@ -148,7 +209,9 @@ const worker = new Worker(
   async (job) => {
     const trigger = job.data?.trigger || 'scheduled'
     console.log(`Processing jira-sync job (trigger: ${trigger})`)
-    return handleSyncJob(job.data ?? { trigger }, db, jiraAdapterFactory, chClient)
+    // The FACTORY goes down, not a client: handleSyncJob binds it per Jira
+    // instance, to the organization that owns that instance.
+    return handleSyncJob(job.data ?? { trigger }, db, jiraAdapterFactory, chClientFor)
   },
   { connection }
 )
@@ -244,7 +307,9 @@ const gitlabWorker = new Worker(
       gitlabPrAdapterFactory,
       gitlabCommitAdapterFactory,
       gitlabIssueAdapterFactory,
-      chClient,
+      // The FACTORY goes down, not a client: handleGitLabSyncJob binds it per
+      // GitLab instance, to the organization that owns that instance.
+      chClientFor,
     )
   },
   { connection },
@@ -338,7 +403,7 @@ function makeIntelligenceQueue(name: string, handler: (jobData: { trigger?: stri
 }
 
 const jiraIntelQueue = makeIntelligenceQueue('jira-intelligence-sync', (data) =>
-  handleJiraIntelligenceSync(data as never, db, jiraIntelFactory, chClient),
+  handleJiraIntelligenceSync(data as never, db, jiraIntelFactory, chClientFor),
 )
 const adoIntelQueue = makeIntelligenceQueue('ado-intelligence-sync', (data) =>
   handleAdoIntelligenceSync(
@@ -346,7 +411,7 @@ const adoIntelQueue = makeIntelligenceQueue('ado-intelligence-sync', (data) =>
     db,
     adoPrFactory,
     adoCommitFactory,
-    chClient,
+    chClientFor,
     adoThrottle,
     adoDeploymentFactory,
   ),
@@ -378,8 +443,10 @@ function makeTierWorker(name: string, concurrency: number) {
         include: { githubInstance: true },
       })
       const octokit = makeOctokitForInstance(sync.githubInstance)
+      // The FACTORY goes down, not a client: runIntelligenceSync binds it to the
+      // organization owning this repo's GitHub instance.
       await runIntelligenceSync(
-        { prisma: db, octokit, rateLimiter: githubBulkRateLimiter, ch: chClient },
+        { prisma: db, octokit, rateLimiter: githubBulkRateLimiter, chClientFor },
         repoSyncId,
       )
     },
@@ -406,7 +473,9 @@ makeIntelligenceQueue('github-intelligence-sync', (data) =>
     db,
     makeOctokitForInstance,
     githubBulkRateLimiter,
-    chClient,
+    // Forwarded to the per-repo runner, which binds it per repo — the fan-out
+    // spans every active repo, across instances in different organizations.
+    chClientFor,
   ),
 )
 
@@ -476,7 +545,7 @@ const adoWorker = new Worker(
   async (job) => {
     const trigger = job.data?.trigger || 'scheduled';
     console.log(`Processing azure-devops-sync job (trigger: ${trigger})`);
-    return handleAzureDevOpsSyncJob(job.data ?? { trigger }, db, adoAdapterFactory, chClient);
+    return handleAzureDevOpsSyncJob(job.data ?? { trigger }, db, adoAdapterFactory, chClientFor);
   },
   { connection },
 );
@@ -520,7 +589,9 @@ const ghWorker = new Worker(
   async (job) => {
     const trigger = job.data?.trigger || 'scheduled';
     console.log(`Processing github-sync job (trigger: ${trigger})`);
-    return handleGitHubSyncJob(job.data ?? { trigger }, db, ghAdapterFactory, ghProjectsAdapterFactory, chClient);
+    // The FACTORY goes down, not a client: handleGitHubSyncJob binds it per
+    // GitHub instance, to the organization that owns that instance.
+    return handleGitHubSyncJob(job.data ?? { trigger }, db, ghAdapterFactory, ghProjectsAdapterFactory, chClientFor);
   },
   { connection },
 );
@@ -660,11 +731,14 @@ pruneWorker.on('failed', (_job, err) => {
 });
 await scheduleRepeatable(pruneQueue, 'sync-run-prune', {}, 24 * 60 * 60 * 1000, 'daily-prune');
 
+const stopPeriodicWork = startPeriodicWork(edition)
+
 console.log('Worker ready')
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('Received SIGTERM, closing worker...')
+  stopPeriodicWork?.()
   await worker.close()
   await queue.close()
   await adoWorker.close()

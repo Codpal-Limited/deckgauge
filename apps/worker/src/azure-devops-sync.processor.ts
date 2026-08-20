@@ -41,9 +41,13 @@ interface ProcessorInput {
   trigger: string;
   db: PrismaClient;
   /**
-   * Optional ClickHouse client. When provided, the processor dual-writes the
-   * full unfiltered set of fetched work items into the `ado_work_items` CH
-   * table BEFORE running the Postgres upserts.
+   * Optional ClickHouse client, ALREADY BOUND to the organization that owns the
+   * ADO instance being synced — azure-devops-sync.handler calls `chClientFor`
+   * inside its per-instance loop and hands the result down, so the processor
+   * stays tenant-agnostic and cannot pick the wrong organization.
+   *
+   * When provided, the processor dual-writes the full unfiltered set of fetched
+   * work items into the `ado_work_items` CH table BEFORE the Postgres upserts.
    *
    * Thin coverage: the basic AzureDevOpsPort adapter only surfaces work item
    * metadata — no transitions, no PRs. PR data is written by

@@ -1,20 +1,18 @@
 'use client';
 import { useState } from 'react';
-import type { BulkBindRequest, ConnectionHint } from '@deckgauge/shared';
+import type { BulkBindRequest } from '@deckgauge/shared';
 import {
   PROVIDER_LABEL,
   PROVIDER_ROLE_FIELDS,
   defaultRoleFlags,
   type Provider,
 } from './providers/roles';
-import { AddConnectionForm } from './AddConnectionForm';
 import {
   GitHubSourcePicker,
   type GitHubInstanceOption,
   type BulkAttachResult,
 } from './GitHubSourcePicker';
 import { SourceReconnectBanner } from './SourceReconnectBanner';
-import { SourceHostFixBanner } from './SourceHostFixBanner';
 import type { RemoteProjectsResult } from '../../actions/board-sources';
 
 export type { Provider } from './providers/roles';
@@ -40,6 +38,15 @@ export interface AttachResult {
   error?: string;
 }
 
+/**
+ * The wizard is a PICKER, not a connection manager.
+ *
+ * Creating, editing and testing a connection all require the organization ADMIN
+ * role, so the create-and-test flow that used to live here would 403 for five of
+ * the six staging accounts. Everything left is a read a member is allowed to
+ * make: list the organization's connections, discover their projects, and bind
+ * one to this board. New connections are made on Settings → Connections.
+ */
 export interface AddNewActions {
   listConnections: (provider: Provider) => Promise<Array<{ id: string; name: string }>>;
   listRemoteProjects: (
@@ -52,20 +59,6 @@ export interface AddNewActions {
     connectionId: string,
     projectKey: string,
   ) => Promise<{ syncId: string; label: string }>;
-  createConnection: (
-    provider: Provider,
-    values: Record<string, string>,
-  ) => Promise<{ id: string; name: string }>;
-  testConnection: (
-    provider: Provider,
-    connectionId: string,
-  ) => Promise<{ ok: boolean; error?: string; hint?: ConnectionHint }>;
-  /** Repoints an existing connection at a different base URL. Never rejects. */
-  updateConnectionUrl: (
-    provider: Provider,
-    connectionId: string,
-    url: string,
-  ) => Promise<{ ok: boolean; error?: string }>;
 }
 
 interface Props {
@@ -124,7 +117,6 @@ export function BoardAddSource({
   const [committing, setCommitting] = useState(false);
   const [results, setResults] = useState<AttachResult[] | null>(null);
   const [addingNew, setAddingNew] = useState(false);
-  const [newConn, setNewConn] = useState(false);
   const [connections, setConnections] = useState<Array<{ id: string; name: string }>>([]);
   const [connectionId, setConnectionId] = useState<string>('');
   const [remoteProjects, setRemoteProjects] = useState<string[] | null>(null);
@@ -132,11 +124,6 @@ export function BoardAddSource({
   const [subBusy, setSubBusy] = useState(false);
   const [subError, setSubError] = useState<string | null>(null);
   const [reconnect, setReconnect] = useState(false);
-  // Held with its connection id: the wizard has created the connection but not
-  // yet adopted it (`connectionId` stays empty until a test passes).
-  const [hostHint, setHostHint] = useState<{ hint: ConnectionHint; connectionId: string } | null>(
-    null,
-  );
 
   const goToProviderStep = () => {
     setStep('provider');
@@ -145,13 +132,11 @@ export function BoardAddSource({
     setSearch('');
     setResults(null);
     setAddingNew(false);
-    setNewConn(false);
     setConnections([]);
     setConnectionId('');
     setRemoteProjects(null);
     setRemoteSearch('');
     setSubError(null);
-    setHostHint(null);
     setReconnect(false);
   };
 
@@ -161,20 +146,18 @@ export function BoardAddSource({
     setSearch('');
     setStep('pick');
     setAddingNew(false);
-    setNewConn(false);
     setConnections([]);
     setConnectionId('');
     setRemoteProjects(null);
     setRemoteSearch('');
     setSubError(null);
-    setHostHint(null);
     setReconnect(false);
   };
 
   // GitHub uses the live repo picker (bulk-bind + backfill) instead of the
   // ready-list flow, but only when a connection exists and a bulk handler is
-  // wired. With no connection we fall back to the ready-list/add-new flow so
-  // the first GitHub connection can still be bootstrapped.
+  // wired. With no connection we fall back to the ready-list flow, which now
+  // points at Settings → Connections rather than offering to create one here.
   const githubPickerMode =
     step === 'pick' &&
     provider === 'github' &&
@@ -254,7 +237,6 @@ export function BoardAddSource({
     if (!provider || !addNewActions) return;
     setAddingNew(true);
     setSubError(null);
-    setHostHint(null);
     setRemoteProjects(null);
     setSubBusy(true);
     try {
@@ -317,82 +299,6 @@ export function BoardAddSource({
     } finally {
       setSubBusy(false);
     }
-  };
-
-  /** Adopt a validated connection and load its remote projects. */
-  const adoptConnection = async (conn: { id: string; name: string }) => {
-    if (!provider || !addNewActions) return;
-    setConnections((prev) => (prev.some((c) => c.id === conn.id) ? prev : [...prev, conn]));
-    setConnectionId(conn.id);
-    setNewConn(false);
-    const result = await addNewActions.listRemoteProjects(provider, conn.id, remoteSearch);
-    if (result.ok) {
-      setRemoteProjects(result.projects);
-      return;
-    }
-    if (result.authFailed) {
-      setReconnect(true);
-      return;
-    }
-    setSubError(result.error || 'Could not load projects for this connection.');
-    setRemoteProjects([]);
-  };
-
-  const createAndTest = async (values: Record<string, string>) => {
-    if (!provider || !addNewActions) return;
-    setSubBusy(true);
-    setSubError(null);
-    setHostHint(null);
-    try {
-      const conn = await addNewActions.createConnection(provider, values);
-      const test = await addNewActions.testConnection(provider, conn.id);
-      if (!test.ok) {
-        setSubError(test.error ?? 'Connection test failed.');
-        if (test.hint) setHostHint({ hint: test.hint, connectionId: conn.id });
-        return;
-      }
-      await adoptConnection(conn);
-    } catch {
-      setSubError('Could not create the connection.');
-    } finally {
-      setSubBusy(false);
-    }
-  };
-
-  /** Repoint the just-created connection at the canonical host and retry. */
-  const applyHostHint = async () => {
-    if (!provider || !addNewActions || !hostHint) return;
-    const { hint, connectionId: id } = hostHint;
-    setSubBusy(true);
-    setSubError(null);
-    try {
-      const patched = await addNewActions.updateConnectionUrl(provider, id, hint.suggestedUrl);
-      if (!patched.ok) {
-        setSubError(patched.error ?? 'Could not update the connection URL.');
-        setHostHint(null);
-        return;
-      }
-      const test = await addNewActions.testConnection(provider, id);
-      if (!test.ok) {
-        setSubError(test.error ?? 'Connection test failed.');
-        setHostHint(null);
-        return;
-      }
-      setHostHint(null);
-      await adoptConnection({ id, name: hint.suggestedUrl });
-    } catch {
-      setSubError('Could not update the connection URL.');
-      setHostHint(null);
-    } finally {
-      setSubBusy(false);
-    }
-  };
-
-  /** Dismiss the new-connection form, discarding any leftover fix offer or error. */
-  const cancelNewConnection = () => {
-    setNewConn(false);
-    setHostHint(null);
-    setSubError(null);
   };
 
   // GitLab searches server-side (it can match on project name/description, not
@@ -484,15 +390,15 @@ export function BoardAddSource({
                 !addingNew ? (
                   <div className="text-xs text-slate-500">
                     <p>
-                      No {PROVIDER_LABEL[provider]} projects connected yet. Connect{' '}
-                      {PROVIDER_LABEL[provider]} to pick projects to sync to this board.
+                      No {PROVIDER_LABEL[provider]} projects on this board yet. Pick one
+                      from an existing {PROVIDER_LABEL[provider]} connection.
                     </p>
                     <button
                       type="button"
                       onClick={openAddNew}
                       className="mt-2 inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
                     >
-                      Connect {PROVIDER_LABEL[provider]}
+                      Pick a {PROVIDER_LABEL[provider]} project
                     </button>
                   </div>
                 ) : null
@@ -500,7 +406,7 @@ export function BoardAddSource({
                 <p className="text-xs text-slate-500">
                   No existing {PROVIDER_LABEL[provider]} projects yet.{' '}
                   <a href="/sources" className="text-indigo-600 hover:underline">
-                    Set one up in Sources &rarr;
+                    Add a connection in Settings &rarr; Connections
                   </a>
                 </p>
               )
@@ -555,31 +461,16 @@ export function BoardAddSource({
 
             {addNewActions && addingNew && (
               <div className="mt-3 rounded-md border border-slate-200 p-3 space-y-2">
-                {hostHint && (
-                  <SourceHostFixBanner
-                    suggestedUrl={hostHint.hint.suggestedUrl}
-                    busy={subBusy}
-                    onUseSuggested={applyHostHint}
-                  />
-                )}
                 {subError && <p className="text-xs text-rose-600">{subError}</p>}
-                {newConn ? (
-                  <AddConnectionForm
-                    provider={provider}
-                    busy={subBusy}
-                    onSubmit={createAndTest}
-                    onCancel={cancelNewConnection}
-                  />
-                ) : connections.length === 0 && !subBusy ? (
+                {connections.length === 0 && !subBusy ? (
                   <>
-                    <p className="text-xs text-slate-500">No {PROVIDER_LABEL[provider]} connections yet.</p>
-                    <button
-                      type="button"
-                      className="text-xs text-indigo-600 hover:underline"
-                      onClick={() => setNewConn(true)}
-                    >
-                      + New connection
-                    </button>
+                    <p className="text-xs text-slate-500">
+                      No {PROVIDER_LABEL[provider]} connections yet. Connections are set up
+                      once for the whole organization by an administrator.
+                    </p>
+                    <a href="/sources" className="text-xs text-indigo-600 hover:underline">
+                      Settings &rarr; Connections
+                    </a>
                   </>
                 ) : (
                   <>
@@ -652,13 +543,9 @@ export function BoardAddSource({
                         </div>
                       ))}
                     {!subBusy && (
-                      <button
-                        type="button"
-                        className="text-[11px] text-indigo-600 hover:underline"
-                        onClick={() => setNewConn(true)}
-                      >
-                        + New connection
-                      </button>
+                      <a href="/sources" className="text-[11px] text-indigo-600 hover:underline">
+                        Manage connections in Settings &rarr; Connections
+                      </a>
                     )}
                   </>
                 )}

@@ -1,12 +1,11 @@
 import fp from 'fastify-plugin';
 import type { FastifyPluginAsync } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
-import { evaluatePolicy, type ConnectionModel, type Policy } from './policy.js';
+import { evaluatePolicy, type Policy } from './policy.js';
 
 declare module 'fastify' {
   interface FastifyContextConfig {
     policy?: Policy;
-    connectionModel?: ConnectionModel;
     /**
      * Stamped by this plugin's own `onRoute` hook, so it is true for exactly
      * the routes that sit inside the context whose `preHandler` below does the
@@ -28,7 +27,17 @@ declare module 'fastify' {
  */
 export function buildPolicyPlugin(
   prisma: PrismaClient,
-  opts: { singleUser: boolean },
+  opts: {
+    singleUser: boolean;
+    /**
+     * Optional edition hook that may re-express a denial. Absent in Community.
+     * See enterprise-contract.ts.
+     */
+    restrictDenial?: (
+      denial: { status: number; error: string },
+      reason: string,
+    ) => { status: number; body: Record<string, unknown> } | null;
+  },
 ): FastifyPluginAsync {
   return fp(async (app) => {
     const unguarded: string[] = [];
@@ -69,13 +78,24 @@ export function buildPolicyPlugin(
           params: request.params as Record<string, string | undefined>,
           query: request.query as Record<string, string | undefined>,
           body: request.body,
-          connectionModel: request.routeOptions.config?.connectionModel,
           isAdmin: request.isAdmin === true,
           canViewAnalytics: request.canViewAnalytics === true,
+          membership: request.membership ?? null,
           log: request.log,
         },
       );
-      if (!result.ok) return reply.code(result.status).send({ error: result.error });
+      if (!result.ok) {
+        // An edition module may re-express a denial that exists because it
+        // restricted this membership — so a caller can learn WHY an action is
+        // unavailable, not merely that it is. Community has no such module, so the
+        // core's own status and body stand unchanged.
+        const reason = request.membershipRestriction;
+        if (reason && opts.restrictDenial) {
+          const override = opts.restrictDenial({ status: result.status, error: result.error }, reason);
+          if (override) return reply.code(override.status).send(override.body);
+        }
+        return reply.code(result.status).send({ error: result.error });
+      }
     });
   });
 }

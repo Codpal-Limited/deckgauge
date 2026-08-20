@@ -1,6 +1,7 @@
 -- Raw Jira issues — every type, every project. Filter at promote time.
 CREATE TABLE IF NOT EXISTS cockpit.jira_issues
 (
+    organization_id     String,
     id                  String,
     key                 String,
     project_key         String,
@@ -37,5 +38,5 @@ CREATE TABLE IF NOT EXISTS cockpit.jira_issues
 )
 ENGINE = ReplacingMergeTree(synced_at)
 PARTITION BY toYYYYMM(created_at)
-ORDER BY (project_key, key)
+ORDER BY (organization_id, project_key, key)
 SETTINGS index_granularity = 8192;

@@ -5,7 +5,8 @@ import { loadHelpCorpus, type HelpDoc } from './help-corpus.js';
 import { buildHelpTools } from './help-tools.js';
 import { buildPageStateTools, type PageStateToolDeps } from './page-state-tools.js';
 import { buildSourceTools, type SourceToolDeps } from './source-tools.js';
-import { MAX_STEPS, MAX_TOKENS, type AdvisorRun } from './advisor.service.js';
+import { stepsForProvider, toolsForProvider } from './local-tier.js';
+import { MAX_TOKENS, type AdvisorRun } from './advisor.service.js';
 
 // Distinct from the board advisor's SYSTEM prompt (advisor.service.ts): this is
 // a product guide, not a read-only analyst over live board data. It may read
@@ -73,18 +74,22 @@ export class AdvisorHelpService {
     // ordering is not load-bearing for correctness (the prompt and the tool
     // descriptions are), but a tool list that reads in the same order as the
     // instructions is one less thing for a future edit to contradict.
-    const tools: ToolSet = {
+    const allTools: ToolSet = {
       ...buildHelpTools(this.docs),
       ...(params.pageState
         ? buildPageStateTools({ ...params.pageState, pageKey: params.pageKey })
         : {}),
       ...(params.sourceLookup ? buildSourceTools(params.sourceLookup) : {}),
     };
+    // Local tier keeps documentation search only. search_source/read_source return
+    // file contents — the largest tool results here, and the ones CPU-only prefill
+    // cannot afford (spec §5.1).
+    const tools = toolsForProvider(params.provider, allTools, ['search_product_help']);
     const result = streamText({
       model: params.provider.model,
       system: `${HELP_SYSTEM} The user is on the ${params.pageLabel} screen.`,
       tools,
-      stopWhen: stepCountIs(MAX_STEPS), // hard iteration cap, reused from the board service
+      stopWhen: stepCountIs(stepsForProvider(params.provider)), // hard iteration cap, lower for local
       maxOutputTokens: MAX_TOKENS, // per-answer budget guardrail, reused from the board service
       messages: [
         ...(params.history ?? []).map((turn) => ({ role: turn.role, content: turn.text })),

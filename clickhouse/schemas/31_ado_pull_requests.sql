@@ -1,6 +1,7 @@
 -- Azure DevOps Repos pull requests.
 CREATE TABLE IF NOT EXISTS cockpit.ado_pull_requests
 (
+    organization_id     String,
     id                  String,
     pr_id               UInt32,
     org_url             String,
@@ -33,5 +34,5 @@ CREATE TABLE IF NOT EXISTS cockpit.ado_pull_requests
 )
 ENGINE = ReplacingMergeTree(synced_at)
 PARTITION BY toYYYYMM(created_at)
-ORDER BY (org_url, project, pr_id)
+ORDER BY (organization_id, org_url, project, pr_id)
 SETTINGS index_granularity = 8192;

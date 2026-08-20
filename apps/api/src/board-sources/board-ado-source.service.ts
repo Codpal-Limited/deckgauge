@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@deckgauge/db';
+import { CrossOrganizationSyncError } from './cross-organization-sync-error.js';
 
 // Surface the project sync's `syncPrs/syncCommits/syncRepos/syncAllRepos/lastSyncedAt`
 // to the board-sources UI. Without these, `CodeIntelZone` (via hydrateAdo)
@@ -31,17 +32,35 @@ export class BoardAdoSourceService {
     });
   }
 
-  async attach(input: {
-    boardId: string;
-    azureDevOpsProjectSyncId: string;
-    targetGroupId?: string | null;
-    allowedWorkItemTypes?: string[];
-    wiqlFilter?: string | null;
-    statusMapping?: Record<string, string>;
-    defaultSyncedFields?: string[];
-    syncWorkItemsToBoard?: boolean;
-    useForIntelligence?: boolean;
-  }) {
+  /**
+   * `organizationId` first — see BoardJiraSourceService.attach for the full rule.
+   *
+   * AzureDevOpsProjectSync has no `organizationId` column at all, so its tenant
+   * is reachable ONLY through `azureDevOpsInstance`.
+   */
+  async attach(
+    organizationId: string,
+    input: {
+      boardId: string;
+      azureDevOpsProjectSyncId: string;
+      targetGroupId?: string | null;
+      allowedWorkItemTypes?: string[];
+      wiqlFilter?: string | null;
+      statusMapping?: Record<string, string>;
+      defaultSyncedFields?: string[];
+      syncWorkItemsToBoard?: boolean;
+      useForIntelligence?: boolean;
+    },
+  ) {
+    const sync = await this.prisma.azureDevOpsProjectSync.findFirst({
+      where: {
+        id: input.azureDevOpsProjectSyncId,
+        azureDevOpsInstance: { organizationId },
+      },
+      select: { id: true },
+    });
+    if (!sync) throw new CrossOrganizationSyncError('ado', input.azureDevOpsProjectSyncId);
+
     return this.prisma.boardAdoSource.create({ data: input, include: ADO_SYNC_INCLUDE });
   }
 

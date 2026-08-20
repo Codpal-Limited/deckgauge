@@ -27,8 +27,19 @@ export interface AdoProjectSyncRow {
 export class AdoProjectSyncService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async list(): Promise<AdoProjectSyncRow[]> {
+  /**
+   * Every sync row reachable from the caller’s organization, and only those.
+   *
+   * Scoped through the INSTANCE, which is where the tenant boundary lives — the
+   * sync row itself carries no organization. Before this predicate the list
+   * enumerated every organization's rows: no credential, but another tenant's
+   * instance ids, project names and cadence, and the instance ids are the input
+   * other routes take. The route is orgRole(MEMBER) so the membership this
+   * argument comes from is guaranteed.
+   */
+  async list(organizationId: string): Promise<AdoProjectSyncRow[]> {
     const rows = await this.prisma.azureDevOpsProjectSync.findMany({
+      where: { azureDevOpsInstance: { organizationId } },
       include: { _count: { select: { boardSources: true } } },
       orderBy: { createdAt: 'desc' },
     });

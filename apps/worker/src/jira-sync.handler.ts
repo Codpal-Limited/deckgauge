@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@deckgauge/db';
 import type { JiraPort, JiraConfig } from '@deckgauge/shared';
-import type { ChClient } from './jira-dual-writer.js';
+import type { ChClientFactory } from './jira-dual-writer.js';
 import { jiraSyncProcessor } from './jira-sync.processor.js';
 
 export interface SyncJobData {
@@ -29,7 +29,12 @@ export async function handleSyncJob(
   jobData: SyncJobData,
   db: PrismaClient,
   adapterFactory: AdapterFactory,
-  ch?: ChClient,
+  /**
+   * Builds a ClickHouse client bound to one organization. Called once per
+   * instance below, with THAT instance's organizationId — the connections this
+   * job iterates can belong to different tenants.
+   */
+  chClientFor?: ChClientFactory,
 ): Promise<SyncJobResult[]> {
   const trigger = jobData.trigger || 'scheduled';
   const scopedInstanceId = jobData.instanceId;
@@ -78,6 +83,11 @@ export async function handleSyncJob(
     }
 
     try {
+      // Bind ClickHouse to the organization that owns THIS connection. Inside
+      // the loop, never outside it: two instances here can belong to two
+      // different tenants.
+      const ch = chClientFor?.(instance.organizationId);
+
       const adapter = adapterFactory({
         atlassianUrl: instance.atlassianUrl,
         email: instance.email,

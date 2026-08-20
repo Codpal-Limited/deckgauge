@@ -1,6 +1,7 @@
 -- GitLab MR reviews, derived from approvals + non-system notes on each MR.
 CREATE TABLE IF NOT EXISTS cockpit.gitlab_reviews
 (
+    organization_id     String,
     id                  String,
     project_path        String,
     instance_id         String,
@@ -15,5 +16,5 @@ CREATE TABLE IF NOT EXISTS cockpit.gitlab_reviews
 )
 ENGINE = ReplacingMergeTree(synced_at)
 PARTITION BY toYYYYMM(submitted_at)
-ORDER BY (project_path, merge_request_iid, id)
+ORDER BY (organization_id, project_path, merge_request_iid, id)
 SETTINGS index_granularity = 8192;
