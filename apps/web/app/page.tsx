@@ -202,6 +202,10 @@ async function ensureDefaultBoard(boardId?: string): Promise<string | null> {
 
 export default async function BoardPage({ searchParams }: PageProps) {
   const boardId = searchParams?.boardId as string | undefined;
+  // A notification's deep link. Consumed and cleared client-side by GroupList,
+  // so closing the panel does not reopen it and a refresh does not replay it.
+  const itemId = searchParams?.itemId as string | undefined;
+  const commentId = searchParams?.commentId as string | undefined;
   const selectedBoardId = await ensureDefaultBoard(boardId);
 
   if (!selectedBoardId) {
@@ -261,6 +265,7 @@ export default async function BoardPage({ searchParams }: PageProps) {
       <BoardPageContent
         boardId={selectedBoardId}
         views={views}
+        deepLink={itemId ? { itemId, commentId } : undefined}
         canEdit={canEditEntity(userRole)}
         projectTotal={projectTotal}
         boardViewProps={{

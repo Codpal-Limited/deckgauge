@@ -6,7 +6,7 @@ import {
   type AccessRoleValue,
   type OrgRoleValue,
 } from '@deckgauge/shared';
-import { effectiveBoardRole } from '../authz/policy.js';
+import { effectiveBoardRole, personalBoardRole } from '../authz/policy.js';
 import { ACCESS_ENTITIES, type AccessEntityDescriptor } from './access.entities.js';
 import {
   LastOwnerError,
@@ -125,6 +125,95 @@ export class AccessService {
         avatarUrl: row.user.avatarUrl,
       },
     }));
+  }
+
+  /**
+   * The caller's EFFECTIVE role, resolved the way `evaluatePolicy` resolves it:
+   * the entity is read THROUGH the caller's organization, and the org-role
+   * ceiling is applied to whatever grant comes back.
+   *
+   * This exists because `getRole` below reads the ACL row by `(entityId, userId)`
+   * with no organization predicate — correct for its callers, wrong for the one
+   * question the CLIENT asks. Every `my-role` route used
+   * `effectiveBoardRole(membership.role, getRole(...))`, and for an org ADMIN and
+   * a foreign entity that is `effectiveBoardRole('ADMIN', null)` = `'OWNER'`. So
+   * the one role decision the UI reads answered OWNER for another organization's
+   * entity, and the client rendered controls every enforcing route then refused.
+   * It granted nothing; it lied — the same shape as design §1.3's third defect.
+   *
+   * A miss returns `null`, which is deliberately the same answer as "exists in my
+   * organization but I hold nothing": this endpoint must not become a way to ask
+   * whether another tenant's id exists (tenancy D7).
+   */
+  async getEffectiveRole(
+    kind: AccessEntityKind,
+    entityId: string,
+    userId: string,
+    membership: { organizationId: string; role: OrgRoleValue } | null,
+  ): Promise<AccessRoleValue | null> {
+    // No membership: the break-glass path every policy branch keeps. There is no
+    // organization to scope to and no org role to impose a ceiling with, so the
+    // raw grant decides alone.
+    if (!membership) return this.getRole(kind, entityId, userId);
+
+    const d = this.describe(kind);
+    const orgWhere =
+      d.orgScope === 'own'
+        ? { organizationId: membership.organizationId }
+        : { orgTree: { organizationId: membership.organizationId } };
+
+    const select: Record<string, unknown> = {
+      [d.accessRelation]: { where: { userId }, select: { role: true } },
+    };
+    if (d.implicitOwnerFromOrgTree) {
+      select.orgTree = { select: { access: { where: { userId }, select: { role: true } } } };
+    }
+    // Read in the SAME query as the grants, for the same reason the policy branch
+    // does: whether the entity is personal decides which grants count.
+    if (d.personalFlagField) select[d.personalFlagField] = true;
+
+    let row: Record<string, unknown> | null;
+    try {
+      row = (await (
+        this.prisma[d.entityDelegate] as unknown as {
+          findFirst: (a: unknown) => Promise<Record<string, unknown> | null>;
+        }
+      ).findFirst({ where: { id: entityId, ...orgWhere }, select })) as Record<
+        string,
+        unknown
+      > | null;
+    } catch {
+      // Fail closed, same contract as the policy layer: a malformed id reaches
+      // Prisma before any route-level validation and must answer "no role"
+      // rather than surface as a 500.
+      return null;
+    }
+    if (!row) return null;
+
+    const own = (row[d.accessRelation] as Array<{ role: AccessRoleValue }> | undefined)?.[0]?.role
+      ?? null;
+    // Design D12: an OWNER grant on the parent tree owns every board in it.
+    // OWNER specifically — a tree EDITOR gets nothing here, which IS the
+    // separation D12 exists to create.
+    const treeGrant =
+      (row.orgTree as { access?: Array<{ role: AccessRoleValue }> } | undefined)?.access?.[0]
+        ?.role ?? null;
+
+    // A PERSONAL entity is exempt from BOTH implicit-owner rules (org-tree privacy
+    // D5) — the tree grant above is ignored, and `personalBoardRole` is
+    // `effectiveBoardRole` without the org-ADMIN floor.
+    //
+    // This MUST agree with the `employeeBoard` branch of `evaluatePolicy`: that
+    // one decides whether a request is allowed, this one decides what the client
+    // renders, and a disagreement shows up as a control that renders and then
+    // 403s. Both call the same pure rule for exactly that reason.
+    if (d.personalFlagField && row[d.personalFlagField] === true) {
+      return personalBoardRole(membership.role, own);
+    }
+
+    const grant = d.implicitOwnerFromOrgTree && treeGrant === 'OWNER' ? 'OWNER' : own;
+
+    return effectiveBoardRole(membership.role, grant);
   }
 
   async getRole(

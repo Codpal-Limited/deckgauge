@@ -1,8 +1,9 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   BoardJiraSourceCreateSchema,
   BoardJiraSourcePatchSchema,
+  AttachJiraFieldInputSchema,
   type JiraPort,
 } from '@deckgauge/shared';
 import { BoardJiraSourceService } from './board-jira-source.service.js';
@@ -15,6 +16,12 @@ import {
   SourceIssueTypesService,
   SourceIssueTypesNotFoundError,
 } from './source-issue-types.service.js';
+import { SourceFieldsService, SourceFieldsNotFoundError } from './source-fields.service.js';
+import {
+  SyncedColumnService,
+  SyncedColumnSourceNotFoundError,
+  FieldAlreadyMappedError,
+} from './synced-column.service.js';
 import { createTypeCache, type TypeCache } from './type-cache.js';
 import {
   SourceConnectionNotFoundError,
@@ -25,6 +32,7 @@ import { clickhouse as defaultClickhouse } from '@deckgauge/db';
 import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
 import { all, board, orgRole, ORG_MEMBER } from '../auth/policy.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
+import { connectionCaller } from '../connections/connection-caller.js';
 
 /**
  * Type discovery spends the connection's stored credential, so its handler needs
@@ -72,8 +80,16 @@ export function boardJiraSourceRoutes(deps: {
 }) {
   const service = new BoardJiraSourceService(deps.prisma);
   const ch = deps.clickhouse ?? defaultClickhouse;
-  const previewSvc = new PreviewCountService({ prisma: deps.prisma, clickhouse: ch });
-  const statusesSvc = new SourceStatusesService({ prisma: deps.prisma, clickhouse: ch });
+  /**
+   * Built per request from the scoped reader (tenancy §11 precondition 8), not
+   * once at boot from the ingest singleton whose permissive policy no
+   * per-organization row policy can narrow. `ch` stays the fallback only for
+   * callers constructing this plugin without the chRead plugin, i.e. the tests.
+   */
+  const previewSvcFor = (req: FastifyRequest) =>
+    new PreviewCountService({ prisma: deps.prisma, clickhouse: req.chRead ?? ch });
+  const statusesSvcFor = (req: FastifyRequest) =>
+    new SourceStatusesService({ prisma: deps.prisma, clickhouse: req.chRead ?? ch });
   const issueTypesSvc = new SourceIssueTypesService({
     prisma: deps.prisma,
     cache: deps.typeCache ?? defaultTypeCache,
@@ -90,6 +106,15 @@ export function boardJiraSourceRoutes(deps: {
       throw new Error('githubAdapterFor not configured on Jira routes');
     },
   });
+  const fieldsSvc = new SourceFieldsService({
+    prisma: deps.prisma,
+    cache: deps.typeCache ?? defaultTypeCache,
+    jiraAdapterFor:
+      deps.jiraAdapterFor ??
+      ((organizationId, instanceId) =>
+        defaultJiraAdapterFor(deps.prisma, organizationId, instanceId)),
+  });
+  const syncedColumnSvc = new SyncedColumnService({ prisma: deps.prisma });
   return async function plugin(app: FastifyInstance) {
     app.get<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/jira',
@@ -133,7 +158,7 @@ export function boardJiraSourceRoutes(deps: {
         });
         if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
         try {
-          const row = await service.attach(requireOrganizationId(req), body.data);
+          const row = await service.attach(connectionCaller(req), body.data);
           return reply.code(201).send(row);
         } catch (err) {
           // 404, not 403: see CrossOrganizationSyncError. The same answer an
@@ -182,7 +207,7 @@ export function boardJiraSourceRoutes(deps: {
           .safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
         try {
-          return await previewSvc.countJiraIssues(params.data.id);
+          return await previewSvcFor(req).countJiraIssues(params.data.id);
         } catch (err) {
           if (err instanceof PreviewSourceNotFoundError) {
             return reply.code(404).send({ error: err.message });
@@ -201,7 +226,7 @@ export function boardJiraSourceRoutes(deps: {
           .safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
         try {
-          const statuses = await statusesSvc.listJira(params.data.id);
+          const statuses = await statusesSvcFor(req).listJira(params.data.id);
           return { statuses };
         } catch (err) {
           if (err instanceof SourceStatusesNotFoundError) {
@@ -233,6 +258,94 @@ export function boardJiraSourceRoutes(deps: {
             err instanceof SourceIssueTypesNotFoundError ||
             err instanceof SourceConnectionNotFoundError
           ) {
+            return reply.code(404).send({ error: err.message });
+          }
+          throw err;
+        }
+      },
+    );
+
+    app.get<{ Params: { boardId: string; id: string } }>(
+      '/boards/:boardId/sources/jira/:id/fields',
+      { config: { policy: DISCOVERY_POLICY } },
+      async (req, reply) => {
+        const params = z
+          .object({ boardId: z.string().uuid(), id: z.string().uuid() })
+          .safeParse(req.params);
+        if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
+        try {
+          const fields = await fieldsSvc.listJira(
+            requireOrganizationId(req),
+            params.data.boardId,
+            params.data.id,
+          );
+          reply.header('Cache-Control', 'max-age=60, must-revalidate');
+          return { fields };
+        } catch (err) {
+          if (
+            err instanceof SourceFieldsNotFoundError ||
+            err instanceof SourceConnectionNotFoundError
+          ) {
+            return reply.code(404).send({ error: err.message });
+          }
+          throw err;
+        }
+      },
+    );
+
+    app.post<{ Params: { boardId: string; id: string } }>(
+      '/boards/:boardId/sources/jira/:id/fields',
+      { config: { policy: ATTACH_POLICY } },
+      async (req, reply) => {
+        const params = z
+          .object({ boardId: z.string().uuid(), id: z.string().uuid() })
+          .safeParse(req.params);
+        if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
+        const body = AttachJiraFieldInputSchema.safeParse(req.body);
+        if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
+        try {
+          const result = await syncedColumnSvc.attachJiraField(
+            requireOrganizationId(req),
+            params.data.boardId,
+            params.data.id,
+            body.data,
+          );
+          return reply.code(201).send(result);
+        } catch (err) {
+          if (err instanceof FieldAlreadyMappedError) {
+            return reply.code(409).send({ error: err.message });
+          }
+          if (err instanceof SyncedColumnSourceNotFoundError) {
+            return reply.code(404).send({ error: err.message });
+          }
+          throw err;
+        }
+      },
+    );
+
+    app.delete<{ Params: { boardId: string; id: string; fieldId: string } }>(
+      '/boards/:boardId/sources/jira/:id/fields/:fieldId',
+      { config: { policy: ATTACH_POLICY } },
+      async (req, reply) => {
+        const params = z
+          .object({
+            boardId: z.string().uuid(),
+            id: z.string().uuid(),
+            fieldId: z.string().min(1),
+          })
+          .safeParse(req.params);
+        if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
+        try {
+          const removed = await syncedColumnSvc.detachJiraField(
+            requireOrganizationId(req),
+            params.data.boardId,
+            params.data.id,
+            params.data.fieldId,
+          );
+          if (!removed) return reply.code(404).send({ error: 'field not mapped' });
+          return reply.code(204).send();
+        } catch (err) {
+          if (err instanceof SyncedColumnSourceNotFoundError) {
             return reply.code(404).send({ error: err.message });
           }
           throw err;

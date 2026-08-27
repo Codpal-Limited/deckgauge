@@ -11,7 +11,26 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
+      "outputs": ["coverage/**"],
+      // `cache: false` is a CORRECTNESS setting, not a preference, and
+      // `apps/api/src/__isolation__/integration-coverage.test.ts` asserts it.
+      //
+      // Turbo's cache is content-addressed: it assumes a task's result is a function of
+      // its inputs. These suites are not — they talk to Postgres (:55432), ClickHouse
+      // (:58123) and Docker, and their pass/fail depends on state no hash covers.
+      // Measured: three consecutive runs of an unchanged package gave `cache hit,
+      // replaying logs`, so a package whose files had not changed would replay a green
+      // STRICT result after ClickHouse or Docker had gone down, and the named failure
+      // from integration-coverage.test.ts would never run — this branch's own defect,
+      // laundered through the cache. This repository has also already had turbo replay
+      // ANOTHER worktree's test results as green. `--force` hides that rather than
+      // fixing it, which is why caching is off here instead of documented as a flag
+      // people must remember.
+      "cache": false,
+      // Still required with the cache off: turbo 2 runs strict env mode, so an
+      // UNDECLARED variable never reaches the task at all and
+      // DECKGAUGE_TEST_STRICT_INTEGRATION=1 on the root script would be a silent no-op.
+      "env": ["DECKGAUGE_TEST_STRICT_INTEGRATION"]
     },
     "lint": {
       "dependsOn": ["^lint"]

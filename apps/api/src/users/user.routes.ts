@@ -3,6 +3,9 @@ import type { PrismaClient } from '@deckgauge/db';
 import { UserService } from './user.service.js';
 import { orgRole } from '../auth/policy.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
+import { z } from 'zod/v4';
+
+const UuidSchema = z.string().uuid();
 
 export async function userRoutes(
   app: FastifyInstance,
@@ -21,12 +24,20 @@ export async function userRoutes(
    * An empty `q` returns the first 20 members rather than `[]`: a picker that
    * stays blank until you guess a name is worse than a list.
    */
-  app.get<{ Querystring: { q?: string } }>(
+  app.get<{ Querystring: { q?: string; boardId?: string } }>(
     '/users/search',
     { config: { policy: orgRole('VIEWER') } },
     async (req, reply) => {
       const q = (req.query.q ?? '').trim();
-      const people = await service.search(q, requireOrganizationId(req));
+      // Optional: the mention picker passes it so the list honours R5.8 ("users
+      // WITH BOARD ACCESS can be @mentioned"); the employee-comment editor has
+      // no board to pass. Validated rather than forwarded raw — a malformed id
+      // would otherwise reach Prisma.
+      const boardId = req.query.boardId?.trim();
+      if (boardId !== undefined && !UuidSchema.safeParse(boardId).success) {
+        return reply.code(400).send({ error: 'Invalid board ID' });
+      }
+      const people = await service.search(q, requireOrganizationId(req), boardId);
       return reply.send(people);
     },
   );

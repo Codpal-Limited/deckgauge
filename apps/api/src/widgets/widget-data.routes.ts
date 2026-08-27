@@ -1,5 +1,8 @@
 import { FastifyInstance, type FastifyBaseLogger } from 'fastify';
-import { PrismaClient, clickhouse, type ClickHouseClient } from '@deckgauge/db';
+// No `clickhouse` import: this module deliberately has no access to the ingest
+// singleton any more. Reads come from request.chRead (tenancy §11 precondition 8),
+// and removing the import is what stops the default quietly coming back.
+import { PrismaClient, type ClickHouseClient } from '@deckgauge/db';
 import {
   NEW_WIDGET_TYPES,
   COMPARISON_WIDGET_TYPES,
@@ -8,6 +11,7 @@ import {
   type WidgetDataBatchResultEntry,
 } from '@deckgauge/shared';
 import { WidgetDataService } from './widget-data.service.js';
+import type { ChScopedReader } from '../analytics/ch-read-scope.js';
 import { WidgetCache } from './widget-cache.js';
 import { board, viaBranch, type IdExtractor } from '../auth/policy.js';
 import { forbiddenBoardIds } from '../auth/board-access.js';
@@ -146,7 +150,6 @@ export async function widgetDataRoutes(
     singleUser = false,
   }: { prisma: PrismaClient; clickhouse?: ClickHouseClient; singleUser?: boolean }
 ) {
-  const service = new WidgetDataService(prisma, ch ?? clickhouse);
   const cache = new WidgetCache(60_000);
 
   // Fail fast: surface any persisted widgetType the API no longer knows about
@@ -179,6 +182,12 @@ export async function widgetDataRoutes(
       // Spec §13: the per-board re-check below must apply the same org-role
       // ceiling the policy layer does, or an org ADMIN sees an empty widget.
       membership?: CallerMembership;
+      /**
+       * The per-request scoped reader. `null` means the caller has no
+       * organization, and a widget read is refused rather than served from the
+       * ingest identity — see the guard below.
+       */
+      chRead?: ChScopedReader | null;
     }
   ): Promise<WidgetResolution> {
     if (!KNOWN_WIDGET_TYPES.has(widgetType)) {
@@ -239,6 +248,18 @@ export async function widgetDataRoutes(
     const cached = cache.get(cacheKey);
     if (cached !== undefined) return { ok: true, data: cached };
 
+    // Built per request from the scoped reader, not once at boot from the ingest
+    // singleton (tenancy §11 precondition 8). `ch` stays supported for the
+    // plugin's own tests, which construct it without the chRead plugin.
+    const readClient = ctx.chRead ?? ch;
+    if (!readClient) {
+      return { ok: false, status: 403, error: 'NO_ORGANIZATION' };
+    }
+    // Same source as the read client's tenant: the membership the policy layer
+    // resolved. `null` is the break-glass caller, which board-scope leaves
+    // unscoped for the reason recorded on `ResolveBoardScopeOptions`.
+    const service = new WidgetDataService(prisma, readClient, ctx.membership?.organizationId ?? null);
+
     const fn = service[method] as (
       boardId: string,
       config: Record<string, unknown>
@@ -275,6 +296,7 @@ export async function widgetDataRoutes(
         singleUser,
         log: req.log,
         membership: req.membership ?? null,
+        chRead: req.chRead,
       });
       if (!resolved.ok) return reply.status(resolved.status).send({ error: resolved.error });
       return resolved.data;
@@ -319,6 +341,7 @@ export async function widgetDataRoutes(
               singleUser,
               log: req.log,
               membership: req.membership ?? null,
+              chRead: req.chRead,
             });
             return resolved.ok
               ? { widgetType, config, data: resolved.data }

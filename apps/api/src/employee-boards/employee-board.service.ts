@@ -11,6 +11,7 @@ import { toOrgEmployeeDto } from '../org-trees/org-employee-dto.js';
 import { effectiveBoardRole } from '../authz/policy.js';
 import type { OrgRoleValue } from '@deckgauge/shared';
 import { OrgTreeService, computeTreeRanking, CrossTreeEmployeeError } from '../org-trees/org-tree.service.js';
+import { canViewSalaryForBoard } from '../org-trees/salary-visibility.js';
 
 export class EmployeeBoardService {
   private readonly orgService: OrgTreeService;
@@ -243,9 +244,24 @@ export class EmployeeBoardService {
     });
   }
 
+  /**
+   * `creatorUserId` is OPTIONAL for the same reason `OrgTreeService.create`'s third
+   * parameter is: single-user mode bypasses every policy and never populates a
+   * user, and the board must still be creatable then — just with no owner row.
+   *
+   * When present, the creator is stamped OWNER **in the same transaction as the
+   * board**. That is R5.5's rule for project boards, finally applied here: before
+   * this, `createBoard` wrote no `EmployeeBoardAccess` row at all, so sharing
+   * phase C's grant table started at zero owners and a creator held no recorded
+   * relationship to what they made. It stayed invisible only because two
+   * implicit-owner rules (the org-ADMIN floor and D12's tree-OWNER rule) always
+   * admitted somebody — and those are exactly what a PERSONAL board is exempt
+   * from, so this grant is that feature's precondition.
+   */
   async createBoard(
     orgTreeId: string,
-    input: { name: string; scopeEmployeeId: string | null }
+    input: { name: string; scopeEmployeeId: string | null; isPersonal?: boolean },
+    creatorUserId?: string
   ): Promise<{ id: string }> {
     const employees = await this.prisma.orgEmployee.findMany({
       where: { orgTreeId },
@@ -260,29 +276,41 @@ export class EmployeeBoardService {
       _max: { position: true },
     });
 
-    const board = await this.prisma.employeeBoard.create({
-      data: {
-        orgTreeId,
-        name: input.name,
-        scopeEmployeeId: input.scopeEmployeeId,
-        position: (maxPos._max.position ?? -1) + 1,
-        groups: { create: { name: 'Ungrouped', position: 0 } },
-      },
-      include: { groups: true },
-    });
-    const ungrouped = board.groups[0]!;
-
-    if (ordered.length > 0) {
-      await this.prisma.employeeBoardMember.createMany({
-        data: ordered.map((e, i) => ({
-          employeeBoardId: board.id,
-          orgEmployeeId: e.id,
-          employeeGroupId: ungrouped.id,
-          position: i,
-        })),
+    // One transaction, so a failed owner grant cannot leave an orphan board with
+    // nobody attached to it — the very state this grant exists to prevent.
+    return this.prisma.$transaction(async (tx) => {
+      const board = await tx.employeeBoard.create({
+        data: {
+          orgTreeId,
+          name: input.name,
+          scopeEmployeeId: input.scopeEmployeeId,
+          isPersonal: input.isPersonal ?? false,
+          position: (maxPos._max.position ?? -1) + 1,
+          groups: { create: { name: 'Ungrouped', position: 0 } },
+        },
+        include: { groups: true },
       });
-    }
-    return { id: board.id };
+      const ungrouped = board.groups[0]!;
+
+      if (ordered.length > 0) {
+        await tx.employeeBoardMember.createMany({
+          data: ordered.map((e, i) => ({
+            employeeBoardId: board.id,
+            orgEmployeeId: e.id,
+            employeeGroupId: ungrouped.id,
+            position: i,
+          })),
+        });
+      }
+
+      if (creatorUserId) {
+        await tx.employeeBoardAccess.create({
+          data: { employeeBoardId: board.id, userId: creatorUserId, role: 'OWNER' },
+        });
+      }
+
+      return { id: board.id };
+    });
   }
 
   async listBoards(orgTreeId: string): Promise<EmployeeBoardSummaryDto[]> {
@@ -487,6 +515,24 @@ export class EmployeeBoardService {
 
   async renameBoard(boardId: string, name: string): Promise<void> {
     await this.prisma.employeeBoard.update({ where: { id: boardId }, data: { name } });
+  }
+
+  async setPersonal(boardId: string, isPersonal: boolean): Promise<void> {
+    await this.prisma.employeeBoard.update({ where: { id: boardId }, data: { isPersonal } });
+  }
+
+  /**
+   * Delegates to the shared resolver rather than deciding here. A thin passthrough
+   * on purpose: this route's deps carry no PrismaClient, and adding one just to
+   * ask a question the service can already ask would change every construction
+   * site for no gain. The RULE stays in one place either way.
+   */
+  async canViewSalary(
+    boardId: string,
+    userId: string | null,
+    isAdmin: boolean,
+  ): Promise<boolean> {
+    return canViewSalaryForBoard(this.prisma, userId, boardId, isAdmin);
   }
 
   async deleteBoard(boardId: string): Promise<void> {

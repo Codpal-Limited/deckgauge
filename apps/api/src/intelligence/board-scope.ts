@@ -69,6 +69,29 @@ export interface ResolvedBoardScope extends BoardScope {
 
 export interface ResolveBoardScopeOptions {
   /**
+   * The caller's organization, or `null` for a membership-less caller.
+   *
+   * REQUIRED — not optional — so a call site that has not thought about the
+   * tenant boundary fails to compile, the same rule §5a set for
+   * `PromoteOptions.instanceId` and `PageStateDeps.organizationId`. Before this
+   * existed, `board-scope.ts` contained no reference to `organizationId` at all:
+   * it resolved the four `Board*Source` tables by `boardId` alone, so the
+   * boundary held only by luck of each caller passing a route-verified id — and
+   * `intelligence.routes.ts` did not, taking `?boardId=` under the `ANALYTICS`
+   * policy, which checks no entity.
+   *
+   * Nullable because `null` is the break-glass identity, and it is deliberately
+   * UNSCOPED here for the same reason `policy.ts`'s board branch leaves its
+   * no-membership fallback unscoped: there is no organization to scope to, and
+   * denying would change behaviour for every existing single-tenant deployment.
+   *
+   * The predicate goes through the BOARD relation rather than a column on these
+   * tables: `BoardJiraSource` and its three siblings carry no `organizationId`
+   * (they reach a tenant through `Board`), and adding one would be a migration
+   * this needs no part of.
+   */
+  organizationId: string | null;
+  /**
    * Honour the per-source `useForIntelligence` flag on the GitHub and ADO
    * sources. Jira and GitLab board sources carry no such flag, so they are
    * unaffected either way.
@@ -100,20 +123,22 @@ export interface ResolveBoardScopeOptions {
 export async function resolveBoardScope(
   prisma: PrismaClient,
   boardId: string,
-  { intelligenceOnly }: ResolveBoardScopeOptions,
+  { intelligenceOnly, organizationId }: ResolveBoardScopeOptions,
 ): Promise<ResolvedBoardScope> {
   const intelligenceFilter = intelligenceOnly ? { useForIntelligence: true } : {};
+  // See `organizationId` on the options type for why this is empty when null.
+  const tenantFilter = organizationId ? { board: { organizationId } } : {};
   const [jiraSources, githubSources, adoSources, gitlabSources] = await Promise.all([
     prisma.boardJiraSource.findMany({
-      where: { boardId },
+      where: { boardId, ...tenantFilter },
       select: { jiraProjectSync: { select: { jiraProjectKey: true } } },
     }),
     prisma.boardGitHubSource.findMany({
-      where: { boardId, ...intelligenceFilter },
+      where: { boardId, ...intelligenceFilter, ...tenantFilter },
       select: { gitHubRepoSync: { select: { repoFullName: true } } },
     }),
     prisma.boardAdoSource.findMany({
-      where: { boardId, ...intelligenceFilter },
+      where: { boardId, ...intelligenceFilter, ...tenantFilter },
       select: {
         azureDevOpsProjectSync: {
           select: {
@@ -126,7 +151,7 @@ export async function resolveBoardScope(
       },
     }),
     prisma.boardGitLabSource.findMany({
-      where: { boardId },
+      where: { boardId, ...tenantFilter },
       select: { gitlabProjectSync: { select: { projectPath: true } } },
     }),
   ]);
@@ -184,8 +209,9 @@ export async function resolveBoardScope(
 export async function getBoardScope(
   prisma: PrismaClient,
   boardId: string,
+  organizationId: string | null,
 ): Promise<BoardScope> {
-  return resolveBoardScope(prisma, boardId, { intelligenceOnly: true });
+  return resolveBoardScope(prisma, boardId, { intelligenceOnly: true, organizationId });
 }
 
 /**
@@ -230,12 +256,21 @@ export interface BoardScopeEntry {
 export async function getBoardScopes(
   prisma: PrismaClient,
   boardIds: string[],
+  organizationId: string | null,
 ): Promise<BoardScopeEntry[]> {
   return Promise.all(
     boardIds.map(async (boardId) => {
       const [board, scope] = await Promise.all([
-        prisma.board.findUnique({ where: { id: boardId }, select: { name: true } }),
-        getBoardScope(prisma, boardId),
+        // `findFirst` with the tenant predicate, not `findUnique` by id. The
+        // display name is the one field in these payloads a human recognises,
+        // and the unscoped read meant a comparison holding a board id from
+        // another organization surfaced that board's NAME. Falling back to the
+        // id (below) is what a missing board already did, so a foreign board and
+        // an absent one now look identical.
+        organizationId
+          ? prisma.board.findFirst({ where: { id: boardId, organizationId }, select: { name: true } })
+          : prisma.board.findFirst({ where: { id: boardId }, select: { name: true } }),
+        getBoardScope(prisma, boardId, organizationId),
       ]);
       return { boardId, boardName: board?.name ?? boardId, scope };
     }),

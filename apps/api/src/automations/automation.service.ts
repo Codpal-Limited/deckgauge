@@ -1,17 +1,6 @@
 import type { PrismaClient } from '@deckgauge/db';
 import { z } from 'zod';
-
-/**
- * Maps default board status labels to their ProjectStatus enum equivalents.
- * Custom board status labels that don't appear here won't trigger enum-value automations.
- */
-const BOARD_STATUS_LABEL_TO_ENUM: Record<string, string> = {
-  'Not Started': 'NOT_STARTED',
-  'In Progress': 'IN_PROGRESS',
-  'At Risk': 'AT_RISK',
-  'Blocked': 'BLOCKED',
-  'Done': 'DONE',
-};
+import { evaluateAutomations } from '@deckgauge/automations';
 
 const TriggerSchema = z.object({
   type: z.enum(['status_change', 'date_arrives', 'item_created']),
@@ -100,13 +89,11 @@ export class AutomationService {
 
   /**
    * Evaluate automation rules after a project update.
-   * Called by the project service after PATCH /projects/:id.
+   * Called by the project routes after POST /projects and PATCH /projects/:id.
    *
-   * Handles two status-change paths:
-   *  1. `status` enum changed directly (boards without custom statuses).
-   *  2. `statusId` changed (custom board statuses via DynamicStatusPill) but the
-   *     enum `status` field was not updated — we look up the board status label and
-   *     map it to the enum equivalent so triggers still fire correctly.
+   * A thin delegate: the rule engine itself lives in `@deckgauge/automations` so
+   * the sync worker evaluates the SAME rules against the rows it writes. See that
+   * package for the two status-change paths and the trigger semantics.
    */
   async evaluateTriggers(
     boardId: string,
@@ -117,84 +104,8 @@ export class AutomationService {
       statusId?: string | null;
       previousStatusId?: string | null;
     },
+    context?: { actorId: string | null; organizationId: string | null },
   ) {
-    const rules = await this.prisma.automationRule.findMany({
-      where: { boardId, enabled: true },
-    });
-
-    for (const rule of rules) {
-      const trigger = rule.trigger as { type: string; value?: string };
-      const action = rule.action as {
-        type: string;
-        targetGroupId?: string;
-        targetStatus?: string;
-        message?: string;
-      };
-
-      let matches = false;
-
-      if (trigger.type === 'status_change') {
-        // The AutomationPanel UI stores the board-status *label* (e.g. "Done")
-        // as trigger.value, but the live status is compared in its enum form
-        // ("DONE"). Normalize the trigger value through the same label→enum map
-        // so default-status labels match. Custom labels (no enum equivalent)
-        // and legacy enum-form trigger values pass through unchanged.
-        const triggerValue = trigger.value
-          ? BOARD_STATUS_LABEL_TO_ENUM[trigger.value] ?? trigger.value
-          : undefined;
-
-        // Path 1: enum status changed
-        if (
-          changes.status !== undefined &&
-          changes.status !== changes.previousStatus
-        ) {
-          if (!triggerValue || triggerValue === changes.status) {
-            matches = true;
-          }
-        }
-
-        // Path 2: custom statusId changed but enum status did not
-        if (
-          !matches &&
-          changes.statusId !== undefined &&
-          changes.statusId !== changes.previousStatusId &&
-          changes.statusId !== null
-        ) {
-          const boardStatus = await this.prisma.boardStatus.findUnique({
-            where: { id: changes.statusId },
-          });
-          if (boardStatus) {
-            const enumEquivalent = BOARD_STATUS_LABEL_TO_ENUM[boardStatus.label];
-            const effectiveStatus = enumEquivalent ?? boardStatus.label;
-            if (!triggerValue || triggerValue === effectiveStatus) {
-              matches = true;
-            }
-          }
-        }
-      }
-
-      if (trigger.type === 'item_created' && changes.previousStatus === undefined) {
-        matches = true;
-      }
-
-      if (!matches) continue;
-
-      if (action.type === 'move_to_group' && action.targetGroupId) {
-        await this.prisma.project.update({
-          where: { id: projectId },
-          data: { groupId: action.targetGroupId },
-        });
-      } else if (action.type === 'change_status' && action.targetStatus) {
-        await this.prisma.project.update({
-          where: { id: projectId },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          data: { status: action.targetStatus as unknown as any },
-        });
-      } else if (action.type === 'notify' && action.message) {
-        console.log(
-          `[Automation] ${rule.name}: ${action.message} (project: ${projectId})`,
-        );
-      }
-    }
+    await evaluateAutomations(this.prisma, { boardId, projectId, changes, context });
   }
 }

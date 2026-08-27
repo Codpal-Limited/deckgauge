@@ -18,8 +18,23 @@
  *   an ADMIN, which is the case this whole screen-gating exists for.
  */
 
+/**
+ * Kept for the routes that are still administrator-only — the Azure DevOps
+ * production-deploy configuration is the remaining one. Managing a CONNECTION is
+ * member-level as of the connection-ownership phase, so this is no longer the copy
+ * for that screen.
+ */
 export const ORG_ADMIN_REQUIRED =
   'You need to be an organization administrator to manage connections.';
+
+/**
+ * A VIEWER is the one role that still cannot add a connection, matching
+ * orgRole('MEMBER') on the routes. The copy names the role rather than the rank,
+ * because "you need to be a member" reads as though they are not in the
+ * organization at all — which they are.
+ */
+export const VIEWER_CANNOT_ADD_CONNECTIONS =
+  'Your role is Viewer, so you cannot add or manage connections.';
 
 export const MEMBERSHIP_SUSPENDED_MESSAGE =
   'Your organization membership is suspended. Ask an organization administrator to restore it.';

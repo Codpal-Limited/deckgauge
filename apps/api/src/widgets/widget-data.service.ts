@@ -1,4 +1,11 @@
-import { PrismaClient, clickhouse as defaultClickhouse, type ClickHouseClient } from '@deckgauge/db';
+import { PrismaClient } from '@deckgauge/db';
+import type { ChReadClient } from '../analytics/ch-read-scope.js';
+
+/**
+ * Kept as a local name because 31 call sites and the routes read better for it,
+ * but it IS the shared `ChReadClient` — one concept, not two.
+ */
+export type WidgetReadClient = ChReadClient;
 import {
   BENCHMARKS_V1,
   tierFor,
@@ -408,13 +415,30 @@ export interface CompareDeliveryResult {
 }
 
 export class WidgetDataService {
-  private readonly clickhouse: ClickHouseClient;
+  private readonly clickhouse: WidgetReadClient;
 
+  /**
+   * The read client is REQUIRED. It used to default to the `clickhouse` ingest
+   * singleton, which holds `ingest_all … USING 1` on every object — so every
+   * widget read went through an identity no per-organization row policy can
+   * narrow. Removing the default is what forces each caller to say which
+   * identity, and therefore which tenant, it is reading as.
+   */
+  /**
+   * The caller's organization, or `null` for a membership-less break-glass
+   * caller. REQUIRED for the same reason the read client is: it is what scopes
+   * every board-scope resolution below to one tenant, and a default would let a
+   * caller read every organization's board sources without saying so.
+   *
+   * Safe as instance state because this service is constructed PER REQUEST
+   * (see `widget-data.routes.ts`), alongside the per-request read client.
+   */
   constructor(
     private readonly prisma: PrismaClient,
-    clickhouseClient?: ClickHouseClient
+    clickhouseClient: WidgetReadClient,
+    private readonly organizationId: string | null
   ) {
-    this.clickhouse = clickhouseClient ?? defaultClickhouse;
+    this.clickhouse = clickhouseClient;
   }
 
   async getStatusDistribution(boardId: string, _config: Record<string, unknown>) {
@@ -740,7 +764,7 @@ export class WidgetDataService {
     boardId: string,
     config: { days?: number } | Record<string, unknown>
   ): Promise<ChCompletionTrendResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildChCompletionTrendSql({ config, scope });
     if (built === null) return { points: [] };
 
@@ -759,7 +783,7 @@ export class WidgetDataService {
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
   ): Promise<ChVelocityResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildChVelocitySql({ config, scope });
     if (built === null) return { weeks: [] };
 
@@ -778,7 +802,7 @@ export class WidgetDataService {
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
   ): Promise<ChCycleTimeTrendResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildChCycleTimeTrendSql({ config, scope });
     if (built === null) return { weeks: [] };
 
@@ -802,7 +826,7 @@ export class WidgetDataService {
     boardId: string,
     _config: Record<string, unknown>
   ): Promise<ChBacklogAgeResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildChBacklogAgeSql({ config: _config, scope });
     if (built === null) {
       return { buckets: BACKLOG_AGE_BUCKETS.map((b) => ({ label: b.label, count: 0 })) };
@@ -834,7 +858,7 @@ export class WidgetDataService {
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
   ): Promise<LeadTimeForChangesResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildLeadTimeForChangesSql({ config, scope });
     if (built === null) return { weeks: [], emptyReason: 'no_pr_source' };
 
@@ -863,7 +887,7 @@ export class WidgetDataService {
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
   ): Promise<PrCycleTimeScatterResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildPrCycleTimeScatterSql({ config, scope });
     if (built === null) return { points: [], emptyReason: 'no_pr_source' };
 
@@ -896,7 +920,7 @@ export class WidgetDataService {
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
   ): Promise<ReviewPickupTimeResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildReviewPickupTimeSql({ config, scope });
     if (built === null) return { weeks: [], emptyReason: 'no_pr_source' };
 
@@ -926,7 +950,7 @@ export class WidgetDataService {
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
   ): Promise<PrSizeDistributionResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildPrSizeDistributionSql({ config, scope });
     if (built === null) {
       return { buckets: [], emptyReason: 'no_pr_source' };
@@ -958,7 +982,7 @@ export class WidgetDataService {
     boardId: string,
     config: Record<string, unknown>
   ): Promise<MergeFrequencyPerDevResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildMergeFrequencyPerDevSql({ config, scope });
     if (built === null) return { rows: [], emptyReason: 'no_pr_source' };
 
@@ -1006,7 +1030,7 @@ export class WidgetDataService {
     boardId: string,
     config: Record<string, unknown>
   ): Promise<ReviewerParticipationResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildReviewerParticipationSql({ config, scope });
     if (built === null) return { rows: [], emptyReason: 'no_review_source' };
 
@@ -1044,7 +1068,7 @@ export class WidgetDataService {
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
   ): Promise<CommitsPerDevResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildCommitsPerDevSql({ config, scope });
     if (built === null) return { rows: [], emptyReason: 'no_commit_source' };
 
@@ -1064,12 +1088,19 @@ export class WidgetDataService {
     }>(await result.json());
 
     const emails = rows.map((r) => r.email).filter((e) => e.length > 0);
-    const profiles = emails.length
-      ? await this.prisma.developerProfile.findMany({
-          where: { email: { in: emails } },
-          select: { email: true, displayName: true, userId: true },
-        })
-      : [];
+    // Scoped to the caller's organization: `developer_profiles` is tenant-keyed,
+    // and an email lookup without the predicate resolves display names out of
+    // every tenant's directory. A membership-less caller (`organizationId` null)
+    // gets NO lookup rather than an unscoped one — the row set below then falls
+    // back to the commit `author_name`, which is a cosmetic degradation and the
+    // same path an unmapped developer already takes.
+    const profiles =
+      emails.length && this.organizationId
+        ? await this.prisma.developerProfile.findMany({
+            where: { organizationId: this.organizationId, email: { in: emails } },
+            select: { email: true, displayName: true, userId: true },
+          })
+        : [];
     const byEmail = new Map<string, { displayName: string | null; userId: string | null }>();
     for (const p of profiles) {
       if (p.email && !byEmail.has(p.email)) {
@@ -1117,7 +1148,7 @@ export class WidgetDataService {
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
   ): Promise<ReworkRateResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildReworkRateSql({ config, scope });
     if (built === null) return { weeks: [], emptyReason: 'no_commit_source' };
 
@@ -1146,7 +1177,7 @@ export class WidgetDataService {
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
   ): Promise<BugRateResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildBugRateSql({ config, scope });
     if (!built) {
       return { weeks: [], emptyReason: 'no_issue_source' };
@@ -1177,7 +1208,7 @@ export class WidgetDataService {
     boardId: string,
     config: { days?: number } | Record<string, unknown>
   ): Promise<InvestmentAllocationResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildInvestmentAllocationSql({ config, scope });
     if (!built) {
       return { slices: [], total: 0, emptyReason: 'no_issue_source' };
@@ -1213,7 +1244,7 @@ export class WidgetDataService {
         ? (config as { weeks: number }).weeks
         : 12;
 
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildDoraMetricsSql({ config, scope });
     if (!built) {
       return { metrics: [], weeks, emptyReason: 'no_source' };
@@ -1296,7 +1327,7 @@ export class WidgetDataService {
     const periodA = { from: a.from.toISOString(), to: a.to.toISOString() };
     const periodB = { from: b.from.toISOString(), to: b.to.toISOString() };
 
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildPeriodComparisonSql({ config, scope });
     if (!built)
       return {
@@ -1374,7 +1405,7 @@ export class WidgetDataService {
     boardId: string,
     config: { sprints?: number } | Record<string, unknown>
   ): Promise<IterationPlanningAccuracyResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildIterationPlanningAccuracySql({ config, scope });
 
     if (scope.isEmpty) {
@@ -1418,7 +1449,7 @@ export class WidgetDataService {
     boardId: string,
     config: { sprints?: number } | Record<string, unknown>
   ): Promise<VelocityWithConfidenceResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildVelocityWithConfidenceSql({ config, scope });
 
     if (scope.isEmpty) {
@@ -1470,7 +1501,7 @@ export class WidgetDataService {
     const horizonDays =
       typeof cfgHorizon === 'number' && cfgHorizon > 0 ? cfgHorizon : 30;
 
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildInitiativeRiskRadarSql({ config, scope });
 
     // Board projects carry the manually-editable Due date, which overrides the
@@ -1512,7 +1543,7 @@ export class WidgetDataService {
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
   ): Promise<IssuesOpenedVsClosedResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildIssuesOpenedVsClosedSql({ config, scope });
     if (built === null) {
       return { weeks: [], emptyReason: 'no_issue_source' };
@@ -1549,7 +1580,7 @@ export class WidgetDataService {
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
   ): Promise<WipCountResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildWipCountSql({ config, scope });
     if (built === null) {
       return { current: 0, trend: [], emptyReason: 'no_issue_source' };
@@ -1576,7 +1607,7 @@ export class WidgetDataService {
   ): Promise<TicketCoverageRateResult> {
     const cfg = BENCHMARKS_V1.TICKET_COVERAGE_RATE!;
 
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildTicketCoverageRateSql({ config, scope });
     if (built === null) {
       return {
@@ -1607,7 +1638,7 @@ export class WidgetDataService {
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
   ): Promise<AiAssistedPrPctResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildAiAssistedPrPctSql({ config, scope });
     if (built === null) {
       return { current_pct: 0, trend: [], emptyReason: 'no_pr_source' };
@@ -1657,7 +1688,7 @@ export class WidgetDataService {
       comment_human_count: 0,
     };
 
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildReviewMixSql({ config: config as Record<string, unknown>, scope });
     if (built === null) {
       return { summary: emptySummary, weeks: [], emptyReason: 'no_github_source' };
@@ -1726,7 +1757,7 @@ export class WidgetDataService {
   ): Promise<BotVsHumanResult> {
     const emptySummary = { total: 0, bot_count: 0, human_count: 0, bot_pct: 0 };
 
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildBotVsHumanSql({ config: config as Record<string, unknown>, scope });
     if (built === null) {
       return { summary: emptySummary, weeks: [], emptyReason: 'no_commit_source' };
@@ -1773,7 +1804,7 @@ export class WidgetDataService {
     boardId: string,
     config: Record<string, unknown>
   ): Promise<ReviewQualityIndexResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildReviewQualityIndexSql({ config, scope });
     if (built === null) {
       return {
@@ -1825,7 +1856,7 @@ export class WidgetDataService {
       merged_prs: 0,
     };
 
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildReviewQualityTrendSql({ config, scope });
     if (built === null) {
       return { trend: [], scorecard: emptyScorecard, emptyReason: 'no_pr_source' };
@@ -1885,7 +1916,7 @@ export class WidgetDataService {
     boardId: string,
     config: Record<string, unknown>
   ): Promise<FlowThroughputCycleResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildFlowThroughputCycleSql({ config, scope });
     if (built === null) return { series: [], emptyReason: 'no_issue_source' };
 
@@ -1922,7 +1953,7 @@ export class WidgetDataService {
     boardId: string,
     config: Record<string, unknown>
   ): Promise<AiAdoptionResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildAiAdoptionSql({ config, scope });
     if (built === null) return { rows: [], emptyReason: 'no_code_source' };
 
@@ -1958,7 +1989,7 @@ export class WidgetDataService {
     boardId: string,
     config: Record<string, unknown>
   ): Promise<DeliveryTrendAnnotatedResult> {
-    const scope = await getWidgetBoardScope(this.prisma, boardId);
+    const scope = await getWidgetBoardScope(this.prisma, boardId, this.organizationId);
     const built = buildDeliveryTrendAnnotatedSql({ config, scope });
     if (built === null) {
       return { series: [], peak: null, events: [], emptyReason: 'no_issue_source' };
@@ -2026,7 +2057,7 @@ export class WidgetDataService {
       orderBy: { position: 'asc' },
       select: { boardId: true },
     });
-    return getBoardScopes(this.prisma, members.map((m) => m.boardId));
+    return getBoardScopes(this.prisma, members.map((m) => m.boardId), this.organizationId);
   }
 
   /**

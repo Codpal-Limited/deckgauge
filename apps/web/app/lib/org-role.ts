@@ -21,3 +21,16 @@ import type { BootstrapState } from '../actions/organization';
 export function isOrganizationAdmin(state: BootstrapState): boolean {
   return state.state === 'MEMBER' && state.organization.role === 'ADMIN';
 }
+
+/**
+ * May this caller add and manage connections?
+ *
+ * Member-level as of the connection-ownership phase: only a VIEWER is refused,
+ * matching `orgRole('MEMBER')` on the routes. Deliberately reads
+ * `organization.role`, which is where the bootstrap state carries it — there is no
+ * `membership` on this shape, so a `state.membership?.role` check silently admits
+ * everybody, VIEWER included.
+ */
+export function canManageOwnConnections(state: BootstrapState): boolean {
+  return state.state === 'MEMBER' && state.organization.role !== 'VIEWER';
+}

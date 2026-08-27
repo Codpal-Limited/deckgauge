@@ -14,7 +14,14 @@ export const JiraEpicSchema = z.object({
   description: z.string().nullable(),
   status: z.string(),
   assignee: z.string().nullable(),
+  dueDate: z.coerce.date().nullable().default(null),
   updatedAt: z.coerce.date(),
+  /**
+   * Raw values for fields requested beyond the baseline set, keyed by Jira
+   * field id. Optional: absent when the sync mapped no extra fields, which is
+   * every board that has not used the field picker.
+   */
+  extra: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type JiraEpic = z.infer<typeof JiraEpicSchema>;
@@ -29,7 +36,14 @@ export const JiraIssueSchema = z.object({
   status: z.string(),
   assignee: z.string().nullable(),
   type: z.string(),
+  dueDate: z.coerce.date().nullable().default(null),
   updatedAt: z.coerce.date(),
+  /**
+   * Raw values for fields requested beyond the baseline set, keyed by Jira
+   * field id. Optional: absent when the sync mapped no extra fields, which is
+   * every board that has not used the field picker.
+   */
+  extra: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type JiraIssue = z.infer<typeof JiraIssueSchema>;

@@ -7,6 +7,8 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { PrismaClient, chExecutorFromClient, clickhouse } from "@deckgauge/db";
 import { ClickhouseIntelligenceService } from "./intelligence/clickhouse-intelligence.service.js";
+import { buildChReadIdentity } from "./analytics/ch-read-client.js";
+import { buildChReadPlugin } from "./analytics/ch-read.plugin.js";
 import { intelligenceRoutes } from "./intelligence/intelligence.routes.js";
 import { buildIntelligenceQueues } from "./intelligence/queues.js";
 import { boardRoutes } from "./boards/board.routes.js";
@@ -41,6 +43,7 @@ import { Queue } from "bullmq";
 import {
   GITHUB_SYNC_QUEUE_NAMES,
   makeGitHubQueueClient,
+  manualSyncJobPayload,
 } from "@deckgauge/shared";
 import { boardAdoSourceRoutes } from "./board-sources/board-ado-source.routes.js";
 import { boardGitLabSourceRoutes } from "./board-sources/board-gitlab-source.routes.js";
@@ -49,6 +52,8 @@ import { buildPolicyPlugin } from "./auth/policy.plugin.js";
 import { AUTHENTICATED, PUBLIC } from "./auth/policy.js";
 import { boardAccessRoutes } from "./board-access/board-access.routes.js";
 import { userRoutes } from "./users/user.routes.js";
+import { notificationRoutes } from "./notifications/notification.routes.js";
+import { notificationPreferenceRoutes } from "./notifications/notification-preference.routes.js";
 import { boardViewRoutes } from "./widgets/board-views.routes.js";
 import { dashboardWidgetRoutes } from "./widgets/dashboard-widgets.routes.js";
 import { widgetDataRoutes } from "./widgets/widget-data.routes.js";
@@ -156,9 +161,20 @@ export function buildServer(prisma: PrismaClient) {
         restrictDenial: enterprise?.restrictDenial?.bind(enterprise),
       }),
     );
+    // The ClickHouse read chokepoint. Registered AFTER the auth plugin, because
+    // it reads `request.membership`, and after the policy plugin so that a
+    // request which is going to be refused never builds a reader at all.
+    const chReadIdentity = buildChReadIdentity({
+      ingestClient: clickhouse,
+      log: { warn: (m) => protectedApp.log.warn(m), info: (m) => protectedApp.log.info(m) },
+    });
+    await protectedApp.register(buildChReadPlugin({ identity: chReadIdentity }));
+
     protectedApp.register(boardAccessRoutes, { prisma });
     protectedApp.register(userRoutes, { prisma });
     protectedApp.register(commentRoutes, { prisma, uploadService });
+    protectedApp.register(notificationRoutes, { prisma });
+    protectedApp.register(notificationPreferenceRoutes, { prisma });
     protectedApp.register(boardRoutes, { prisma });
     protectedApp.register(recruitmentRoutes, { prisma });
     // Calendar→candidate ingest queue. Reuses the REDIS_URL env pattern as the other
@@ -184,6 +200,10 @@ export function buildServer(prisma: PrismaClient) {
     protectedApp.register(jiraInstanceRoutes, { prisma });
     protectedApp.register(retiredProjectsRoutes, { prisma });
     // The one place the live ClickHouse client is bound to organization
+    const entitledFeatures = enterprise
+      ? enterprise.enabledFeatures(await enterprise.verifyLicense())
+      : [];
+
     // provisioning. Kept out of organization.routes.ts so route tests that
     // register the plugin cannot reach the server behind clickhouse.ts's
     // hard-coded localhost:8123 fallback.
@@ -194,6 +214,12 @@ export function buildServer(prisma: PrismaClient) {
       // route sanitises the result and omits the field entirely when there is
       // nothing, so the Community payload is unchanged.
       notices: enterprise?.notices?.bind(enterprise),
+      // The multi-org entitlement. Resolved once here, where `enterprise` is
+      // already awaited, and via the module's own `enabledFeatures` rather than
+      // `status.features` — the module decides what a given status actually
+      // entitles, so an expired licence yields none. No module means no features,
+      // which is what refuses a second organization on the open-source edition.
+      entitledFeatures: () => entitledFeatures,
     });
     protectedApp.register(orgBoardsRoutes, { prisma });
     protectedApp.register(ownerRoutes, { prisma });
@@ -291,9 +317,15 @@ export function buildServer(prisma: PrismaClient) {
     protectedApp.register(buildComparisonAccessRoutes(prisma));
     protectedApp.register(buildRoadmapAccessRoutes(prisma));
 
-    // EI-019 — Phase 3 intelligence routes. clickhouse is the shared
-    // @clickhouse/client singleton exported from @deckgauge/db; its
-    // query() signature already matches the ChQueryClient interface.
+    // EI-019 — Phase 3 intelligence routes.
+    //
+    // `clickhouse` is the INGEST singleton, and it holds `ingest_all … USING 1`
+    // on every object — so a read through it cannot be narrowed by any
+    // per-organization row policy (tenancy §11 precondition 8). Reads therefore
+    // go through `request.chRead`, a reader scoped to the caller's organization
+    // by the plugin registered below; this boot-time service stays only for the
+    // paths that have not been converted yet, and each of those is named in
+    // planning/STATE.md.
     const intelligenceService = new ClickhouseIntelligenceService({ client: clickhouse });
 
     // EI-022 — manual sync trigger. Wires BullMQ Queue clients to the
@@ -301,25 +333,40 @@ export function buildServer(prisma: PrismaClient) {
     // set we leave enqueueSync undefined and the route returns 503 (graceful).
     const queues = buildIntelligenceQueues(process.env.REDIS_URL);
     const enqueueSync = queues
-      ? async (source: 'jira' | 'github' | 'ado' | 'gitlab' | 'all') => {
-          const trigger = { trigger: 'manual' as const };
+      ? async (
+          source: 'jira' | 'github' | 'ado' | 'gitlab' | 'all',
+          organizationId: string,
+        ) => {
+          // Built by the shared helper, not inline. This is the enqueue site that was
+          // MISSED when the others were scoped: it sent
+          // `{ trigger: 'manual' }` with no tenant, which the (now fail-closed) worker
+          // handlers refuse — the route had already answered 202, so the UI reported a
+          // successful sync while nothing synced. `manualSyncJobPayload` takes the
+          // organization as its only argument, so an enqueue site cannot compile
+          // without one.
+          const payload = manualSyncJobPayload(organizationId);
           if (source === 'all') {
             await Promise.all([
-              queues.jira.add('manual', trigger),
-              queues.github.add('manual', trigger),
-              queues.ado.add('manual', trigger),
-              queues.gitlab.add('manual', trigger),
+              queues.jira.add('manual', payload),
+              queues.github.add('manual', payload),
+              queues.ado.add('manual', payload),
+              queues.gitlab.add('manual', payload),
             ]);
             return;
           }
-          await queues[source].add('manual', trigger);
+          await queues[source].add('manual', payload);
         }
       : undefined;
 
     protectedApp.register(intelligenceRoutes({ service: intelligenceService, prisma, enqueueSync }));
     protectedApp.register(boardSyncRoutes({ prisma, queues }));
 
-    const timesheetService = new TimesheetService(buildTimesheetDeps(prisma, clickhouse));
+    // One TimesheetService — its TtlCache is per-instance and the timesheet
+    // engine is the most expensive read in the product — but a reader resolved
+    // PER ORGANIZATION on every ClickHouse call (tenancy §11 precondition 8).
+    const timesheetService = new TimesheetService(
+      buildTimesheetDeps(prisma, (organizationId) => chReadIdentity.readerFor(organizationId)),
+    );
     protectedApp.register(timesheetRoutes({ service: timesheetService, prisma }));
     protectedApp.register(orgTreeTimesheetRoutes({ prisma, clickhouse }));
     protectedApp.register(locationRoutes);

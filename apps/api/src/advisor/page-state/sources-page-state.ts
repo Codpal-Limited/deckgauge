@@ -1,3 +1,7 @@
+import {
+  visibleConnectionWhere,
+  type ConnectionCaller,
+} from '../../connections/connection-visibility.js';
 import type { PageStateDeps, PageStateResult } from './page-state.types.js';
 import { MAX_CONFIG_ROWS, TRUNCATION_NOTE } from './page-state-notes.js';
 
@@ -14,20 +18,45 @@ const BOUND = { take: MAX_CONFIG_ROWS + 1, orderBy: { createdAt: 'desc' as const
 const withBoardCount = { _count: { select: { boardSources: true } } } as const;
 
 /**
- * Last-known sync state for the sources configured on this instance.
+ * Last-known sync state for the sources configured for the caller's organization.
  *
- * **Instance-wide, not board-scoped.** The `sources` and `connections` screens
+ * **Organization-wide, not board-scoped.** The `sources` and `connections` screens
  * both list the sync records themselves (`GET /project-syncs/{jira,github,gitlab,ado}`),
  * so scoping this resolver to one board left it unable to answer the questions
- * actually asked on those pages. Those routes are authentication-only inside
- * the protected plugin, which is the posture this read borrows — the same way
- * the timesheet resolver borrows `GET /timesheet/status-rules`. There is no id
- * to verify and therefore no authorization step to add.
+ * actually asked on those pages.
+ *
+ * **The tenant predicate is not optional, and its absence here was a live leak**
+ * (TENANCY-PROGRAMME §5a, fixed 2026-08-26). The docstring this replaces argued
+ * that the routes behind these screens are "authentication-only inside the
+ * protected plugin … there is no id to verify and therefore no authorization
+ * step to add". That is true of AUTHORIZATION and irrelevant to TENANCY. The
+ * predicate these reads were missing is the CALLER'S ORGANIZATION — which is not
+ * an entity id, needs no id to verify, and is exactly what the four
+ * `*SyncService.list()` methods behind those very routes apply. Reading the
+ * tables directly instead of calling those services dropped their `where` along
+ * with their unbounded `take`; only the `take` was meant to go. Any authenticated
+ * member of any organization could therefore ask the Advisor a plain question and
+ * be told every other organization's Jira project keys, GitHub repo names, GitLab
+ * paths and ADO projects.
+ *
+ * So each read carries the same two nested predicates as its service, in the same
+ * order and for the same reasons (`connections/connection-visibility.ts`):
+ *
+ *     where: { <instance>: { organizationId, ...visibleConnectionWhere(caller) } }
+ *
+ * The tenant boundary is the outer one; connection OWNERSHIP within that tenant is
+ * the inner one. Both are needed and they are not interchangeable — filtering on
+ * `organizationId` alone would close the cross-tenant leak and leave a colleague's
+ * PERSONAL connection listed to every member of their organization. Neither sync
+ * table carries an organization or an owner of its own: both facts ride on the
+ * instance relation, which is why the predicate is nested rather than flat.
  *
  * Reads the four sync tables directly rather than calling the `*SyncService.list()`
  * methods behind those routes: their reads are unbounded (an unbounded query and
  * an unbounded amount of LLM context), and GitHub's omits the per-feed watermarks
- * that are the only way to answer "how far has this repo got?".
+ * that are the only way to answer "how far has this repo got?". That remains the
+ * right call — but it is a bound this resolver ADDS to those services' reads, never
+ * a predicate it drops from them.
  *
  * Deliberately reads stored columns rather than probing: `BoardSourceHealthService.probe()`
  * makes real outbound requests to Jira/GitHub/GitLab/ADO, and a tool the model invokes on
@@ -62,20 +91,40 @@ const withBoardCount = { _count: { select: { boardSources: true } } } as const;
  *
  * Every entry carries a `label` identifying which specific source it is (Jira's
  * `jiraProjectKey`, GitHub's `repoFullName`, GitLab's `projectPath`, ADO's `adoProject`) plus
- * the `instance` it belongs to — instance-wide, a label alone can collide, since the uniqueness
+ * the `instance` it belongs to — organization-wide, a label alone can collide, since the uniqueness
  * constraint on each sync table is per instance. It also carries `boardCount`: with no board in
  * scope, nothing else in the payload says whether a source feeds any board at all, and a sync
  * row attached to zero boards is the ordinary explanation for a board that stays empty while
  * its source looks healthy.
  */
 export async function resolveSourcesPageState(deps: PageStateDeps): Promise<PageStateResult> {
+  // Rebuilt from the caller facts the route threaded in, rather than passed as a
+  // ready-made `ConnectionCaller`: `PageStateDeps` is one flat bag of caller
+  // facts shared by every resolver, and `userId` is already on it — as `string`,
+  // because a page-state read always has an authenticated caller, where
+  // `ConnectionCaller.userId` is optional for the request that resolved no local
+  // user. Widening it here rather than narrowing it there keeps that distinction.
+  const caller: ConnectionCaller = {
+    userId: deps.userId,
+    organizationId: deps.organizationId,
+    isOrgAdmin: deps.isOrgAdmin,
+  };
+  // Ownership rides on the SAME relation as tenancy: a sync row carries neither
+  // an organization nor an owner of its own. Identical to the `where` in each
+  // `*SyncService.list()`, deliberately — the two must not be able to disagree
+  // about what this member may see.
+  const visible = visibleConnectionWhere(caller);
+  const scope = { organizationId: caller.organizationId, ...visible };
+
   const [jira, github, gitlab, ado] = await Promise.all([
     deps.prisma.jiraProjectSync.findMany({
       ...BOUND,
+      where: { jiraInstance: scope },
       include: { ...withBoardCount, jiraInstance: { select: { name: true } } },
     }),
     deps.prisma.gitHubRepoSync.findMany({
       ...BOUND,
+      where: { githubInstance: scope },
       include: {
         ...withBoardCount,
         githubInstance: { select: { org: true, baseUrl: true } },
@@ -83,10 +132,12 @@ export async function resolveSourcesPageState(deps: PageStateDeps): Promise<Page
     }),
     deps.prisma.gitLabProjectSync.findMany({
       ...BOUND,
+      where: { gitlabInstance: scope },
       include: { ...withBoardCount, gitlabInstance: { select: { name: true } } },
     }),
     deps.prisma.azureDevOpsProjectSync.findMany({
       ...BOUND,
+      where: { azureDevOpsInstance: scope },
       include: { ...withBoardCount, azureDevOpsInstance: { select: { name: true } } },
     }),
   ]);

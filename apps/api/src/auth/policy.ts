@@ -1,7 +1,8 @@
 import type { PrismaClient, BoardAccessRole, RoadmapAccessRole } from '@deckgauge/db';
 import type { OrgRoleValue } from '@deckgauge/shared';
 import { ROLE_RANK as RANK } from './board-access.js';
-import { effectiveBoardRole, meetsBoardRole, meetsOrgRole } from '../authz/policy.js';
+import { effectiveBoardRole, personalBoardRole, meetsBoardRole, meetsOrgRole } from '../authz/policy.js';
+import { multiOrgOperatorEnabled } from './multi-org-flag.js';
 
 /**
  * Models a board is reachable from without the board id already being a route
@@ -188,9 +189,20 @@ export const fromBodyArray = (idKey: string): IdExtractor => (ctx) => {
 /**
  * One arm of a `viaBranch` — evaluated in order, first match wins (never
  * OR'd together; see `viaBranch`'s doc for why that distinction matters).
- * `then: 'authenticated'` means "this arm needs nothing beyond being signed
- * in" — safe because `evaluatePolicy` has already denied unauthenticated
- * callers by the time a `board` policy's source is resolved. `then:
+ *
+ * **There is deliberately no "needs nothing beyond being signed in" arm.** Every
+ * arm here either contributes a board id for the `board` branch's loop to check,
+ * or performs its own equivalent check before contributing none (`orgEntity` via
+ * `hasOrgTreeRole`, `comparisonAccess` via `hasComparisonRole`). An arm that did
+ * neither would produce an ALLOW backed by nothing: it leaves the resolved set
+ * empty, which is truthy, so the `board` branch's per-id loop — and every tenancy
+ * gate inside it — runs zero times. That shape is the one that hid two live
+ * cross-tenant holes through two review passes (see `resolveBoardIds`).
+ *
+ * A route where being signed in really is enough declares the `authenticated`
+ * POLICY, where a reviewer reads it. A route where only ONE request shape needs
+ * that is asking for an unbacked ALLOW on that shape and must say so at the
+ * route, not bury it inside a board source. `then:
  * 'boardId'` means the extracted value(s) already ARE board ids — the
  * per-arm equivalent of a top-level `viaBoardId` source, needed when only
  * SOME shapes of a request carry a board id directly (e.g. a comparison
@@ -208,13 +220,11 @@ export const fromBodyArray = (idKey: string): IdExtractor => (ctx) => {
  * legitimately address either a board-owned resource or an org-tree-owned one
  * (`POST /api/uploads?projectId=` vs `?orgEmployeeId=`), and the org-tree arm
  * must be gated on `OrgTreeAccess` rather than waved through. Reach for this
- * — never `'authenticated'` — whenever an arm's ids name a row that some
- * org tree owns.
+ * whenever an arm's ids name a row that some org tree owns.
  */
 export type BoardBranch =
   | { when: IdExtractor; then: SubEntityModel }
   | { when: IdExtractor; then: 'boardId' }
-  | { when: IdExtractor; then: 'authenticated' }
   | { when: IdExtractor; then: 'comparisonAccess' }
   | { when: IdExtractor; then: 'orgEntity'; orgModel: OrgEntityModel };
 
@@ -443,11 +453,25 @@ export interface PolicyContext {
   membership?: { organizationId: string; role: OrgRoleValue } | null;
 }
 
-export type PolicyDenial = { ok: false; status: 401 | 403; error: string };
+export type PolicyDenial = { ok: false; status: 401 | 403 | 404; error: string };
 export type PolicyResult = { ok: true } | PolicyDenial;
 
 const DENY_401: PolicyResult = { ok: false, status: 401, error: 'Authentication required' };
 const DENY_403: PolicyDenial = { ok: false, status: 403, error: 'Forbidden' };
+/**
+ * The entity is not in the caller's organization, or does not exist — and those
+ * two are deliberately the same answer (tenancy D7): a gate that distinguished
+ * them would confirm that another tenant's id exists.
+ *
+ * Settled in multi-org slice 6b. D7 asked for 404 on every cross-tenant read;
+ * the evaluator answered 403 everywhere. The resolution is a SPLIT, not either
+ * document's blanket rule: 404 when the entity is out of reach, 403 when it is
+ * yours and you merely lack the role. That distinction is why the web can still
+ * tell an in-organization caller "ask an owner to share it" instead of showing
+ * them a bare 404 — the common case keeps its explanation, and only the
+ * cross-tenant case hides.
+ */
+const DENY_404: PolicyDenial = { ok: false, status: 404, error: 'Not found' };
 /**
  * Distinct from a plain 403 on purpose: the caller is authenticated and their
  * request is well-formed, they simply belong to no organization yet. The web app
@@ -577,15 +601,26 @@ async function resolveOrgTreeId(
  *
  * Carries the same org-role ceiling as `evaluatePolicy`'s `orgTree` branch: an
  * org ADMIN is OWNER-equivalent on this tree, and an org VIEWER is capped at
- * VIEWER however generous the grant row is. The instance-level break-glass
- * (`ctx.isAdmin`) short-circuits the lookup entirely, but only when there is
- * no membership to consult — the pre-bootstrap admin, exactly as the
- * evaluator branch admits them.
+ * VIEWER however generous the grant row is.
  *
- * Like the evaluator branch, this does NOT verify `orgTreeId`'s own
- * `organizationId` against the caller's — closing that is a
- * `DECKGAUGE_MULTI_ORG=true` precondition recorded in the design doc, not
- * something either function does today.
+ * The instance-level break-glass (`ctx.isAdmin`) does **not** short-circuit this
+ * lookup. It used to, when there was no membership to consult, and that was §4.1
+ * hole 3's second door — closed 2026-08-26. A membership-less caller needs a real
+ * `OrgTreeAccess` row here; recovery for a locked-out operator is bootstrap-adopt.
+ * Do not reintroduce the short-circuit: see the note in the body.
+ *
+ * And with no membership the grant row is not enough EITHER, once the operator has
+ * declared the deployment multi-tenant — §4.1 hole 2, gated in the body below.
+ * Both holes had a door at this function, and the hole-2 one is not covered by the
+ * `board` branch's gate: neither caller of this function contributes a board id, so
+ * that branch's id loop (which is where its gate lives) never runs. Do not remove
+ * the `multiOrgOperatorEnabled()` check on the assumption something downstream
+ * re-checks it. Nothing does.
+ *
+ * Like the evaluator branch, this verifies `orgTreeId`'s own `organizationId`
+ * against the caller's, by reading the tree THROUGH `ctx.membership.organizationId`
+ * and denying when it does not resolve. That closes what this comment used to
+ * defer as a `DECKGAUGE_MULTI_ORG=true` precondition.
  *
  * Fail-closed and never throws: a lookup failure denies rather than surfacing
  * as a 500 out of the authz layer. Shared by every org-tree check that happens
@@ -600,15 +635,92 @@ async function hasOrgTreeRole(
   requiredRole: BoardAccessRole,
 ): Promise<boolean> {
   if (!ctx.user) return false;
-  if (!ctx.membership && ctx.isAdmin) return true;
+  // §4.1 hole 3, second door. `if (!ctx.membership && ctx.isAdmin) return true`
+  // used to sit here, and leaving it while closing the `orgTree` evaluator branch
+  // would have closed one door onto the same room: this function is the org-tree
+  // check reached from INSIDE board-source resolution (the `upload` read hop and
+  // the `then: 'orgEntity'` branch arm), and the `orgEntity` arm's own comment
+  // records that it contributes no board ids and is therefore the ONLY check that
+  // happens. An instance break-glass admin would have kept OWNER-equivalence on
+  // every tenant's employee data through `POST /api/uploads?orgEmployeeId=`.
+  //
+  // So both are removed together, for the same reason and with the same recovery
+  // path (bootstrap-adopt — see the `orgTree` branch in `evaluatePolicy`). A
+  // membership-less caller now needs a real `OrgTreeAccess` row here, which is the
+  // no-membership rule the tail of this function already applied to non-admins.
+  // §4.1 hole 2, the SIXTH site — and the one genuinely NOT shadowed by the `board`
+  // branch's gate, which is why it needs its own.
+  //
+  // `hasOrgTreeRole` is reached from exactly two places and NEITHER contributes a
+  // board id: the `upload` read hop returns `ORG_OK`, which `applyResolved` skips,
+  // and the `then: 'orgEntity'` arm `break`s without adding anything. So
+  // `resolveBoardIds` answers `[]`; an empty array is truthy so `if (!boardIds)`
+  // does not fire, the id loop runs zero times, and the `board` branch returns
+  // ALLOW — with its hole-2 gate sitting INSIDE that loop, never executed. That is
+  // the same argument used to justify closing hole 3 at this function and at
+  // `hasComparisonRole`, applied to hole 2.
+  //
+  // The reachable case composes with the residual recorded in `planning/STATE.md`:
+  // a user offboarded BEFORE the revoke shipped has no membership and a live
+  // `OrgTreeAccess` row, so under `DECKGAUGE_MULTI_ORG=true` they would reach
+  // another tenant's employee data through `POST /api/uploads?orgEmployeeId=`.
+  // Every other kind denies them; without this line, this one did not.
+  //
+  // Placed BEFORE the reads, mirroring `hasComparisonRole`: the verdict needs
+  // neither the tree nor the grant, so a flag-on membership-less caller should not
+  // pay for either query. `false` is this function's only failure channel, so the
+  // verdict is a 403 — a foreign tree and a missing one still answer identically,
+  // so no existence oracle is created.
+  if (!ctx.membership && multiOrgOperatorEnabled()) return false;
+
   try {
-    const access: { role: BoardAccessRole } | null = await prisma.orgTreeAccess.findUnique({
-      where: { orgTreeId_userId: { orgTreeId, userId: ctx.user.id } },
-    });
+    /**
+     * The tree is read THROUGH the caller's organization, for the same reason and
+     * at the same cost as the `orgTree` evaluator branch below: every id reaching
+     * here came from route params, query, or a sub-entity hop, so it may name a
+     * tree in ANY tenant. `OrgTree.organizationId` is required and
+     * `@@index([organizationId])` covers the predicate (see
+     * packages/db/prisma/schema.prisma), so this is a covered lookup issued in
+     * parallel with the grant read — no added round trip on the wire.
+     *
+     * This is what the docstring above used to defer, and it is load-bearing:
+     * `effectiveBoardRole` short-circuits an org ADMIN to OWNER with NO grant
+     * row, so without this read an administrator of ANY organization was
+     * OWNER-equivalent on EVERY org tree. The `upload` read hop was at least
+     * re-checked by the board read downstream; the `then: 'orgEntity'` arm never
+     * was, and its own comment states outright that it contributes no board ids
+     * and is therefore the only check that happens.
+     *
+     * Resolving WITH the predicate (rather than fetching the tree and comparing
+     * afterwards) also keeps a nonexistent tree and a foreign tree
+     * indistinguishable — the gate never confirms another tenant's id exists.
+     */
+    const [tree, access] = await Promise.all([
+      ctx.membership
+        ? prisma.orgTree.findFirst({
+            where: { id: orgTreeId, organizationId: ctx.membership.organizationId },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+      prisma.orgTreeAccess.findUnique({
+        where: { orgTreeId_userId: { orgTreeId, userId: ctx.user.id } },
+      }) as Promise<{ role: BoardAccessRole } | null>,
+    ]);
     if (ctx.membership) {
+      // Out of reach, not merely insufficient: a tree in another tenant is
+      // indistinguishable from one that does not exist. Both callers collapse
+      // this `false` into board-source resolution's single failure channel, so
+      // the verdict is a 403 either way — a foreign tree and a missing one still
+      // answer identically, which is what D7 actually requires.
+      if (!tree) return false;
       const effective = effectiveBoardRole(ctx.membership.role, access?.role ?? null);
       return meetsBoardRole(effective, requiredRole);
     }
+    // Single-tenant: the no-membership path is unchanged, and deliberately so — it
+    // is the pre-bootstrap identity `bootstrap:admin` produces. There is no
+    // organization to scope the tree to, so the grant row decides alone — and it
+    // must be a REAL grant, never an implicit role (the instance break-glass
+    // short-circuit that used to sit above this was hole 3, closed 2026-08-26).
     return !!access && RANK[access.role] >= RANK[requiredRole];
   } catch (err) {
     ctx.log?.error(err, `policy: failed to check org-tree access for tree "${orgTreeId}" — denying`);
@@ -711,34 +823,68 @@ async function resolveOrgTreeIds(
  * — never throws — for a missing row or a lookup failure, the same fail-closed
  * reasoning as `resolveBoardId`.
  */
+/**
+ * `'out-of-reach'` means the comparison is not in the caller's organization, does
+ * not exist, or could not be read — one answer for all three, deliberately
+ * (tenancy D7). `'insufficient'` means it IS theirs and they merely lack the
+ * role. The `comparison` policy branch maps the first to 404 and the second to
+ * 403; the `comparisonAccess` board-branch arm cannot express that distinction
+ * and refuses either way (see its comment).
+ */
+type ComparisonRoleOutcome = 'allowed' | 'insufficient' | 'out-of-reach';
+
 async function hasComparisonRole(
   prisma: PrismaClient,
   comparisonId: string,
   ctx: PolicyContext,
   requiredRole: BoardAccessRole,
-): Promise<boolean> {
-  if (!ctx.user) return false;
+): Promise<ComparisonRoleOutcome> {
+  if (!ctx.user) return 'out-of-reach';
   try {
     if (!ctx.membership) {
-      if (ctx.isAdmin) return true;
+      // §4.1 hole 3, third door — and structurally the WORST of the six, which is
+      // why it is closed even though the design names only the `orgTree` one.
+      // `if (ctx.isAdmin) return 'allowed'` used to stand here.
+      //
+      // This function is reached from the `then: 'comparisonAccess'` arm of
+      // board-source resolution, and that arm `break`s WITHOUT contributing any
+      // board id (see `resolveBoardIds`). So the board branch's id loop never
+      // runs and `evaluatePolicy` returns ALLOW on an empty set — nothing
+      // downstream re-checks this verdict. Exactly the shape of the
+      // `then: 'orgEntity'` arm, and `Comparison` carries `organization_id`, so
+      // this is tenant data reached by an instance role bit with no grant row
+      // behind it.
+      //
+      // §4.1 hole 2, same shape as the board branch: with no membership the grant
+      // would decide alone. Gated on the operator's declared mode for the reasons
+      // set out in full on the `board` branch of `evaluatePolicy`.
+      if (multiOrgOperatorEnabled()) return 'insufficient';
       const grant = await prisma.comparisonAccess.findUnique({
         where: { comparisonId_userId: { comparisonId, userId: ctx.user.id } },
         select: { role: true },
       });
-      return !!grant && RANK[grant.role] >= RANK[requiredRole];
+      // With no membership there is NO organization, so nothing can be
+      // cross-tenant and nothing is out of reach: a missing grant here is
+      // plainly "you do not have access" — 403. This mirrors the other four
+      // kinds, whose no-membership paths also answer 403 because they read the
+      // ACL row directly and never reach a `!scoped` check.
+      if (!grant) return 'insufficient';
+      return RANK[grant.role] >= RANK[requiredRole] ? 'allowed' : 'insufficient';
     }
     const scoped = await prisma.comparison.findFirst({
       where: { id: comparisonId, organizationId: ctx.membership.organizationId },
       select: { access: { where: { userId: ctx.user.id }, select: { role: true } } },
     });
-    if (!scoped) return false;
+    if (!scoped) return 'out-of-reach';
     return meetsBoardRole(
       effectiveBoardRole(ctx.membership.role, scoped.access[0]?.role ?? null),
       requiredRole,
-    );
+    )
+      ? 'allowed'
+      : 'insufficient';
   } catch (err) {
     ctx.log?.error(err, `policy: failed to resolve comparison access for id "${comparisonId}" — denying`);
-    return false;
+    return 'out-of-reach';
   }
 }
 
@@ -746,14 +892,52 @@ async function hasComparisonRole(
  * Resolves a `board` policy's source(s) to the distinct set of board ids the
  * requester must hold the required role on. Returns `undefined` — meaning
  * "deny" — when no source is configured and no param carries a board id
- * directly, when an extractor finds nothing, when no `branch` arm matches,
- * or when any extracted id fails to resolve to a board. A missing/
- * unresolvable id never falls through to "no board required"; it always
- * denies. An empty (but non-`undefined`) result is legitimate — it means
- * every source resolved and none of them needed a board (every id resolved
- * to `ORG_OK`, a `branch` arm matched `then: 'authenticated'`, or a
- * `branch` arm matched `then: 'comparisonAccess'` and every extracted id
- * passed its access check) — the caller allows outright in that case.
+ * directly, when the source LIST is empty, when an extractor finds nothing,
+ * when no `branch` arm matches, or when any extracted id fails to resolve to
+ * a board. A missing/unresolvable id never falls through to "no board
+ * required"; it always denies. An empty (but non-`undefined`) result is
+ * legitimate — it means every source resolved and none of them needed a
+ * board (every id resolved to `ORG_OK`, or a `branch` arm matched
+ * `then: 'comparisonAccess'` and every extracted id passed its access check)
+ * — the caller allows outright in that case.
+ *
+ * ---
+ * **The "contributes nothing, so the board branch ALLOWs on an empty set" shape —
+ * read this before adding an arm or a source.** An empty array is TRUTHY, so
+ * `evaluatePolicy`'s `if (!boardIds)` does not fire, its per-id loop runs zero
+ * times, and everything living inside that loop — notably its §4.1 hole-2 tenancy
+ * gate — never executes. Whatever check the arm itself performs is therefore the
+ * ONLY check that happens on such a path, and this is not theoretical: it is how
+ * `hasOrgTreeRole` and `hasComparisonRole` hid two LIVE cross-tenant holes through
+ * two review passes that each declared the class closed.
+ *
+ * **The rule, which is the thing to keep rather than the list:** every construct
+ * that can leave the resolved set empty must either do its own check, or refuse.
+ * There is no third option, because nothing downstream re-checks it.
+ *
+ * Three constructs are allowed to contribute nothing, and each does its own check:
+ *
+ *   1. `ORG_OK` from the `upload` read hop — gated inside `hasOrgTreeRole`.
+ *   2. `then: 'orgEntity'` — gated inside `hasOrgTreeRole`.
+ *   3. `then: 'comparisonAccess'` — gated inside `hasComparisonRole`.
+ *
+ * Two more used to be able to, and both now REFUSE instead:
+ *
+ *   4. `then: 'authenticated'` — removed from `BoardBranch` (so it no longer
+ *      compiles) and refused at runtime by the unrecognised-`then` guard below (so
+ *      a cast cannot restore it). A guard was not expressible: any check strong
+ *      enough to make the arm safe is what a board-bearing arm already does, at
+ *      which point it is not an "authenticated" arm. See `BoardBranch`.
+ *   5. `board(role, [])` — an empty source LIST, refused by the guard below.
+ *      The `orgTree` branch denies on `length === 0` at the evaluator; this branch
+ *      cannot, because an empty RESOLVED set is legitimate here (cases 1-3). So
+ *      the guard sits on the source list instead, which is the only place the two
+ *      cases are still distinguishable.
+ *
+ * Neither 4 nor 5 had a production call site when they were closed. They were
+ * closed anyway: an unreachable construct with the shape of a live hole is a
+ * loaded gun, and "it was never reachable" is the argument that deletes a guard
+ * later. Pinned in `__isolation__/policy-cross-tenant.test.ts`.
  */
 async function resolveBoardIds(
   prisma: PrismaClient,
@@ -767,6 +951,20 @@ async function resolveBoardIds(
   }
 
   const sources = Array.isArray(source) ? source : [source];
+  // An empty source LIST is not the same request as no source at all, and it must
+  // not be treated as one. `board(role, [])` skips the `!source` default above
+  // (an empty array is truthy), then contributes nothing here, and an empty
+  // resolved set means ALLOW to the caller — so the policy would admit every
+  // signed-in caller at any role, in any tenant, having checked nothing.
+  //
+  // Refused here rather than at the evaluator, where the `orgTree` branch's
+  // equivalent `length === 0` guard lives, because the `board` branch cannot use
+  // that position: an empty RESOLVED set is legitimate for it (see this
+  // function's docstring, cases 1-3). The source list is the last point at which
+  // "nothing was asked for" and "everything asked for needed no board" are still
+  // distinguishable.
+  if (sources.length === 0) return undefined;
+
   const boardIds = new Set<string>();
 
   const applyResolved = (resolved: Resolved[]): boolean => {
@@ -792,16 +990,14 @@ async function resolveBoardIds(
     }
 
     // s.kind === 'branch': first arm whose discriminator extracts something
-    // wins; its ids are resolved (or, for `then: 'authenticated'`, just
-    // accepted). No arm matching denies — it never falls through to a
-    // weaker check. Whichever arm commits, a failed check inside it denies
-    // outright — it never tries a later arm instead.
+    // wins; its ids are then resolved and checked. No arm matching denies — it
+    // never falls through to a weaker check. Whichever arm commits, a failed
+    // check inside it denies outright — it never tries a later arm instead.
     let matched = false;
     for (const arm of s.branches) {
       const armIds = arm.when(ctx);
       if (!armIds || armIds.length === 0) continue;
       matched = true;
-      if (arm.then === 'authenticated') break;
       if (arm.then === 'boardId') {
         for (const id of armIds) boardIds.add(id);
         break;
@@ -829,9 +1025,53 @@ async function resolveBoardIds(
         // VIEWER: this arm gates a READ of data derived from the comparison.
         // Editing which boards it compares is `comparison('EDITOR')` on its own
         // route, not here.
-        const granted = await Promise.all(armIds.map((id) => hasComparisonRole(prisma, id, ctx, 'VIEWER')));
-        if (granted.some((ok) => !ok)) return undefined;
+        //
+        // This arm refuses out-of-reach and insufficient identically, because
+        // board-source resolution has only one failure channel (`undefined`)
+        // and the board branch maps that to 403. That is NOT a D7 leak: a
+        // foreign comparison and a nonexistent one still answer the same 403 as
+        // each other, so nothing about existence is confirmed. The only thing
+        // lost on this one route is the 404's clearer shape, and threading a
+        // denial reason through board-source resolution to recover it would be
+        // out of proportion to that.
+        const outcomes = await Promise.all(armIds.map((id) => hasComparisonRole(prisma, id, ctx, 'VIEWER')));
+        if (outcomes.some((o) => o !== 'allowed')) return undefined;
         break;
+      }
+      // Everything remaining must be a `SubEntityModel`, and that is CHECKED
+      // rather than assumed. The type says so, but this arm is the tail of a
+      // discriminated union whose narrowing is exactly what a `BoardBranch` cast
+      // defeats — and `then: 'authenticated'`, which used to `break` here having
+      // contributed nothing, is precisely the value a cast would carry.
+      //
+      // Refusing an unrecognised discriminator is what makes "an ALLOW out of the
+      // board branch is backed by a check that actually ran" hold for values the
+      // type does not admit, not only for the ones it does. Deny, never `break`:
+      // `break`ing leaves the arm MATCHED with no ids and no check, which is the
+      // unbacked ALLOW itself; and `continue`ing would hand the decision to a
+      // later, possibly weaker arm, which `viaBranch`'s first-match-wins contract
+      // forbids.
+      //
+      // Not relying on the TypeError a bogus `prisma[model]` lookup would throw
+      // inside `resolveBoardId`: that also denies today, but as an accident of a
+      // catch block rather than a stated rule, and it would stop denying the
+      // moment a `then` value collided with a real Prisma delegate name.
+      //
+      // `Object.hasOwn`, NOT `in`, and the first version of this guard got that
+      // wrong in a way worth recording: `in` walks the prototype chain, so
+      // `'constructor'`, `'toString'`, `'valueOf'`, `'__proto__'`,
+      // `'hasOwnProperty'` and `'isPrototypeOf'` all satisfied it and fell
+      // through to `resolveBoardId` — where the delegate lookup throws and the
+      // catch denies. The verdict was right, but by exactly the accident the
+      // paragraph above disclaims, so the stated invariant held only for the
+      // values spelled in the union. `hasOwn` consults own keys only, which makes
+      // it true for ALL values.
+      if (!Object.hasOwn(SUB_ENTITY_PATH, arm.then)) {
+        ctx.log?.error(
+          { then: arm.then },
+          'policy: board branch arm carries an unrecognised `then` — denying',
+        );
+        return undefined;
       }
       const resolved = await Promise.all(armIds.map((id) => resolveBoardId(prisma, arm.then, id, ctx, requiredRole)));
       if (!applyResolved(resolved)) return undefined;
@@ -902,22 +1142,41 @@ export async function evaluatePolicy(
         }
         // Missing board, or a board belonging to another organization — the same
         // answer on purpose.
-        if (!scoped) return DENY_403;
+        if (!scoped) return DENY_404;
         const effective = effectiveBoardRole(ctx.membership.role, scoped.accessEntries[0]?.role ?? null);
         if (!meetsBoardRole(effective, policy.role)) return DENY_403;
         continue;
       }
 
-      // With no membership there is no organization role, so there is nothing to
-      // impose a ceiling with — and no tenant to scope the board to — so the
-      // grant decides alone, exactly today's behaviour. That fallback is
-      // deliberate, not an oversight: a null membership means the caller is
-      // pre-bootstrap or a break-glass admin, and denying here would change board
-      // access for every existing single-tenant deployment the moment this branch
-      // ships. Routes that must not run without a tenant are the ones that WRITE
-      // a tenant root, and those are gated by `orgRole` instead. The tenant check
-      // above is therefore scoped to the membership path only — deliberately, and
-      // pinned by test.
+      // §4.1 hole 2. With no membership there is no organization role to impose
+      // a ceiling with and no tenant to scope the board to, so the grant row
+      // would decide alone. Under pooling that is a cross-tenant hole: a grant
+      // may NARROW reach inside a tenant, it must never ESTABLISH reach into one.
+      //
+      // Gated rather than unconditional, and the reasoning matters because the
+      // obvious reading — "deny always, it is a hole" — is wrong here:
+      //
+      //   - the ALLOW is backed by a real `BoardAccess` row that somebody
+      //     deliberately created. Denying on it changes the answer for data that
+      //     legitimately looks like this in a single-tenant install, which is not
+      //     the same kind of claim as hole 3's, where an instance role bit
+      //     conferred OWNER with no row behind it at all (that one IS
+      //     unconditional, below).
+      //   - the reachable ALLOW in a single-tenant deployment came from
+      //     OFFBOARDING, and that is now closed where it actually lives — in the
+      //     data. `MembershipService.remove` revokes every grant the departing
+      //     member held in the organization (`access/revoke-grants.ts`). Denying
+      //     here as well would be belt-and-braces for pooling, not the fix for
+      //     single-tenant.
+      //   - the tenancy migration (20260813000000_org_tenancy) gave EVERY
+      //     existing user an ACTIVE membership, so the remaining membership-less
+      //     callers are pre-bootstrap operators and unbound invitees — neither of
+      //     whom holds a board grant to be admitted on.
+      //
+      // So the deny follows the operator's declared mode. `multiOrgOperatorEnabled`
+      // documents why the env half is the safe half to read here.
+      if (multiOrgOperatorEnabled()) return DENY_403;
+
       let access: { role: BoardAccessRole } | null;
       try {
         access = await deps.prisma.boardAccess.findUnique({
@@ -1001,7 +1260,7 @@ export async function evaluatePolicy(
         }
         // Missing tree, or a tree belonging to another organization — the same
         // answer on purpose.
-        if (!scoped) return DENY_403;
+        if (!scoped) return DENY_404;
         // Tenancy established. Now the ORG-ROLE CEILING decides — not a bare
         // `ctx.isAdmin` override, and not the raw grant rank.
         //
@@ -1027,31 +1286,59 @@ export async function evaluatePolicy(
       return ALLOW;
     }
 
-    // With no membership there is no organization to scope the tree to, so this
-    // path is left exactly as it was — deliberately, and pinned by test.
+    // §4.1 hole 3 — CLOSED here. This is where a bare `if (ctx.isAdmin) return
+    // ALLOW` used to sit, ahead of the grant loop.
     //
     // `ctx.isAdmin` is the union of three sources (see the auth plugin) and only
     // one of them, an ADMIN membership, is organization-scoped. `auth/fastify.d.ts`
-    // states the rule outright: it "must never be used to answer 'is this caller an
-    // admin of THIS organization'" — which is exactly what the old bare override
-    // did. The other two —
-    // the `users.is_admin` bootstrap flag and the Keycloak realm role — are
-    // instance-level break-glass, and the plugin deliberately refuses to
-    // manufacture a membership for them: a break-glass operator has
-    // `membership: null` until an organization is bootstrapped. Denying here
-    // would therefore brick the documented recovery path (the `bootstrap:admin`
-    // CLI and the administration guide) for precisely the operator who has
-    // neither a membership nor an OrgTreeAccess row yet — the lockout this
-    // override was added to prevent — and would revoke org-tree access in any
-    // existing deployment whose memberships have not been backfilled. A
-    // break-glass admin who DOES hold a membership is scoped to it by the branch
-    // above; that is the intended tightening, and it is inert under the enforced
-    // single-organization cap.
-    if (ctx.isAdmin) return ALLOW;
+    // states the rule outright: it "must never be used to answer 'is this caller
+    // an admin of THIS organization'" — which is exactly what the override did.
+    // With no membership, the membership source is by definition absent, so only
+    // the two INSTANCE-level signals can be behind it: the `users.is_admin`
+    // bootstrap flag and the Keycloak realm role. Neither is scoped to a tenant,
+    // so the override read as "admin of every organization at once" — a master
+    // key over every tenant's org trees, their timesheet views, and their
+    // employee data, conferred by a role bit with no grant row behind it.
+    //
+    // Removed UNCONDITIONALLY, not gated on the multi-org flag like the board
+    // fallback above, because the design's own instruction is to confine
+    // break-glass to operations that touch no tenant data, and an org tree is
+    // tenant data. `orgRole` is the precedent the design names: it already
+    // ignores `ctx.isAdmin` for exactly this reason.
+    //
+    // **The lockout this override existed to prevent is covered without it**, and
+    // that was checked against the code rather than assumed.
+    // `OrganizationService.bootstrap` has three outcomes, and the middle one is
+    // the recovery path: an organization with NO living ADMIN (role ADMIN, status
+    // ACTIVE, `userId` bound) is ADOPTED by the caller, who becomes its ACTIVE
+    // ADMIN. So a break-glass operator recovers by
+    //   `bootstrap:admin --email …` → log in → bootstrap,
+    // which creates organization #1 if there is none and adopts an admin-less one
+    // if there is. Bootstrap is gated on the same realm admin role this override
+    // was, and creates a tenant rather than reading one — precisely "an operation
+    // that touches no tenant data". Once they hold the ADMIN membership, the
+    // branch above gives them OWNER-equivalence on every tree in that
+    // organization, which is what the override was approximating.
+    //
+    // The one case that now denies where it previously allowed: an operator with
+    // no membership facing an organization that DOES have a living admin. That is
+    // not a lockout — there is, by construction, an administrator who can invite
+    // them — and it is the case where the override was reading another tenant's
+    // employee data on the strength of an instance role bit.
 
-    // No membership and not break-glass: the grant row decides alone, exactly as
-    // it did before tenancy existed. There is no organization to scope the tree
-    // to, so this path is deliberately unchanged — and it must NOT fall through
+    // §4.1 hole 2 for org trees, the same gate as the board branch. The invariant
+    // is kind-agnostic — a grant may NARROW reach inside a tenant, it must never
+    // ESTABLISH reach into one — so it is enforced at all SIX sites that decide on
+    // a bare grant with no membership, not only the one the design names: the five
+    // policy branches (`board`, `orgTree`, `comparison`, `employeeBoard`,
+    // `roadmap`) plus `hasOrgTreeRole`, which is reached from board-source
+    // resolution and is NOT covered by the `board` branch's own gate.
+    // `employeeBoardInTree` needs none — it never had a no-membership grant path.
+    if (multiOrgOperatorEnabled()) return DENY_403;
+
+    // No membership, not break-glass, and single-tenant: the grant row decides
+    // alone, exactly as it did before tenancy existed. There is no organization to
+    // scope the tree to — and it must NOT fall through
     // to ALLOW: an earlier attempt at this merge deleted the loop and left a bare
     // `return ALLOW` here, which admitted every membership-less caller to every
     // tree. The `orgTree policy` suite caught it immediately.
@@ -1083,7 +1370,14 @@ export async function evaluatePolicy(
       // the board to and no org role to impose a ceiling with, so the grant row
       // decides alone.
       if (!ctx.membership) {
-        if (ctx.isAdmin) return ALLOW;
+        // §4.1 hole 3, fourth door. `if (ctx.isAdmin) return ALLOW` used to stand
+        // here, and closing `hasOrgTreeRole` while leaving this would have been
+        // incoherent: the justification there is that an instance admin must not
+        // keep "OWNER-equivalence on every tenant's employee data", and an
+        // employee board IS that data.
+        //
+        // §4.1 hole 2, same gate as the board branch.
+        if (multiOrgOperatorEnabled()) return DENY_403;
         let grant: { role: BoardAccessRole } | null;
         try {
           grant = await deps.prisma.employeeBoardAccess.findUnique({
@@ -1103,6 +1397,7 @@ export async function evaluatePolicy(
       // denies: a nonexistent board and another tenant's board are deliberately
       // indistinguishable, so the gate never confirms a foreign id exists.
       let scoped: {
+        isPersonal: boolean;
         access: { role: BoardAccessRole }[];
         orgTree: { access: { role: BoardAccessRole }[] };
       } | null;
@@ -1113,6 +1408,10 @@ export async function evaluatePolicy(
             orgTree: { organizationId: ctx.membership.organizationId },
           },
           select: {
+            // Read in the SAME query as the grants: whether the board is personal
+            // decides which of them count, so a second lookup would be a second
+            // chance to disagree.
+            isPersonal: true,
             access: { where: { userId: ctx.user.id }, select: { role: true } },
             orgTree: {
               select: { access: { where: { userId: ctx.user.id }, select: { role: true } } },
@@ -1129,7 +1428,7 @@ export async function evaluatePolicy(
         );
         return DENY_403;
       }
-      if (!scoped) return DENY_403;
+      if (!scoped) return DENY_404;
 
       // D12's second implicit-owner rule. An OWNER grant on the PARENT TREE
       // makes the caller an OWNER of every board in it — that is what stops an
@@ -1140,9 +1439,18 @@ export async function evaluatePolicy(
       // `effectiveBoardRole`.
       const treeGrant = scoped.orgTree.access[0]?.role ?? null;
       const boardGrant = scoped.access[0]?.role ?? null;
-      const grant = treeGrant === 'OWNER' ? 'OWNER' : boardGrant;
 
-      const effective = effectiveBoardRole(ctx.membership.role, grant);
+      // A PERSONAL board is exempt from BOTH implicit rules (org-tree privacy
+      // D5): the tree grant is ignored, and `personalBoardRole` is
+      // `effectiveBoardRole` without the org-ADMIN floor. The board's own grant
+      // alone decides — which is why `createBoard` stamps its creator OWNER, or
+      // a personal board would be openable by nobody.
+      //
+      // Exempting only one of the two rules would be worse than exempting
+      // neither: the board would read as private while staying readable.
+      const effective = scoped.isPersonal
+        ? personalBoardRole(ctx.membership.role, boardGrant)
+        : effectiveBoardRole(ctx.membership.role, treeGrant === 'OWNER' ? 'OWNER' : boardGrant);
       if (!meetsBoardRole(effective, policy.role)) return DENY_403;
     }
     return ALLOW;
@@ -1154,7 +1462,20 @@ export async function evaluatePolicy(
     // any(...) are talking about the same tree.
     const treeId = ctx.params.orgTreeId ?? ctx.params.treeId ?? ctx.params.id;
     if (!treeId) return DENY_403;
-    if (!ctx.membership) return ctx.isAdmin ? ALLOW : DENY_403;
+    // §4.1 hole 3, fifth door. Was `return ctx.isAdmin ? ALLOW : DENY_403`.
+    //
+    // Unlike the other four kinds this branch never had a no-membership GRANT
+    // path — the admin override was the only way through it without a membership
+    // — so removing the override leaves a plain deny and cannot brick a legacy
+    // grant holder. It is therefore ungated: there is no pre-tenancy behaviour
+    // here for the multi-org flag to preserve.
+    //
+    // The asymmetry with the `employeeBoard` branch (which does keep a
+    // no-membership grant path) predates this change and is left as it was: this
+    // branch gates the org-tree SHELL for GET /org-trees/:id (D14), and it reads
+    // reachability through `membership.organizationId`, so with no membership
+    // there is nothing to scope the query to in the first place.
+    if (!ctx.membership) return DENY_403;
     const membership = ctx.membership;
 
     let rows: { role: BoardAccessRole }[];
@@ -1190,7 +1511,12 @@ export async function evaluatePolicy(
     // no organization to scope the roadmap to and no org role to impose a
     // ceiling with, so the grant row decides alone.
     if (!ctx.membership) {
-      if (ctx.isAdmin) return ALLOW;
+      // §4.1 hole 3, sixth door. `if (ctx.isAdmin) return ALLOW` used to stand
+      // here. `Roadmap` carries `organization_id`; it is tenant data, so the same
+      // reasoning applies as to org trees and employee boards.
+      //
+      // §4.1 hole 2, same gate as the board branch.
+      if (multiOrgOperatorEnabled()) return DENY_403;
       let grant: { role: RoadmapAccessRole } | null;
       try {
         grant = await deps.prisma.roadmapAccess.findUnique({
@@ -1239,7 +1565,7 @@ export async function evaluatePolicy(
       );
       return DENY_403;
     }
-    if (!scoped) return DENY_403;
+    if (!scoped) return DENY_404;
 
     const effective = effectiveBoardRole(ctx.membership.role, scoped.accessEntries[0]?.role ?? null);
     return meetsBoardRole(effective, policy.role) ? ALLOW : DENY_403;
@@ -1253,7 +1579,10 @@ export async function evaluatePolicy(
     // without `createdBy` being a gate.
     const comparisonId = entityId(ctx.params, 'comparisonId', 'id');
     if (!comparisonId) return DENY_403;
-    return (await hasComparisonRole(deps.prisma, comparisonId, ctx, policy.role)) ? ALLOW : DENY_403;
+    const outcome = await hasComparisonRole(deps.prisma, comparisonId, ctx, policy.role);
+    if (outcome === 'allowed') return ALLOW;
+    // 404 for out-of-reach, 403 for "yours, but not at this tier" — slice 6b.
+    return outcome === 'out-of-reach' ? DENY_404 : DENY_403;
   }
 
   if (policy.kind === 'any') {

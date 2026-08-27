@@ -80,7 +80,12 @@ KC_DB_USER="${KEYCLOAK_DB_USER:-keycloak}"
 KC_DB_NAME="${KEYCLOAK_DB_NAME:-keycloak}"
 CH_USER="${CLICKHOUSE_USER:-cockpit}"
 CH_PASS="${CLICKHOUSE_PASSWORD:-cockpit}"
-CH_HOST="localhost"
+# 127.0.0.1, not "localhost": a hosted box sets BIND_HOST=127.0.0.1: which
+# publishes IPv4 loopback ONLY — [::1] is not published at all. On a dual-stack
+# host "localhost" can resolve ::1 first, and while curl should walk the address
+# list to the working one, naming the address that is actually bound removes the
+# question. Nothing is lost locally, where both resolve to the same daemon.
+CH_HOST="127.0.0.1"
 CH_DB="cockpit"
 
 BACKUP_NAME="vp-cockpit-backup-${TAG}"

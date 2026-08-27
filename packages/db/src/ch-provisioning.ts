@@ -4,6 +4,7 @@ import {
   catchAllDenyDdl,
   fetchPolicyObjects,
   ingestIdentityDdl,
+  isoPolicyObjectsForOrganizationQuery,
   organizationPolicyDdl,
   readIdentityDefaultRoleDdl,
   readIdentityPermissivePolicyQuery,
@@ -12,6 +13,25 @@ import {
   sharedObjectAllowDdl,
   type ChPolicyQueryClient,
 } from './ch-row-policies.js';
+
+/**
+ * Every role currently granted to one ClickHouse user.
+ *
+ * `user_name` is the only interpolated value and every caller validates it
+ * through a DDL generator first (SAFE_ID plus the grantee-keyword rejection),
+ * the same contract `chUserExists` relies on.
+ */
+function grantedRolesQuery(user: string): string {
+  return `SELECT granted_role_name AS role FROM system.role_grants WHERE user_name = '${user}'`;
+}
+
+/** Whether a user activates roles by default. Must be 0 for the read identity. */
+function defaultRolesAllQuery(user: string): string {
+  return `SELECT default_roles_all AS all FROM system.users WHERE name = '${user}'`;
+}
+
+/** Every role that exists on the server. No interpolation: compared in JS. */
+const CH_ALL_ROLES_QUERY = 'SELECT name FROM system.roles';
 
 /**
  * Executes one ClickHouse statement and returns whatever rows it produced
@@ -121,6 +141,27 @@ function userFromClickHouseUrl(url: string | undefined): string | undefined {
  * doc D1) and fatal for a reader: permissive policies OR together, so that one
  * policy makes every `role=` scoping request a no-op. Splitting the identities is
  * what makes D3's per-query role mean anything.
+ *
+ * **DO NOT "correct" the sentence above — it is true, and its subject is not the
+ * ingest identity.** Its subject is the COLLAPSED configuration this very warning
+ * forbids: one user serving as both identities, and therefore holding both the
+ * organization role grants AND `ingest_all … USING 1`. Such a user activates the
+ * role successfully and the permissive policy ORs past the predicate anyway. That
+ * is the fatal case, and `assertIdentitiesAreDistinct` refuses it.
+ *
+ * Six comments in this repo said the same thing about the plain INGEST identity,
+ * where it is FALSE: provisioning grants organization roles to the read identity
+ * only, so the ingest identity cannot activate one at all — ClickHouse 24.8 answers
+ * `Code 512 SET_NON_GRANTED_ROLE`, or `Code 511 UNKNOWN_ROLE` for a name that does
+ * not exist. Those six were corrected on 2026-08-27, after the belief shipped an
+ * unsplit read fallback that threw on every query in BOTH apps on every default
+ * install. This site, `assertIdentitiesAreDistinct`'s docblock below, and the
+ * `default_roles_all` error further down were deliberately left alone: all three
+ * describe an identity that holds the grant.
+ *
+ * The distinction is one sentence long and a grep-and-correct pass does not read
+ * sentences: a permissive row policy defeats an **activated** role's predicate, and
+ * says nothing about whether the role may be **activated**.
  *
  * Resolution mirrors resolveServiceIdentityUser: `CLICKHOUSE_READ_USER` first,
  * because that is where an operator names it, then the userinfo of
@@ -524,4 +565,245 @@ export async function reprovisionOrganizations(
     results.push({ role: roleNameFor(organizationId), coverage, statements: statements.length });
   }
   return results;
+}
+
+/** What the read-identity retrofit found and did. */
+export interface ReadIdentityRetrofitReport {
+  /**
+   * The read identity the pass acted on, or `undefined` when none is configured
+   * — in which case nothing was done and nothing needed doing, because reads on
+   * that deployment still run through the ingest identity.
+   */
+  readonly readIdentity: string | undefined;
+  /** Organizations whose role the read identity did NOT hold, and now does. */
+  readonly granted: readonly string[];
+  /** Organizations whose role it already held. Re-running leaves these here. */
+  readonly alreadyHeld: readonly string[];
+  /**
+   * Whether `DEFAULT ROLE NONE` was re-asserted. True whenever a read identity
+   * is configured, even when every grant was already held: that half of the
+   * invariant is the one an operator forgets, and re-asserting it is what makes
+   * the outcome independent of the user's current default-role setting.
+   */
+  readonly defaultRoleReasserted: boolean;
+  /** Read back from `system.users` after the pass. Must be 0. */
+  readonly defaultRolesAll: number | undefined;
+  /**
+   * Organizations whose role exists and is now granted, but which are MISSING an
+   * `iso_` predicate policy on one or more tenant objects — so those objects read
+   * empty for them however correct the grant is.
+   *
+   * Reported rather than refused, and the asymmetry with
+   * `assertOrganizationRolesExist` is deliberate. A missing role means a grant
+   * cannot be issued at all. A missing policy means the grant is still correct and
+   * still needed — withholding it would leave the deployment strictly worse — so
+   * this pass completes the half it owns and reports the half it does not. The
+   * remedy is a different and heavier pass (`ch:reprovision-organizations`).
+   *
+   * The CLI exits non-zero on a non-empty list: an operator who deliberately ran a
+   * repair must not read "done" while a table still reads empty.
+   */
+  readonly unpolicied: readonly { organizationId: string; objects: readonly string[] }[];
+  /** How many statements were executed, for logging. */
+  readonly statements: number;
+}
+
+/**
+ * Retrofits the per-organization role grants onto an API read identity that was
+ * created AFTER the organizations it must be able to read.
+ *
+ * **Why this exists, and why no test that runs against a fresh stack can reach
+ * it.** `provisionOrganizationAnalytics` grants an organization's role to the
+ * read identity as part of provisioning that organization, so on a fresh
+ * deployment the grant is never missing. Split the read path on a deployment
+ * that already has organizations and the order reverses: the role was created
+ * long before `CLICKHOUSE_READ_USER` named anybody, so the new login holds no
+ * grant at all. It can activate nothing, and every dashboard reads empty — with
+ * no error anywhere, because failing closed is the designed direction. Staging
+ * hit exactly this on 2026-08-24 (`planning/STATE.md`, item 6e);
+ * `scripts/two-org-rehearsal.sh` cannot, because it creates the reader before
+ * either organization exists.
+ *
+ * Idempotent, and deliberately narrower than `reprovisionOrganizations`: this
+ * pass writes no row policies and does not touch the baseline, so it never
+ * drop-then-creates the ingest identity's permissive policy and therefore has
+ * none of that pass's transient window where the app reads zero. It is the right
+ * tool when the organizations are already provisioned and only the reader is new.
+ * When an organization has no role at all — never provisioned — this refuses and
+ * names the provisioning pass instead, because that is what writes the
+ * predicates a grant would otherwise point at nothing.
+ *
+ * Every check runs before any DDL, for the reason `applyRowPolicyBaseline` gives:
+ * a `GRANT` of an unknown role fails with `Code 511 UNKNOWN_ROLE`, and failing
+ * partway through a list leaves some organizations readable and others not, which
+ * is harder to diagnose than not having run at all.
+ */
+export async function retrofitReadIdentityGrants(
+  exec: ChStatementExecutor,
+  organizationIds: readonly string[],
+  options: ChBaselineOptions = {},
+): Promise<ReadIdentityRetrofitReport> {
+  const readIdentity =
+    'apiReadUser' in options ? options.apiReadUser : resolveApiReadIdentityUser();
+
+  // Not an error, and not a warning either. An unset read identity means this
+  // deployment has not split its read path, so there is no reader to grant
+  // anything to and reads legitimately still run through the ingest identity.
+  // Reported through `readIdentity: undefined` rather than guessed at — the same
+  // default-less contract resolveApiReadIdentityUser documents.
+  if (readIdentity === undefined) {
+    return {
+      readIdentity: undefined,
+      granted: [],
+      alreadyHeld: [],
+      defaultRoleReasserted: false,
+      defaultRolesAll: undefined,
+      unpolicied: [],
+      statements: 0,
+    };
+  }
+
+  const serviceIdentity = options.serviceUser ?? resolveServiceIdentityUser();
+
+  // Generated first, before anything is applied: roleNameFor and
+  // readIdentityRoleGrantDdl both validate their inputs and throw, and an
+  // unsafe organization id must abort the pass rather than abort it halfway.
+  const roleFor = new Map(organizationIds.map((id) => [id, roleNameFor(id)]));
+  const grantDdl = new Map(
+    organizationIds.map((id) => [id, readIdentityRoleGrantDdl(id, readIdentity)]),
+  );
+  const defaultRoleDdl = readIdentityDefaultRoleDdl(readIdentity);
+
+  assertIdentitiesAreDistinct(serviceIdentity, readIdentity);
+  await assertReadIdentityExists(exec, readIdentity);
+  await assertReadIdentityHasNoPermissivePolicy(exec, readIdentity);
+  await assertOrganizationRolesExist(exec, roleFor);
+
+  // Read BEFORE any DDL, with the guards, even though it refuses nothing: it can
+  // throw (fetchPolicyObjects asserts that every CH_TENANT_TABLES entry still
+  // carries organization_id, i.e. that the tenancy migration has run at all), and
+  // a throw after the grants had landed would report a failure on a pass that
+  // partly succeeded.
+  const unpolicied = await findUnpoliciedOrganizations(exec, roleFor);
+
+  const held = new Set(
+    (await exec(grantedRolesQuery(readIdentity))).map((row) => String(row.role)),
+  );
+  const alreadyHeld = organizationIds.filter((id) => held.has(roleFor.get(id) as string));
+  const granted = organizationIds.filter((id) => !held.has(roleFor.get(id) as string));
+
+  let statements = 0;
+  for (const id of granted) statements += await runAll(exec, grantDdl.get(id) as string[]);
+  // Re-asserted unconditionally, including on a pass that granted nothing. It is
+  // the half of the 6e repair that is easy to skip, it is idempotent, and a
+  // reader whose grants are all present but whose default roles are not NONE
+  // activates every organization on every query — the failure this whole split
+  // exists to prevent, in the one state that looks like "already done".
+  statements += await runAll(exec, defaultRoleDdl);
+
+  const defaultRolesAll = await readDefaultRolesAll(exec, readIdentity);
+  if (defaultRolesAll !== 0) {
+    throw new Error(
+      `ClickHouse API read identity '${readIdentity}' still reports ` +
+        `default_roles_all=${defaultRolesAll} after 'ALTER USER … DEFAULT ROLE NONE', so it ` +
+        `activates every organization's role on every query and per-organization read ` +
+        `isolation is a no-op. The grants WERE applied; the default-role setting is what did ` +
+        `not take. Check for a users.d XML profile or a settings profile re-asserting default ` +
+        `roles for this login, then re-run.`,
+    );
+  }
+
+  return {
+    readIdentity,
+    granted,
+    alreadyHeld,
+    defaultRoleReasserted: true,
+    defaultRolesAll,
+    unpolicied,
+    statements,
+  };
+}
+
+/**
+ * Refuses the retrofit when any organization has no ClickHouse role, naming
+ * every one of them and the command that creates it.
+ *
+ * A `GRANT` of a role that does not exist fails with `Code 511 UNKNOWN_ROLE`, so
+ * without this the pass would apply some grants and then die, and the operator
+ * would be left guessing which organizations landed.
+ *
+ * **This checks role existence ONLY, and role existence does not imply policy
+ * coverage.** A missing role does imply missing predicates — nothing creates one
+ * without the other — but the converse does not hold: a policy can be dropped, and
+ * `applyRowPolicyBaseline` denies a tenant table added by a later migration
+ * without writing any organization's predicate for it. Both leave a role that
+ * exists, a grant that is held, and a table that reads empty. That gap is measured
+ * separately by findUnpoliciedOrganizations and reported rather than refused; see
+ * `ReadIdentityRetrofitReport.unpolicied` for why the two are treated
+ * differently.
+ */
+async function assertOrganizationRolesExist(
+  exec: ChStatementExecutor,
+  roleFor: ReadonlyMap<string, string>,
+): Promise<void> {
+  if (roleFor.size === 0) return;
+  const existing = new Set((await exec(CH_ALL_ROLES_QUERY)).map((row) => String(row.name)));
+  const missing = [...roleFor.entries()].filter(([, role]) => !existing.has(role));
+  if (missing.length === 0) return;
+  throw new Error(
+    `${missing.length} organization(s) have no ClickHouse role, so NOTHING was applied: ` +
+      `${missing.map(([id, role]) => `${id} (${role})`).join(', ')}. A GRANT of a role that ` +
+      `does not exist fails with Code 511 UNKNOWN_ROLE, and an organization with no role also ` +
+      `has no per-organization row policies for a grant to re-admit. Provision them first:\n` +
+      `  pnpm --filter @deckgauge/db ch:reprovision-organizations\n` +
+      `(in a deployed stack: docker compose run --rm api pnpm --filter @deckgauge/db ` +
+      `ch:reprovision-organizations). That pass writes the predicates AND the grants, so it ` +
+      `also makes this retrofit unnecessary for those organizations.`,
+  );
+}
+
+/**
+ * Which tenant objects each organization has NO `iso_` predicate policy on.
+ *
+ * The gap `assertOrganizationRolesExist` cannot see, and it has the same symptom
+ * from the outside: the role exists, the grant is held, `default_roles_all` is 0,
+ * every guard passes — and that object reads empty for that organization, because
+ * the catch-all denies it and nothing re-admits it. `applyRowPolicyBaseline` runs
+ * on every ClickHouse migration and re-applies the deny over the live object list,
+ * but it never writes per-organization predicates, so a migration that adds a
+ * tenant table produces exactly this state on a deployment that has not
+ * re-provisioned since.
+ *
+ * The tenant object list comes from the server (`fetchPolicyObjects().tenant`), not
+ * from the `CH_TENANT_TABLES` constant, for the reason the constant is a floor
+ * rather than a source: a table added by a migration is the case this exists to
+ * catch, and it is in the server's list before it is in anyone's constant.
+ */
+async function findUnpoliciedOrganizations(
+  exec: ChStatementExecutor,
+  roleFor: ReadonlyMap<string, string>,
+): Promise<{ organizationId: string; objects: readonly string[] }[]> {
+  if (roleFor.size === 0) return [];
+  const { tenant } = await fetchPolicyObjects(queryClientFor(exec));
+  const gaps: { organizationId: string; objects: readonly string[] }[] = [];
+  for (const organizationId of roleFor.keys()) {
+    const covered = new Set(
+      (await exec(isoPolicyObjectsForOrganizationQuery(organizationId))).map((row) =>
+        String(row.table),
+      ),
+    );
+    const objects = tenant.filter((object) => !covered.has(object));
+    if (objects.length > 0) gaps.push({ organizationId, objects });
+  }
+  return gaps;
+}
+
+/** `system.users.default_roles_all` for one login, or undefined if absent. */
+async function readDefaultRolesAll(
+  exec: ChStatementExecutor,
+  user: string,
+): Promise<number | undefined> {
+  const rows = await exec(defaultRolesAllQuery(user));
+  const value = (rows[0] as { all?: unknown } | undefined)?.all;
+  return value === undefined ? undefined : Number(value);
 }

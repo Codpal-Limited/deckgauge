@@ -1,4 +1,5 @@
 import { JiraEpic, JiraIssue } from "./jira-schemas";
+import type { JiraFieldMeta } from "./jira-field-schemas";
 
 /**
  * What a single existence probe could establish about an issue key.
@@ -15,8 +16,8 @@ export type JiraIssueExistence = "exists" | "deleted" | "unknown";
 export type JiraCredentialState = "valid" | "invalid" | "unknown";
 
 export interface JiraPort {
-  fetchEpics(projectKeys: string[]): Promise<JiraEpic[]>;
-  fetchIssues(projectKeys: string[]): Promise<JiraIssue[]>;
+  fetchEpics(projectKeys: string[], extraFields?: string[]): Promise<JiraEpic[]>;
+  fetchIssues(projectKeys: string[], extraFields?: string[]): Promise<JiraIssue[]>;
   fetchProjectIssueTypes(projectKey: string): Promise<string[]>;
   /**
    * Issue keys matching an arbitrary JQL query — the cheapest question Jira can
@@ -48,4 +49,12 @@ export interface JiraPort {
    * Optional, like `issueExists`, so hand-built JiraPort doubles keep compiling.
    */
   checkCredentials?(): Promise<JiraCredentialState>;
+  /**
+   * Every field defined in the Jira instance, system and custom alike.
+   *
+   * Optional for the same reason `issueExists` and `checkCredentials` are: the
+   * many hand-built JiraPort doubles across the test suite must keep compiling.
+   * Callers treat its absence as "discovery unavailable", not as an error.
+   */
+  fetchFields?(): Promise<JiraFieldMeta[]>;
 }

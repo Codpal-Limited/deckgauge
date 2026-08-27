@@ -9,7 +9,8 @@ import { AutomationPanel } from "./AutomationPanel";
 import { ToolbarMenu, type ToolbarMenuItem } from "./board-header/ToolbarMenu";
 import { BoardDescriptionPopover } from "./board-header/BoardDescriptionPopover";
 import { BoardDeleteDialog } from "./board-header/BoardDeleteDialog";
-import { BoltIcon, PencilIcon, TextIcon, TrashIcon } from "./board-header/icons";
+import { BellIcon, BoltIcon, PencilIcon, TextIcon, TrashIcon } from "./board-header/icons";
+import { BoardNotifyDialog } from "./board-header/BoardNotifyDialog";
 
 interface BoardHeaderProps {
   board: { id: string; name: string; description?: string | null };
@@ -34,6 +35,7 @@ export function BoardHeader({ board, userRole }: BoardHeaderProps) {
   const [descValue, setDescValue] = useState(board.description || "");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAutomations, setShowAutomations] = useState(false);
+  const [showNotifyLevel, setShowNotifyLevel] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [descError, setDescError] = useState<string | null>(null);
@@ -103,6 +105,13 @@ export function BoardHeader({ board, userRole }: BoardHeaderProps) {
       label: canRenameBoard ? "Edit description" : "View description",
       icon: <TextIcon />,
       onSelect: () => setShowDescription((prev) => !prev),
+    },
+    // Unconditional, unlike everything around it: silencing a board is a
+    // PERSONAL setting, so a viewer needs it as much as an owner does.
+    {
+      label: "Notify me about",
+      icon: <BellIcon />,
+      onSelect: () => setShowNotifyLevel((prev) => !prev),
     },
     ...(canRenameBoard
       ? [
@@ -180,6 +189,10 @@ export function BoardHeader({ board, userRole }: BoardHeaderProps) {
           onConfirm={handleDelete}
           onCancel={() => setShowDeleteConfirm(false)}
         />
+      )}
+
+      {showNotifyLevel && (
+        <BoardNotifyDialog boardId={board.id} onClose={() => setShowNotifyLevel(false)} />
       )}
 
       {showAutomations && canRenameBoard && (

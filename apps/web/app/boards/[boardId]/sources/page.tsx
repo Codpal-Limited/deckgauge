@@ -73,6 +73,7 @@ export default async function BoardSourcesPage({ params }: { params: { boardId: 
   const githubInstances = (await fetchGitHubInstances().catch(() => [])) as Array<{
     id: string;
     baseUrl?: string | null;
+    isPersonal?: boolean;
   }>;
 
   const usedJira = new Set((jiraSources as any[]).map((s) => s.jiraProjectSyncId));
@@ -128,6 +129,7 @@ export default async function BoardSourcesPage({ params }: { params: { boardId: 
         githubInstances={githubInstances.map((i) => ({
           id: i.id,
           label: i.baseUrl ?? i.id,
+          isPersonal: Boolean(i.isPersonal),
         }))}
         canManageConnections={canManageConnections}
       />

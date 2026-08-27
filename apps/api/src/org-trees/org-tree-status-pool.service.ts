@@ -32,7 +32,13 @@ export class OrgTreeStatusPoolService {
     if (employees.length === 0) return [];
 
     const resolve = makeAssigneeResolver(employees);
-    const transitions = await fetchTransitions(this.clickhouse, this.now());
+    // `from = 0` deliberately: this is the pool of statuses an operator can pick
+    // from, so it must be every status ever seen, not just those touched in some
+    // window — a status would otherwise vanish from the config screen and silently
+    // stop counting. 0 reproduces the old unbounded lower bound exactly (see
+    // timesheet-fetch.ts). This one scan is therefore still unbounded by design;
+    // it runs on a config screen, not the timesheet read path.
+    const transitions = await fetchTransitions(this.clickhouse, 0, this.now());
 
     const statuses = new Set<string>();
     for (const t of transitions) {

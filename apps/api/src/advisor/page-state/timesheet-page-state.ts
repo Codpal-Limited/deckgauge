@@ -36,8 +36,12 @@ import {
  *   role beats fallback) and `:102-112` (category checked first, then the
  *   name rule). Shaped by `buildGlobalRuleLayers`, shared with the org resolver.
  *
- * Instance-wide, matching the existing `GET /timesheet/status-rules` route it
- * borrows its authorization posture from: no board scope is involved.
+ * Organization-wide, matching the existing `GET /timesheet/status-rules` route it
+ * borrows its authorization posture from: no board scope is involved, but the
+ * caller's organization confines all three reads. Every one of them was
+ * unfiltered until 2026-08-26 (TENANCY-PROGRAMME §5a) — `RetiredJiraProject` and
+ * `TimesheetStatusRule` each carry their own `organizationId`, and the per-tree
+ * overrides carry theirs through `OrgTree`.
  *
  * Every list is capped at `MAX_CONFIG_ROWS` with an explicit truncation flag,
  * matching the roadmap resolver's bound-plus-flag shape: an unbounded read is
@@ -46,9 +50,12 @@ import {
 export async function resolveTimesheetPageState(deps: PageStateDeps): Promise<PageStateResult> {
   const [ruleRead, configRead, retired]: [StatusRuleRead, OrgTreeConfigRead, RetiredJiraProject[]] =
     await Promise.all([
-      readStatusRules(deps.prisma),
-      readOrgTreeTimesheetConfigs(deps.prisma),
-      deps.prisma.retiredJiraProject.findMany({ take: MAX_CONFIG_ROWS + 1 }),
+      readStatusRules(deps.prisma, deps.organizationId),
+      readOrgTreeTimesheetConfigs(deps.prisma, deps.organizationId),
+      deps.prisma.retiredJiraProject.findMany({
+        where: { organizationId: deps.organizationId },
+        take: MAX_CONFIG_ROWS + 1,
+      }),
     ]);
 
   const shownRetired = retired.slice(0, MAX_CONFIG_ROWS);

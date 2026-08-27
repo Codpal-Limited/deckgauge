@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { BoardGitLabSourceCreateSchema } from '@deckgauge/shared';
 import { BoardGitLabSourceService } from './board-gitlab-source.service.js';
@@ -6,8 +6,9 @@ import { PreviewCountService, PreviewSourceNotFoundError } from './preview-count
 import { clickhouse as defaultClickhouse } from '@deckgauge/db';
 import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
 import { all, board, ORG_MEMBER } from '../auth/policy.js';
-import { requireOrganizationId } from '../organizations/request-organization.js';
+
 import { CrossOrganizationSyncError } from './cross-organization-sync-error.js';
+import { connectionCaller } from '../connections/connection-caller.js';
 
 // Why this is not a bare `board('EDITOR')`, and why ORG_MEMBER rather than
 // orgRole('VIEWER') — see the identical constant in board-jira-source.routes.ts.
@@ -18,10 +19,14 @@ export function boardGitLabSourceRoutes(deps: {
   clickhouse?: ClickHouseClient;
 }) {
   const service = new BoardGitLabSourceService(deps.prisma);
-  const previewSvc = new PreviewCountService({
-    prisma: deps.prisma,
-    clickhouse: deps.clickhouse ?? defaultClickhouse,
-  });
+  /**
+   * Built per request from the scoped reader (tenancy §11 precondition 8), not
+   * once at boot from the ingest singleton whose permissive policy no
+   * per-organization row policy can narrow. `ch` stays the fallback only for
+   * callers constructing this plugin without the chRead plugin, i.e. the tests.
+   */
+  const previewSvcFor = (req: FastifyRequest) =>
+    new PreviewCountService({ prisma: deps.prisma, clickhouse: req.chRead ?? deps.clickhouse ?? defaultClickhouse });
   return async function plugin(app: FastifyInstance) {
     app.get<{ Params: { boardId: string } }>(
       '/boards/:boardId/sources/gitlab',
@@ -45,7 +50,7 @@ export function boardGitLabSourceRoutes(deps: {
         });
         if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
         try {
-          const row = await service.attach(requireOrganizationId(req), body.data);
+          const row = await service.attach(connectionCaller(req), body.data);
           return reply.code(201).send(row);
         } catch (err) {
           if (err instanceof CrossOrganizationSyncError) {
@@ -98,7 +103,7 @@ export function boardGitLabSourceRoutes(deps: {
           .safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
         try {
-          return await previewSvc.countGitLabIssues(params.data.id);
+          return await previewSvcFor(req).countGitLabIssues(params.data.id);
         } catch (err) {
           if (err instanceof PreviewSourceNotFoundError) {
             return reply.code(404).send({ error: err.message });

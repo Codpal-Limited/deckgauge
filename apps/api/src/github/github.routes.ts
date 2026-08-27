@@ -6,11 +6,17 @@ import {
   CreateGitHubInstanceInputSchema,
   UpdateGitHubInstanceInputSchema,
   GitHubProjectsAuthError,
+  manualSyncJobPayload,
 } from '@deckgauge/shared';
 import { GitHubService } from './github.service.js';
-import { AUTHENTICATED, ORG_ADMIN, ORG_MEMBER } from '../auth/policy.js';
+import { AUTHENTICATED, ORG_MEMBER } from '../auth/policy.js';
+import { connectionCaller } from '../connections/connection-caller.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
 
+  // ORG_MEMBER, not ORG_ADMIN: any member may manage THEIR OWN connections, and
+  // the row-level predicate in the service is what decides whose. Loosening this
+  // policy without that predicate would be a real regression — see
+  // connections/connection-visibility.ts and connection-authz.test.ts.
 export async function githubRoutes(
   app: FastifyInstance,
   { prisma }: { prisma: PrismaClient },
@@ -23,19 +29,19 @@ export async function githubRoutes(
   // membership-less caller would reach `requireOrganizationId` and get a 500
   // instead of a scoped result.
   app.get('/github/instances', { config: { policy: ORG_MEMBER } }, async (req, reply) => {
-    const instances = await service.listInstances(requireOrganizationId(req));
+    const instances = await service.listInstances(connectionCaller(req));
     return reply.send(instances);
   });
 
   // POST /github/instances — create.
   // ORG_ADMIN: a connection is organization property, so adding one is
   // organization administration. See connection-authz.test.ts.
-  app.post('/github/instances', { config: { policy: ORG_ADMIN } }, async (req, reply) => {
+  app.post('/github/instances', { config: { policy: ORG_MEMBER } }, async (req, reply) => {
     const parsed = CreateGitHubInstanceInputSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
-    const instance = await service.createInstance(requireOrganizationId(req), parsed.data, req.user?.id);
+    const instance = await service.createInstance(connectionCaller(req), parsed.data, req.user?.id);
     return reply.status(201).send(instance);
   });
 
@@ -57,7 +63,7 @@ export async function githubRoutes(
   // silently. See connections/host-repoint-audit.ts.
   app.patch<{ Params: { id: string } }>(
     '/github/instances/:id',
-    { config: { policy: ORG_ADMIN } },
+    { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
       const parsed = UpdateGitHubInstanceInputSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -67,7 +73,7 @@ export async function githubRoutes(
       // Token replacement takes precedence — the recovery path for an expired PAT.
       if (accessToken !== undefined) {
         const instance = await service.updateInstanceToken(
-          requireOrganizationId(req),
+          connectionCaller(req),
           req.params.id,
           { accessToken, baseUrl },
           req.user?.id,
@@ -79,11 +85,12 @@ export async function githubRoutes(
       if (repos === undefined) {
         return reply.status(400).send({ error: 'repos or accessToken field is required' });
       }
+      // No acting user: this path no longer records one. `createdById` is stamped
+      // at creation and never touched by an edit, since claim-on-first-edit went.
       const instance = await service.updateInstanceRepos(
-        requireOrganizationId(req),
+        connectionCaller(req),
         req.params.id,
         repos,
-        req.user?.id,
       );
       if (!instance) return reply.status(404).send({ error: 'Instance not found' });
       return reply.send(instance);
@@ -97,9 +104,9 @@ export async function githubRoutes(
   // organization before deleting it.
   app.delete<{ Params: { id: string } }>(
     '/github/instances/:id',
-    { config: { policy: ORG_ADMIN } },
+    { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
-      const deleted = await service.deleteInstance(requireOrganizationId(req), req.params.id);
+      const deleted = await service.deleteInstance(connectionCaller(req), req.params.id);
       if (!deleted) return reply.status(404).send({ error: 'Instance not found' });
       return reply.status(204).send();
     },
@@ -110,13 +117,13 @@ export async function githubRoutes(
     '/github/instances/:id/test',
     // ORG_ADMIN, with the rest of connection management: an organization MEMBER
     // no longer tests connections.
-    { config: { policy: ORG_ADMIN } },
+    { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
-      const organizationId = requireOrganizationId(req);
-      const instance = await service.getRawInstanceById(organizationId, req.params.id);
+      const caller = connectionCaller(req);
+      const instance = await service.getRawInstanceById(caller, req.params.id);
       if (!instance) return reply.status(404).send({ error: 'Instance not found' });
 
-      const result = await service.testConnection(organizationId, req.params.id);
+      const result = await service.testConnection(caller, req.params.id);
       if (!result.ok) {
         return reply.status(422).send(result);
       }
@@ -127,12 +134,12 @@ export async function githubRoutes(
   // POST /github/instances/:id/refresh-token — validate a new PAT, swap on success
   app.post<{ Params: { id: string } }>(
     '/github/instances/:id/refresh-token',
-    { config: { policy: ORG_ADMIN } },
+    { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
       const body = z.object({ token: z.string().min(1) }).safeParse(req.body);
       if (!body.success) return reply.status(400).send({ error: body.error.flatten() });
       const result = await service.refreshToken(
-        requireOrganizationId(req),
+        connectionCaller(req),
         req.params.id,
         body.data.token,
         fetch,
@@ -149,12 +156,12 @@ export async function githubRoutes(
     '/github/instances/:id/repos',
     { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
-      const organizationId = requireOrganizationId(req);
-      const instance = await service.getRawInstanceById(organizationId, req.params.id);
+      const caller = connectionCaller(req);
+      const instance = await service.getRawInstanceById(caller, req.params.id);
       if (!instance) return reply.status(404).send({ error: 'Instance not found' });
 
       try {
-        const repos = await service.discoverRepos(organizationId, req.params.id);
+        const repos = await service.discoverRepos(caller, req.params.id);
         return reply.send({ repos });
       } catch (err: unknown) {
         let message = 'Unknown error';
@@ -171,7 +178,7 @@ export async function githubRoutes(
     async (request, reply) => {
       try {
         const projects = await service.listProjectsForInstance(
-          requireOrganizationId(request),
+          connectionCaller(request),
           request.params.id,
         );
         return projects;
@@ -190,8 +197,29 @@ export async function githubRoutes(
   );
 
   // GET /github/sync/status
-  app.get('/github/sync/status', { config: { policy: AUTHENTICATED } }, async (_req, reply) => {
-    const result = await service.getLastSyncRun();
+  //
+  // The POLICY is `AUTHENTICATED` and the tenant boundary is the `where` in the
+  // service, not the policy.
+  //
+  // It is NOT true that `AUTHENTICATED` leaves the handler without a tenant.
+  // `request.membership` is resolved in keycloak-auth.plugin's `preHandler` for
+  // every caller who holds an ACTIVE membership, whatever policy the route
+  // declares — the `orgRole` policies GUARANTEE a membership, they do not produce
+  // one. So the leak was never caused by the policy: it was caused by the handler
+  // taking `_req` and the table having no tenant column. Raising the floor without
+  // adding the `where` would narrow WHO may call and leave WHAT they see untouched.
+  //
+  // `AUTHENTICATED` does mean a caller may legitimately have no membership at all
+  // (a first-run admin before bootstrap). That caller owns no sync runs, so NEVER
+  // is the true answer — and it is also the safe one. Answering it here rather than
+  // passing `null` down keeps `getLastSyncRun`'s tenant argument a required
+  // non-null string, so no future caller can reach the query without a tenant.
+  app.get('/github/sync/status', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
+    const organizationId = req.membership?.organizationId ?? null;
+    if (!organizationId) {
+      return reply.send({ status: 'NEVER', finishedAt: null });
+    }
+    const result = await service.getLastSyncRun(organizationId);
     if (!result) {
       return reply.send({ status: 'NEVER', finishedAt: null });
     }
@@ -208,11 +236,21 @@ export async function githubRoutes(
   // refreshing boards a member configured; that matches the rest of the
   // credential-spending family (see sync-config-authz.test.ts) and the scoped
   // per-board equivalent, POST /boards/:boardId/sync = board(EDITOR).
-  app.post('/github/sync', { config: { policy: ORG_MEMBER } }, async (_req, reply) => {
+  //
+  // The payload carries the caller's organization, and that is the whole tenant
+  // boundary of this route. Before 2026-08-27 it enqueued `{ trigger: 'manual' }`
+  // with no scope, and the worker's handler loaded its connections with a bare
+  // `findMany()` — so a MEMBER of one organization triggered a sync of EVERY
+  // tenant's connections, spending their stored credentials and burning their
+  // provider rate limit. `requireOrganizationId` is safe here precisely because
+  // `ORG_MEMBER` guarantees the membership it reads.
+  app.post('/github/sync', { config: { policy: ORG_MEMBER } }, async (req, reply) => {
     const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
     const queue = new Queue('github-sync', { connection: { url: redisUrl } });
     try {
-      await queue.add('sync', { trigger: 'manual' });
+      // Built by the shared helper so every manual enqueue site emits one shape;
+      // see `manualSyncJobPayload`'s note on why that is in @deckgauge/shared.
+      await queue.add('sync', manualSyncJobPayload(requireOrganizationId(req)));
       return reply.status(202).send({ ok: true, message: 'GitHub sync job enqueued' });
     } finally {
       await queue.close();

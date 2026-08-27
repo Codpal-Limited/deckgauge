@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@deckgauge/db';
 import { CrossOrganizationSyncError } from './cross-organization-sync-error.js';
+import { visibleConnectionWhere, type ConnectionCaller } from '../connections/connection-visibility.js';
 
 // Surface the project sync's `syncPrs/syncCommits/syncRepos/syncAllRepos/lastSyncedAt`
 // to the board-sources UI. Without these, `CodeIntelZone` (via hydrateAdo)
@@ -39,7 +40,7 @@ export class BoardAdoSourceService {
    * is reachable ONLY through `azureDevOpsInstance`.
    */
   async attach(
-    organizationId: string,
+    caller: ConnectionCaller,
     input: {
       boardId: string;
       azureDevOpsProjectSyncId: string;
@@ -55,7 +56,7 @@ export class BoardAdoSourceService {
     const sync = await this.prisma.azureDevOpsProjectSync.findFirst({
       where: {
         id: input.azureDevOpsProjectSyncId,
-        azureDevOpsInstance: { organizationId },
+        azureDevOpsInstance: { organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
       },
       select: { id: true },
     });

@@ -40,13 +40,31 @@ export interface TimesheetDeps {
   loadOrgTreeActiveStatuses: (orgTreeId: string) => Promise<string[] | null>;
   /** Per-day working-hours cap in hours for a tree; null when unconfigured (→ engine default). */
   loadOrgTreeDailyCapHours: (orgTreeId: string) => Promise<number | null>;
-  fetchTransitions: (toMs: number) => Promise<RawTransition[]>;
+  /**
+   * The four ClickHouse-backed deps take `organizationId` FIRST, exactly like the
+   * Prisma-backed `loadRules` and `loadRetiredProjects` beside them.
+   *
+   * Not decoration: it is what lets `buildTimesheetDeps` resolve a reader scoped
+   * to that organization per call (tenancy §11 precondition 8) while this service
+   * stays a SINGLE instance. It has to stay single — the `TtlCache` below is
+   * per-instance, and building one service per request would hand every request a
+   * cold cache on the most expensive read path in the product.
+   *
+   * `fetchTransitions` is additionally bounded BELOW by `fromMs`, not just above:
+   * it fetches the window plus one carry-in transition per issue rather than all
+   * history. See the note in `timesheet-fetch.ts`; 0 means "all history".
+   */
+  fetchTransitions: (
+    organizationId: string,
+    fromMs: number,
+    toMs: number,
+  ) => Promise<RawTransition[]>;
   /** UPPERCASE Jira project key -> cutoff epoch-ms; issues of these projects stop accruing after the cutoff. */
   loadRetiredProjects: (organizationId: string) => Promise<RetiredProjectMap>;
-  fetchParentLinks: () => Promise<Map<string, string>>;
-  fetchClassificationMap: () => Promise<Map<string, 'CAPEX' | 'OPEX'>>;
+  fetchParentLinks: (organizationId: string) => Promise<Map<string, string>>;
+  fetchClassificationMap: (organizationId: string) => Promise<Map<string, 'CAPEX' | 'OPEX'>>;
   /** issueKey -> { title, source deep link }. One fetch, cached in the engine run. */
-  loadIssueMeta: () => Promise<Map<string, { title: string; url: string | null }>>;
+  loadIssueMeta: (organizationId: string) => Promise<Map<string, { title: string; url: string | null }>>;
   now?: () => number;
   cacheTtlMs?: number;
 }
@@ -110,10 +128,10 @@ export class TimesheetService {
       this.deps.loadRules(organizationId),
       this.deps.loadOrgTreeActiveStatuses(orgTreeId),
       this.deps.loadOrgTreeDailyCapHours(orgTreeId),
-      this.deps.fetchTransitions(toMs),
-      this.deps.fetchParentLinks(),
-      this.deps.fetchClassificationMap(),
-      this.deps.loadIssueMeta(),
+      this.deps.fetchTransitions(organizationId, fromMs, toMs),
+      this.deps.fetchParentLinks(organizationId),
+      this.deps.fetchClassificationMap(organizationId),
+      this.deps.loadIssueMeta(organizationId),
       this.deps.loadRetiredProjects(organizationId),
     ]);
 
@@ -228,7 +246,7 @@ export class TimesheetService {
     const nowMs = this.now();
     // loadEmployees('') returns ALL employees for issue-scoped drill-down (Task 6 contract).
     const [transitions, loaded, rules, orgTreeActiveStatuses, retired] = await Promise.all([
-      this.deps.fetchTransitions(toMs),
+      this.deps.fetchTransitions(organizationId, fromMs, toMs),
       this.deps.loadEmployees(''),
       this.deps.loadRules(organizationId),
       this.deps.loadOrgTreeActiveStatuses(q.orgTreeId),

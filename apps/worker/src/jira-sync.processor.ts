@@ -1,5 +1,5 @@
 import { PrismaClient } from '@deckgauge/db'
-import { JiraPort } from '@deckgauge/shared'
+import { JiraPort, JiraFieldSchemaShape } from '@deckgauge/shared'
 import { JiraPromoteService } from './jira-promote.service.js'
 import { resolveJqlAllowLists } from './jira-jql-filter.js'
 import { type ChClient } from './jira-dual-writer.js'
@@ -11,11 +11,34 @@ interface ProcessorInput {
   db: PrismaClient
   syncConfigMap?: Map<string, string>  // projectKey → syncConfigId
   /**
-   * The Jira connection these project keys belong to. Scopes the per-board JQL
-   * filter lookup, so a board source on another connection that happens to share
-   * a project key is not filtered by this run's key set.
+   * The Jira connection these project keys belong to. **Required.**
+   *
+   * Scopes the per-board JQL filter lookup, so a board source on another
+   * connection that happens to share a project key is not filtered by this run's
+   * key set — and, since 2026-08-26, scopes PROMOTION itself: `promoteAll` reads
+   * only this connection's `JiraProjectSync` rows, because a project key is
+   * unique per Jira instance and not per deployment (TENANCY-PROGRAMME §5a).
+   *
+   * Optional until that fix, which made it the tenant boundary of the whole run.
+   * The one production caller (`jira-sync.handler.ts`) always passed
+   * `instance.id`; requiring it means no future one can forget and quietly
+   * promote across every connection in the deployment.
    */
-  instanceId?: string
+  instanceId: string
+  /**
+   * The organization that owns the connection being synced. **Required.**
+   *
+   * Stamped onto the `SyncRun` this processor writes, which is the only way that
+   * row can be attributed: `SyncRun` had no tenant column until 2026-08-26, and
+   * its four `*SyncId` columns are dead (never written by anything), so a run is
+   * not attributable after the fact. Required rather than optional for the same
+   * reason `instanceId` is — a caller that forgets it would silently write a row
+   * every other tenant's sync-status route could read.
+   *
+   * `jira-sync.handler.ts` already loops per instance and passes
+   * `instance.organizationId` from the same object it takes `instance.id` from.
+   */
+  organizationId: string
   /**
    * Optional ClickHouse client, ALREADY BOUND to the organization that owns the
    * Jira connection being synced — jira-sync.handler calls `chClientFor` inside
@@ -42,11 +65,12 @@ interface ProcessorOutput {
 }
 
 export async function jiraSyncProcessor(input: ProcessorInput): Promise<ProcessorOutput> {
-  const { adapter, projectKeys, trigger, db, instanceId } = input
+  const { adapter, projectKeys, trigger, db, instanceId, organizationId } = input
 
   // Create SyncRun record
   const syncRun = await db.syncRun.create({
     data: {
+      organizationId,
       status: 'PENDING',
       trigger: normalizeTrigger(trigger),
       startedAt: new Date(),
@@ -55,11 +79,33 @@ export async function jiraSyncProcessor(input: ProcessorInput): Promise<Processo
   })
 
   try {
+    // The union of Jira field ids mapped across this run's board sources, and
+    // the schema block for each — both computed before the fetch below, since
+    // the field ids are an argument to it. Loaded directly rather than passed
+    // in: the processor receives projectKeys/instanceId, not BoardJiraSource
+    // rows, so it queries them itself here using the same scoping
+    // `resolveJqlAllowLists` uses (jira-jql-filter.ts:88).
+    const boardSources = await db.boardJiraSource.findMany({
+      where: {
+        // Unconditional, not a spread of a conditional clause — see
+        // resolveJqlAllowLists for why: a spread evaluating to `{}` would be
+        // indistinguishable from a deliberate deployment-wide read, and the
+        // instanceId guard is what makes the unconditional form safe.
+        jiraProjectSync: {
+          jiraInstanceId: instanceId,
+          jiraProjectKey: { in: projectKeys },
+        },
+      },
+      select: { fieldMappings: true },
+    })
+    const extraFields = mappedFieldIds(boardSources)
+    const fieldSchemas = await collectFieldSchemas(adapter, extraFields)
+
     // Fetch data from adapter
     console.log(`[Processor] Fetching epics and issues for: ${projectKeys.join(', ')}`)
     const [epics, issues] = await Promise.all([
-      adapter.fetchEpics(projectKeys),
-      adapter.fetchIssues(projectKeys),
+      adapter.fetchEpics(projectKeys, extraFields),
+      adapter.fetchIssues(projectKeys, extraFields),
     ])
     console.log(`[Processor] Fetched ${epics.length} epics, ${issues.length} issues`)
 
@@ -111,6 +157,12 @@ export async function jiraSyncProcessor(input: ProcessorInput): Promise<Processo
         status: e.status,
         assignee: e.assignee ?? null,
         type: 'Epic',
+        dueDate: e.dueDate ?? null,
+        // The raw values of the board's mapped fields. Dropping this here is
+        // what made field mapping inert: `PromoteJiraItem.extra` is optional,
+        // so its omission type-checked, and `applyFieldMappings` then read
+        // `row.extra ?? {}` and skipped every mapped column on every run.
+        extra: e.extra,
       })),
       issues: issues.map((i) => ({
         key: i.key,
@@ -120,6 +172,8 @@ export async function jiraSyncProcessor(input: ProcessorInput): Promise<Processo
         status: i.status,
         assignee: i.assignee ?? null,
         type: i.type,
+        dueDate: i.dueDate ?? null,
+        extra: i.extra,
       })),
     }, {
       allowedKeysBySourceId: jqlFilters.allowedKeysBySourceId,
@@ -129,6 +183,7 @@ export async function jiraSyncProcessor(input: ProcessorInput): Promise<Processo
       // connections this run never fetched.
       syncedProjectKeys: projectKeys,
       instanceId,
+      fieldSchemas,
       // An adapter that cannot answer reports 'unknown', which leaves rows alone.
       verifyIssue: (issueKey: string) =>
         adapter.issueExists?.(issueKey) ?? Promise.resolve('unknown' as const),
@@ -238,6 +293,51 @@ function summarizeJqlErrors(
   return errors
     .map((e) => `JQL filter failed for ${e.projectKey} (board source ${e.boardSourceId}): ${e.message}`)
     .join('; ')
+}
+
+/**
+ * The union of Jira field ids mapped across the sources this run covers.
+ *
+ * Computed from the same rows the promote step reads, so the set requested and
+ * the set written can never diverge.
+ */
+function mappedFieldIds(
+  sources: readonly { fieldMappings?: unknown }[],
+): string[] {
+  const ids = new Set<string>()
+  for (const source of sources) {
+    const mappings = (source.fieldMappings ?? {}) as Record<string, string>
+    for (const fieldId of Object.keys(mappings)) ids.add(fieldId)
+  }
+  return Array.from(ids)
+}
+
+/**
+ * Jira's `schema` block for each mapped field, which the promote step needs to
+ * extract values. Instance-wide rather than per-issue, so it is fetched once
+ * per run rather than carried on every row.
+ *
+ * Never fatal: a run whose field discovery fails should still sync names,
+ * statuses and owners. Empty schemas mean the mapped columns keep their last
+ * values, which is the same outcome as Jira not returning the field.
+ */
+async function collectFieldSchemas(
+  adapter: JiraPort,
+  fieldIds: string[],
+): Promise<Record<string, JiraFieldSchemaShape>> {
+  if (fieldIds.length === 0 || !adapter.fetchFields) return {}
+  try {
+    const all = await adapter.fetchFields()
+    const wanted = new Set(fieldIds)
+    const schemas: Record<string, JiraFieldSchemaShape> = {}
+    for (const field of all) {
+      if (wanted.has(field.id) && field.schema) schemas[field.id] = field.schema
+    }
+    return schemas
+  } catch (err) {
+    console.warn('[jira-sync] field schema discovery failed; mapped columns will not update', err)
+    return {}
+  }
 }
 
 function normalizeTrigger(trigger: string): 'STARTUP' | 'MANUAL' | 'SCHEDULED' {

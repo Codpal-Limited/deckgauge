@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   BoardGitHubSourceCreateSchema,
@@ -29,6 +29,7 @@ import { clickhouse as defaultClickhouse } from '@deckgauge/db';
 import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
 import { all, board, orgRole, ORG_MEMBER } from '../auth/policy.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
+import { connectionCaller } from '../connections/connection-caller.js';
 
 // Why this is not a bare `board('VIEWER')` — see the identical constant in
 // board-jira-source.routes.ts.
@@ -62,8 +63,16 @@ export function boardGitHubSourceRoutes(deps: {
     },
   };
   const ch = deps.clickhouse ?? defaultClickhouse;
-  const previewSvc = new PreviewCountService({ prisma: deps.prisma, clickhouse: ch });
-  const statusesSvc = new SourceStatusesService({ prisma: deps.prisma, clickhouse: ch });
+  /**
+   * Built per request from the scoped reader (tenancy §11 precondition 8), not
+   * once at boot from the ingest singleton whose permissive policy no
+   * per-organization row policy can narrow. `ch` stays the fallback only for
+   * callers constructing this plugin without the chRead plugin, i.e. the tests.
+   */
+  const previewSvcFor = (req: FastifyRequest) =>
+    new PreviewCountService({ prisma: deps.prisma, clickhouse: req.chRead ?? ch });
+  const statusesSvcFor = (req: FastifyRequest) =>
+    new SourceStatusesService({ prisma: deps.prisma, clickhouse: req.chRead ?? ch });
   const issueTypesSvc = new SourceIssueTypesService({
     prisma: deps.prisma,
     cache: deps.typeCache ?? defaultTypeCache,
@@ -105,9 +114,8 @@ export function boardGitHubSourceRoutes(deps: {
         // consulted for MissingOrganizationError too — harmlessly today, but the
         // route-table bug it reports must not be shadowed by an attach-specific
         // catch. Same reasoning as the GitHub picker's requireOrganizationId.
-        const organizationId = requireOrganizationId(req);
         try {
-          const row = await service.attach(organizationId, body.data);
+          const row = await service.attach(connectionCaller(req), body.data);
           return reply.code(201).send(row);
         } catch (err: unknown) {
           // 404, not 403: see CrossOrganizationSyncError.
@@ -137,7 +145,7 @@ export function boardGitHubSourceRoutes(deps: {
           const result: BulkBindResponse = await bulkBind({
             prisma: deps.prisma,
             queueClient,
-            organizationId: requireOrganizationId(req),
+            caller: connectionCaller(req),
             boardId: params.data.boardId,
             instanceId: body.data.instanceId,
             repos: body.data.repos,
@@ -201,7 +209,7 @@ export function boardGitHubSourceRoutes(deps: {
           .safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
         try {
-          return await previewSvc.countGitHubIssues(params.data.id);
+          return await previewSvcFor(req).countGitHubIssues(params.data.id);
         } catch (err) {
           if (err instanceof PreviewSourceNotFoundError) {
             return reply.code(404).send({ error: err.message });
@@ -220,7 +228,7 @@ export function boardGitHubSourceRoutes(deps: {
           .safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
         try {
-          const statuses = await statusesSvc.listGitHub(params.data.id);
+          const statuses = await statusesSvcFor(req).listGitHub(params.data.id);
           return { statuses };
         } catch (err) {
           if (err instanceof SourceStatusesNotFoundError) {

@@ -6,6 +6,7 @@ import { AdoBoardZone, type AdoZoneValue } from './zone-board/AdoBoardZone';
 import { JiraBoardZone, type JiraZoneValue } from './zone-board/JiraBoardZone';
 import { GitLabBoardZone, type GitLabZoneValue } from './zone-board/GitLabBoardZone';
 import type { BoardStatusOption } from './StatusMappingEditor';
+import { FieldMappingEditor } from './FieldMappingEditor';
 import { TokenRefreshBox } from '../connections/TokenRefreshBox';
 import { TokenTutorial } from './providers/TokenTutorial';
 import { ExcludedItemsBlock } from './ExcludedItemsBlock';
@@ -44,7 +45,13 @@ type SourceCommon = {
 };
 
 export type SourceShape =
-  | (SourceCommon & { provider: 'jira'; zoneValue: JiraZoneValue })
+  | (SourceCommon & {
+      provider: 'jira';
+      zoneValue: JiraZoneValue;
+      // fieldId -> columnId, for fields already synced into a board column.
+      // Excludes those already-mapped fields from FieldMappingEditor's picker.
+      fieldMappings: Record<string, string>;
+    })
   | (SourceCommon & {
       provider: 'github';
       syncIssuesToBoard: boolean;
@@ -101,6 +108,14 @@ interface Props {
   // on the board without a manual sync or a page reload. Optional: a card can be
   // rendered without one, in which case saving just confirms itself.
   onSyncAfterSave?: () => Promise<SourceSyncOutcome>;
+  // Called when a Jira field mapping is removed via FieldMappingEditor, so
+  // the parent can refresh server data without a full board sync — the
+  // column that field populated already exists and isn't touched by a
+  // detach, so `onSyncAfterSave`'s sync + poll would be pure waste (and
+  // would wrongly disable Save/Cancel and show a "synced" banner for a
+  // change the user never pressed Save for). Optional for the same reason
+  // `onSyncAfterSave` is: a card can render without either.
+  onFieldUnmapped?: () => void;
   onDetach: () => Promise<void> | void;
   health?: SourceHealth;
   openFix?: boolean;
@@ -191,6 +206,7 @@ export function BoardSourceCard({
   onSave,
   onSaveStatusMapping,
   onSyncAfterSave,
+  onFieldUnmapped,
   onDetach,
   health,
   openFix,
@@ -272,6 +288,36 @@ export function BoardSourceCard({
     }
   }
 
+  // FieldMappingEditor's attach/detach are their own immediate writes, not
+  // part of the draft-then-Save flow above — and the two need different
+  // follow-ups. Attaching creates an empty column that is invisible until a
+  // sync populates it, so it reuses the same post-write sync + outcome
+  // banner the Save flow uses. Detaching only removes a mapping; the column
+  // it produced (and its values) is untouched, so there is nothing for a
+  // sync to populate — running one anyway would be pure waste, and sharing
+  // `phase` with it would wrongly disable Save/Cancel for the sync's ~30s
+  // poll and show a "synced" banner for a change the user never pressed Save
+  // for. Detach instead asks the parent for a plain data refresh.
+  async function handleFieldMappingChange(kind: 'attach' | 'detach') {
+    if (kind === 'detach') {
+      onFieldUnmapped?.();
+      return;
+    }
+    if (!onSyncAfterSave) return;
+    setOutcome(null);
+    setPhase('syncing');
+    try {
+      setOutcome(await onSyncAfterSave());
+    } catch (e) {
+      setOutcome({
+        kind: 'error',
+        text: e instanceof Error ? e.message : 'Field updated, but the sync could not be started.',
+      });
+    } finally {
+      setPhase('idle');
+    }
+  }
+
   const saveLabel = phase === 'saving' ? 'Saving…' : phase === 'syncing' ? 'Syncing…' : 'Save changes';
 
   return (
@@ -316,16 +362,24 @@ export function BoardSourceCard({
       {expanded && (
         <div className="p-3 border-t border-slate-100 space-y-3">
           {source.provider === 'jira' && (
-            <JiraBoardZone
-              value={draft as JiraZoneValue}
-              groups={groups}
-              onChange={(v) => setDraft(v)}
-              previewCount={null}
-              boardId={boardId}
-              sourceId={source.id}
-              boardStatuses={boardStatuses}
-              onSaveStatusMapping={onSaveStatusMapping}
-            />
+            <>
+              <JiraBoardZone
+                value={draft as JiraZoneValue}
+                groups={groups}
+                onChange={(v) => setDraft(v)}
+                previewCount={null}
+                boardId={boardId}
+                sourceId={source.id}
+                boardStatuses={boardStatuses}
+                onSaveStatusMapping={onSaveStatusMapping}
+              />
+              <FieldMappingEditor
+                boardId={boardId}
+                sourceId={source.id}
+                fieldMappings={source.fieldMappings}
+                onChange={handleFieldMappingChange}
+              />
+            </>
           )}
           {source.provider === 'github' && (
             <>

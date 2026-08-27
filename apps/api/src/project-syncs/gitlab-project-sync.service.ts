@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@deckgauge/db';
+import { visibleConnectionWhere, type ConnectionCaller } from '../connections/connection-visibility.js';
 
 export interface GitLabProjectSyncRow {
   id: string;
@@ -25,9 +26,11 @@ export class GitLabProjectSyncService {
    * other routes take. The route is orgRole(MEMBER) so the membership this
    * argument comes from is guaranteed.
    */
-  async list(organizationId: string): Promise<GitLabProjectSyncRow[]> {
+  async list(caller: ConnectionCaller): Promise<GitLabProjectSyncRow[]> {
     const rows = await this.prisma.gitLabProjectSync.findMany({
-      where: { gitlabInstance: { organizationId } },
+      // Ownership rides on the SAME relation as tenancy: a sync row carries
+      // neither an organization nor an owner of its own.
+      where: { gitlabInstance: { organizationId: caller.organizationId, ...visibleConnectionWhere(caller) } },
       include: { _count: { select: { boardSources: true } } },
       orderBy: { createdAt: 'desc' },
     });

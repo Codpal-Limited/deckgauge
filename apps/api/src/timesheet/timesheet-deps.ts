@@ -10,7 +10,20 @@ import type { TimesheetDeps } from './timesheet.service.js';
 import { OrgTreeTimesheetConfigService } from '../org-trees/org-tree-timesheet-config.service.js';
 
 /** Production wiring of TimesheetService dependencies (Prisma + ClickHouse). */
-export function buildTimesheetDeps(prisma: PrismaClient, clickhouse: ChQueryClient): TimesheetDeps {
+/**
+ * `readerFor` is a FACTORY, not a client.
+ *
+ * The ClickHouse-backed deps below resolve a reader scoped to the organization
+ * they are called with (tenancy §11 precondition 8), so `TimesheetService` can
+ * stay a single instance and keep its per-instance `TtlCache` warm. Handing this
+ * function one client — as it used to take — meant every tenant's timesheet read
+ * went through whichever identity was wired at boot, and that was the ingest
+ * identity, whose permissive policy no per-organization row policy can narrow.
+ */
+export function buildTimesheetDeps(
+  prisma: PrismaClient,
+  readerFor: (organizationId: string) => ChQueryClient,
+): TimesheetDeps {
   const configService = new OrgTreeTimesheetConfigService(prisma);
   return {
     loadEmployees: async (orgTreeId: string) => {
@@ -53,7 +66,8 @@ export function buildTimesheetDeps(prisma: PrismaClient, clickhouse: ChQueryClie
       const cfg = await configService.get(orgTreeId);
       return cfg ? cfg.dailyCapHours : null;
     },
-    fetchTransitions: (toMs: number) => fetchTransitions(clickhouse, toMs),
+    fetchTransitions: (organizationId: string, fromMs: number, toMs: number) =>
+      fetchTransitions(readerFor(organizationId), fromMs, toMs),
     // Also computation-corrupting, not just a disclosure: one organization's
     // retirement cutoff would clip another organization's timesheet hours.
     loadRetiredProjects: async (organizationId: string) => {
@@ -63,8 +77,9 @@ export function buildTimesheetDeps(prisma: PrismaClient, clickhouse: ChQueryClie
       });
       return new Map(rows.map((r) => [r.projectKey.toUpperCase(), r.cutoffDate.getTime()]));
     },
-    fetchParentLinks: () => fetchParentLinks(clickhouse),
-    fetchClassificationMap: () => fetchClassificationMap(clickhouse),
-    loadIssueMeta: () => fetchIssueMeta(clickhouse),
+    fetchParentLinks: (organizationId: string) => fetchParentLinks(readerFor(organizationId)),
+    fetchClassificationMap: (organizationId: string) =>
+      fetchClassificationMap(readerFor(organizationId)),
+    loadIssueMeta: (organizationId: string) => fetchIssueMeta(readerFor(organizationId)),
   };
 }

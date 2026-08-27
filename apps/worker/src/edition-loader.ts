@@ -32,13 +32,26 @@ export async function loadEdition(): Promise<WorkerEditionModule | null> {
   // attempted — apps must not depend on the private package, or the community
   // snapshot becomes uninstallable.
   const modulePath = process.env.DECKGAUGE_ENTERPRISE_MODULE;
-  if (!modulePath) return null;
+  if (!modulePath) {
+    // Loud for the same reason as the api's loader: silence here means the ingest
+    // gate and all periodic edition work simply do not happen, on a worker that
+    // otherwise processes queues normally.
+    console.warn(
+      '[edition] DECKGAUGE_EDITION=enterprise but DECKGAUGE_ENTERPRISE_MODULE is unset; running Community.',
+    );
+    return null;
+  }
 
   try {
     const mod = (await import(modulePath)) as {
       createEnterprise?: () => WorkerEditionModule;
     };
-    if (typeof mod.createEnterprise !== 'function') return null;
+    if (typeof mod.createEnterprise !== 'function') {
+      console.warn(
+        `[edition] ${modulePath} loaded but exports no createEnterprise(); running Community.`,
+      );
+      return null;
+    }
     return mod.createEnterprise();
   } catch (err) {
     console.warn('[edition] enterprise requested but module failed to load; running Community.', err);

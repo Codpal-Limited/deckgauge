@@ -3,7 +3,12 @@ import type { ReactNode } from 'react';
 import { getBootstrapState } from '../actions/organization';
 import { isOrganizationAdmin } from '../lib/org-role';
 
-const BASE_TABS = [{ href: '/settings/timesheet-statuses', label: 'Timesheet Statuses' }];
+// Notifications are a PERSONAL setting, so it sits in the base tabs every
+// member sees — unlike the three below, which are organization administration.
+const BASE_TABS = [
+  { href: '/settings/notifications', label: 'Notifications' },
+  { href: '/settings/timesheet-statuses', label: 'Timesheet Statuses' },
+];
 
 // All three tabs lead to organization administration. `Connections` points at
 // the connection catalog on /sources — creating, editing, deleting, testing and

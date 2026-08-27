@@ -13,6 +13,7 @@ export function hydrateJira(row: Record<string, unknown>): SourceShape {
     // BoardJiraSource only stores `lastPromotedAt`; the "last sync" timestamp
     // the UI cares about lives on the related JiraProjectSync row.
     lastSyncedAt: r.jiraProjectSync?.lastSyncedAt ?? r.lastSyncedAt ?? null,
+    fieldMappings: r.fieldMappings ?? {},
     zoneValue: {
       syncIssuesToBoard: r.syncIssuesToBoard ?? true,
       targetGroupId: r.targetGroupId ?? null,

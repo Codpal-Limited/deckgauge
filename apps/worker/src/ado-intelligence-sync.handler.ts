@@ -22,11 +22,19 @@ import {
   type AdoDeploymentPort,
   type Throttle,
 } from '@deckgauge/shared';
+import { resolveSyncJobScope } from './sync-job-scope.js';
 
 export interface AdoIntelligenceJobData {
   trigger: 'manual' | 'scheduled' | 'startup';
   instanceId?: string;
   projects?: string[];
+  /**
+   * The organization whose admin asked for this sync — REQUIRED for a `manual` job.
+   * Reached by `POST /intelligence/sync`, whose `ADMIN` policy admits an ORGANIZATION
+   * admin, so this is what stops one tenant spending every other tenant's ADO PATs.
+   * Built by `manualSyncJobPayload` in @deckgauge/shared.
+   */
+  organizationId?: string;
 }
 
 export interface AdoFactoryConfig {
@@ -376,8 +384,17 @@ export async function handleAdoIntelligenceSync(
     errors: [],
   };
   const backfill = backfillConfig();
+  // The tenant boundary. Fail-closed — see sync-trigger-tenancy.test.ts.
+  const scope = resolveSyncJobScope(job);
+  if (!scope.allowed) {
+    console.error(`[ADO intel] ${scope.reason}`);
+    result.errors.push({ instanceId: 'none', project: '-', message: scope.reason });
+    return result;
+  }
+
   const where: Record<string, unknown> = {};
   if (job.instanceId) where.id = job.instanceId;
+  if (scope.organizationId) where.organizationId = scope.organizationId;
   const instances = await db.azureDevOpsInstance.findMany({ where, include: { projectSyncs: true } });
 
   for (const instance of instances) {

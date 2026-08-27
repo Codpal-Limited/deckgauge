@@ -1,11 +1,22 @@
 // EI-012 — Jira intelligence sync (additive dual-write).
 import { PrismaClient } from '@deckgauge/db';
 import type { JiraIntelligencePort } from '@deckgauge/shared';
+import { resolveSyncJobScope } from './sync-job-scope.js';
 
 export interface JiraIntelligenceJobData {
   trigger: 'manual' | 'scheduled' | 'startup';
   instanceId?: string;
   projectKeys?: string[];
+  /**
+   * The organization whose admin asked for this sync — REQUIRED for a `manual` job.
+   *
+   * `POST /intelligence/sync` reaches this handler, and its `ADMIN` policy is not
+   * instance-only (`policy.ts` tests `ctx.isAdmin`, which the auth plugin sets for
+   * `membership.role === 'ADMIN'`), so before 2026-08-27 an ORGANIZATION admin of one
+   * tenant spent every other tenant's Atlassian tokens through it. Built by
+   * `manualSyncJobPayload` in @deckgauge/shared.
+   */
+  organizationId?: string;
 }
 
 export type JiraIntelligenceFactory = (cfg: {
@@ -67,8 +78,18 @@ export async function handleJiraIntelligenceSync(
     worklogsWritten: 0,
     errors: [],
   };
+  // The tenant boundary. Fail-closed: a manual job naming no scope is refused rather
+  // than loading every organization's Jira credentials. See sync-trigger-tenancy.test.ts.
+  const scope = resolveSyncJobScope(job);
+  if (!scope.allowed) {
+    console.error(`[Jira intel] ${scope.reason}`);
+    result.errors.push({ instanceId: 'none', message: scope.reason });
+    return result;
+  }
+
   const where: Record<string, unknown> = {};
   if (job.instanceId) where.id = job.instanceId;
+  if (scope.organizationId) where.organizationId = scope.organizationId;
   const instances = await db.jiraInstance.findMany({ where });
 
   for (const instance of instances) {

@@ -312,6 +312,32 @@ export function organizationPolicyDdl(
 }
 
 /**
+ * The objects ONE organization currently holds an `iso_` predicate policy on.
+ *
+ * The read counterpart of organizationPolicyDdl, and it exists because role
+ * existence and policy existence are separate facts that fail the same way.
+ * `applyRowPolicyBaseline` runs on every ClickHouse migration and re-applies the
+ * catch-all deny over the server's live object list, but it does NOT write
+ * per-organization predicates — only provisioning does. So a migration that adds
+ * a tenant table leaves every existing organization denied on it, with a role that
+ * exists and a grant that is held: every guard passes and that one table reads
+ * empty. Reading the coverage back per organization is what turns that into a
+ * reported gap instead of "analytics went partly blank after a deploy".
+ *
+ * Keyed on the policy's short_name rather than on `apply_to_list`, because the
+ * name is what organizationPolicyDdl derives from the role and is therefore the
+ * fact that cannot drift from it. `roleNameFor` validates the id, so the
+ * interpolation below is closed before the string is built.
+ */
+export function isoPolicyObjectsForOrganizationQuery(organizationId: string): string {
+  const shortName = `iso_${roleNameFor(organizationId)}`;
+  return (
+    `SELECT DISTINCT table FROM system.row_policies ` +
+    `WHERE database = '${CH_POLICY_DATABASE}' AND short_name = '${shortName}' ORDER BY table`
+  );
+}
+
+/**
  * The cross-organization permissive policy for a single named user: `USING 1` on
  * every object passed in.
  *

@@ -1,4 +1,4 @@
-import type { ClickHouseClient } from '@deckgauge/db';
+import type { ChReadClient } from '../analytics/ch-read-scope.js';
 import { isEmptyIdentities, type EmployeeIdentities } from '@deckgauge/shared';
 
 export const ACTIVITY_LIMIT = 10;
@@ -102,7 +102,7 @@ interface RawRow {
 }
 
 export class EmployeeActivityService {
-  constructor(private readonly ch: ClickHouseClient) {}
+  constructor(private readonly ch: ChReadClient) {}
 
   /**
    * Union the employee's alias logins with GitHub logins learned from

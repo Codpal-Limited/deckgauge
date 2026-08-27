@@ -102,3 +102,27 @@ export interface OrgBoardDto {
   projectCount: number;
   access: AccessEntry[];
 }
+
+/**
+ * One organization the caller may act in — what the switcher lists.
+ *
+ * `isActive` is which one the session currently resolves to, so the UI marks it
+ * without re-deriving the precedence rules the API owns.
+ */
+export interface OrgMembershipOptionDto {
+  organizationId: string;
+  name: string;
+  slug: string;
+  role: OrgRoleValue;
+  status: 'ACTIVE' | 'SUSPENDED';
+  isActive: boolean;
+}
+
+/**
+ * Body of the switch request. `.strict()` so a stray field is a 400 rather than
+ * being ignored — this endpoint changes which tenant every later request reads.
+ */
+export const SwitchOrganizationSchema = z
+  .object({ organizationId: z.string().uuid() })
+  .strict();
+export type SwitchOrganizationInput = z.infer<typeof SwitchOrganizationSchema>;

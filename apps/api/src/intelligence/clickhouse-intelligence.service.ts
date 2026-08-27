@@ -11,7 +11,10 @@ import type { BoardScope } from './board-scope.js';
 export interface DeveloperProfileLookupClient {
   developerProfile: {
     findMany(args: {
-      where: { provider: string; login: { in: string[] } };
+      // `organizationId` is REQUIRED in the structural type, not optional: this
+      // is the one place the compiler can insist the tenant predicate is
+      // present on a PII read.
+      where: { organizationId: string; provider: string; login: { in: string[] } };
       select: { login: true; userId: true; displayName: true };
     }): Promise<Array<{ login: string; userId: string; displayName: string | null }>>;
   };
@@ -75,11 +78,25 @@ export interface TicketCoverageDto {
   coverage_rate: number;
 }
 
+/**
+ * P8.6 — the DeveloperProfile post-join, and the organization whose profiles it
+ * is allowed to see.
+ *
+ * ONE option rather than two, so `prisma` cannot be supplied without a tenant.
+ * `developer_profiles` is now tenant-keyed, and this join reads logins, display
+ * names, emails and local user ids — an optional `organizationId` alongside a
+ * required client is precisely the shape that lets a caller forget it and read
+ * every tenant's directory.
+ */
+export interface DeveloperProfileJoin {
+  prisma: DeveloperProfileLookupClient;
+  organizationId: string;
+}
+
 export interface ClickhouseIntelligenceServiceOptions {
   client: ChQueryClient;
-  // P8.6 — optional Prisma client used to post-join DeveloperProfile rows onto
-  // the ClickHouse-derived developer table.
-  prisma?: DeveloperProfileLookupClient;
+  // Omit to skip the post-join entirely (userId/displayName come back null).
+  profileJoin?: DeveloperProfileJoin;
 }
 
 function formatDate(d: Date): string {
@@ -104,12 +121,12 @@ function castRows<T>(payload: unknown): T[] {
 
 export class ClickhouseIntelligenceService {
   private readonly client: ChQueryClient;
-  // P8.6 — optional Prisma client for DeveloperProfile post-join.
-  private readonly prisma?: DeveloperProfileLookupClient;
+  // P8.6 — optional tenant-bound Prisma lookup for the DeveloperProfile post-join.
+  private readonly profileJoin?: DeveloperProfileJoin;
 
   constructor(opts: ClickhouseIntelligenceServiceOptions) {
     this.client = opts.client;
-    this.prisma = opts.prisma;
+    this.profileJoin = opts.profileJoin;
   }
 
   async getTeamOverview(from: Date, to: Date, scope?: BoardScope): Promise<TeamOverviewDto> {
@@ -695,13 +712,15 @@ ClickhouseIntelligenceService.prototype.getDeveloperTable = async function (
   // P8.6 — post-join DeveloperProfile via Postgres so the web table can link
   // each login to the local user. If Prisma is not wired in (e.g. legacy
   // tests), or if there are no rows, fall back to nulls.
-  const prisma = (this as unknown as { prisma?: DeveloperProfileLookupClient }).prisma;
-  if (baseRows.length === 0 || !prisma) {
+  const join = (this as unknown as { profileJoin?: DeveloperProfileJoin }).profileJoin;
+  if (baseRows.length === 0 || !join) {
     return baseRows.map((r) => ({ ...r, userId: null, displayName: null }));
   }
   const logins = baseRows.map((r) => r.login).filter((l) => l !== '');
-  const profiles = await prisma.developerProfile.findMany({
-    where: { provider: 'github', login: { in: logins } },
+  const profiles = await join.prisma.developerProfile.findMany({
+    // `organizationId` first: `developer_profiles` is tenant-keyed, and a
+    // (provider, login) lookup without it reads every tenant's mapping.
+    where: { organizationId: join.organizationId, provider: 'github', login: { in: logins } },
     select: { login: true, userId: true, displayName: true },
   });
   const byLogin = new Map(profiles.map((p) => [p.login, p]));

@@ -2,6 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useRef, useEffect } from 'react';
+import { OrgSwitcher } from './OrgSwitcher';
 
 const LOGOUT_URL_ENDPOINT = '/api/logout-url';
 
@@ -79,6 +80,9 @@ export function UserMenu() {
             {session.user.email}
           </div>
           <div className="mx-2 border-t border-slate-100" />
+          {/* Renders nothing unless the caller belongs to more than one
+              organization, which is nobody under the one-organization cap. */}
+          <OrgSwitcher />
           <button
             onClick={handleSignOut}
             aria-label="Sign out"

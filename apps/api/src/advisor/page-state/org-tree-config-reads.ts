@@ -32,9 +32,21 @@ type ConfigRowWithTree = OrgTreeTimesheetConfig & { orgTree: { name: string } };
 /**
  * Reads one row past the cap so "more rows exist" is known without a second
  * `count` query.
+ *
+ * Scoped THROUGH the `orgTree` relation, because `OrgTreeTimesheetConfig` has no
+ * tenant column of its own — its `@id` is the `orgTreeId`, and the tree is what
+ * carries the `organizationId`. That is the exact shape TENANCY-PROGRAMME §5a's
+ * method note says to sweep for, and this read was one: a bare `take` with no
+ * `where`, which reported every organization's per-tree overrides — under their
+ * `orgTreeName`, the one identity in these payloads a human can recognise.
+ * Swept and fixed 2026-08-26.
  */
-export async function readOrgTreeTimesheetConfigs(prisma: PrismaClient): Promise<OrgTreeConfigRead> {
+export async function readOrgTreeTimesheetConfigs(
+  prisma: PrismaClient,
+  organizationId: string,
+): Promise<OrgTreeConfigRead> {
   const rows: ConfigRowWithTree[] = await prisma.orgTreeTimesheetConfig.findMany({
+    where: { orgTree: { organizationId } },
     take: MAX_CONFIG_ROWS + 1,
     include: { orgTree: { select: { name: true } } },
   });

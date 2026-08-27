@@ -25,10 +25,14 @@ export async function uploadRoutes(
   // OrgEmployee, which an org tree owns, so it needs EDITOR on that tree via
   // `OrgTreeAccess` — the `then: 'orgEntity'` branch arm in policy.ts.
   //
-  // Never write `then: 'authenticated'` on either arm. An arm that gates
-  // nothing resolves to an empty board set, which `evaluatePolicy` allows
-  // outright — turning this endpoint into an unauthenticated-in-effect write
-  // into data the caller cannot read back.
+  // Never give either arm a `then` that gates nothing. Such an arm resolves to
+  // an empty board set, which `evaluatePolicy` allows outright — turning this
+  // endpoint into an unauthenticated-in-effect write into data the caller cannot
+  // read back. This is the route that comment was written for, and the shape it
+  // warns about is now refused by `resolveBoardIds` rather than only prohibited
+  // in prose: `then: 'authenticated'` no longer exists in `BoardBranch`, and an
+  // unrecognised `then` denies. The rule is restated anyway because it is about
+  // any FUTURE arm, not about that one value.
   //
   // These must be tried as ordered, mutually-exclusive branches, not OR'd: a
   // failed EDITOR check on the projectId branch must deny outright, never

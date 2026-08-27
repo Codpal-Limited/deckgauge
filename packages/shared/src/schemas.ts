@@ -42,7 +42,11 @@ export const ProjectSchema = z.object({
   name: z.string().trim().min(1),
   owner: z.string().trim().min(1),
   assignee: z.string().default(""),
-  ownerOverridden: z.boolean().default(false),
+  // Field keys a human has edited; sync skips them until reverted.
+  overriddenFields: z.array(z.string()).default([]),
+  // Pre-edit synced value per dirty key — the value revert restores. The client
+  // needs it to label the revert affordance ("synced value was …").
+  preOverrideValues: z.record(z.string(), z.unknown()).nullable().default(null),
   status: ProjectStatusEnum,
   description: z.string().nullable().default(null),
   boardId: z.string().uuid().nullable().default(null),

@@ -171,8 +171,17 @@ export async function runIntelligenceSync(
   const ch = deps.chClientFor(sync.githubInstance.organizationId);
 
   const [owner, repo] = sync.repoFullName.split('/');
+  // Scoped to the organization that owns this repo, for the same reason the
+  // ClickHouse client above is. This regex decides which Jira keys a pull request
+  // title may link to, so an unscoped read let org A's PRs link to org B's issue
+  // keys — and wrote those rows into pr_jira_links — on the strength of projects
+  // org A neither sees nor syncs. Inert at one organization, which is why it
+  // survived. Tenancy §11 precondition 4.
   const projectKeys = (
-    await deps.prisma.jiraProjectSync.findMany({ select: { jiraProjectKey: true } })
+    await deps.prisma.jiraProjectSync.findMany({
+      where: { jiraInstance: { organizationId: sync.githubInstance.organizationId } },
+      select: { jiraProjectKey: true },
+    })
   ).map((p) => p.jiraProjectKey);
   const regex = buildJiraKeyRegex(projectKeys);
 
@@ -276,7 +285,7 @@ export async function runIntelligenceSync(
           reviewRows as unknown as Array<Record<string, unknown>>,
         );
 
-      await reconcilePrLinks(deps.prisma, regex, {
+      await reconcilePrLinks(deps.prisma, regex, sync.githubInstance.organizationId, {
         id: `${sync.repoFullName}#${pr.number}`,
         repo: sync.repoFullName,
         title: pr.title,

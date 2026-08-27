@@ -8,10 +8,15 @@ export function buildMentionSuggestion(
     char: '@',
     async items({ query }) {
       if (!query) return [];
-      const res = await fetch(`${apiBaseUrl}/users/search?q=${encodeURIComponent(query)}`);
+      // R5.8: only users WITH BOARD ACCESS may be mentioned. This parameter used
+      // to be accepted and thrown away (`void boardId`), so the picker offered
+      // colleagues who would have received a notification pointing at a 403.
+      const scope = boardId ? `&boardId=${encodeURIComponent(boardId)}` : '';
+      const res = await fetch(
+        `${apiBaseUrl}/users/search?q=${encodeURIComponent(query)}${scope}`,
+      );
       if (!res.ok) return [];
       const users: Array<{ id: string; name: string }> = await res.json();
-      void boardId;
       return users.slice(0, 8).map((u) => ({ id: u.id, label: u.name }));
     },
     render() {

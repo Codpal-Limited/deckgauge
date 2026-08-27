@@ -38,6 +38,16 @@ pnpm build
 pnpm test
 ```
 
+`pnpm test` runs every workspace. Each one provisions its own Postgres database
+automatically the first time you run it — you only need the test containers up
+(`docker compose -p vp-cockpit-test -f docker-compose.test.yml up -d`).
+
+That command also runs **strict integration mode**: an integration suite that cannot
+run — because ClickHouse is unreachable, say — fails the gate with a named reason
+rather than reporting as a skip. Running one workspace on its own
+(`pnpm --filter @deckgauge/api test`) is lenient and skips instead, with the same
+message telling you what to start.
+
 - Add tests for new business logic (validators, services, transforms). Tests use **Vitest**.
 - Follow the existing style — Prettier (single quotes, 2-space indent, 100-char width); ESLint must pass.
 - Update docs when behavior changes.

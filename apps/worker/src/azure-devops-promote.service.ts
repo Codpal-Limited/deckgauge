@@ -1,6 +1,7 @@
 import { PrismaClient } from '@deckgauge/db';
-import { LEGACY_STATUS_LABELS, STATUS_COLORS } from '@deckgauge/shared';
+import { LEGACY_STATUS_LABELS, shouldSync, STATUS_COLORS } from '@deckgauge/shared';
 import { ensureDefaultGroup } from './sync-default-group.js';
+import { createSyncAutomationRunner, type SyncAutomationRunner } from './sync-automations.js';
 
 export interface AdoPromoteResult {
   created: number;
@@ -32,7 +33,7 @@ interface ExistingProjectRow {
   status: string;
   statusId: string | null;
   adoSyncedFields: unknown;
-  ownerOverridden: boolean;
+  overriddenFields: string[];
 }
 
 /** The BoardAdoSource fields the promote state machine reads. */
@@ -67,6 +68,8 @@ interface BoardPromoteState {
   created: number;
   updated: number;
   markedRemoved: number;
+  /** Caches this board's automation rules for the whole run. See sync-automations.ts. */
+  automations: SyncAutomationRunner;
 }
 
 /**
@@ -86,6 +89,7 @@ export interface PromoteAdoWorkItem {
   areaPath?: string | null;
   iterationPath?: string | null;
   adoParentId?: number | null;
+  dueDate?: Date | null;
 }
 
 export interface AdoPromotePayload {
@@ -101,20 +105,43 @@ export interface AdoPromotePayload {
   wiqlIdsByBoardSource?: Record<string, Set<number>>;
 }
 
+/** What confines a buffered promote run. Required, because the tenant boundary rides on it. */
+export interface AdoPromoteOptions {
+  /**
+   * The Azure DevOps connection this run fetched from — the same confinement
+   * `promoteProjectStream` already takes, and for the same reason: `adoProject`
+   * is a name unique inside one ADO organization, not across tenants.
+   */
+  instanceId: string;
+}
+
 export class AzureDevOpsPromoteService {
   constructor(private readonly prisma: PrismaClient) {}
 
   /**
    * Buffered promotion: every project's work items are supplied up front in
-   * `payload`. Iterates all project syncs (1 per (instance, adoProject)); each
-   * fans out to N board sources. Shares the per-board state machine with
-   * promoteProjectStream so behaviour is identical whether items arrive all at
-   * once or batch-by-batch.
+   * `payload`. Iterates this connection's project syncs (1 per (instance,
+   * adoProject)); each fans out to N board sources. Shares the per-board state
+   * machine with promoteProjectStream so behaviour is identical whether items
+   * arrive all at once or batch-by-batch.
+   *
+   * **No production caller today** — `azure-devops-sync.processor.ts` uses
+   * `promoteProjectStream`. That is why the unconfined read this replaces was
+   * latent rather than live, and why it is fixed rather than deleted: "no caller"
+   * is a property of the call graph, not of the method, and the next caller would
+   * have inherited the bug.
    */
   async promoteAll(
     payload: AdoPromotePayload = { workItemsByProject: {} },
+    options: AdoPromoteOptions,
   ): Promise<AdoPromoteResult> {
+    // The same predicate `promoteProjectStream` has carried all along, minus its
+    // `adoProject` half (this method promotes every project in the payload).
+    // Without it, `ps.adoProject` — a name unique within one ADO organization,
+    // not across tenants — decided which board a work item landed on
+    // (TENANCY-PROGRAMME §5a).
     const projectSyncs = await this.prisma.azureDevOpsProjectSync.findMany({
+      where: { azureDevOpsInstanceId: options.instanceId },
       include: { boardSources: true },
     });
 
@@ -198,7 +225,7 @@ export class AzureDevOpsPromoteService {
     // the same adoWorkItemId can exist on multiple boards, so scope by boardId).
     const existingProjects = await this.prisma.project.findMany({
       where: { boardId: boardSource.boardId, adoProject },
-      select: { id: true, adoWorkItemId: true, status: true, statusId: true, adoSyncedFields: true, ownerOverridden: true },
+      select: { id: true, adoWorkItemId: true, status: true, statusId: true, adoSyncedFields: true, overriddenFields: true },
     });
     const projectByAdoId = new Map<number | null, ExistingProjectRow>(
       existingProjects.map((p): [number | null, ExistingProjectRow] => [p.adoWorkItemId, p]),
@@ -230,6 +257,7 @@ export class AzureDevOpsPromoteService {
       created: 0,
       updated: 0,
       markedRemoved: 0,
+      automations: createSyncAutomationRunner(this.prisma),
     };
   }
 
@@ -281,6 +309,7 @@ export class AzureDevOpsPromoteService {
             groupId: state.groupId,
             adoWorkItemId: item.adoId,
             adoProject: state.adoProject,
+            dueDate: item.dueDate ?? null,
             adoSyncedFields: state.defaultSyncedFields,
             adoRemovedFromSource: false,
           },
@@ -301,29 +330,43 @@ export class AzureDevOpsPromoteService {
           item as unknown as Record<string, unknown>,
           newProject.id,
         );
+
+        // A synced row is a new row on the board like any other.
+        await state.automations.run({
+          boardId,
+          projectId: newProject.id,
+          changes: { status: legacyStatus, statusId },
+        });
       } else {
         const syncedFields = (existing.adoSyncedFields ?? state.defaultSyncedFields) as string[];
+        const overriddenFields = (existing.overriddenFields ?? []) as string[];
+        // One predicate for every field — see sync-field-registry.ts.
+        const syncs = (key: string) => shouldSync({ key, overriddenFields, syncedFields });
+
         const updateData: Record<string, unknown> = {
           adoRemovedFromSource: false,
         };
 
-        if (syncedFields.includes('name')) {
+        if (syncs('name')) {
           updateData.name = item.title;
         }
-        if (syncedFields.includes('status')) {
+        if (syncs('status')) {
           updateData.statusId = statusId;
           updateData.status = legacyStatus;
         }
+        // Assignee is the synced-truth column with no editable counterpart, so
+        // it refreshes even when Owner is overridden.
         if (syncedFields.includes('owner')) {
-          // Always refresh the synced Assignee; only overwrite the editable
-          // Owner while it still follows the assignee (not manually set).
           updateData.assignee = item.assignedTo ?? '';
-          if (!existing.ownerOverridden) {
-            updateData.owner = item.assignedTo ?? '';
-          }
         }
-        if (syncedFields.includes('description')) {
+        if (syncs('owner')) {
+          updateData.owner = item.assignedTo ?? '';
+        }
+        if (syncs('description')) {
           updateData.description = item.description;
+        }
+        if (syncs('dueDate')) {
+          updateData.dueDate = item.dueDate ?? null;
         }
 
         await this.prisma.project.update({
@@ -350,6 +393,19 @@ export class AzureDevOpsPromoteService {
           item as unknown as Record<string, unknown>,
           existing.id,
         );
+
+        // Full before/after pair — the rule engine decides whether anything
+        // actually changed, the same decision the hand-edit path makes.
+        await state.automations.run({
+          boardId,
+          projectId: existing.id,
+          changes: {
+            status: updateData.status as string | undefined,
+            previousStatus: existing.status as string,
+            statusId: updateData.statusId as string | undefined,
+            previousStatusId: existing.statusId as string | null,
+          },
+        });
       }
     }
   }

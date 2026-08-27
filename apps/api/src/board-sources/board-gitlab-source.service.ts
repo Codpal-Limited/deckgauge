@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@deckgauge/db';
 import { CrossOrganizationSyncError } from './cross-organization-sync-error.js';
+import { visibleConnectionWhere, type ConnectionCaller } from '../connections/connection-visibility.js';
 
 // Surface the project sync's `syncPrs/syncCommits/lastSyncedAt` so the
 // board-sources UI can render the connection's code-sync state and last
@@ -36,7 +37,7 @@ export class BoardGitLabSourceService {
    * `gitlabInstance` (lower-case l), matching the `gitlabInstanceId` column.
    */
   async attach(
-    organizationId: string,
+    caller: ConnectionCaller,
     input: {
       boardId: string;
       gitlabProjectSyncId: string;
@@ -46,7 +47,7 @@ export class BoardGitLabSourceService {
     },
   ) {
     const sync = await this.prisma.gitLabProjectSync.findFirst({
-      where: { id: input.gitlabProjectSyncId, gitlabInstance: { organizationId } },
+      where: { id: input.gitlabProjectSyncId, gitlabInstance: { organizationId: caller.organizationId, ...visibleConnectionWhere(caller) } },
       select: { id: true },
     });
     if (!sync) throw new CrossOrganizationSyncError('gitlab', input.gitlabProjectSyncId);

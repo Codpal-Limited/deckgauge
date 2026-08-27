@@ -5,6 +5,8 @@ export interface KeycloakTokenClaims {
   sub: string;
   email?: string;
   name?: string;
+  given_name?: string;
+  family_name?: string;
   preferred_username?: string;
   exp: number;
   realm_access?: { roles?: string[] };

@@ -12,8 +12,8 @@ import {
   isWriteConflict,
   mapWriteError,
 } from '../access/prisma-errors.js';
-import { effectiveBoardRole } from '../authz/policy.js';
 import { board, AUTHENTICATED } from '../auth/policy.js';
+import { notifyEntityShared } from '../notifications/triggers/entity-shared.js';
 
 export async function boardAccessRoutes(
   app: FastifyInstance,
@@ -34,10 +34,15 @@ export async function boardAccessRoutes(
     { config: { policy: AUTHENTICATED } },
     async (req, reply) => {
       if (!req.user) return reply.status(401).send({ error: 'Unauthorized' });
-      const grant = await access.getRole('board', req.params.boardId, req.user.id);
-      const role = req.membership
-        ? effectiveBoardRole(req.membership.role, grant)
-        : (grant ?? null);
+      // Resolved THROUGH the caller's organization: `getRole` alone carries no
+      // tenant predicate, so for an org ADMIN and a foreign entity the ceiling
+      // turned a null grant into OWNER (tenancy §11 precondition 7).
+      const role = await access.getEffectiveRole(
+        'board',
+        req.params.boardId,
+        req.user.id,
+        req.membership ?? null,
+      );
       return reply.send({ role, userId: req.user.id });
     },
   );
@@ -68,6 +73,17 @@ export async function boardAccessRoutes(
           // — the pre-bootstrap admin (design D9).
           req.membership?.organizationId ?? null,
         );
+
+        // POST is always a NEW grant — `grant` inserts, and an existing row
+        // surfaces as 409 ALREADY_HAS_ACCESS — so previousRole is null by
+        // construction and no extra read is needed to tell the two kinds apart.
+        await notifyEntityShared(prisma, req, {
+          shareKind: 'board',
+          entityId: req.params.boardId,
+          granteeId: parsed.data.userId,
+          role,
+          previousRole: null,
+        });
         return reply.status(201).send({ userId: parsed.data.userId, role });
       } catch (err) {
         if (err instanceof TargetNotInOrganizationError) {
@@ -102,6 +118,14 @@ export async function boardAccessRoutes(
       if (!parsed.success) return reply.status(400).send({ error: parsed.error.flatten() });
 
       try {
+        // Read BEFORE the update: `updateRole` returns the new role only, and
+        // without the old one "your role changed" cannot say what it changed
+        // from — nor tell a real change from a re-saved unchanged form.
+        const previousRole = await access.getRole(
+          'board',
+          req.params.boardId,
+          req.params.userId,
+        );
         const role = await access.updateRole(
           'board',
           req.params.boardId,
@@ -112,6 +136,14 @@ export async function boardAccessRoutes(
           req.membership?.organizationId ?? null,
         );
         if (role === null) return reply.status(404).send({ error: 'Access entry not found' });
+
+        await notifyEntityShared(prisma, req, {
+          shareKind: 'board',
+          entityId: req.params.boardId,
+          granteeId: req.params.userId,
+          role,
+          previousRole: previousRole,
+        });
         return reply.send({ userId: req.params.userId, role });
       } catch (err) {
         return mapWriteError(err, reply);

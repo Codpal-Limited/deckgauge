@@ -245,6 +245,16 @@ export interface SourceInstanceRow {
   id: string;
   label: string;
   sublabel: string;
+  /**
+   * Personal to one person. Organization-wide connections are left unmarked —
+   * a badge on everything says nothing.
+   */
+  isPersonal: boolean;
+  /**
+   * Display name of whoever added it, or null for rows predating the column.
+   * Provenance only: the API decides access, never this.
+   */
+  addedBy: string | null;
 }
 
 export interface RefreshResult {
@@ -298,19 +308,43 @@ async function listInstancesRaw(path: string): Promise<Record<string, unknown>[]
 
 export async function listJiraInstances(): Promise<SourceInstanceRow[]> {
   const rows = await listInstancesRaw('/jira/instances');
-  return rows.map((r) => ({ id: String(r.id), label: String(r.name ?? r.atlassianUrl), sublabel: String(r.email ?? '') }));
+  return rows.map((r) => ({
+    id: String(r.id),
+    label: String(r.name ?? r.atlassianUrl),
+    sublabel: String(r.email ?? ''),
+    isPersonal: Boolean(r.isPersonal),
+    addedBy: r.addedBy == null ? null : String(r.addedBy),
+  }));
 }
 export async function listGitHubInstances(): Promise<SourceInstanceRow[]> {
   const rows = await listInstancesRaw('/github/instances');
-  return rows.map((r) => ({ id: String(r.id), label: String(r.org || 'GitHub'), sublabel: String(r.baseUrl ?? '') }));
+  return rows.map((r) => ({
+    id: String(r.id),
+    label: String(r.org || 'GitHub'),
+    sublabel: String(r.baseUrl ?? ''),
+    isPersonal: Boolean(r.isPersonal),
+    addedBy: r.addedBy == null ? null : String(r.addedBy),
+  }));
 }
 export async function listAdoInstances(): Promise<SourceInstanceRow[]> {
   const rows = await listInstancesRaw('/azure-devops/instances');
-  return rows.map((r) => ({ id: String(r.id), label: String(r.name ?? r.orgUrl), sublabel: String(r.orgUrl ?? '') }));
+  return rows.map((r) => ({
+    id: String(r.id),
+    label: String(r.name ?? r.orgUrl),
+    sublabel: String(r.orgUrl ?? ''),
+    isPersonal: Boolean(r.isPersonal),
+    addedBy: r.addedBy == null ? null : String(r.addedBy),
+  }));
 }
 export async function listGitLabInstances(): Promise<SourceInstanceRow[]> {
   const rows = await listInstancesRaw('/gitlab/instances');
-  return rows.map((r) => ({ id: String(r.id), label: String(r.name ?? 'GitLab'), sublabel: String(r.baseUrl ?? '') }));
+  return rows.map((r) => ({
+    id: String(r.id),
+    label: String(r.name ?? 'GitLab'),
+    sublabel: String(r.baseUrl ?? ''),
+    isPersonal: Boolean(r.isPersonal),
+    addedBy: r.addedBy == null ? null : String(r.addedBy),
+  }));
 }
 
 export async function refreshJiraToken(id: string, token: string) {

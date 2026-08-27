@@ -4,7 +4,8 @@ import { PickerQuerySchema, type PickerResponse } from '@deckgauge/shared';
 import type { GitHubInstance, PrismaClient } from '@deckgauge/db';
 import { listRepos } from './board-github-picker.service.js';
 import { all, board, orgRole } from '../auth/policy.js';
-import { requireOrganizationId } from '../organizations/request-organization.js';
+import { connectionCaller } from '../connections/connection-caller.js';
+import { visibleConnectionWhere } from '../connections/connection-visibility.js';
 
 /**
  * GET /api/boards/:boardId/github/picker
@@ -54,7 +55,11 @@ export function boardGitHubPickerRoutes(deps: {
         // ROUTE-TABLE bug (a handler reached with no membership), and the catch
         // below would flatten that into a 502 "github_error" — hiding the
         // misconfiguration behind a plausible upstream failure.
-        const organizationId = requireOrganizationId(req);
+        // The picker resolves a CALLER-SUPPLIED instance id and builds an Octokit
+        // client from its PAT, so it is a pre-attach discovery path: ownership
+        // filters here, unlike the post-attach reads where the board owns the
+        // source it was already given.
+        const caller = connectionCaller(req);
 
         try {
           // Scoped, and `findFirst` rather than `findUniqueOrThrow`: `instanceId`
@@ -69,7 +74,8 @@ export function boardGitHubPickerRoutes(deps: {
           const instance = await deps.prisma.gitHubInstance.findFirst({
             where: {
               id: parsed.data.instanceId,
-              organizationId,
+              organizationId: caller.organizationId,
+              ...visibleConnectionWhere(caller),
             },
           });
           if (!instance) {

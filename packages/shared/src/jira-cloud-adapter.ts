@@ -2,6 +2,7 @@ import { JiraPort, JiraIssueExistence, JiraCredentialState } from "./jira-port";
 import { JiraEpic, JiraIssue } from "./jira-schemas";
 import { JiraConfig } from "./jira-config-schema";
 import { extractPlainText } from './adf-to-plain-text';
+import { JiraFieldMetaSchema, type JiraFieldMeta } from "./jira-field-schemas";
 
 export class JiraAuthError extends Error {
   constructor(message: string) {
@@ -33,6 +34,7 @@ interface JiraIssueResponse {
     status: { name: string };
     assignee?: { emailAddress: string } | null;
     updated: string;
+    duedate?: string | null;
     [key: string]: unknown;
   };
 }
@@ -51,6 +53,24 @@ function projectKeyOf(issueKey: string): string | null {
   return match?.[1] ?? null;
 }
 
+/**
+ * The fields every sync has always requested, regardless of the board's
+ * field mappings. Shared by the request builder and the `extra` filter so
+ * the two agree on what "baseline" means — a field in this list is never
+ * duplicated into `extra`.
+ */
+const BASELINE_FIELDS = [
+  "summary",
+  "description",
+  "status",
+  "assignee",
+  "issuetype",
+  "updated",
+  "customfield_10014",
+  "project",
+  "duedate",
+] as const;
+
 export class JiraCloudAdapter implements JiraPort {
   private config: JiraConfig;
   private delayFn: (ms: number) => Promise<void>;
@@ -68,18 +88,53 @@ export class JiraCloudAdapter implements JiraPort {
     return `Basic ${Buffer.from(credentials).toString("base64")}`;
   }
 
-  async fetchEpics(projectKeys: string[]): Promise<JiraEpic[]> {
+  async fetchEpics(projectKeys: string[], extraFields: string[] = []): Promise<JiraEpic[]> {
     const jql = this.buildJql(projectKeys, true);
-    return this.fetchPaginated(jql, (issue) => this.mapToEpic(issue));
+    return this.fetchPaginated(
+      jql,
+      (issue) => this.mapToEpic(issue, extraFields),
+      this.fieldsFor(extraFields),
+    );
   }
 
-  async fetchIssues(projectKeys: string[]): Promise<JiraIssue[]> {
+  async fetchIssues(projectKeys: string[], extraFields: string[] = []): Promise<JiraIssue[]> {
     const jql = this.buildJql(projectKeys, false);
-    return this.fetchPaginated(jql, (issue) => this.mapToIssue(issue));
+    return this.fetchPaginated(
+      jql,
+      (issue) => this.mapToIssue(issue, extraFields),
+      this.fieldsFor(extraFields),
+    );
   }
 
   async fetchIssueKeys(jql: string): Promise<string[]> {
-    return this.fetchPaginated(jql, (issue) => issue.key, "key");
+    return this.fetchPaginated(jql, (issue) => issue.key, ["key"]);
+  }
+
+  /**
+   * Deduped: a mapped field may coincide with a baseline one (someone can map
+   * "duedate" as its own column), and Jira should not be asked twice.
+   */
+  private fieldsFor(extraFields: string[] = []): string[] {
+    return Array.from(new Set([...BASELINE_FIELDS, ...extraFields]));
+  }
+
+  /**
+   * Attaches only the requested extras, and only those Jira actually
+   * returned. A mapped custom field that Jira does not send back (deleted,
+   * or the issue type does not carry it) stays absent from `extra` rather
+   * than becoming `null` — that distinction is what lets the promote step
+   * tell "Jira didn't send this" from "Jira sent an empty value".
+   */
+  private extraFrom(
+    fields: Record<string, unknown>,
+    extraFields: string[],
+  ): Record<string, unknown> | undefined {
+    if (extraFields.length === 0) return undefined;
+    const extra: Record<string, unknown> = {};
+    for (const id of extraFields) {
+      if (fields[id] !== undefined) extra[id] = fields[id];
+    }
+    return extra;
   }
 
   /**
@@ -234,7 +289,7 @@ export class JiraCloudAdapter implements JiraPort {
   private async fetchPaginated<T>(
     jql: string,
     mapper: (issue: JiraIssueResponse) => T,
-    fieldsCsv = "summary,description,status,assignee,issuetype,updated,customfield_10014,project"
+    fields: string[] = this.fieldsFor(),
   ): Promise<T[]> {
     if (this.circuitOpen) {
       throw new JiraCircuitOpenError();
@@ -242,7 +297,6 @@ export class JiraCloudAdapter implements JiraPort {
 
     const results: T[] = [];
     const maxResults = 100;
-    const fields = fieldsCsv;
     const baseUrl = this.config.atlassianUrl.replace(/\/+$/, "");
 
     // Try new POST /search/jql endpoint first (Atlassian CHANGE-2046)
@@ -262,7 +316,7 @@ export class JiraCloudAdapter implements JiraPort {
           Authorization: this.getBasicAuthHeader(),
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ jql, maxResults, fields: fields.split(",") }),
+        body: JSON.stringify({ jql, maxResults, fields }),
         signal: controller.signal,
       });
       clearTimeout(timeout);
@@ -298,7 +352,7 @@ export class JiraCloudAdapter implements JiraPort {
           body: JSON.stringify({
             jql,
             maxResults,
-            fields: fields.split(","),
+            fields,
             nextPageToken,
           }),
           signal: controller.signal,
@@ -390,7 +444,18 @@ export class JiraCloudAdapter implements JiraPort {
     throw lastError || new Error("Unknown error after retries");
   }
 
-  private mapToEpic(issue: JiraIssueResponse): JiraEpic {
+  /**
+   * Jira serves `duedate` as a bare `YYYY-MM-DD` (no time, no zone). Parsing an
+   * empty or absent value yields an Invalid Date, which Prisma would reject, so
+   * guard rather than trusting the cast.
+   */
+  private parseJiraDueDate(raw: unknown): Date | null {
+    if (typeof raw !== "string" || raw.trim() === "") return null;
+    const d = new Date(raw);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  private mapToEpic(issue: JiraIssueResponse, extraFields: string[] = []): JiraEpic {
     return {
       id: issue.id,
       key: issue.key,
@@ -399,11 +464,13 @@ export class JiraCloudAdapter implements JiraPort {
       description: extractPlainText(issue.fields.description) ?? null,
       status: issue.fields.status.name,
       assignee: issue.fields.assignee?.emailAddress || null,
+      dueDate: this.parseJiraDueDate(issue.fields.duedate),
       updatedAt: new Date(issue.fields.updated),
+      extra: this.extraFrom(issue.fields as Record<string, unknown>, extraFields),
     };
   }
 
-  private mapToIssue(issue: JiraIssueResponse): JiraIssue {
+  private mapToIssue(issue: JiraIssueResponse, extraFields: string[] = []): JiraIssue {
     // Extract Epic Link from customfields (Jira Cloud uses customfield_10000 or similar)
     // For now, we'll support both the Epic Link field and customfield patterns
     let epicKey: string | null = null;
@@ -424,7 +491,9 @@ export class JiraCloudAdapter implements JiraPort {
       status: issue.fields.status.name,
       assignee: issue.fields.assignee?.emailAddress || null,
       type: issueTypeObj?.name || "Task",
+      dueDate: this.parseJiraDueDate(issue.fields.duedate),
       updatedAt: new Date(issue.fields.updated),
+      extra: this.extraFrom(fields, extraFields),
     };
   }
 
@@ -463,6 +532,33 @@ export class JiraCloudAdapter implements JiraPort {
     };
     const names = (data.issueTypes ?? []).map((t) => t.name);
     return [...new Set(names)].sort();
+  }
+
+  /**
+   * `GET /rest/api/3/field` — every field in the instance.
+   *
+   * Entries that fail to parse are dropped rather than rejecting the list:
+   * Jira ships occasional descriptors with no `id`, and one malformed entry
+   * must not cost the user their whole field picker.
+   */
+  async fetchFields(): Promise<JiraFieldMeta[]> {
+    const baseUrl = this.config.atlassianUrl.replace(/\/+$/, "");
+    const res = await fetch(`${baseUrl}/rest/api/3/field`, {
+      headers: {
+        Authorization: this.getBasicAuthHeader(),
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`Jira field discovery failed: ${res.status}`);
+    }
+    const raw = (await res.json()) as unknown[];
+    const fields: JiraFieldMeta[] = [];
+    for (const entry of raw) {
+      const parsed = JiraFieldMetaSchema.safeParse(entry);
+      if (parsed.success) fields.push(parsed.data);
+    }
+    return fields;
   }
 
   resetCircuit(): void {

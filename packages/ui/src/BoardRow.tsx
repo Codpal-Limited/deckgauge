@@ -8,6 +8,7 @@ import { StatusPill } from './StatusPill';
 import { DynamicStatusPill } from './DynamicStatusPill';
 import { OwnerAvatar } from './OwnerAvatar';
 import { OwnerSelect } from './OwnerSelect';
+import { OverrideBadge } from './OverrideBadge';
 import { CommentBadge } from './CommentBadge';
 import type { VisibleColumns } from './ColumnToggle';
 import { CustomColumnCell } from './CustomColumnCell';
@@ -31,12 +32,14 @@ interface BoardRowProps {
   ownerId?: string | null;
   /** Synced source person (read-only Assignee column). */
   assignee?: string;
-  /** True when Owner was manually set and no longer follows the assignee. */
-  ownerOverridden?: boolean;
   /** Distinct owner/assignee values on the board, for the Owner combobox. */
   ownerOptions?: string[];
-  /** Re-link Owner to the synced Assignee. */
-  onResetOwnerToAssignee?: () => void;
+  /** Field keys a human has edited; each renders a revert affordance. */
+  overriddenFields?: string[];
+  /** Pre-edit synced value per dirty key — what the popover offers to restore. */
+  preOverrideValues?: Record<string, unknown> | null;
+  /** Re-link one field to its sync source. */
+  onRevertField?: (fieldKey: string) => void;
   status: ProjectStatus;
   statusId?: string | null;
   description?: string;
@@ -95,15 +98,29 @@ function toDateInputValue(v: string | Date | null | undefined): string {
   return new Date(v).toISOString().slice(0, 10);
 }
 
+/** Formats a snapshot value for the badge popover. */
+function snapshotLabel(value: unknown): string {
+  if (value == null || value === '') return '';
+  // Date-shaped snapshots are stored as ISO strings by the API.
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+  }
+  return String(value);
+}
+
 export function BoardRow({
   id,
   name,
   owner,
   ownerId,
   assignee,
-  ownerOverridden,
   ownerOptions,
-  onResetOwnerToAssignee,
+  overriddenFields,
+  preOverrideValues,
+  onRevertField,
   status,
   statusId,
   description,
@@ -176,6 +193,16 @@ export function BoardRow({
 
   const useDynamicOwners = boardOwners && boardOwners.length > 0;
   const useDynamicStatuses = boardStatuses && boardStatuses.length > 0;
+
+  const dirty = new Set(overriddenFields ?? []);
+  const renderBadge = (fieldKey: string, label: string) =>
+    dirty.has(fieldKey) && onRevertField ? (
+      <OverrideBadge
+        label={label}
+        syncedValueLabel={snapshotLabel((preOverrideValues ?? {})[fieldKey])}
+        onRevert={() => onRevertField(fieldKey)}
+      />
+    ) : null;
 
   const currentOwner = useMemo(() => {
     if (!useDynamicOwners || !ownerId) return null;
@@ -437,14 +464,14 @@ export function BoardRow({
               )}
             </>
           ) : onOwnerChange ? (
-            <OwnerSelect
-              value={owner || ''}
-              options={ownerOptions ?? []}
-              onChange={onOwnerChange}
-              overridden={ownerOverridden}
-              assignee={assignee}
-              onResetToAssignee={onResetOwnerToAssignee}
-            />
+            <div className="flex items-center gap-1">
+              <OwnerSelect
+                value={owner || ''}
+                options={ownerOptions ?? []}
+                onChange={onOwnerChange}
+              />
+              {renderBadge('owner', 'Owner')}
+            </div>
           ) : (
             <div className="truncate text-xs text-slate-400 text-center">
               {owner || '\u2014'}
@@ -575,7 +602,7 @@ export function BoardRow({
         </div>
       )}
       {visibleColumns.dueDate && (
-        <div className="px-2 py-2 border-r border-slate-100 flex items-center justify-center">
+        <div className="px-2 py-2 border-r border-slate-100 flex items-center justify-center gap-1">
           <input
             type="date"
             value={toDateInputValue(dueDate)}
@@ -584,6 +611,7 @@ export function BoardRow({
             className="w-full bg-transparent text-xs text-slate-600 outline-none"
             aria-label="Due date"
           />
+          {renderBadge('dueDate', 'Due date')}
         </div>
       )}
       {visibleColumns.duration && (

@@ -6,9 +6,13 @@ import {
   CreateJiraInstanceInputSchema,
   UpdateJiraInstanceInputSchema,
 } from "@deckgauge/shared";
-import { ORG_ADMIN, ORG_MEMBER } from "../auth/policy.js";
-import { requireOrganizationId } from '../organizations/request-organization.js';
+import { ORG_MEMBER } from "../auth/policy.js";
+import { connectionCaller } from "../connections/connection-caller.js";
 
+  // ORG_MEMBER, not ORG_ADMIN: any member may manage THEIR OWN connections, and
+  // the row-level predicate in the service is what decides whose. Loosening this
+  // policy without that predicate would be a real regression — see
+  // connections/connection-visibility.ts and connection-authz.test.ts.
 export async function jiraInstanceRoutes(
   app: FastifyInstance,
   { prisma }: { prisma: PrismaClient },
@@ -21,19 +25,19 @@ export async function jiraInstanceRoutes(
   // resolving a membership, so a membership-less caller reached
   // requireOrganizationId() and got a 500 instead of a scoped result.
   app.get("/jira/instances", { config: { policy: ORG_MEMBER } }, async (req, reply) => {
-    const instances = await service.list(requireOrganizationId(req));
+    const instances = await service.list(connectionCaller(req));
     return reply.send(instances);
   });
 
   // POST /jira/instances — add a new Jira instance.
   // ORG_ADMIN: a connection is organization property, so adding one is
   // organization administration. See connection-authz.test.ts.
-  app.post("/jira/instances", { config: { policy: ORG_ADMIN } }, async (req, reply) => {
+  app.post("/jira/instances", { config: { policy: ORG_MEMBER } }, async (req, reply) => {
     const parsed = CreateJiraInstanceInputSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
-    const instance = await service.create(requireOrganizationId(req), parsed.data, req.user?.id);
+    const instance = await service.create(connectionCaller(req), parsed.data, req.user?.id);
     return reply.status(201).send(instance);
   });
 
@@ -56,14 +60,14 @@ export async function jiraInstanceRoutes(
   // silently. See connections/host-repoint-audit.ts.
   app.patch<{ Params: { id: string } }>(
     "/jira/instances/:id",
-    { config: { policy: ORG_ADMIN } },
+    { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
       const parsed = UpdateJiraInstanceInputSchema.safeParse(req.body);
       if (!parsed.success) {
         return reply.status(400).send({ error: parsed.error.flatten() });
       }
       const instance = await service.update(
-        requireOrganizationId(req),
+        connectionCaller(req),
         req.params.id,
         parsed.data,
         req.user?.id,
@@ -82,9 +86,9 @@ export async function jiraInstanceRoutes(
   // the caller's organization before deleting it.
   app.delete<{ Params: { id: string } }>(
     "/jira/instances/:id",
-    { config: { policy: ORG_ADMIN } },
+    { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
-      const deleted = await service.delete(requireOrganizationId(req), req.params.id);
+      const deleted = await service.delete(connectionCaller(req), req.params.id);
       if (!deleted)
         return reply.status(404).send({ error: "Instance not found" });
       return reply.status(204).send();
@@ -100,10 +104,10 @@ export async function jiraInstanceRoutes(
     // Spends this instance's stored credential against a target the caller
     // names. ORG_ADMIN, with the rest of connection management: an organization
     // MEMBER no longer tests connections.
-    { config: { policy: ORG_ADMIN } },
+    { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
       const result = await service.testConnection(
-        requireOrganizationId(req),
+        connectionCaller(req),
         req.params.id,
       );
       if (result.notFound) {
@@ -121,13 +125,13 @@ export async function jiraInstanceRoutes(
   // POST /jira/instances/:id/refresh-token — validate and swap the API token
   app.post<{ Params: { id: string } }>(
     "/jira/instances/:id/refresh-token",
-    { config: { policy: ORG_ADMIN } },
+    { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
       const body = z.object({ token: z.string().min(1) }).safeParse(req.body);
       if (!body.success)
         return reply.status(400).send({ error: body.error.flatten() });
       const result = await service.refreshToken(
-        requireOrganizationId(req),
+        connectionCaller(req),
         req.params.id,
         body.data.token,
         fetch,
@@ -147,7 +151,7 @@ export async function jiraInstanceRoutes(
     { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
       const instance = await service.getRawById(
-        requireOrganizationId(req),
+        connectionCaller(req),
         req.params.id,
       );
       if (!instance)
@@ -208,7 +212,7 @@ export async function jiraInstanceRoutes(
     { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
       const instance = await service.getRawById(
-        requireOrganizationId(req),
+        connectionCaller(req),
         req.params.id,
       );
       if (!instance)

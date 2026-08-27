@@ -12,19 +12,13 @@ interface OwnerSelectProps {
   onChange: (value: string) => void;
   ariaLabel?: string;
   emptyLabel?: string;
-  /** True when Owner was manually set and no longer follows the assignee. */
-  overridden?: boolean;
-  /** The synced assignee value, shown in the reset affordance. */
-  assignee?: string;
-  /** Re-link Owner to the synced assignee (only offered when overridden). */
-  onResetToAssignee?: () => void;
 }
 
 /**
- * Status-style combobox for the Owner cell: a colored value pill that opens a
- * type-to-filter list of values already used on the board, lets you add a new
- * value by typing, and — when the value was manually overridden — offers a
- * "Reset to Assignee" action that re-links it to the synced source person.
+ * Plain combobox for the Owner cell: a colored value pill that opens a
+ * type-to-filter list of values already used on the board, and lets you add
+ * a new value by typing. The revert-to-synced-value affordance lives in
+ * `OverrideBadge`, rendered alongside this component by the caller.
  */
 export function OwnerSelect({
   value,
@@ -32,9 +26,6 @@ export function OwnerSelect({
   onChange,
   ariaLabel = 'Owner',
   emptyLabel = '—',
-  overridden = false,
-  assignee = '',
-  onResetToAssignee,
 }: OwnerSelectProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
@@ -110,21 +101,6 @@ export function OwnerSelect({
             placeholder="Type a name..."
             className="mb-1 w-full rounded border border-slate-200 px-2 py-1 text-xs focus:border-indigo-300 focus:outline-none"
           />
-
-          {overridden && onResetToAssignee && assignee.trim() !== '' && (
-            <button
-              type="button"
-              aria-label="Reset to Assignee"
-              onClick={() => {
-                onResetToAssignee();
-                setOpen(false);
-                setDraft('');
-              }}
-              className="mb-1 block w-full truncate rounded px-2 py-1 text-left text-xs text-indigo-600 hover:bg-indigo-50"
-            >
-              {'↺'} Reset to Assignee{assignee.trim() ? ` (${assignee})` : ''}
-            </button>
-          )}
 
           <div className="max-h-48 overflow-y-auto">
             {filtered.map((o) => (

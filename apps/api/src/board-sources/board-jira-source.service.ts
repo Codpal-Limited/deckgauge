@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@deckgauge/db';
 import { CrossOrganizationSyncError } from './cross-organization-sync-error.js';
+import { visibleConnectionWhere, type ConnectionCaller } from '../connections/connection-visibility.js';
 
 // Surface the project sync's `lastSyncedAt` so the board-sources UI can show
 // the connection's true last sync time. Jira has no code-sync flags (issue
@@ -37,7 +38,7 @@ export class BoardJiraSourceService {
    * `organizationId` column of its own.
    */
   async attach(
-    organizationId: string,
+    caller: ConnectionCaller,
     input: {
       boardId: string;
       jiraProjectSyncId: string;
@@ -52,7 +53,7 @@ export class BoardJiraSourceService {
     // compound `{ id, jiraInstance: { organizationId } }` predicate, so this is
     // the correct shape for a tenant-scoped resolve rather than a workaround.
     const sync = await this.prisma.jiraProjectSync.findFirst({
-      where: { id: input.jiraProjectSyncId, jiraInstance: { organizationId } },
+      where: { id: input.jiraProjectSyncId, jiraInstance: { organizationId: caller.organizationId, ...visibleConnectionWhere(caller) } },
       select: { id: true },
     });
     if (!sync) throw new CrossOrganizationSyncError('jira', input.jiraProjectSyncId);

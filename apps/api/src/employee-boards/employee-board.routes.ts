@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   CreateEmployeeBoardSchema,
   RenameEmployeeBoardSchema,
+  SetEmployeeBoardPersonalSchema,
   CreateEmployeeGroupSchema,
   UpdateEmployeeGroupSchema,
   ReorderEmployeeGroupsSchema,
@@ -17,7 +18,7 @@ import {
 } from '@deckgauge/shared';
 import type { EmployeeBoardService } from './employee-board.service.js';
 import { OrgTreeCycleError, CrossTreeEmployeeError } from '../org-trees/org-tree.service.js';
-import { orgTree, employeeBoard, employeeBoardInTree, any, VIA_MEMBER, viaOrgEntity, fromParam, fromBodyField } from '../auth/policy.js';
+import { orgTree, employeeBoard, employeeBoardInTree, any, ORG_ADMIN, VIA_MEMBER, viaOrgEntity, fromParam, fromBodyField } from '../auth/policy.js';
 
 export interface EmployeeBoardRoutesDeps {
   serviceFactory: () => EmployeeBoardService;
@@ -77,15 +78,28 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
       if (!uuid.safeParse(req.params.treeId).success) return badId(reply);
       const body = CreateEmployeeBoardSchema.safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
-      return reply.code(201).send(await service.createBoard(req.params.treeId, body.data));
+      // The creator becomes OWNER atomically. `req.user?.id` rather than `!`:
+      // single-user mode resolves no user, and the board is still creatable then.
+      return reply
+        .code(201)
+        .send(await service.createBoard(req.params.treeId, body.data, req.user?.id));
     });
 
     app.get<{ Params: { boardId: string } }>('/employee-boards/:boardId', { config: { policy: employeeBoard('VIEWER') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.boardId).success) return badId(reply);
-      // orgTree(VIEWER) above only gates *reaching* the board; `isAdmin` is an
-      // independent, second check on whether salary is visible once inside it.
-      // Leave this exactly as it is — do not fold it into the policy.
-      const board = await service.getBoard(req.params.boardId, { includeSalary: req.isAdmin ?? false });
+      // The policy above only gates *reaching* the board; salary visibility is an
+      // independent, second question asked once inside it. Deliberately NOT folded
+      // into the policy — it is not a level in the role ladder.
+      //
+      // Now a GRANT rather than `req.isAdmin` alone: `canViewSalary` answers
+      // "isAdmin OR an explicit grant on this board's tree", from the one resolver
+      // both salary gates share.
+      const includeSalary = await service.canViewSalary(
+        req.params.boardId,
+        req.user?.id ?? null,
+        req.isAdmin ?? false,
+      );
+      const board = await service.getBoard(req.params.boardId, { includeSalary });
       if (!board) return reply.code(404).send({ error: 'not found' });
       return board;
     });
@@ -98,9 +112,37 @@ export function employeeBoardRoutes(deps: EmployeeBoardRoutesDeps) {
       return reply.code(204).send();
     });
 
-    // OWNER, not EDITOR — matching DELETE /org-trees/:id: destroying a board's
-    // layout is not an editing action.
-    app.delete<{ Params: { boardId: string } }>('/employee-boards/:boardId', { config: { policy: employeeBoard('OWNER') } }, async (req, reply) => {
+    /**
+     * Marking a board personal is its OWN route, gated on OWNER, rather than a
+     * field on the rename PATCH above: renaming is an editing action (EDITOR),
+     * while deciding who may READ a board is not. Keeping them separate keeps
+     * both policies declarative instead of hand-rolling a role check in a
+     * handler.
+     */
+    app.put<{ Params: { boardId: string } }>(
+      '/employee-boards/:boardId/personal',
+      { config: { policy: employeeBoard('OWNER') } },
+      async (req, reply) => {
+        if (!uuid.safeParse(req.params.boardId).success) return badId(reply);
+        const body = SetEmployeeBoardPersonalSchema.safeParse(req.body);
+        if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
+        await service.setPersonal(req.params.boardId, body.data.isPersonal);
+        return reply.code(204).send();
+      },
+    );
+
+    /**
+     * OWNER, not EDITOR — matching DELETE /org-trees/:id: destroying a board's
+     * layout is not an editing action.
+     *
+     * `any(..., ORG_ADMIN)` because a PERSONAL board is exempt from the org-ADMIN
+     * floor, and without this an admin could neither read NOR delete one. Design
+     * D6 draws the line at reading: an org admin can always find, list and
+     * destroy, because content nobody can clean up is a worse problem than
+     * content an admin cannot read. On an ordinary board this arm adds nothing —
+     * the floor already made them an OWNER.
+     */
+    app.delete<{ Params: { boardId: string } }>('/employee-boards/:boardId', { config: { policy: any(employeeBoard('OWNER'), ORG_ADMIN) } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.boardId).success) return badId(reply);
       await service.deleteBoard(req.params.boardId);
       return reply.code(204).send();

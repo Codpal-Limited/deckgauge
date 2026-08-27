@@ -13,7 +13,9 @@
   },
   "dependencies": {
     "@clickhouse/client": "^1.19.0",
+    "@deckgauge/automations": "workspace:*",
     "@deckgauge/db": "workspace:*",
+    "@deckgauge/notifications": "workspace:*",
     "@deckgauge/shared": "workspace:*",
     "@octokit/rest": "^22.0.1",
     "bullmq": "^5.14.0",

@@ -1,5 +1,6 @@
 import { JiraPort, JiraIssueExistence, JiraCredentialState } from "./jira-port";
 import { JiraEpic, JiraIssue } from "./jira-schemas";
+import type { JiraFieldMeta } from "./jira-field-schemas";
 
 export class FakeJiraAdapter implements JiraPort {
   public fixtureIssueTypesByProject: Record<string, string[]> = {};
@@ -19,6 +20,7 @@ export class FakeJiraAdapter implements JiraPort {
         description: "Set up OAuth2 and JWT-based auth for the application",
         status: "In Progress",
         assignee: "alice@example.com",
+        dueDate: null,
         updatedAt: new Date("2026-04-10T10:00:00Z"),
       },
       {
@@ -29,6 +31,7 @@ export class FakeJiraAdapter implements JiraPort {
         description: "Create OpenAPI spec and developer guides",
         status: "Not Started",
         assignee: "bob@example.com",
+        dueDate: null,
         updatedAt: new Date("2026-04-09T14:30:00Z"),
       },
       {
@@ -39,6 +42,7 @@ export class FakeJiraAdapter implements JiraPort {
         description: null,
         status: "Done",
         assignee: null,
+        dueDate: null,
         updatedAt: new Date("2026-04-08T08:15:00Z"),
       },
     ],
@@ -51,6 +55,7 @@ export class FakeJiraAdapter implements JiraPort {
         description: "Migrate from Express to Fastify, update middleware patterns",
         status: "In Progress",
         assignee: "charlie@example.com",
+        dueDate: null,
         updatedAt: new Date("2026-04-11T11:45:00Z"),
       },
       {
@@ -61,6 +66,7 @@ export class FakeJiraAdapter implements JiraPort {
         description: "Target p99 latency under 200ms for API endpoints",
         status: "At Risk",
         assignee: "diana@example.com",
+        dueDate: null,
         updatedAt: new Date("2026-04-07T16:20:00Z"),
       },
     ],
@@ -78,6 +84,7 @@ export class FakeJiraAdapter implements JiraPort {
         status: "In Progress",
         assignee: "alice@example.com",
         type: "Task",
+        dueDate: null,
         updatedAt: new Date("2026-04-10T10:00:00Z"),
       },
       {
@@ -90,6 +97,7 @@ export class FakeJiraAdapter implements JiraPort {
         status: "In Review",
         assignee: "bob@example.com",
         type: "Task",
+        dueDate: null,
         updatedAt: new Date("2026-04-09T14:30:00Z"),
       },
       {
@@ -102,6 +110,7 @@ export class FakeJiraAdapter implements JiraPort {
         status: "Not Started",
         assignee: null,
         type: "Documentation",
+        dueDate: null,
         updatedAt: new Date("2026-04-08T09:00:00Z"),
       },
       {
@@ -114,6 +123,7 @@ export class FakeJiraAdapter implements JiraPort {
         status: "Done",
         assignee: "alice@example.com",
         type: "Bug",
+        dueDate: null,
         updatedAt: new Date("2026-04-07T13:20:00Z"),
       },
     ],
@@ -128,6 +138,7 @@ export class FakeJiraAdapter implements JiraPort {
         status: "In Progress",
         assignee: "charlie@example.com",
         type: "Task",
+        dueDate: null,
         updatedAt: new Date("2026-04-11T11:45:00Z"),
       },
       {
@@ -140,6 +151,7 @@ export class FakeJiraAdapter implements JiraPort {
         status: "In Progress",
         assignee: null,
         type: "Task",
+        dueDate: null,
         updatedAt: new Date("2026-04-10T15:10:00Z"),
       },
       {
@@ -152,6 +164,7 @@ export class FakeJiraAdapter implements JiraPort {
         status: "Not Started",
         assignee: "diana@example.com",
         type: "Feature",
+        dueDate: null,
         updatedAt: new Date("2026-04-06T12:00:00Z"),
       },
     ],
@@ -208,5 +221,13 @@ export class FakeJiraAdapter implements JiraPort {
       ...Object.values(this.issueData).flat().map((i) => i.key),
     ];
     return known.includes(issueKey) ? "exists" : "unknown";
+  }
+
+  async fetchFields(): Promise<JiraFieldMeta[]> {
+    return [
+      { id: "reporter", name: "Reporter", custom: false, schema: { type: "user" } },
+      { id: "priority", name: "Priority", custom: false, schema: { type: "priority" } },
+      { id: "labels", name: "Labels", custom: false, schema: { type: "array", items: "string" } },
+    ];
   }
 }

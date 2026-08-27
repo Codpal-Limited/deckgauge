@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@deckgauge/db';
+import { visibleConnectionWhere, type ConnectionCaller } from '../connections/connection-visibility.js';
 
 export interface AdoProjectSyncRow {
   id: string;
@@ -37,9 +38,11 @@ export class AdoProjectSyncService {
    * other routes take. The route is orgRole(MEMBER) so the membership this
    * argument comes from is guaranteed.
    */
-  async list(organizationId: string): Promise<AdoProjectSyncRow[]> {
+  async list(caller: ConnectionCaller): Promise<AdoProjectSyncRow[]> {
     const rows = await this.prisma.azureDevOpsProjectSync.findMany({
-      where: { azureDevOpsInstance: { organizationId } },
+      // Ownership rides on the SAME relation as tenancy: a sync row carries
+      // neither an organization nor an owner of its own.
+      where: { azureDevOpsInstance: { organizationId: caller.organizationId, ...visibleConnectionWhere(caller) } },
       include: { _count: { select: { boardSources: true } } },
       orderBy: { createdAt: 'desc' },
     });

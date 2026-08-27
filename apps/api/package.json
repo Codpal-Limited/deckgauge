@@ -9,12 +9,15 @@
     "build": "tsc --build",
     "start": "node dist/index.js",
     "test": "vitest run --passWithNoTests",
+    "test:db:reset": "pnpm --filter @deckgauge/db test:db:reset",
     "lint": "eslint ."
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.27",
     "@clickhouse/client": "^1.19.0",
+    "@deckgauge/automations": "workspace:*",
     "@deckgauge/db": "workspace:*",
+    "@deckgauge/notifications": "workspace:*",
     "@deckgauge/shared": "workspace:*",
     "@fastify/cors": "9",
     "@fastify/multipart": "^8.3.1",

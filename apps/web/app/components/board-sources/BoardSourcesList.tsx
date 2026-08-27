@@ -191,6 +191,14 @@ export function BoardSourcesList({
     return outcome;
   }
 
+  // Removing a Jira field mapping doesn't touch the column it produced (see
+  // synced-column.service's detachJiraField), so unlike handleSyncAfterSave
+  // there is nothing for a sync to populate — a plain server-data refresh is
+  // the whole fix.
+  function handleFieldUnmapped(): void {
+    router.refresh();
+  }
+
   async function handleDetach(source: SourceShape) {
     if (source.provider === 'jira') await detachBoardJiraSource(boardId, source.id);
     if (source.provider === 'github') await detachBoardGitHubSource(boardId, source.id);
@@ -397,6 +405,7 @@ export function BoardSourcesList({
             boardStatuses={boardStatuses}
             onSave={(patch, connectionPatch) => handleSave(s, patch, connectionPatch)}
             onSyncAfterSave={handleSyncAfterSave}
+            onFieldUnmapped={handleFieldUnmapped}
             onSaveStatusMapping={(m) => handleSave(s, { statusMapping: m })}
             onDetach={() => handleDetach(s)}
             health={health[s.instanceId]}

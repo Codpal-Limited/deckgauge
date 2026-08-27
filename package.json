@@ -10,8 +10,12 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "test": "turbo run test",
+    "//test": "EVERY workspace is now in the gate. @deckgauge/db was excluded because its vitest config called dotenv on the root .env, whose DATABASE_URL is the LIVE staging Postgres on :5433, while two of its suites create and deleteMany. That config now derives a per-checkout database like apps/api and apps/worker, and packages/db/src/test-support/staging-unreachable.test.ts asserts by EXECUTION — current_database(), not the configuration — that no suite there can reach staging. The `test:db-unsafe` escape hatch is gone with the danger it named. Never reintroduce a filter here without a named, executable reason.",
+    "//test-strict": "DECKGAUGE_TEST_STRICT_INTEGRATION=1 is what lets the gate tell a suite that PASSED from a suite that never ran: an unavailable integration capability becomes a NAMED FAILURE from each package's integration-coverage.test.ts instead of a silent skip. It is set HERE, on the script the merge gate runs, because a strict mode nobody runs is the defect restated. A single package (`pnpm --filter @deckgauge/api test`) stays lenient and skips with the same text. The variable is also declared in turbo.json's `test` task: turbo 2 runs strict env mode, so an undeclared variable neither reaches vitest nor enters the cache key — and a cached non-strict result replayed into a strict run is the same lie by another route.",
+    "//test-concurrency": "--concurrency=1 is load-bearing twice over, not a performance knob. (1) packages/db and apps/api both write the `organizations` table in the SAME per-checkout database, and apps/api's two deployment-wide suites CLEAR that table to assert `exactly one exists` — the collision apps/api/src/test-support/exclusive-deployment.ts predicted would arrive the moment another package started creating organizations. In parallel they corrupt each other's fixtures. (2) nine packages' vitest workers at once starved this host's 5.9GB VM until Postgres was unreachable, which reads as catastrophic product breakage rather than as resource starvation.",
+    "test": "DECKGAUGE_TEST_STRICT_INTEGRATION=1 turbo run test --concurrency=1",
     "lint": "turbo run lint",
+    "check:compose": "bash scripts/check-bind-host.sh && bash scripts/check-compose-defaults.sh && bash scripts/check-pinned-env.sh",
     "backup": "bash scripts/backup.sh",
     "restore": "bash scripts/restore.sh",
     "migrate:clickhouse": "pnpm --filter @deckgauge/db migrate:clickhouse",

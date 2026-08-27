@@ -2,6 +2,8 @@ import fp from 'fastify-plugin';
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
 import { verifyKeycloakJwt, type KeycloakTokenClaims } from './keycloak-jwt.js';
+import { linkBoardOwnersToUser } from './link-board-owners.js';
+import { notifyOrgMemberInvited } from '../notifications/triggers/org-member-invited.js';
 import { UserService } from '../users/user.service.js';
 import { hasAdminRole, hasAnalyticsRole } from './roles.js';
 import { MembershipService } from '../organizations/membership.service.js';
@@ -122,6 +124,8 @@ export function buildKeycloakAuthPlugin(
           keycloakId: claims.sub,
           email: claims.email,
           name: claims.name ?? claims.preferred_username,
+          firstName: claims.given_name,
+          lastName: claims.family_name,
         });
 
         // Fresh-install bootstrap. Runs HERE, not in the onUserAuthenticated
@@ -154,6 +158,10 @@ export function buildKeycloakAuthPlugin(
         const resolved = await membershipService.resolveForUser(
           request.user.id,
           request.user.email,
+          // Already on the row this plugin just upserted, so the resolver does not
+          // re-query it (tenancy §11 precondition 2). It is a PREFERENCE: the
+          // resolver ignores it unless it still names a membership they hold.
+          request.user.activeOrganizationId,
         );
 
         // Suspension is decided here, not by a policy: it is an administrative
@@ -165,6 +173,16 @@ export function buildKeycloakAuthPlugin(
         if (resolved?.status === 'SUSPENDED') {
           return reply.code(403).send({ error: 'MEMBERSHIP_SUSPENDED' });
         }
+        if (resolved?.justActivatedMembershipId) {
+          // This request is what turned a workspace invite into a membership, so
+          // it is the one moment there is somebody to tell. Fires before the
+          // edition seam below narrows the role: the notification records what
+          // they were invited AS, not what a hosted restriction reduces it to.
+          await notifyOrgMemberInvited(prisma, request, {
+            membershipId: resolved.justActivatedMembershipId,
+          });
+        }
+
         if (resolved?.status === 'ACTIVE') {
           // An edition module may reduce the effective role — the seam by which a
           // hosted deployment can make an organization read-only. Applied BEFORE
@@ -244,11 +262,21 @@ export function buildKeycloakAuthPlugin(
         // flag, unchanged from main).
         request.canViewAnalytics = hasAnalyticsRole(claims) || dbAdmin;
 
-        // Best-effort: link any unlinked BoardOwner labels that match this user's email
-        await prisma.boardOwner.updateMany({
-          where: { userId: null, name: { equals: request.user.email, mode: 'insensitive' } },
-          data: { userId: request.user.id },
-        });
+        // Best-effort owner-label linking. Swallowed on failure: this is a
+        // convenience pass, and a locked row must never fail authentication.
+        try {
+          await linkBoardOwnersToUser(prisma, {
+            userId: request.user.id,
+            email: request.user.email,
+            name: request.user.name,
+            organizationId: request.membership?.organizationId ?? null,
+          });
+        } catch (linkErr) {
+          request.log.warn(
+            { err: linkErr instanceof Error ? linkErr.message : String(linkErr) },
+            'board owner linking failed — continuing',
+          );
+        }
         if (opts.onUserAuthenticated) {
           try {
             await opts.onUserAuthenticated(request.user.id);

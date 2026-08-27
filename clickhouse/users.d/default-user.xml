@@ -12,7 +12,7 @@
       </networks>
       <password><![CDATA[cockpit]]></password>
       <quota>default</quota>
-      <access_management>0</access_management>
+      <access_management>1</access_management>
     </cockpit>
   </users>
 </clickhouse>

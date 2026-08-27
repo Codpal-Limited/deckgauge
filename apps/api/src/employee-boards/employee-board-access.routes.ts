@@ -12,8 +12,8 @@ import {
   isWriteConflict,
   mapWriteError,
 } from '../access/prisma-errors.js';
-import { effectiveBoardRole } from '../authz/policy.js';
 import { employeeBoard, AUTHENTICATED } from '../auth/policy.js';
+import { notifyEntityShared } from '../notifications/triggers/entity-shared.js';
 
 /**
  * The employee-board half of the one route family (design §5.2) — a near-copy
@@ -44,20 +44,18 @@ export function buildEmployeeBoardAccessRoutes(prisma: PrismaClient): FastifyPlu
       async (req, reply) => {
         if (!req.user) return reply.status(401).send({ error: 'Unauthorized' });
 
-        const board = await prisma.employeeBoard.findUnique({
-          where: { id: req.params.boardId },
-          select: {
-            access: { where: { userId: req.user.id }, select: { role: true } },
-            orgTree: {
-              select: { access: { where: { userId: req.user.id }, select: { role: true } } },
-            },
-          },
-        });
-        const treeGrant = board?.orgTree.access[0]?.role ?? null;
-        const grant = treeGrant === 'OWNER' ? 'OWNER' : (board?.access[0]?.role ?? null);
-        const role = req.membership
-          ? effectiveBoardRole(req.membership.role, grant)
-          : (grant ?? null);
+        // D12's implicit ownership now lives in the descriptor map, so this
+        // route resolves it the same way the policy does — and, unlike the
+        // hand-rolled version this replaces, it reads the board THROUGH the
+        // caller's organization. That version returned OWNER for another
+        // organization's board whenever the caller was an org ADMIN, because a
+        // null grant meets the ceiling's floor (tenancy §11 precondition 7).
+        const role = await access.getEffectiveRole(
+          'employeeBoard',
+          req.params.boardId,
+          req.user.id,
+          req.membership ?? null,
+        );
         return reply.send({ role, userId: req.user.id });
       },
     );
@@ -92,6 +90,17 @@ export function buildEmployeeBoardAccessRoutes(prisma: PrismaClient): FastifyPlu
             // no membership — the pre-bootstrap admin (design D9).
             req.membership?.organizationId ?? null,
           );
+
+          // POST is always a NEW grant — `grant` inserts, and an existing row
+          // surfaces as 409 ALREADY_HAS_ACCESS — so previousRole is null by
+          // construction and no extra read is needed to tell the two kinds apart.
+          await notifyEntityShared(prisma, req, {
+            shareKind: 'employeeBoard',
+            entityId: req.params.boardId,
+            granteeId: parsed.data.userId,
+            role,
+            previousRole: null,
+          });
           return reply.status(201).send({ userId: parsed.data.userId, role });
         } catch (err) {
           if (err instanceof TargetNotInOrganizationError) {
@@ -125,6 +134,14 @@ export function buildEmployeeBoardAccessRoutes(prisma: PrismaClient): FastifyPlu
         if (!parsed.success) return reply.status(400).send({ error: parsed.error.flatten() });
 
         try {
+          // Read BEFORE the update: `updateRole` returns the new role only, and
+          // without the old one "your role changed" cannot say what it changed
+          // from — nor tell a real change from a re-saved unchanged form.
+          const previousRole = await access.getRole(
+            'employeeBoard',
+            req.params.boardId,
+            req.params.userId,
+          );
           const role = await access.updateRole(
             'employeeBoard',
             req.params.boardId,
@@ -133,6 +150,14 @@ export function buildEmployeeBoardAccessRoutes(prisma: PrismaClient): FastifyPlu
             req.membership?.organizationId ?? null,
           );
           if (role === null) return reply.status(404).send({ error: 'Access entry not found' });
+
+          await notifyEntityShared(prisma, req, {
+            shareKind: 'employeeBoard',
+            entityId: req.params.boardId,
+            granteeId: req.params.userId,
+            role,
+            previousRole: previousRole,
+          });
           return reply.send({ userId: req.params.userId, role });
         } catch (err) {
           return mapWriteError(err, reply);

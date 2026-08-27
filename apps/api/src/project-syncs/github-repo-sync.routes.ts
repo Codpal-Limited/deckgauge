@@ -21,8 +21,8 @@ import type { PrismaClient } from '@deckgauge/db';
  * connection routes. See project-sync-tenancy.test.ts.
  */
 import { ORG_MEMBER, ORG_VIEWER } from '../auth/policy.js';
-import { requireOrganizationId } from '../organizations/request-organization.js';
 import { denySyncDetach } from './sync-detach-guard.js';
+import { connectionCaller } from '../connections/connection-caller.js';
 
 // Per Task 16: syncPrs/syncCommits flags were removed. The new bulk-repo
 // ingestion always syncs PRs, reviews, commits, workflow runs, deployments,
@@ -41,7 +41,7 @@ export function githubRepoSyncRoutes(deps: { prisma: PrismaClient; singleUser?: 
   const service = new GitHubRepoSyncService(deps.prisma);
   return async function plugin(app: FastifyInstance) {
     app.get('/project-syncs/github', { config: { policy: ORG_VIEWER } }, async (req) =>
-      service.list(requireOrganizationId(req)),
+      service.list(connectionCaller(req)),
     );
 
     app.post('/project-syncs/github', { config: { policy: ORG_MEMBER } }, async (req, reply) => {

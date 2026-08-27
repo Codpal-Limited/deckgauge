@@ -9,7 +9,8 @@
 // truthful about what the user can map against, we return distinct labels
 // merged with `open` and `closed`.
 
-import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
+import type { PrismaClient } from '@deckgauge/db';
+import type { ChReadClient } from '../analytics/ch-read-scope.js';
 
 export class SourceStatusesNotFoundError extends Error {
   constructor(provider: string, id: string) {
@@ -20,12 +21,12 @@ export class SourceStatusesNotFoundError extends Error {
 
 interface Deps {
   prisma: PrismaClient;
-  clickhouse: ClickHouseClient;
+  clickhouse: ChReadClient;
 }
 
 export class SourceStatusesService {
   private readonly prisma: PrismaClient;
-  private readonly clickhouse: ClickHouseClient;
+  private readonly clickhouse: ChReadClient;
 
   constructor(deps: Deps) {
     this.prisma = deps.prisma;

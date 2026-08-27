@@ -5,6 +5,8 @@ export interface UpsertInput {
   keycloakId: string;
   email: string | undefined;
   name: string | undefined;
+  firstName?: string;
+  lastName?: string;
 }
 
 export class UserService {
@@ -12,11 +14,25 @@ export class UserService {
 
   async upsertFromKeycloak(input: UpsertInput): Promise<User> {
     const email = input.email ?? `${input.keycloakId}@keycloak.local`;
-    const name = input.name ?? 'Unknown';
+    const firstName = input.firstName?.trim() || null;
+    const lastName = input.lastName?.trim() || null;
+    // Prefer the explicit `name` claim; fall back to the parts. Without the
+    // fallback a realm with registrationEmailAsUsername displays everyone as
+    // their email address, because preferred_username IS the email.
+    const derivedName = [firstName, lastName].filter(Boolean).join(' ');
+    const name = input.name?.trim() || derivedName || 'Unknown';
+
+    // Names are written only when the token carried them: a token that omits
+    // them must not blank out what a previous login stored.
+    const names = {
+      ...(firstName ? { firstName } : {}),
+      ...(lastName ? { lastName } : {}),
+    };
+
     return this.prisma.user.upsert({
       where: { keycloakId: input.keycloakId },
-      create: { keycloakId: input.keycloakId, email, name },
-      update: { email, name },
+      create: { keycloakId: input.keycloakId, email, name, ...names },
+      update: { email, name, ...names },
     });
   }
 
@@ -72,7 +88,22 @@ export class UserService {
    * nothing that can hold an access row, so offering them would produce a
    * grant that cannot be created.
    */
-  async search(query: string, organizationId: string): Promise<OrgPerson[]> {
+  /**
+   * ACTIVE members of one organization, optionally narrowed to those who can
+   * actually reach a given board.
+   *
+   * `boardId` is what makes the mention picker honour R5.8 ("users WITH BOARD
+   * ACCESS can be @mentioned") — without it the picker offers colleagues who
+   * would receive a notification pointing at a 403. It is OPTIONAL because the
+   * employee-comment editor has no board to pass, and other callers must not
+   * break; the producer applies the same intersection server-side regardless, so
+   * omitting it is a UX wart rather than a hole.
+   */
+  async search(
+    query: string,
+    organizationId: string,
+    boardId?: string,
+  ): Promise<OrgPerson[]> {
     const memberships = await this.prisma.orgMembership.findMany({
       where: {
         organizationId,
@@ -97,8 +128,27 @@ export class UserService {
       orderBy: { user: { name: 'asc' } },
     });
 
-    return memberships.flatMap((m) =>
+    const people = memberships.flatMap((m) =>
       m.user ? [{ ...m.user, orgRole: m.role as OrgPerson['orgRole'] }] : [],
     );
+    if (!boardId) return people;
+
+    // Starting from org members, so this collapses to one predicate per person:
+    // they hold a grant on this board, OR their org role is ADMIN. The admin half
+    // is the floor rule `effectiveBoardRole` applies everywhere else — dropping it
+    // would hide your own org admin from the picker while the producer would
+    // happily notify them.
+    //
+    // The board is read THROUGH the organization, so naming a board in another
+    // tenant narrows to nobody instead of leaking that tenant's grants.
+    const board = await this.prisma.board.findFirst({
+      where: { id: boardId, organizationId },
+      // `accessEntries`, not `access`: Board and EmployeeBoard spell the same
+      // relation differently.
+      select: { accessEntries: { select: { userId: true } } },
+    });
+    if (!board) return [];
+    const granted = new Set(board.accessEntries.map((a) => a.userId));
+    return people.filter((p) => p.orgRole === 'ADMIN' || granted.has(p.id));
   }
 }

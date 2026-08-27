@@ -2,11 +2,21 @@ import type { PrismaClient } from '@deckgauge/db';
 import type { AzureDevOpsPort } from '@deckgauge/shared';
 import type { ChClientFactory } from './jira-dual-writer.js';
 import { azureDevOpsSyncProcessor } from './azure-devops-sync.processor.js';
+import { resolveSyncJobScope } from './sync-job-scope.js';
 
 export interface AzureDevOpsSyncJobData {
   trigger?: string;
   instanceId?: string;
   projects?: string[];
+  /**
+   * The organization whose member asked for this sync.
+   *
+   * Set by the manual trigger routes from the caller's membership. Absence NEVER
+   * means "every tenant" for a manual job — see `resolveSyncJobScope`, which refuses
+   * a manual job naming no scope rather than sweeping. Scheduled and startup sweeps
+   * legitimately omit it.
+   */
+  organizationId?: string;
 }
 
 export interface AzureDevOpsSyncJobResult {
@@ -42,7 +52,30 @@ export async function handleAzureDevOpsSyncJob(
   const scopedInstanceId = jobData.instanceId;
   const scopedProjects = jobData.projects;
 
-  const instances = await db.azureDevOpsInstance.findMany();
+  // The tenant boundary of this handler. `resolveSyncJobScope` is fail-closed: a
+  // manual job that names no scope is refused here rather than sweeping every
+  // organization's connections. See sync-trigger-tenancy.test.ts.
+  const scope = resolveSyncJobScope(jobData);
+  if (!scope.allowed) {
+    console.error(`[Azure DevOps sync] ${scope.reason}`);
+    return [{ instance: 'none', skipped: true, error: scope.reason }];
+  }
+
+  // BOTH predicates, on the query. The instance narrowing used to happen only in the
+  // loop below (`continue`), which meant an instance-scoped job still SELECTed every
+  // tenant's row — and these rows carry the plaintext access token. Discarding a
+  // credential after reading it is not scoping it.
+  //
+  // `undefined`, not `{}`, for the no-filter case: Prisma's generated overload for
+  // this model accepts `{ where } | undefined`, and `{}` widens the union past it
+  // (TS2345).
+  const instanceWhere = {
+    ...(scope.organizationId ? { organizationId: scope.organizationId } : {}),
+    ...(scopedInstanceId ? { id: scopedInstanceId } : {}),
+  };
+  const instances = await db.azureDevOpsInstance.findMany(
+    Object.keys(instanceWhere).length > 0 ? { where: instanceWhere } : undefined,
+  );
   if (instances.length === 0) {
     console.log('No Azure DevOps instances configured — skipping sync');
     return [{ instance: 'none', skipped: true }];
@@ -92,6 +125,9 @@ export async function handleAzureDevOpsSyncJob(
         ch,
         orgUrl: instance.orgUrl,
         instanceId: instance.id,
+        // The tenant of THIS instance, read inside the loop for the same reason
+        // `ch` is. Stamped on the SyncRun the processor writes.
+        organizationId: instance.organizationId,
       });
       results.push({
         instance: instance.id,

@@ -47,12 +47,19 @@ interface BoardViewProps {
   currentUserId?: string | null;
   boardAccess?: AccessEntry[];
   onProjectDeleted?: (projectId: string) => void;
+  /**
+   * Open one item — and optionally one comment inside it — straight from the
+   * URL, so a notification lands on what it is about. Threaded from
+   * `page.tsx` search params down to `GroupList`, which owns the panel state.
+   */
+  deepLink?: { itemId: string; commentId?: string };
+
   onGroupsChange?: (
     groups: (Group & { projects: (Project & { fieldValues?: Record<string, string> })[] })[]
   ) => void;
 }
 
-export function BoardView({ board, groups, columns, boardId, jiraLinks, hasGitHubIntegration, adoOrgUrls, hasAdoIntegration, commentCounts, boardOwners, boardStatuses, userRole, currentUserId, boardAccess, onProjectDeleted, onGroupsChange }: BoardViewProps) {
+export function BoardView({ board, groups, columns, boardId, jiraLinks, hasGitHubIntegration, adoOrgUrls, hasAdoIntegration, commentCounts, boardOwners, boardStatuses, userRole, currentUserId, boardAccess, onProjectDeleted, onGroupsChange, deepLink }: BoardViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRules, setFilterRules] = useState<
     { column: string; condition: string; value: string }[]
@@ -234,6 +241,7 @@ export function BoardView({ board, groups, columns, boardId, jiraLinks, hasGitHu
         {/* Board content */}
         <GroupList
           groups={groups}
+          deepLink={deepLink}
           boardId={boardId}
           boardKind={board?.kind}
           columns={visibleColumns}

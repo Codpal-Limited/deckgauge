@@ -9,7 +9,7 @@ import type { PrismaClient } from '@deckgauge/db';
 import { advisorHelpAskRequestSchema } from '@deckgauge/shared';
 import { hasBoardAccess } from '../board-access/board-access.middleware.js';
 import { orgRole } from '../auth/policy.js';
-import { requireOrganizationId } from '../organizations/request-organization.js';
+import { connectionCaller } from '../connections/connection-caller.js';
 import { RoadmapService } from '../roadmaps/roadmap.service.js';
 import { AdvisorHelpService } from './advisor-help.service.js';
 import { inferenceLock } from './inference-lock.js';
@@ -107,7 +107,15 @@ export function advisorHelpRoutes({ prisma }: { prisma: PrismaClient }) {
         verifiedRoadmapId = parsed.data.roadmapId;
       }
 
-      const config = await configService.getConfig(requireOrganizationId(req));
+      // Resolved once, here, and read by everything below — the config lookup,
+      // the page-state deps and the source-lookup flag all belong to the SAME
+      // organization, and deriving it three times invites two of them to drift.
+      // Throws (500) rather than denying when the request carries no membership:
+      // that can only mean this route lost its `orgRole` policy, and a
+      // plausible-looking 403 would hide the misconfiguration.
+      const advisorCaller = connectionCaller(req);
+
+      const config = await configService.getConfig(advisorCaller.organizationId);
       if (!config) return reply.code(409).send({ error: 'advisor_not_configured' });
 
       const pageKey = parsed.data.pageContext.key;
@@ -128,6 +136,16 @@ export function advisorHelpRoutes({ prisma }: { prisma: PrismaClient }) {
             // so omitting it would let a roadmap role read project rows out of
             // boards they hold no role on.
             userId,
+            // The tenant boundary for every instance-wide resolver read, and
+            // the ownership boundary within it. Both come from
+            // `connectionCaller(req)` — the ONE place `membership.role` becomes
+            // "is an organization admin", so this route cannot reach for
+            // `req.isAdmin` (which unions the Keycloak realm role and
+            // `users.is_admin` and is not tenant-scoped). Until 2026-08-26
+            // neither was passed at all and the resolvers read every
+            // organization's rows: TENANCY-PROGRAMME §5a.
+            organizationId: advisorCaller.organizationId,
+            isOrgAdmin: advisorCaller.isOrgAdmin,
             boardId: verifiedBoardId,
             roadmapId: verifiedRoadmapId,
             // Diagnostic only — synchronous (req.log.error never returns a
@@ -153,7 +171,7 @@ export function advisorHelpRoutes({ prisma }: { prisma: PrismaClient }) {
       // no readable roots at all — there is nothing for the tools to search, so
       // offering them would be the same empty round trip.
       const sourceLookup =
-        sourceAllowlist.roots.length > 0 && (await configService.isSourceLookupEnabled(requireOrganizationId(req)))
+        sourceAllowlist.roots.length > 0 && (await configService.isSourceLookupEnabled(advisorCaller.organizationId))
           ? {
               allowlist: sourceAllowlist,
               // Synchronous, like the page-state seam above and for the same

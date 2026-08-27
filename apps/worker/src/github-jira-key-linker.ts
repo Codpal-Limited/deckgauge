@@ -20,9 +20,21 @@ export interface PrForLinking {
   commits: Array<{ message: string }>;
 }
 
+/**
+ * `organizationId` is required, not optional, and it is on EVERY delete and
+ * upsert below.
+ *
+ * `pr.id` is the synthetic `"<repo>#<number>"` the intelligence handler builds,
+ * so two organizations syncing the same repository produce the identical value.
+ * Each runs this function with its own Jira project-key regex — so a tenant whose
+ * keys do not match this PR takes the delete-all branch. Without the tenant
+ * predicate that branch deleted the OTHER tenant's links: a cross-tenant write,
+ * live at a single organization too whenever one repo is connected twice.
+ */
 export async function reconcilePrLinks(
   prisma: PrismaClient,
   regex: RegExp,
+  organizationId: string,
   pr: PrForLinking
 ): Promise<void> {
   const titleKeys = new Set(extractKeys(pr.title, regex));
@@ -30,15 +42,29 @@ export async function reconcilePrLinks(
 
   const deleteTitle =
     titleKeys.size === 0
-      ? prisma.prJiraLink.deleteMany({ where: { prId: pr.id, source: 'pr_title' } })
+      ? prisma.prJiraLink.deleteMany({
+          where: { organizationId, prId: pr.id, source: 'pr_title' },
+        })
       : prisma.prJiraLink.deleteMany({
-          where: { prId: pr.id, source: 'pr_title', jiraKey: { notIn: [...titleKeys] } },
+          where: {
+            organizationId,
+            prId: pr.id,
+            source: 'pr_title',
+            jiraKey: { notIn: [...titleKeys] },
+          },
         });
   const deleteCommit =
     commitKeys.size === 0
-      ? prisma.prJiraLink.deleteMany({ where: { prId: pr.id, source: 'commit_message' } })
+      ? prisma.prJiraLink.deleteMany({
+          where: { organizationId, prId: pr.id, source: 'commit_message' },
+        })
       : prisma.prJiraLink.deleteMany({
-          where: { prId: pr.id, source: 'commit_message', jiraKey: { notIn: [...commitKeys] } },
+          where: {
+            organizationId,
+            prId: pr.id,
+            source: 'commit_message',
+            jiraKey: { notIn: [...commitKeys] },
+          },
         });
 
   await prisma.$transaction([
@@ -46,8 +72,16 @@ export async function reconcilePrLinks(
     deleteCommit,
     ...[...titleKeys].map((key) =>
       prisma.prJiraLink.upsert({
-        where: { prId_jiraKey_source: { prId: pr.id, jiraKey: key, source: 'pr_title' } },
+        where: {
+          organizationId_prId_jiraKey_source: {
+            organizationId,
+            prId: pr.id,
+            jiraKey: key,
+            source: 'pr_title',
+          },
+        },
         create: {
+          organizationId,
           prId: pr.id,
           repoFullName: pr.repo,
           jiraKey: key,
@@ -59,8 +93,16 @@ export async function reconcilePrLinks(
     ),
     ...[...commitKeys].map((key) =>
       prisma.prJiraLink.upsert({
-        where: { prId_jiraKey_source: { prId: pr.id, jiraKey: key, source: 'commit_message' } },
+        where: {
+          organizationId_prId_jiraKey_source: {
+            organizationId,
+            prId: pr.id,
+            jiraKey: key,
+            source: 'commit_message',
+          },
+        },
         create: {
+          organizationId,
           prId: pr.id,
           repoFullName: pr.repo,
           jiraKey: key,

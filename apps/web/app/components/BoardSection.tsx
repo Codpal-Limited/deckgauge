@@ -114,7 +114,8 @@ export function BoardSection({ projects }: BoardSectionProps) {
                   name={project.name}
                   owner={project.owner}
                   assignee={project.assignee}
-                  ownerOverridden={project.ownerOverridden}
+                  overriddenFields={project.overriddenFields ?? []}
+                  preOverrideValues={project.preOverrideValues ?? null}
                   ownerOptions={ownerOptions}
                   status={project.status}
                   description={project.description ?? undefined}

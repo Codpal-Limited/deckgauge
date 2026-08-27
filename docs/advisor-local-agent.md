@@ -10,10 +10,12 @@ up to them and gives the in-app panel a "Local agent" mode.
 
 It is the host-side companion to the server-side `/mcp` endpoint documented in
 [`advisor-mcp.md`](./advisor-mcp.md).
-Read that doc first if you want the details of the tools themselves
-(`get_team_overview`, `find_slowdowns`, `get_ai_breakdown`, `get_ticket_timeline`)
-and the board-access contract; this doc covers the bridge that lets your own
-local agent call them from inside the Advisor panel.
+Read that doc first if you want the details of the tools themselves — the
+engineering-intelligence reads (`get_team_overview`, `find_slowdowns`,
+`get_ai_breakdown`, `get_ticket_timeline`) and the board-content reads
+(`list_board_rows`, `get_board_structure`, `list_excluded_rows`) — and the
+board-access contract; this doc covers the bridge that lets your own local
+agent call them from inside the Advisor panel.
 
 ## What it is
 
@@ -217,10 +219,11 @@ subsequent `/mcp` tool call. No admin API, no test user, no copying a bearer
 token out of devtools.
 
 Whichever user that token belongs to needs at least **VIEWER** access on any
-board you ask the advisor about — the `/mcp` tools re-check `BoardAccess`
-fresh on every single call, not just once at connection time, so a token
-whose user loses (or never had) board access simply gets a forbidden tool
-error instead of data.
+board you ask the advisor about — the `/mcp` tools re-resolve that user's
+effective board role fresh on every single call, not just once at connection
+time, so a token whose user loses (or never had) board access simply gets a
+forbidden tool error instead of data. See the [security model](#security-model)
+below for how that role is resolved and why it is not a grant-row lookup.
 
 **Running the bridge with no browser at all** (a background service, CI, a
 headless box) needs `DECKGAUGE_TOKEN` set instead, since there's no browser
@@ -238,12 +241,20 @@ local agent drive Deckgauge questions actually exposes:
 1. **Board data access is read-only and board-scoped, and the bridge adds no
    new path to it.** The agent can only reach Deckgauge data through the
    `/mcp` tools — the exact same server-side tools documented in
-   [`docs/advisor-mcp.md`](./advisor-mcp.md). Every call re-checks the calling
-   token's `BoardAccess` (VIEWER minimum) and builds the board's data scope
-   server-side; the scope is never something the agent (or the bridge) can
-   supply as input. Nothing behind `/mcp` writes to Postgres, Jira, GitHub,
-   ADO, or GitLab. The bridge is a wire — it doesn't add a second, looser data
-   path alongside `/mcp`.
+   [`docs/advisor-mcp.md`](./advisor-mcp.md). Every call re-resolves the
+   calling token's effective role on the named board — `AccessService`
+   `.getEffectiveRole` gated by `meetsBoardRole`, fresh per call, never cached
+   and never inherited from an earlier call in the same session — and each tool
+   declares its own minimum role, which today is `VIEWER` for all of them.
+   Deliberately not a `BoardAccess` grant-row check: the resolver reads the
+   board *through* the caller's organization, so a board in another tenant
+   answers "no role" rather than inheriting any implicit ownership, while an
+   organization ADMIN — an implicit owner of every board in their own
+   organization, holding no grant row — is correctly admitted. The board's data
+   scope is then built server-side; it is never something the agent (or the
+   bridge) can supply as input. Nothing behind `/mcp` writes to Postgres, Jira,
+   GitHub, ADO, or GitLab. The bridge is a wire — it doesn't add a second,
+   looser data path alongside `/mcp`.
 2. **The bridge is localhost-only.** It binds `127.0.0.1` exclusively and is
    never exposed as a network service. It's a local developer companion
    process you run next to `pnpm dev`, not something reachable from another

@@ -20,21 +20,58 @@ export interface BoardReverseIndex {
   boardNames: Record<string, string>;
 }
 
-export async function buildBoardReverseIndex(prisma: PrismaClient): Promise<BoardReverseIndex> {
+/**
+ * Build the index for ONE organization.
+ *
+ * `organizationId` is required, not optional. Every key this index is looked up by
+ * — `owner/repo`, a Jira project key, an ADO project name, a work-item row key — is
+ * unique per HOST, never per Deckgauge deployment, so a deployment-wide index
+ * consumed by the per-tree org sync attributed other tenants' boards to this
+ * tenant's employees and wrote their ids and names into `OrgEmployee.statsJson`.
+ * An optional parameter is how that returns: the one caller that forgets it gets
+ * the old behaviour silently. Same reason `GitHubPromoteOptions.instanceId` and
+ * `PageStateDeps.organizationId` are required (TENANCY-PROGRAMME §5a).
+ *
+ * Only `Board` carries `organization_id`; `BoardGitHubSource`, `BoardAdoSource`,
+ * `BoardJiraSource` and `Project` inherit tenancy through their board, so those
+ * four scope through the `board` relation rather than a column of their own.
+ */
+export async function buildBoardReverseIndex(
+  prisma: PrismaClient,
+  organizationId: string,
+): Promise<BoardReverseIndex> {
+  // A blank id is not a wildcard here — Prisma would match no rows and hand back a
+  // silently empty index, which reads as "nobody is on any board" rather than as a
+  // misconfigured caller.
+  if (!organizationId) {
+    throw new Error('buildBoardReverseIndex requires an organizationId');
+  }
+  // The board relation hop, spelled once.
+  const inOrg = { board: { organizationId } };
+  // On the `project` read below this predicate is DEFENCE IN DEPTH, and that was
+  // established by mutation rather than assumed: removing it leaves the suite green,
+  // because the row index only ever credits a board that `intelBoards` already
+  // admits, and `intelBoards` is built from the three source reads above — which
+  // ARE scoped. It stays for two reasons. It keeps the boundary from resting on a
+  // downstream gate three screens away (the shape §5b keeps finding: "holds by luck
+  // of the call site"), and without it every org-tree sync drags every other
+  // tenant's promoted rows through worker memory. See the note in
+  // `board-reverse-index-tenancy.test.ts`.
   const [boards, gh, ado, jira, rows] = await Promise.all([
-    prisma.board.findMany({ select: { id: true, name: true } }),
+    prisma.board.findMany({ where: { organizationId }, select: { id: true, name: true } }),
     prisma.boardGitHubSource.findMany({
-      where: { useForIntelligence: true },
+      where: { useForIntelligence: true, ...inOrg },
       include: { gitHubRepoSync: true },
     }),
     prisma.boardAdoSource.findMany({
-      where: { useForIntelligence: true },
+      where: { useForIntelligence: true, ...inOrg },
       include: { azureDevOpsProjectSync: true },
     }),
-    prisma.boardJiraSource.findMany({ include: { jiraProjectSync: true } }),
+    prisma.boardJiraSource.findMany({ where: { ...inOrg }, include: { jiraProjectSync: true } }),
     prisma.project.findMany({
       where: {
         boardId: { not: null },
+        ...inOrg,
         OR: [
           { jiraKey: { not: null }, jiraRemovedFromSource: false },
           { adoWorkItemId: { not: null }, adoRemovedFromSource: false },

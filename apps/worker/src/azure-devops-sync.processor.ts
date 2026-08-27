@@ -17,6 +17,18 @@ import { fetchAdoPriorStates, type ChQueryClient } from './ado-transition-priors
  * promote service expects. The adapter output has no `adoProject` (it's only
  * available from the calling scope) so we inject it here.
  */
+/**
+ * ADO serves the scheduling due date as an ISO string in the untyped `fields`
+ * bag (mapWorkItem keeps every non-`System.` field). Guard the parse: an absent
+ * or malformed value must become null, not an Invalid Date that Prisma rejects.
+ */
+function adoDueDate(fields: Record<string, unknown> | undefined): Date | null {
+  const raw = fields?.['Microsoft.VSTS.Scheduling.DueDate'];
+  if (typeof raw !== 'string' || raw.trim() === '') return null;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 function toPromoteAdoWorkItem(
   wi: AzureDevOpsWorkItem,
   adoProject: string,
@@ -32,6 +44,7 @@ function toPromoteAdoWorkItem(
     areaPath: wi.areaPath ?? null,
     iterationPath: wi.iterationPath ?? null,
     adoParentId: wi.adoParentId ?? null,
+    dueDate: adoDueDate(wi.fields as Record<string, unknown> | undefined),
   };
 }
 
@@ -71,6 +84,22 @@ interface ProcessorInput {
    */
   orgUrl?: string;
   instanceId?: string;
+  /**
+   * The organization that owns the ADO instance being synced. **Required** — note
+   * the contrast with `orgUrl`/`instanceId` above, which are optional because
+   * they only shape the ClickHouse row key.
+   *
+   * This one is stamped onto the `SyncRun` this processor writes, and is the only
+   * way that row can be attributed: `SyncRun`'s four `*SyncId` columns are dead
+   * (nothing has ever written one) and it had no tenant column at all until
+   * 2026-08-26, so an unattributed run is served to every tenant by
+   * `GET /azure-devops/sync/status`. ADO's `errorMessage` carries the team
+   * project name, which makes it the most revealing of the three sources.
+   *
+   * `azure-devops-sync.handler.ts` already loops per instance and passes
+   * `instance.organizationId` from the same object it takes `instance.orgUrl` from.
+   */
+  organizationId: string;
 }
 
 interface ProcessorOutput {
@@ -82,10 +111,11 @@ interface ProcessorOutput {
 }
 
 export async function azureDevOpsSyncProcessor(input: ProcessorInput): Promise<ProcessorOutput> {
-  const { adapter, projects, trigger, db, ch, orgUrl, instanceId } = input;
+  const { adapter, projects, trigger, db, ch, orgUrl, instanceId, organizationId } = input;
 
   const syncRun = await db.syncRun.create({
     data: {
+      organizationId,
       status: 'PENDING',
       trigger: normalizeTrigger(trigger),
       startedAt: new Date(),
@@ -203,9 +233,20 @@ export async function azureDevOpsSyncProcessor(input: ProcessorInput): Promise<P
               })
             : null;
 
-          // Incremental needs both a watermark and the ability to read back
-          // prior states; without either, fall back to a correct full sweep.
-          const canReadPriors = typeof ch.queryRows === 'function';
+          // Incremental needs a watermark, the ability to read back prior states,
+          // AND a tenant to scope that read to; without any of them, fall back to a
+          // correct full sweep.
+          //
+          // `organizationId` is part of the gate, not an assumption. This read's
+          // result is WRITTEN BACK as `from_state` and dwell time, so an unscoped
+          // one persists another tenant's value under this tenant's key. A
+          // tenant-less client therefore must not go incremental — and refusing
+          // HERE is better than letting `orgPredicate` throw into the sweep's
+          // best-effort catch, because that path silently writes no transitions at
+          // all and never advances the watermark. Falling back to the full sweep
+          // costs Azure DevOps requests and is correct.
+          const canReadPriors =
+            typeof ch.queryRows === 'function' && typeof ch.organizationId === 'string';
           const since = canReadPriors ? (sync?.lastRevisionSyncAt ?? undefined) : undefined;
 
           // Stamp from BEFORE the fetch so revisions written mid-sweep are

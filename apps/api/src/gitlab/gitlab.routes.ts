@@ -4,8 +4,8 @@ import { z } from 'zod';
 import type { PrismaClient } from '@deckgauge/db';
 import { GitLabService, GitLabApiError } from './gitlab.service.js';
 import { denySyncDetach } from '../project-syncs/sync-detach-guard.js';
-import { ORG_ADMIN, ORG_MEMBER, ORG_VIEWER } from '../auth/policy.js';
-import { requireOrganizationId } from '../organizations/request-organization.js';
+import { ORG_MEMBER, ORG_VIEWER } from '../auth/policy.js';
+import { connectionCaller } from '../connections/connection-caller.js';
 
 const CreateInstanceSchema = z.object({
   name: z.string().min(1),
@@ -21,6 +21,10 @@ const CreateProjectSyncSchema = z.object({
   syncCommits: z.boolean().optional(),
 });
 
+  // ORG_MEMBER, not ORG_ADMIN: any member may manage THEIR OWN connections, and
+  // the row-level predicate in the service is what decides whose. Loosening this
+  // policy without that predicate would be a real regression — see
+  // connections/connection-visibility.ts and connection-authz.test.ts.
 export function gitlabRoutes({ prisma, singleUser }: { prisma: PrismaClient; singleUser?: boolean }) {
   return async function plugin(app: FastifyInstance) {
     const service = new GitLabService(prisma);
@@ -30,16 +34,16 @@ export function gitlabRoutes({ prisma, singleUser }: { prisma: PrismaClient; sin
     // membership-less caller would reach `requireOrganizationId` and get a 500
     // instead of a scoped result.
     app.get('/gitlab/instances', { config: { policy: ORG_MEMBER } }, async (req, reply) => {
-      const data = await service.listInstances(requireOrganizationId(req));
+      const data = await service.listInstances(connectionCaller(req));
       return reply.send(data);
     });
 
     // ORG_ADMIN: a connection is organization property, so adding one is
     // organization administration. See connection-authz.test.ts.
-    app.post('/gitlab/instances', { config: { policy: ORG_ADMIN } }, async (req, reply) => {
+    app.post('/gitlab/instances', { config: { policy: ORG_MEMBER } }, async (req, reply) => {
       const parsed = CreateInstanceSchema.safeParse(req.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-      const data = await service.createInstance(requireOrganizationId(req), parsed.data, req.user?.id);
+      const data = await service.createInstance(connectionCaller(req), parsed.data, req.user?.id);
       return reply.code(201).send(data);
     });
 
@@ -52,11 +56,11 @@ export function gitlabRoutes({ prisma, singleUser }: { prisma: PrismaClient; sin
     // id and answer 204 either way, which also made a nonexistent id a 500.)
     app.delete(
       '/gitlab/instances/:id',
-      { config: { policy: ORG_ADMIN } },
+      { config: { policy: ORG_MEMBER } },
       async (req, reply) => {
         const params = z.object({ id: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
-        const deleted = await service.deleteInstance(requireOrganizationId(req), params.data.id);
+        const deleted = await service.deleteInstance(connectionCaller(req), params.data.id);
         if (!deleted) return reply.code(404).send({ error: 'Instance not found' });
         return reply.code(204).send();
       },
@@ -71,7 +75,7 @@ export function gitlabRoutes({ prisma, singleUser }: { prisma: PrismaClient; sin
     app.get('/gitlab/project-syncs', { config: { policy: ORG_VIEWER } }, async (req, reply) => {
       const query = z.object({ instanceId: z.string().uuid().optional() }).safeParse(req.query);
       if (!query.success) return reply.code(400).send({ error: query.error.flatten() });
-      const data = await service.listProjectSyncs(requireOrganizationId(req), query.data.instanceId);
+      const data = await service.listProjectSyncs(connectionCaller(req), query.data.instanceId);
       return reply.send(data);
     });
 
@@ -108,10 +112,10 @@ export function gitlabRoutes({ prisma, singleUser }: { prisma: PrismaClient; sin
 
     // ORG_ADMIN, with the rest of connection management: an organization MEMBER
     // no longer tests connections.
-    app.post('/gitlab/instances/:id/test', { config: { policy: ORG_ADMIN } }, async (req, reply) => {
+    app.post('/gitlab/instances/:id/test', { config: { policy: ORG_MEMBER } }, async (req, reply) => {
       const params = z.object({ id: z.string().uuid() }).safeParse(req.params);
       if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
-      const result = await service.testConnection(requireOrganizationId(req), params.data.id);
+      const result = await service.testConnection(connectionCaller(req), params.data.id);
       // A cross-organization (or simply absent) instance is a 404, not a probe
       // failure — same mapping as the Jira slice.
       if (result.notFound) return reply.code(404).send({ error: 'Instance not found' });
@@ -121,18 +125,16 @@ export function gitlabRoutes({ prisma, singleUser }: { prisma: PrismaClient; sin
 
     app.post(
       '/gitlab/instances/:id/refresh-token',
-      { config: { policy: ORG_ADMIN } },
+      { config: { policy: ORG_MEMBER } },
       async (req, reply) => {
         const params = z.object({ id: z.string().uuid() }).safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
         const body = z.object({ token: z.string().min(1) }).safeParse(req.body);
         if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
         const result = await service.refreshToken(
-          requireOrganizationId(req),
+          connectionCaller(req),
           params.data.id,
           body.data.token,
-          undefined,
-          req.user?.id,
         );
         if (result.notFound) return reply.code(404).send({ error: 'Instance not found' });
         if (!result.ok) return reply.code(422).send({ ok: false, error: result.error });
@@ -147,7 +149,7 @@ export function gitlabRoutes({ prisma, singleUser }: { prisma: PrismaClient; sin
       if (!query.success) return reply.code(400).send({ error: query.error.flatten() });
       try {
         const projects = await service.listRemoteProjects(
-          requireOrganizationId(req),
+          connectionCaller(req),
           params.data.id,
           query.data.search,
         );

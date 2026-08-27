@@ -23,8 +23,9 @@ export interface ProjectFormData {
 }
 
 export type ProjectUpdateData = Partial<ProjectFormData> & {
-  // Clears a manual Owner override so it follows the synced Assignee again.
-  resetOwnerToAssignee?: boolean;
+  // Field keys to re-link to their sync source. Each restores that field's
+  // pre-edit synced value and drops it from the row's override set.
+  revertFields?: string[];
 };
 
 // When boardId is known, expire the per-board Data Cache tag so the next server
@@ -149,6 +150,28 @@ export async function fetchProjectsPage(
     };
   } catch {
     return { items: [], total: 0, hasMore: false };
+  }
+}
+
+/**
+ * One item by id, for the notification deep link.
+ *
+ * Returns null rather than throwing: a notification pointing at a deleted item
+ * must degrade to "the board opens normally", not to an error page. Needed at
+ * all because items are server-paginated at 25 per page and groups can be
+ * collapsed, so an older item is very often not in what the page already loaded.
+ */
+export async function fetchProjectById(
+  projectId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any | null> {
+  try {
+    // `apiRequest` throws on a non-2xx, so a 404 for a deleted item lands in the
+    // catch below — there is no `res.ok` branch to write.
+    const res = await apiRequest(`/projects/${projectId}`, { cache: "no-store" });
+    return await res.json();
+  } catch {
+    return null;
   }
 }
 

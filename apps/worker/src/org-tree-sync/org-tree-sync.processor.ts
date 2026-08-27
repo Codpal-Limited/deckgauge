@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@deckgauge/db';
-import { clickhouse } from '@deckgauge/db';
+import type { ChScopedReadClientFactory } from '../ch-scoped-read.js';
 import {
   buildMatchIndex,
   matchIdentity,
@@ -32,12 +32,30 @@ function emptyRanking(): RankingCounts {
 
 export interface RunDeps {
   prisma: PrismaClient;
-  fetchIdentities: () => Promise<ActivityIdentityRow[]>;
-  buildIndex: (prisma: PrismaClient) => Promise<BoardReverseIndex>;
+  /**
+   * Every ClickHouse fetcher takes the organization this run resolved, for the
+   * SAME reason `buildIndex` does — and it is the same bug, one layer over.
+   * `buildBoardReverseIndex` was fixed to take an organization; these three were
+   * not, so a per-tree job still aggregated commits, PRs, issues, reviews and
+   * assignments from the WHOLE deployment and matched them to this tree's
+   * employees by login / email / name.
+   *
+   * The argument is required rather than something the caller closes over,
+   * because a caller that supplies its own tenant can supply a different one from
+   * the tree's.
+   */
+  fetchIdentities: (organizationId: string) => Promise<ActivityIdentityRow[]>;
+  /**
+   * Builds the board index for ONE organization. The second argument is required
+   * and is resolved below from the tree being synced — not passed in by the
+   * caller — so the boards an employee can be credited with and the employees
+   * themselves cannot come from different tenants.
+   */
+  buildIndex: (prisma: PrismaClient, organizationId: string) => Promise<BoardReverseIndex>;
   /** Optional weekly commit tallies for the sparkbar; absent → no heat. */
-  fetchHeat?: () => Promise<CommitHeatRow[]>;
+  fetchHeat?: (organizationId: string) => Promise<CommitHeatRow[]>;
   /** Optional per-metric leaderboard tallies; absent → no ranking counts. */
-  fetchRanking?: () => Promise<RankingMetricRow[]>;
+  fetchRanking?: (organizationId: string) => Promise<RankingMetricRow[]>;
   nowIso: string;
 }
 
@@ -120,6 +138,16 @@ export async function runOrgTreeSync(
   deps: RunDeps,
 ): Promise<{ matched: number; total: number }> {
   const { prisma } = deps;
+  // The tenant is resolved HERE, from the tree this run is syncing, because this is
+  // the one function that turns a `treeId` into attributed work. Resolving it in
+  // `handleOrgTreeSyncJob` instead would leave this function — which is exported and
+  // is what every test drives — free to be handed an index built over the whole
+  // deployment, which is the bug being closed. `OrgTree` is the tenant key: employees
+  // inherit tenancy through it and carry no `organization_id` of their own.
+  const { organizationId } = await prisma.orgTree.findUniqueOrThrow({
+    where: { id: treeId },
+    select: { organizationId: true },
+  });
   // Vacancy placeholder nodes are not real people — exclude them from matching
   // so they never inflate the total or appear in the unmatched list.
   const employees = await prisma.orgEmployee.findMany({
@@ -135,10 +163,12 @@ export async function runOrgTreeSync(
     })),
   );
   const [identities, boardIndex, heatRows, rankingRows] = await Promise.all([
-    deps.fetchIdentities(),
-    deps.buildIndex(prisma),
-    deps.fetchHeat ? deps.fetchHeat() : Promise.resolve<CommitHeatRow[]>([]),
-    deps.fetchRanking ? deps.fetchRanking() : Promise.resolve<RankingMetricRow[]>([]),
+    deps.fetchIdentities(organizationId),
+    deps.buildIndex(prisma, organizationId),
+    deps.fetchHeat ? deps.fetchHeat(organizationId) : Promise.resolve<CommitHeatRow[]>([]),
+    deps.fetchRanking
+      ? deps.fetchRanking(organizationId)
+      : Promise.resolve<RankingMetricRow[]>([]),
   ]);
   const heatByEmployee = buildHeatByEmployee(heatRows, matchIndex, deps.nowIso);
   const rankingByEmployee = buildRankingByEmployee(rankingRows, matchIndex);
@@ -197,6 +227,15 @@ export async function runOrgTreeSync(
 export async function handleOrgTreeSyncJob(
   jobData: { treeId: string },
   prisma: PrismaClient,
+  /**
+   * The worker's one ClickHouse read factory, injected rather than imported.
+   *
+   * It used to be `clickhouse` — the INGEST singleton — imported at the top of
+   * this file, which is how every read below spanned every tenant. Taking a
+   * factory means the client cannot exist before an organization has been named,
+   * and it is named inside `runOrgTreeSync` from the tree being synced.
+   */
+  chFor: ChScopedReadClientFactory,
 ): Promise<{ matched: number; total: number }> {
   const nowIso = new Date().toISOString();
   const nowMs = new Date(nowIso).getTime();
@@ -207,14 +246,30 @@ export async function handleOrgTreeSyncJob(
   // The leaderboard counts a wider, calendar-day rolling window (not week-bucketed).
   const rankingCutoff = new Date(nowMs - ACTIVE_WINDOW_DAYS * 86400000).toISOString().slice(0, 10);
   // GitHub PR/review rows carry only a login (often tenant-suffixed) and no email;
-  // this bridge, learned once from github_commits, lets the email matcher resolve them.
-  const loginEmails = await fetchGithubLoginEmails(clickhouse);
+  // this bridge, learned once from github_commits, lets the email matcher resolve
+  // them.
+  //
+  // It is resolved LAZILY, per organization, because it is a ClickHouse read like
+  // any other and cannot be issued before `runOrgTreeSync` has resolved the tree's
+  // tenant. Memoised on the promise rather than on the value so the two callers
+  // below — which run inside one `Promise.all` — share one query instead of racing
+  // to issue two.
+  let bridge: Promise<Map<string, string>> | undefined;
+  const loginEmailsFor = (organizationId: string): Promise<Map<string, string>> =>
+    (bridge ??= fetchGithubLoginEmails(chFor(organizationId)));
+
   return runOrgTreeSync(jobData.treeId, {
     prisma,
     nowIso,
-    fetchIdentities: () => fetchActivityIdentities(clickhouse, loginEmails),
+    fetchIdentities: async (organizationId) =>
+      fetchActivityIdentities(chFor(organizationId), await loginEmailsFor(organizationId)),
     buildIndex: buildBoardReverseIndex,
-    fetchHeat: () => fetchCommitHeat(clickhouse, cutoff),
-    fetchRanking: () => fetchRankingMetrics(clickhouse, rankingCutoff, loginEmails),
+    fetchHeat: (organizationId) => fetchCommitHeat(chFor(organizationId), cutoff),
+    fetchRanking: async (organizationId) =>
+      fetchRankingMetrics(
+        chFor(organizationId),
+        rankingCutoff,
+        await loginEmailsFor(organizationId),
+      ),
   });
 }

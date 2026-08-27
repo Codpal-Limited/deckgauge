@@ -1,6 +1,8 @@
+import { withOwnershipFields, CREATED_BY_SELECT } from '../connections/connection-list-row.js';
 // EI-030 — GitLab service. CRUD on GitLabInstance + GitLabProjectSync.
 import { PrismaClient } from '@deckgauge/db';
 import { gitlabApiBase } from '@deckgauge/shared';
+import { visibleConnectionWhere, type ConnectionCaller } from '../connections/connection-visibility.js';
 
 export interface CreateGitLabInstanceInput {
   name: string;
@@ -50,12 +52,13 @@ export class GitLabService {
    *
    * Unlike Jira/GitHub/Azure DevOps, this service has NO raw getter — it
    * resolves a credential INLINE in testConnection, updateInstanceToken,
-   * refreshToken and listRemoteProjects. Every one of those sites carries its
-   * own filter, so adding a method here means adding the filter there too.
+   * refreshToken and listRemoteProjects. Every one of those sites carries its own
+   * filters — now TWO of them, tenant AND ownership — so adding a method here
+   * means adding both there too.
    */
-  async listInstances(organizationId: string) {
-    return this.prisma.gitLabInstance.findMany({
-      where: { organizationId },
+  async listInstances(caller: ConnectionCaller) {
+    const rows = await this.prisma.gitLabInstance.findMany({
+      where: { organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
       select: {
         id: true,
         name: true,
@@ -63,24 +66,34 @@ export class GitLabService {
         projects: true,
         createdAt: true,
         updatedAt: true,
+        // Selected only to be DERIVED from: withOwnershipFields strips both and
+        // returns isPersonal/addedBy in their place.
+        ownerUserId: true,
+        createdBy: CREATED_BY_SELECT,
       },
       orderBy: { createdAt: 'asc' },
     });
+    return rows.map((r) => withOwnershipFields(r));
   }
 
   /** `organizationId` is the tenant boundary, `createdById` ownership within it. */
   async createInstance(
-    organizationId: string,
+    caller: ConnectionCaller,
     input: CreateGitLabInstanceInput,
     actingUserId?: string,
   ) {
     return this.prisma.gitLabInstance.create({
       data: {
-        organizationId,
+        organizationId: caller.organizationId,
         name: input.name,
         baseUrl: gitlabApiBase(input.baseUrl ?? 'https://gitlab.com/api/v4'),
         accessToken: input.accessToken,
         projects: input.projects,
+        // Stamped from the creator's role and never re-derived: promoting or
+        // demoting somebody must not move a connection across the visibility
+        // boundary. An admin creates for the organization (null); a member creates
+        // for themselves.
+        ownerUserId: caller.isOrgAdmin ? null : (caller.userId ?? null),
         ...(actingUserId && { createdById: actingUserId }),
       },
       select: {
@@ -106,9 +119,9 @@ export class GitLabService {
    * filter). The read also removes the P2025-out-of-the-handler 500 that a
    * nonexistent id used to produce.
    */
-  async deleteInstance(organizationId: string, id: string): Promise<boolean> {
+  async deleteInstance(caller: ConnectionCaller, id: string): Promise<boolean> {
     const existing = await this.prisma.gitLabInstance.findFirst({
-      where: { id, organizationId },
+      where: { id, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
       select: { id: true },
     });
     if (!existing) return false;
@@ -127,10 +140,10 @@ export class GitLabService {
    * Scoped through the instance because the sync row carries no organization of
    * its own. See gitlab.service.test.ts.
    */
-  async listProjectSyncs(organizationId: string, instanceId?: string) {
+  async listProjectSyncs(caller: ConnectionCaller, instanceId?: string) {
     return this.prisma.gitLabProjectSync.findMany({
       where: {
-        gitlabInstance: { organizationId },
+        gitlabInstance: { organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
         ...(instanceId ? { gitlabInstanceId: instanceId } : {}),
       },
       orderBy: { createdAt: 'asc' },
@@ -174,14 +187,14 @@ export class GitLabService {
   }
 
   async testConnection(
-    organizationId: string,
+    caller: ConnectionCaller,
     instanceId: string,
   ): Promise<{ ok: boolean; error?: string; notFound?: boolean }> {
     // Inline credential resolve #1 — tenant-filtered at the point the token is
     // read, so a cross-organization id never reaches the network as someone
     // else's PRIVATE-TOKEN.
     const instance = await this.prisma.gitLabInstance.findFirst({
-      where: { id: instanceId, organizationId },
+      where: { id: instanceId, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
       select: { baseUrl: true, accessToken: true },
     });
     if (!instance) return { ok: false, notFound: true, error: 'Instance not found' };
@@ -189,42 +202,40 @@ export class GitLabService {
   }
 
   async updateInstanceToken(
-    organizationId: string,
+    caller: ConnectionCaller,
     id: string,
     accessToken: string,
-    actingUserId?: string,
   ) {
     // Inline credential resolve #2 — this one WRITES the stored token, so the
     // tenant filter is what stops another organization's credential being
     // replaced with the caller's.
     const existing = await this.prisma.gitLabInstance.findFirst({
-      where: { id, organizationId },
+      where: { id, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
     });
     if (!existing) return null;
-    // Claim-on-first-edit: an unclaimed (null owner) row is claimed by
-    // whoever edits it first. An already-claimed row keeps its owner.
-    const claim =
-      existing.createdById === null && actingUserId ? { createdById: actingUserId } : {};
-    return this.prisma.gitLabInstance.update({ where: { id }, data: { accessToken, ...claim } });
+    // No claim-on-first-edit. It was ownership bookkeeping for the deleted
+    // `connectionOwner` policy, and it makes `createdById` UNTRUE: an unclaimed row
+    // edited by whoever opened it first would then display "Added by" that person,
+    // who did not add it. Ownership lives in `ownerUserId` now.
+    return this.prisma.gitLabInstance.update({ where: { id }, data: { accessToken } });
   }
 
   async refreshToken(
-    organizationId: string,
+    caller: ConnectionCaller,
     id: string,
     newToken: string,
     fetchFn = this.fetchFn,
-    actingUserId?: string,
   ): Promise<RefreshResult> {
     // Inline credential resolve #3 — the scoped resolve is what stops a
     // cross-organization id from having its stored token overwritten.
     const instance = await this.prisma.gitLabInstance.findFirst({
-      where: { id, organizationId },
+      where: { id, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
       select: { baseUrl: true, accessToken: true },
     });
     if (!instance) return { ok: false, notFound: true, error: 'Instance not found' };
     const probe = await this.probeToken(instance.baseUrl, newToken, fetchFn);
     if (!probe.ok) return probe;
-    const updated = await this.updateInstanceToken(organizationId, id, newToken, actingUserId);
+    const updated = await this.updateInstanceToken(caller, id, newToken);
     if (!updated) return { ok: false, notFound: true, error: 'Instance not found' };
     return { ok: true };
   }
@@ -244,14 +255,14 @@ export class GitLabService {
    * Capped at 100 rows; the search box is how you narrow past that.
    */
   async listRemoteProjects(
-    organizationId: string,
+    caller: ConnectionCaller,
     instanceId: string,
     search?: string,
   ): Promise<string[]> {
     // Inline credential resolve #4 — the picker spends the stored token against
     // GitLab, so the tenant filter belongs on this resolve too.
     const instance = await this.prisma.gitLabInstance.findFirst({
-      where: { id: instanceId, organizationId },
+      where: { id: instanceId, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
       select: { baseUrl: true, accessToken: true },
     });
     if (!instance) throw new Error(`GitLab instance not found: ${instanceId}`);

@@ -2,7 +2,6 @@ import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
 import type { ClickHouseClient } from '@clickhouse/client';
 import { z } from 'zod';
-import { requireBoardAccess } from '../board-access/board-access.middleware.js';
 import { buildSchemaPayload } from './schema.service.js';
 import { intelligenceQueryBuilders } from './builders/index.js';
 import { getWidgetBoardScope } from '../widgets/widget-board-scope.js';
@@ -24,7 +23,7 @@ export async function intelligenceQueryRoutes(
   // { tables: [], scope: { repos: [], ... } }.
   app.get<{ Params: { boardId: string } }>(
     '/boards/:boardId/intelligence/schema',
-    { config: { policy: board('VIEWER') }, preHandler: [requireBoardAccess(prisma, 'VIEWER')] },
+    { config: { policy: board('VIEWER') } },
     async (req, reply) => {
       const payload = await buildSchemaPayload(prisma, req.params.boardId);
       return reply.code(200).send(payload);
@@ -47,7 +46,7 @@ export async function intelligenceQueryRoutes(
     Querystring: { widget?: string; config?: string; filter?: string };
   }>(
     '/boards/:boardId/intelligence/sql',
-    { config: { policy: board('VIEWER') }, preHandler: [requireBoardAccess(prisma, 'VIEWER')] },
+    { config: { policy: board('VIEWER') } },
     async (req, reply) => {
       const { widget, config: cfgB64, filter } = req.query;
 
@@ -71,7 +70,11 @@ export async function intelligenceQueryRoutes(
         }
       }
 
-      const scope = await getWidgetBoardScope(prisma, req.params.boardId);
+      const scope = await getWidgetBoardScope(
+        prisma,
+        req.params.boardId,
+        req.membership?.organizationId ?? null,
+      );
       const built = builder({ config, scope });
 
       // null = builder cannot produce SQL (e.g. no PR source on this board).
@@ -127,7 +130,7 @@ export async function intelligenceQueryRoutes(
 
   app.post<{ Params: { boardId: string } }>(
     '/boards/:boardId/intelligence/execute',
-    { config: { policy: board('VIEWER') }, preHandler: [requireBoardAccess(prisma, 'VIEWER')] },
+    { config: { policy: board('VIEWER') } },
     async (req, reply) => {
       const { boardId } = req.params;
 

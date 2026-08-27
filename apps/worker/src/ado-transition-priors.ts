@@ -11,10 +11,16 @@
 // re-fetching history from Azure DevOps, which is the whole point of the
 // watermark.
 import type { AdoPriorState } from '@deckgauge/shared';
+import { orgPredicate, type ChScopedReadClient } from './ch-scoped-read.js';
 
-export interface ChQueryClient {
-  queryRows<T>(sql: string): Promise<T[]>;
-}
+/**
+ * Kept as a named export because `azure-devops-sync.processor.ts` imports it, but
+ * it is now the worker's one scoped read shape — so it carries the organization
+ * the client is bound to. Before this it was `{ queryRows }` alone, which is how
+ * an unscoped read got written BACK as another tenant's `from_state` and dwell
+ * time: there was no tenant available at the call site to filter on.
+ */
+export type ChQueryClient = ChScopedReadClient;
 
 /**
  * Max work-item ids per `IN (...)` clause. Keeps a single statement from
@@ -70,11 +76,22 @@ export async function fetchAdoPriorStates(
 
   for (let i = 0; i < workItemIds.length; i += PRIOR_ID_BATCH_SIZE) {
     const batch = workItemIds.slice(i, i + PRIOR_ID_BATCH_SIZE);
+    // organization_id FIRST, and not merely for cosmetics: `ado_transitions` is
+    // sorted (organization_id, project, work_item_id, changed_at) since the
+    // tenancy rebuild, so the tenant predicate is also the primary-key prefix.
+    //
+    // This is the predicate whose absence was ACTIVE CORRUPTION rather than a
+    // leak. `project` and `work_item_id` are not unique across tenants — two
+    // organizations routinely run a project called "Platform" and ADO ids repeat
+    // per organization — so an unscoped argMax returned whichever tenant's
+    // revision was newest, and `buildAdoTransitions` then wrote that value back
+    // as this tenant's `from_state` and `time_in_prev_state_s`.
     const sql = `SELECT work_item_id,
        argMax(to_state, changed_at) AS state,
        max(changed_at) AS last_changed_at
 FROM ado_transitions
-WHERE project = '${quote(project)}' AND work_item_id IN (${batch.join(',')})
+WHERE ${orgPredicate(ch.organizationId)}
+  AND project = '${quote(project)}' AND work_item_id IN (${batch.join(',')})
 GROUP BY work_item_id`;
 
     const rows = await ch.queryRows<PriorRow>(sql);

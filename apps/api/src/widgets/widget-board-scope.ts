@@ -25,6 +25,7 @@ export type WidgetBoardScope = ResolvedBoardScope;
 export async function getWidgetBoardScope(
   prisma: PrismaClient,
   boardId: string,
+  organizationId: string | null,
 ): Promise<WidgetBoardScope> {
-  return resolveBoardScope(prisma, boardId, { intelligenceOnly: false });
+  return resolveBoardScope(prisma, boardId, { intelligenceOnly: false, organizationId });
 }

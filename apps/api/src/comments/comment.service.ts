@@ -7,6 +7,13 @@ interface CreateInput {
   content: Prisma.InputJsonValue;
   authorName?: string;
   uploadIds?: string[];
+  /**
+   * The real author, from the session — NOT from the request body. `authorName`
+   * is a client-supplied display string that defaults to 'VP', so it is not an
+   * identity. The column and its index already existed and were never
+   * populated; this is what fills them.
+   */
+  authorId?: string | null;
 }
 
 interface UpdateInput {
@@ -47,6 +54,7 @@ export class CommentService {
         projectId,
         content: input.content,
         authorName: input.authorName ?? 'VP',
+        authorId: input.authorId ?? null,
       },
     });
     if (this.uploadService && input.uploadIds && input.uploadIds.length > 0) {

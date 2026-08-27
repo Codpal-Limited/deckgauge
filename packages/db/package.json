@@ -15,6 +15,9 @@
     "grant:org-access": "tsx src/scripts/grant-org-access.ts",
     "bootstrap:admin": "tsx src/scripts/bootstrap-admin.ts",
     "migrate:ch-org-tenancy": "tsx src/scripts/ch-org-tenancy-migrate.ts",
+    "ch:retrofit-read-identity": "tsx src/scripts/ch-retrofit-read-identity.ts",
+    "ch:reprovision-organizations": "tsx src/scripts/ch-reprovision-organizations.ts",
+    "test:db:reset": "tsx src/scripts/reset-test-database.ts",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint ."
   },

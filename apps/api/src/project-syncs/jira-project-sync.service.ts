@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@deckgauge/db';
 import type { JiraProjectSyncDto } from '@deckgauge/shared';
+import { visibleConnectionWhere, type ConnectionCaller } from '../connections/connection-visibility.js';
 
 export class JiraProjectSyncService {
   constructor(private readonly prisma: PrismaClient) {}
@@ -14,9 +15,11 @@ export class JiraProjectSyncService {
    * other routes take. The route is orgRole(MEMBER) so the membership this
    * argument comes from is guaranteed.
    */
-  async list(organizationId: string): Promise<JiraProjectSyncDto[]> {
+  async list(caller: ConnectionCaller): Promise<JiraProjectSyncDto[]> {
     const rows = await this.prisma.jiraProjectSync.findMany({
-      where: { jiraInstance: { organizationId } },
+      // Ownership rides on the SAME relation as tenancy: a sync row carries
+      // neither an organization nor an owner of its own.
+      where: { jiraInstance: { organizationId: caller.organizationId, ...visibleConnectionWhere(caller) } },
       include: { _count: { select: { boardSources: true } } },
       orderBy: { createdAt: 'desc' },
     });

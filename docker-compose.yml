@@ -1,3 +1,37 @@
+# BIND_HOST — the host interface every published port below binds to.
+#
+# Unset (self-host / OSS / local dev) it expands to the empty string, so each
+# mapping stays exactly `"5433:5432"` and Docker binds 0.0.0.0 as it always
+# has. scripts/check-compose-defaults.sh pins that: the rendered default config
+# is byte-identical with this variable absent.
+#
+# A HOSTED box sets `BIND_HOST=127.0.0.1:` in deploy/.env.hosted, which reaches
+# Compose via the `--env-file` that deploy/deploy-hosted.sh already requires.
+# That script will not deploy unless the RENDERED config binds every published
+# port to loopback — it asserts `docker compose config` rather than the env
+# file, because an exported BIND_HOST in the operator's shell takes precedence
+# over --env-file. scripts/check-bind-host.sh enforces the prefix below in CI.
+# Nothing then reaches these ports from off
+# the box: the Cloudflare Tunnel resolves `web`, `api` and `keycloak` by service
+# name on the Compose network (deploy/cloudflared/config.example.yml), so it
+# never needs a published port at all, and the host firewall stops being the
+# only thing between the internet and an unauthenticated Redis and a Postgres
+# full of customer provider credentials.
+#
+# NOTE the single dash, as with KC_HOSTNAME_PORT below: `-` substitutes only
+# when the variable is UNSET. Here the default is empty either way, so `-` and
+# `:-` behave identically — the single dash is used for consistency with the
+# convention this repo already established for hosted-clearable values.
+#
+# NOTE the trailing colon is part of the VALUE, because Compose cannot nest an
+# interpolation inside a `${VAR:+...}` replacement. `BIND_HOST=127.0.0.1` with
+# no colon renders `127.0.0.15433:5432`, which Compose rejects at parse time —
+# it fails loudly rather than binding the wrong interface.
+#
+# Why a prefix and not `ports:` overrides in the hosted overlay: Compose MERGES
+# port lists across `-f` files rather than replacing them, so an overlay can add
+# a mapping but can never retract or re-bind one. The interface has to be
+# controllable at the point of declaration.
 services:
   postgres:
     image: postgres:16-alpine
@@ -20,7 +54,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cockpit}
       POSTGRES_DB: ${POSTGRES_DB:-cockpit}
     ports:
-      - "5433:5432"
+      - "${BIND_HOST-}5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -39,8 +73,8 @@ services:
         limits:
           memory: 3G   # server-side cap in clickhouse/config/memory.xml is 2.5 GiB (~500 MiB headroom for kernel/page cache and process overhead)
     ports:
-      - "8123:8123"   # HTTP interface (used by @clickhouse/client and backup scripts)
-      - "9000:9000"   # Native TCP (optional, for CLI)
+      - "${BIND_HOST-}8123:8123"   # HTTP interface (used by @clickhouse/client and backup scripts)
+      - "${BIND_HOST-}9000:9000"   # Native TCP (optional, for CLI)
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./clickhouse/config:/etc/clickhouse-server/config.d:ro
@@ -87,7 +121,7 @@ services:
       - "--loglevel"
       - "warning"
     ports:
-      - "6379:6379"
+      - "${BIND_HOST-}6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -156,7 +190,7 @@ services:
       MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
       MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-}
     ports:
-      - "8080:8080"
+      - "${BIND_HOST-}8080:8080"
     volumes:
       # Read-only, and NOT at the import path: the entrypoint processes this into
       # /opt/keycloak/data/import/realm.json inside the container. Mounting it at
@@ -173,6 +207,11 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      args:
+        # Selects whether the image CONTAINS packages/enterprise. Driven by the same
+        # variable as the runtime edition below, so an image cannot be built as one
+        # edition and run as the other — which would fall back to Community silently.
+        EDITION: "${DECKGAUGE_EDITION:-community}"
     container_name: ${CONTAINER_PREFIX:-vp-cockpit}-api
     restart: unless-stopped
     deploy:
@@ -180,7 +219,7 @@ services:
         limits:
           memory: 1536M   # Fastify API; 256M->768M->1536M. Bumped after the timesheet engine OOM'd Node ("JS heap out of memory") on a large org (~95k ADO items / ~42k with transitions): the report page now runs two engine passes — the month CapEx report AND the year-window epic breakdown — and computeTimesheet slices every span per-day, so the annual pass allocates ~12x the monthly one; several of these cached in the 60s TtlCache crossed the 768M cap. Follow-up cure: bound fetchTransitions by the window `from` and/or cap TtlCache size instead of loading all history each pass.
     ports:
-      - "3001:3001"
+      - "${BIND_HOST-}3001:3001"
     environment:
       # Pin V8's heap below the cgroup cap so it GCs hard instead of cgroup-OOM-killing (mirrors the web service). ~256M headroom for non-heap.
       NODE_OPTIONS: "--max-old-space-size=1280"
@@ -190,14 +229,63 @@ services:
       # The SEPARATE login the API scopes per-organization reads through, activating
       # one ClickHouse role per query (design doc D3). Empty by default, which means
       # "this deployment has not split its read path yet" — reads then run through
-      # CLICKHOUSE_URL above, which spans every organization. Passed through here and
-      # deliberately NOT to the worker: the worker is the cross-tenant ingest identity
-      # by design (D1), and this is also the container that provisions an
-      # organization's ClickHouse role, so it is the one that has to know which login
-      # to grant it to. It must never name the same user as CLICKHOUSE_URL — that user
+      # CLICKHOUSE_URL above, which spans every organization. This is also the
+      # container that provisions an organization's ClickHouse role, so it is the one
+      # that has to know which login to grant it to.
+      #
+      # **It is now passed to the worker as well** (see the worker service below).
+      # This comment used to say the omission there was deliberate, on the grounds
+      # that "the worker is the cross-tenant ingest identity by design (D1)". True of
+      # the worker's WRITES; false of its READS, which were not scoped at all — and a
+      # justification for an absent boundary is the hardest kind of comment to
+      # disbelieve. D1 is about ingest.
+      #
+      # It must never name the same user as CLICKHOUSE_URL — that user
       # carries a permissive `USING 1` policy on every object, which ORs past every
       # tenant predicate, and provisioning refuses the combination outright.
       CLICKHOUSE_READ_URL: "${CLICKHOUSE_READ_URL:-}"
+      # The OPERATOR's half of the gate on creating a SECOND organization — the
+      # other half is a licence carrying `multi_org` (DECKGAUGE_LICENSE_FILE
+      # below), because more than one organization per installation is an
+      # enterprise entitlement. Community answers no however this is set. Two
+      # independent halves on purpose: renewing into a tier that happens to
+      # include multi_org must not silently turn a single-tenant deployment into a
+      # multi-tenant one behind whoever runs it.
+      #
+      # Off by default, and it has to be listed here to work at all: this `environment:` block is an explicit
+      # whitelist, so a value present only in .env never reaches the container —
+      # which is how the flag the whole tenancy programme is gated on ended up
+      # with no way to turn it on in a deployed stack.
+      #
+      # It is narrower than its name suggests. The ONLY code that reads it is
+      # OrganizationService.bootstrap: it decides whether the one-organization cap
+      # applies, and whether an admin-less organization is adopted by name. Every
+      # tenant-scoping check is unconditional, so this does not switch multi-org
+      # behaviour ON — it stops preventing a second tenant from existing.
+      #
+      # Enabling it is a one-way door in practice: the first second organization
+      # creates rows that any remaining unscoped read would mix. Before turning it
+      # on, split the ClickHouse read path (CLICKHOUSE_READ_URL above) — with it
+      # empty, reads run as the ingest identity, whose `ingest_all … USING 1`
+      # policy ORs past every per-organization row policy.
+      DECKGAUGE_MULTI_ORG: "${DECKGAUGE_MULTI_ORG:-false}"
+      # The edition, and the module path the loader resolves. Both had to be listed
+      # here to work at all — this `environment:` block is an explicit whitelist, so
+      # a value present only in .env never reaches the container. Their absence is
+      # why DECKGAUGE_MULTI_ORG (which WAS whitelisted) could switch on a paid
+      # feature that no licence could gate: the switch was wired to production and
+      # the licence was not.
+      DECKGAUGE_EDITION: "${DECKGAUGE_EDITION:-community}"
+      DECKGAUGE_ENTERPRISE_MODULE: "${DECKGAUGE_ENTERPRISE_MODULE:-}"
+      # The third leg of the same trio, and it was the missing one: edition and
+      # module path reached the container but the LICENCE could not, so an
+      # enterprise image had no way to be entitled to anything. Point it at a path
+      # under the mount below.
+      #
+      # Absent or unreadable resolves to features-off (verifyLicense returns
+      # `absent`/`invalid`), which is the safe direction — a mis-configured licence
+      # withholds paid features rather than granting them.
+      DECKGAUGE_LICENSE_FILE: "${DECKGAUGE_LICENSE_FILE:-}"
       JIRA_CONFIG_PATH: "/app/config/jira.yaml"
       # Must equal the `iss` claim Keycloak stamps into tokens, which is driven
       # by the keycloak service's KC_HOSTNAME. Hosted deployments set both.
@@ -217,6 +305,15 @@ services:
       KEYCLOAK_JWKS_URI: "http://keycloak:8080/realms/vp-cockpit/protocol/openid-connect/certs"
     volumes:
       - uploads_data:/app/uploads
+      # A licence is deployment-specific data and must never be baked into an
+      # image — an image carrying one is a leak that travels wherever the image
+      # does. So it arrives as a read-only mount, and DECKGAUGE_LICENSE_FILE above
+      # names a path inside it (e.g. /app/.license-keys/dev.license).
+      #
+      # Harmless when unused: community edition never reads it, and Docker creating
+      # an empty host directory costs nothing (.license-keys/ is gitignored). Mint a
+      # dev one with scripts/mint-dev-license.sh.
+      - "${DECKGAUGE_LICENSE_DIR:-./.license-keys}:/app/.license-keys:ro"
     depends_on:
       postgres:
         condition: service_healthy
@@ -242,7 +339,7 @@ services:
         limits:
           memory: 1500M   # Next.js production server; bumped 384M -> 768M -> 1500M as Phase 3 widget load + board RSC payload grew. The real cure is reducing per-mutation over-fetch (see projects.ts revalidate cleanup + page.tsx fetchAllProjects caching); this cap is the headroom band-aid.
     ports:
-      - "3000:3000"
+      - "${BIND_HOST-}3000:3000"
     environment:
       NODE_OPTIONS: "--max-old-space-size=1280"
       # Corporate networks MITM outbound TLS; the worker already runs with cert
@@ -282,6 +379,8 @@ services:
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
+      args:
+        EDITION: "${DECKGAUGE_EDITION:-community}"
     container_name: ${CONTAINER_PREFIX:-vp-cockpit}-worker
     restart: unless-stopped
     deploy:
@@ -292,7 +391,52 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-cockpit}:${POSTGRES_PASSWORD:-cockpit}@postgres:5432/${POSTGRES_DB:-cockpit}"
       REDIS_URL: "redis://redis:6379"
       CLICKHOUSE_URL: "http://${CLICKHOUSE_USER:-cockpit}:${CLICKHOUSE_PASSWORD:-cockpit}@clickhouse:8123/cockpit"
+      # The SEPARATE login the worker scopes its READS through — the same identity
+      # the api uses, deliberately not a fourth one: `ch-provisioning.ts` grants
+      # every organization's role to exactly one read login, so reusing it means no
+      # new credential and no new grant pass for an operator to forget.
+      #
+      # **This block is an explicit whitelist**, and the comment on the api's copy
+      # of this variable used to say the omission here was deliberate ("the worker
+      # is the cross-tenant ingest identity by design"). That was true of the
+      # worker's WRITES and false of its READS: `chClientFor(organizationId).queryRows`
+      # ignored its argument and read every tenant, so the org-tree sync credited
+      # one tenant's commits to another's employees and the ADO prior-state sweep
+      # WROTE another tenant's `from_state` back under this tenant's key.
+      #
+      # Empty by default. Empty means the row-policy layer is ABSENT and the
+      # `organization_id` predicate (enforced by `assertOrgScopedSql`) is the only
+      # thing scoping a worker read; set it to add the second layer.
+      #
+      # An earlier version of this comment claimed empty was "SAFE here in a way it
+      # is not for the api". Two things were wrong with that. It inverted the
+      # asymmetry it cited — an api read that loses its boundary serves a wrong
+      # page, whereas a worker read that loses its boundary WRITES, so empty
+      # deserves more care here, not less. And the code it described did not work:
+      # the unsplit path asked the ingest identity for a role it was never granted,
+      # which ClickHouse answers with `Code 512 SET_NON_GRANTED_ROLE`, so every
+      # read threw and the sync zeroed `statsJson` while completing normally. The
+      # unsplit path now activates no role (`chUnroledReaderFor`) and relies on the
+      # predicate, which is what makes empty genuinely workable.
+      #
+      # Reads only. The worker's writes still go through CLICKHOUSE_URL, which must
+      # stay the ingest identity (design doc D1) — it ingests for every
+      # organization from one queue.
+      CLICKHOUSE_READ_URL: "${CLICKHOUSE_READ_URL:-}"
       JIRA_CONFIG_PATH: "/app/config/jira.yaml"
+      # The edition seam, worker side. apps/worker/src/edition-loader.ts has always
+      # read DECKGAUGE_EDITION, but this service declared none of these — and this
+      # `environment:` block is an explicit whitelist, so a value present only in
+      # .env never reaches the container. Combined with a Dockerfile that never
+      # copied packages/enterprise, the worker's half of the seam (allowIngest, which
+      # gates ingest per organization, and runPeriodicWork) could not run in ANY
+      # deployed stack. Same defect the api had; it simply outlived the api's fix.
+      #
+      # DECKGAUGE_MULTI_ORG is deliberately NOT here: no worker code reads it. The
+      # only reader is OrganizationService.bootstrap, in the api.
+      DECKGAUGE_EDITION: "${DECKGAUGE_EDITION:-community}"
+      DECKGAUGE_ENTERPRISE_MODULE: "${DECKGAUGE_ENTERPRISE_MODULE:-}"
+      DECKGAUGE_LICENSE_FILE: "${DECKGAUGE_LICENSE_FILE:-}"
       # The escape hatch for the blast-radius cap (MASS_DELETION_SHARE in
       # jira-promote.service.ts): a sync that confirms most of a board has been
       # deleted writes nothing unless this is 1. Set it for the one run that
@@ -329,6 +473,26 @@ services:
       ADO_BACKFILL_REPOS_PER_RUN: ${ADO_BACKFILL_REPOS_PER_RUN:-}
       ADO_REPO_INTEL_TIMEOUT_MS: ${ADO_REPO_INTEL_TIMEOUT_MS:-}
       ADO_CRON_INTERVAL: ${ADO_CRON_INTERVAL:-}
+      # Noisy-neighbour cap for POOLED hosting (hosted-SaaS program design §4.3).
+      # Bounds how many jobs one organization may run at once on the GitHub
+      # `hot` (concurrency 4) and `warm` (2) tier queues — the only workers in
+      # this process that run more than one job at a time, and so the only place
+      # one tenant can take a slot another tenant needed. `cold` runs at
+      # concurrency 1 and is deliberately NOT gated: one job in flight is already
+      # at most one per organization, so a cap there could never refuse anything.
+      # The provider sweeps (jira/ado/github/gitlab) are single jobs that iterate
+      # EVERY tenant's connections in one pass, so a per-org cap has nothing to
+      # bind on there either. See STATE.md.
+      #
+      # Empty/0 = disabled, which is the default and is exactly the behaviour
+      # before the cap existed: no organization lookup, no counter, no deferral.
+      # Self-host and open-source stay unchanged; hosted sets a small integer.
+      WORKER_MAX_CONCURRENT_JOBS_PER_ORG: ${WORKER_MAX_CONCURRENT_JOBS_PER_ORG:-}
+    volumes:
+      # Same read-only licence mount as the api: the worker evaluates the licence
+      # itself (it calls the module's own verifyLicense via createEnterprise), so
+      # DECKGAUGE_LICENSE_FILE above has to resolve inside THIS container too.
+      - "${DECKGAUGE_LICENSE_DIR:-./.license-keys}:/app/.license-keys:ro"
     depends_on:
       postgres:
         condition: service_healthy

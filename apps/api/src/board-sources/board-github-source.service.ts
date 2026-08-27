@@ -2,6 +2,7 @@ import type { PrismaClient } from '@deckgauge/db';
 import { CrossOrganizationSyncError } from './cross-organization-sync-error.js';
 import type { BulkBindResponse } from '@deckgauge/shared';
 import { computeTier, estimateBackfillCost } from '@deckgauge/shared';
+import { visibleConnectionWhere, type ConnectionCaller } from '../connections/connection-visibility.js';
 
 // Surface the repo sync's `repoFullName` + last-sync timestamp so the
 // board-sources UI (`CodeIntelZone` via hydrateGitHub) can render the
@@ -38,7 +39,7 @@ export class BoardGitHubSourceService {
    * relation are `githubInstanceId` / `githubInstance` (lower-case h).
    */
   async attach(
-    organizationId: string,
+    caller: ConnectionCaller,
     input: {
       boardId: string;
       gitHubRepoSyncId: string;
@@ -53,7 +54,7 @@ export class BoardGitHubSourceService {
     },
   ) {
     const sync = await this.prisma.gitHubRepoSync.findFirst({
-      where: { id: input.gitHubRepoSyncId, githubInstance: { organizationId } },
+      where: { id: input.gitHubRepoSyncId, githubInstance: { organizationId: caller.organizationId, ...visibleConnectionWhere(caller) } },
       select: { id: true },
     });
     if (!sync) throw new CrossOrganizationSyncError('github', input.gitHubRepoSyncId);
@@ -90,8 +91,13 @@ export interface QueueClient {
 export interface BulkBindArgs {
   prisma: PrismaClient;
   queueClient: QueueClient;
-  /** The caller's organization — `instanceId` must belong to it. */
-  organizationId: string;
+  /**
+   * The caller. `instanceId` must belong to their organization AND be a
+   * connection they may use — this path UPSERTS sync rows onto the named
+   * instance, so an unguarded one enrols repos for ingestion under somebody
+   * else's stored token.
+   */
+  caller: ConnectionCaller;
   boardId: string;
   instanceId: string;
   repos: string[];
@@ -119,7 +125,11 @@ export interface BulkBindArgs {
  */
 export async function bulkBind(args: BulkBindArgs): Promise<BulkBindResponse> {
   const instance = await args.prisma.gitHubInstance.findFirst({
-    where: { id: args.instanceId, organizationId: args.organizationId },
+    where: {
+      id: args.instanceId,
+      organizationId: args.caller.organizationId,
+      ...visibleConnectionWhere(args.caller),
+    },
     select: { id: true },
   });
   if (!instance) throw new CrossOrganizationSyncError('github', args.instanceId);

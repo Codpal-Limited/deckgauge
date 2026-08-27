@@ -7,12 +7,20 @@ import { MAX_CONFIG_ROWS } from './page-state-notes.js';
  * name-based default they fall back to.
  *
  * Shared by the timesheet and org resolvers so the two describe the same table
- * the same way. `TimesheetStatusRule` carries no `orgTreeId`: these rows are
- * genuinely instance-wide and govern any org tree WITHOUT an
- * `OrgTreeTimesheetConfig` row, which is exactly why the org page needs them
- * too — from the org page the timesheet resolver is unreachable (the page key
- * is closure state fixed by the route), so a note pointing at "the timesheet
- * page state" would point at data the model cannot fetch.
+ * the same way. `TimesheetStatusRule` carries no `orgTreeId`: these rows govern
+ * any org tree WITHOUT an `OrgTreeTimesheetConfig` row, which is exactly why the
+ * org page needs them too — from the org page the timesheet resolver is
+ * unreachable (the page key is closure state fixed by the route), so a note
+ * pointing at "the timesheet page state" would point at data the model cannot
+ * fetch.
+ *
+ * "No `orgTreeId`" is NOT "no tenant". An earlier version of this comment called
+ * these rows "genuinely instance-wide", and the read matched: a bare `take`, no
+ * `where`. `TimesheetStatusRule` has carried its own `organizationId` column
+ * since the org-tenancy migration, so that read handed every organization's
+ * employee and role rules to any authenticated caller's Advisor. Global ACROSS
+ * ORG TREES, scoped to ONE ORGANIZATION — swept and fixed 2026-08-26,
+ * TENANCY-PROGRAMME §5a.
  */
 export interface StatusRuleRead {
   rules: readonly TimesheetStatusRule[];
@@ -23,8 +31,14 @@ export interface StatusRuleRead {
  * Reads one more row than it reports, so "more rows exist" is known without a
  * second `count` query.
  */
-export async function readStatusRules(prisma: PrismaClient): Promise<StatusRuleRead> {
-  const rows = await prisma.timesheetStatusRule.findMany({ take: MAX_CONFIG_ROWS + 1 });
+export async function readStatusRules(
+  prisma: PrismaClient,
+  organizationId: string,
+): Promise<StatusRuleRead> {
+  const rows = await prisma.timesheetStatusRule.findMany({
+    where: { organizationId },
+    take: MAX_CONFIG_ROWS + 1,
+  });
   return { rules: rows.slice(0, MAX_CONFIG_ROWS), truncated: rows.length > MAX_CONFIG_ROWS };
 }
 

@@ -8,6 +8,12 @@ import { SourceReconnectBanner } from './SourceReconnectBanner';
 export interface GitHubInstanceOption {
   id: string;
   label: string;
+  /**
+   * Personal to the caller. Optional so existing callers keep compiling; absent
+   * means organization-wide, which is the safe reading — the API never offers a
+   * connection the caller may not use, so an unmarked option is always usable.
+   */
+  isPersonal?: boolean;
 }
 
 export interface BulkAttachResult {
@@ -101,11 +107,26 @@ export function GitHubSourcePicker({
             value={instanceId}
             onChange={(e) => selectInstance(e.target.value)}
           >
-            {instances.map((inst) => (
-              <option key={inst.id} value={inst.id}>
-                {inst.label}
-              </option>
-            ))}
+            {/* Grouped so the user can see WHOSE credential the board will spend:
+                attaching a personal connection starts a recurring sync against its
+                owner's token. The API has already filtered out anything the caller
+                may not use, so this is about clarity rather than access. An empty
+                group renders no heading — "Your connections" over nothing reads as
+                though something failed to load. */}
+            {[
+              { label: 'Organization connections', rows: instances.filter((i) => !i.isPersonal) },
+              { label: 'Your connections', rows: instances.filter((i) => i.isPersonal) },
+            ]
+              .filter((group) => group.rows.length > 0)
+              .map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.rows.map((inst) => (
+                    <option key={inst.id} value={inst.id}>
+                      {inst.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
           </select>
         </div>
       )}

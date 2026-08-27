@@ -1,3 +1,4 @@
+import { withOwnershipFields, CREATED_BY_SELECT } from '../connections/connection-list-row.js';
 import type { PrismaClient } from "@deckgauge/db";
 import type {
   JiraInstancePublic,
@@ -8,6 +9,7 @@ import type {
 } from "@deckgauge/shared";
 import { Agent } from "undici";
 import { logHostRepoint, type ConnectionAuditLog } from '../connections/host-repoint-audit.js';
+import { visibleConnectionWhere, type ConnectionCaller } from '../connections/connection-visibility.js';
 
 // Some corporate Jira instances sit behind self-signed/lenient TLS. Scope the
 // leniency to this single request via an undici dispatcher — never mutate
@@ -39,20 +41,28 @@ export class JiraInstanceService {
    * a mis-ordered call then fails to compile instead of quietly becoming a
    * tenant bypass.
    */
-  async list(organizationId: string): Promise<JiraInstancePublic[]> {
+  /**
+   * `caller` replaces the bare organization id on every scoped method here. It
+   * CARRIES the organization, so the tenant boundary is unchanged, and it makes
+   * the ownership predicate impossible to forget: a call site that has not been
+   * updated does not compile.
+   */
+  async list(caller: ConnectionCaller): Promise<JiraInstancePublic[]> {
     const rows = await this.prisma.jiraInstance.findMany({
-      where: { organizationId },
+      where: { organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
+      // `addedBy` is resolved from this join, not from a second query per row.
+      include: { createdBy: CREATED_BY_SELECT },
       orderBy: { createdAt: "asc" },
     });
-    return rows.map((r) => mask(r as JiraInstance));
+    return rows.map((r) => withOwnershipFields({ ...mask(r as JiraInstance), createdBy: r.createdBy }));
   }
 
   async getById(
-    organizationId: string,
+    caller: ConnectionCaller,
     id: string,
   ): Promise<JiraInstancePublic | null> {
     const row = await this.prisma.jiraInstance.findFirst({
-      where: { id, organizationId },
+      where: { id, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
     });
     if (!row) return null;
     return mask(row as JiraInstance);
@@ -60,11 +70,11 @@ export class JiraInstanceService {
 
   /** Returns the LIVE apiToken. The tenant filter here is the credential boundary. */
   async getRawById(
-    organizationId: string,
+    caller: ConnectionCaller,
     id: string,
   ): Promise<JiraInstance | null> {
     const row = await this.prisma.jiraInstance.findFirst({
-      where: { id, organizationId },
+      where: { id, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
     });
     if (!row) return null;
     return row as JiraInstance;
@@ -81,18 +91,23 @@ export class JiraInstanceService {
    * organization could repoint or delete another's connection by id.
    */
   async create(
-    organizationId: string,
+    caller: ConnectionCaller,
     input: CreateJiraInstanceInput,
     actingUserId?: string,
   ): Promise<JiraInstancePublic> {
     const row = await this.prisma.jiraInstance.create({
       data: {
-        organizationId,
+        organizationId: caller.organizationId,
         name: input.name,
         atlassianUrl: input.atlassianUrl,
         email: input.email,
         apiToken: input.apiToken,
         projectKeys: input.projectKeys,
+        // Stamped from the creator's role and never re-derived: promoting or
+        // demoting somebody must not move a connection across the visibility
+        // boundary. An admin creates for the organization (null); a member creates
+        // for themselves.
+        ownerUserId: caller.isOrgAdmin ? null : (caller.userId ?? null),
         ...(actingUserId && { createdById: actingUserId }),
       },
     });
@@ -100,7 +115,7 @@ export class JiraInstanceService {
   }
 
   async update(
-    organizationId: string,
+    caller: ConnectionCaller,
     id: string,
     input: UpdateJiraInstanceInput,
     actingUserId?: string,
@@ -110,16 +125,14 @@ export class JiraInstanceService {
     // null and the route answers 404 — indistinguishable from an id that names
     // nothing, which keeps the guard from confirming another tenant's ids.
     const existing = await this.prisma.jiraInstance.findFirst({
-      where: { id, organizationId },
+      where: { id, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
     });
     if (!existing) return null;
 
-    // Claim-on-first-edit: an unclaimed (null owner) row is claimed by
-    // whoever edits it first. An already-claimed row keeps its owner.
-    const claim =
-      existing.createdById === null && actingUserId
-        ? { createdById: actingUserId }
-        : {};
+    // No claim-on-first-edit. It was ownership bookkeeping for the deleted
+    // `connectionOwner` policy, and it makes `createdById` UNTRUE: an unclaimed row
+    // edited by whoever opened it first would then display "Added by" that person,
+    // who did not add it. Ownership lives in `ownerUserId` now.
 
     const row = await this.prisma.jiraInstance.update({
       where: { id },
@@ -133,14 +146,13 @@ export class JiraInstanceService {
         ...(input.projectKeys !== undefined && {
           projectKeys: input.projectKeys,
         }),
-        ...claim,
       },
     });
     // After the write, so a rejected update is not recorded as a repoint.
     logHostRepoint(log, {
       provider: 'jira',
       instanceId: id,
-      organizationId,
+      organizationId: caller.organizationId,
       actingUserId,
       from: existing.atlassianUrl,
       to: input.atlassianUrl,
@@ -148,9 +160,9 @@ export class JiraInstanceService {
     return mask(row as JiraInstance);
   }
 
-  async delete(organizationId: string, id: string): Promise<boolean> {
+  async delete(caller: ConnectionCaller, id: string): Promise<boolean> {
     const existing = await this.prisma.jiraInstance.findFirst({
-      where: { id, organizationId },
+      where: { id, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
     });
     if (!existing) return false;
 
@@ -231,7 +243,7 @@ export class JiraInstanceService {
   }
 
   async testConnection(
-    organizationId: string,
+    caller: ConnectionCaller,
     id: string,
     fetchFn: FetchFn = fetch,
   ): Promise<{
@@ -242,7 +254,7 @@ export class JiraInstanceService {
   }> {
     // Scoped resolve first: a cross-organization id must never reach the
     // network as someone else's Basic credential.
-    const instance = await this.getRawById(organizationId, id);
+    const instance = await this.getRawById(caller, id);
     if (!instance) return { ok: false, notFound: true, error: "Instance not found" };
     const probe = await this.probeToken(
       { atlassianUrl: instance.atlassianUrl, email: instance.email, token: instance.apiToken },
@@ -259,7 +271,7 @@ export class JiraInstanceService {
   }
 
   async refreshToken(
-    organizationId: string,
+    caller: ConnectionCaller,
     id: string,
     newToken: string,
     fetchFn: FetchFn = fetch,
@@ -267,14 +279,14 @@ export class JiraInstanceService {
   ): Promise<RefreshResult> {
     // The scoped resolve is what stops a cross-organization id from having its
     // stored credential overwritten.
-    const instance = await this.getRawById(organizationId, id);
+    const instance = await this.getRawById(caller, id);
     if (!instance) return { ok: false, notFound: true, error: "Instance not found" };
     const probe = await this.probeToken(
       { atlassianUrl: instance.atlassianUrl, email: instance.email, token: newToken },
       fetchFn,
     );
     if (!probe.ok) return probe;
-    const updated = await this.update(organizationId, id, { apiToken: newToken }, actingUserId);
+    const updated = await this.update(caller, id, { apiToken: newToken }, actingUserId);
     if (!updated) return { ok: false, notFound: true, error: "Instance not found" };
     return { ok: true };
   }

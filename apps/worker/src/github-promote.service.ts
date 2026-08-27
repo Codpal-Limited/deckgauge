@@ -1,5 +1,6 @@
 import { PrismaClient } from '@deckgauge/db';
-import { STATUS_COLORS } from '@deckgauge/shared';
+import { shouldSync, STATUS_COLORS } from '@deckgauge/shared';
+import { createSyncAutomationRunner } from './sync-automations.js';
 
 export interface GitHubPromoteResult {
   created: number;
@@ -66,6 +67,25 @@ export interface GitHubPromotePayload {
   milestonesByRepo: Record<string, PromoteGitHubMilestone[]>;
 }
 
+/** What confines a promote run. Required, because the tenant boundary rides on it. */
+export interface GitHubPromoteOptions {
+  /**
+   * The GitHub connection this run fetched from.
+   *
+   * `promoteAll` used to read every `GitHubRepoSync` row in the deployment and
+   * match the payload to it on `repoFullName` alone. That is `owner/repo` — a
+   * key GitHub makes unique per HOST, not per Deckgauge deployment — so two
+   * organizations tracking the same upstream, syncing the same public repo, or
+   * reaching one private repo through two connections had one tenant's issues
+   * promoted onto the other's boards (TENANCY-PROGRAMME §5a, fixed 2026-08-26).
+   *
+   * Required rather than optional for the same reason as Jira's: a caller that
+   * forgets it must fail to compile, not silently promote across every
+   * connection. `github-sync.handler.ts` already loops per instance.
+   */
+  instanceId: string;
+}
+
 export class GitHubPromoteService {
   private milestonesByRepo: Record<string, PromoteGitHubMilestone[]> = {};
 
@@ -73,15 +93,26 @@ export class GitHubPromoteService {
 
   async promoteAll(
     payload: GitHubPromotePayload = { issuesByRepo: {}, milestonesByRepo: {} },
+    options: GitHubPromoteOptions,
   ): Promise<GitHubPromoteResult> {
     this.milestonesByRepo = payload.milestonesByRepo;
     let created = 0;
     let updated = 0;
     let markedRemoved = 0;
+    // One runner per RUN — caches each board's rules. See sync-automations.ts.
+    const automations = createSyncAutomationRunner(this.prisma);
 
     // New model: 1 GitHubRepoSync per (instance, repo); per-board filters live on
     // BoardGitHubSource. One repo sync fans out into N board sources.
+    //
+    // Confined to the connection this run fetched from — see
+    // `GitHubPromoteOptions.instanceId`. Filtered in the QUERY rather than gated
+    // at the create/update path, matching the Jira fix: nothing below does
+    // anything for an out-of-connection row, and the unfiltered walk also ran a
+    // status-cache read, an exclusion read and a project read against every other
+    // tenant's boards on every sync.
     const repoSyncs = await this.prisma.gitHubRepoSync.findMany({
+      where: { githubInstanceId: options.instanceId },
       include: { boardSources: true },
     });
 
@@ -124,7 +155,7 @@ export class GitHubPromoteService {
             githubRepoFullName: repoFullName,
             boardId: boardSource.boardId,
           },
-          select: { id: true, githubIssueId: true, status: true, statusId: true, githubSyncedFields: true, ownerOverridden: true },
+          select: { id: true, githubIssueId: true, status: true, statusId: true, githubSyncedFields: true, overriddenFields: true },
         });
         const projectByGithubId = new Map(existingProjects.map((p) => [p.githubIssueId, p]));
 
@@ -231,6 +262,13 @@ export class GitHubPromoteService {
                 changedBy: 'sync:github',
               },
             });
+
+            // A synced row is a new row on the board like any other.
+            await automations.run({
+              boardId: boardSource.boardId,
+              projectId: newProject.id,
+              changes: { status: legacyStatus, statusId },
+            });
           } else {
             const syncedFields =
               (existing.githubSyncedFields as string[] | null) ?? defaultSyncedFields;
@@ -238,23 +276,27 @@ export class GitHubPromoteService {
               githubRemovedFromSource: false,
             };
 
-            if (syncedFields.includes('name')) {
+            const overriddenFields = (existing.overriddenFields ?? []) as string[];
+            // One predicate for every field — see sync-field-registry.ts.
+            const syncs = (key: string) => shouldSync({ key, overriddenFields, syncedFields });
+
+            if (syncs('name')) {
               updateData.name = issue.title;
             }
-            if (syncedFields.includes('description')) {
+            if (syncs('description')) {
               updateData.description = issue.body ?? null;
             }
-            if (syncedFields.includes('status')) {
+            if (syncs('status')) {
               updateData.statusId = statusId;
               updateData.status = legacyStatus;
             }
+            // Assignee is the synced-truth column with no editable counterpart,
+            // so it refreshes even when Owner is overridden.
             if (syncedFields.includes('owner')) {
-              // Always refresh the synced Assignee; only overwrite the editable
-              // Owner while it still follows the assignee (not manually set).
               updateData.assignee = issue.assigneeLogin ?? '';
-              if (!existing.ownerOverridden) {
-                updateData.owner = issue.assigneeLogin ?? '';
-              }
+            }
+            if (syncs('owner')) {
+              updateData.owner = issue.assigneeLogin ?? '';
             }
             // Always keep group assignment in sync with milestone
             if (!boardSource.targetGroupId) {
@@ -279,6 +321,19 @@ export class GitHubPromoteService {
                 },
               });
             }
+
+            // Full before/after pair — the rule engine decides whether anything
+            // actually changed, the same decision the hand-edit path makes.
+            await automations.run({
+              boardId: boardSource.boardId,
+              projectId: existing.id,
+              changes: {
+                status: updateData.status as string | undefined,
+                previousStatus: existing.status as string,
+                statusId: updateData.statusId as string | undefined,
+                previousStatusId: existing.statusId as string | null,
+              },
+            });
           }
         }
 

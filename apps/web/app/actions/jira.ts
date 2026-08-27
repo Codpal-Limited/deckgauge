@@ -2,7 +2,12 @@
 
 import { authFetch } from './api';
 import type { RemoteProjectsResult } from './board-sources';
-import { ConnectionHintSchema, type ConnectionHint } from '@deckgauge/shared';
+import {
+  ConnectionHintSchema,
+  type ConnectionHint,
+  type DiscoveredJiraField,
+  type AttachJiraFieldInput,
+} from '@deckgauge/shared';
 
 // --- Jira Instances ---
 
@@ -219,4 +224,41 @@ export async function updateSyncConfig(
 export async function deleteSyncConfig(id: string) {
   const res = await authFetch(`/sync-configs/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to delete sync config');
+}
+
+// --- Jira field mapping (Task 11) ---
+
+export async function listJiraSourceFields(
+  boardId: string,
+  sourceId: string,
+): Promise<{ fields: DiscoveredJiraField[] }> {
+  const res = await authFetch(`/boards/${boardId}/sources/jira/${sourceId}/fields`);
+  if (!res.ok) throw new Error('Failed to load Jira fields');
+  return res.json() as Promise<{ fields: DiscoveredJiraField[] }>;
+}
+
+export async function attachJiraSourceField(
+  boardId: string,
+  sourceId: string,
+  input: AttachJiraFieldInput,
+): Promise<{ columnId: string }> {
+  const res = await authFetch(`/boards/${boardId}/sources/jira/${sourceId}/fields`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error('Failed to add the field');
+  return res.json() as Promise<{ columnId: string }>;
+}
+
+export async function detachJiraSourceField(
+  boardId: string,
+  sourceId: string,
+  fieldId: string,
+): Promise<void> {
+  const res = await authFetch(
+    `/boards/${boardId}/sources/jira/${sourceId}/fields/${encodeURIComponent(fieldId)}`,
+    { method: 'DELETE' },
+  );
+  if (!res.ok) throw new Error('Failed to remove the field');
 }

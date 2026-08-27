@@ -7,6 +7,7 @@ import {
   UpdateMemberStatusSchema,
   sanitiseEditionNotices,
   type OrganizationDto,
+  SwitchOrganizationSchema,
 } from '@deckgauge/shared';
 import { OrganizationService, OrganizationExistsError } from './organization.service.js';
 import {
@@ -18,6 +19,7 @@ import {
 } from './membership.service.js';
 import { ADMIN, AUTHENTICATED, ORG_ADMIN, PUBLIC, orgRole } from '../auth/policy.js';
 import { requireOrganizationId } from './request-organization.js';
+import type { FeatureFlag } from '../enterprise-contract.js';
 
 /** Prisma's serialization-failure codes, raised by the Serializable guards. */
 function isSerializationFailure(err: unknown): boolean {
@@ -69,10 +71,22 @@ export async function organizationRoutes(
     prisma,
     chExec,
     notices,
-  }: { prisma: PrismaClient; chExec?: ChStatementExecutor; notices?: EditionNoticesHook },
+    entitledFeatures,
+  }: {
+    prisma: PrismaClient;
+    chExec?: ChStatementExecutor;
+    notices?: EditionNoticesHook;
+    /**
+     * Passed in for the same reason as `chExec`: the service must read the
+     * entitlement without this file importing the loader, so a route test can state
+     * one with no module on disk. Absent means none, which refuses multi-org.
+     */
+    entitledFeatures?: () => readonly FeatureFlag[];
+  },
 ) {
-  const service = new OrganizationService({ prisma, chExec });
-  const members = new MembershipService(prisma);
+  const service = new OrganizationService({ prisma, chExec, entitledFeatures });
+  // `app.log` so the offboarding revoke's audit line lands in the API log.
+  const members = new MembershipService(prisma, app.log);
 
   /**
    * The one route in the application that must NOT require a membership.
@@ -221,6 +235,47 @@ export async function organizationRoutes(
    *
    * Name and slug only. This is world-readable on any host that exposes the API.
    */
+  /**
+   * The organizations the caller may act in, and which one they are in now.
+   *
+   * `AUTHENTICATED`, not `orgRole(...)`: a person with two memberships needs this
+   * list to switch BETWEEN them, so gating it on the organization they currently
+   * resolve to would be circular. It reveals only organizations they already
+   * hold a membership in.
+   */
+  app.get('/organization/switchable', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
+    if (!req.user) return reply.status(401).send({ error: 'Unauthorized' });
+    const options = await members.listSwitchableFor(
+      req.user.id,
+      req.membership?.organizationId ?? null,
+    );
+    return reply.send({ organizations: options });
+  });
+
+  /**
+   * Records which organization the caller is acting in.
+   *
+   * This is the ONE endpoint in this codebase that deliberately takes a tenant id
+   * from request input, so it is also the one that has to validate it: the service
+   * refuses a membership the caller does not hold rather than writing a value
+   * `resolveForUser` would later ignore. Both are safe; only refusing is honest,
+   * because a switch that silently does nothing is indistinguishable from a bug.
+   */
+  app.post('/organization/switch', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
+    if (!req.user) return reply.status(401).send({ error: 'Unauthorized' });
+    const parsed = SwitchOrganizationSchema.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ error: parsed.error.flatten() });
+
+    const ok = await members.setActiveOrganization(req.user.id, parsed.data.organizationId);
+    if (!ok) {
+      // 404, not 403 — the caller holds no membership there, and per tenancy D7
+      // (and slice 6b) an organization out of reach must be indistinguishable
+      // from one that does not exist.
+      return reply.status(404).send({ error: 'Not found' });
+    }
+    return reply.status(204).send();
+  });
+
   app.get('/organization/public-summary', { config: { policy: PUBLIC } }, async (_req, reply) => {
     const org = await service.getFirst();
     if (!org) return reply.code(404).send({ error: 'NOT_FOUND' });

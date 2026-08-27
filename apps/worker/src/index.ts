@@ -5,7 +5,9 @@ import { Queue, Worker } from 'bullmq'
 import { PrismaClient, clickhouse, chInsertMany } from '@deckgauge/db'
 import { loadEdition, type WorkerEditionModule } from './edition-loader.js'
 import { createIngestPermission } from './ingest-permission.js'
+import { buildWorkerChReadIdentity } from './ch-read-identity.js'
 import { startPeriodicWork } from './periodic-work.js'
+import { runNotificationMaintenance } from './notification-maintenance.handler.js'
 import {
   FakeJiraAdapter,
   JiraCloudAdapter,
@@ -47,6 +49,8 @@ import { handleAdoIntelligenceSync } from './ado-intelligence-sync.handler.js'
 import { Octokit } from '@octokit/rest'
 import { GITHUB_SYNC_QUEUE_NAMES, makeGitHubQueueClient } from '@deckgauge/shared'
 import { RateLimiter } from './github-rate-limiter.js'
+import { OrgConcurrencyGate, resolveMaxJobsPerOrg } from './org-concurrency-gate.js'
+import { makeOrgGatedProcessor } from './org-gated-processor.js'
 import {
   reconcileGitHubBackfills,
   reconcileGitHubSchedules,
@@ -164,6 +168,18 @@ const connection = { url: REDIS_URL }
 // disabled feature here, there is no feature.
 const edition: WorkerEditionModule | null = await loadEdition()
 
+// WHICH ClickHouse login serves the worker's READS, resolved once here rather
+// than per job — see ch-read-identity.ts for why, and for why an unconfigured
+// read identity falls back to the ingest client (reading, scoped by the
+// organization_id predicate) instead of refusing or reading zero rows.
+//
+// Boot-time, and before any Worker is constructed, for the same reason `edition`
+// is: a Worker starts consuming the moment it exists.
+const chReadIdentity = buildWorkerChReadIdentity({
+  ingestClient: clickhouse,
+  log: { warn: (m) => console.warn(m), info: (m) => console.log(m) },
+})
+
 function chClientFor(organizationId: string) {
   // The edition seam for ingest sits HERE rather than in each handler, because this
   // is already the one place every ClickHouse write passes through with a tenant
@@ -174,7 +190,14 @@ function chClientFor(organizationId: string) {
   // product is unchanged. Memoised, so this costs at most one check per job rather
   // than one per batch insert.
   const permission = createIngestPermission(organizationId, edition)
+  // The READ half, bound to the same organization as the write half. It asserts
+  // the `organization_id` predicate on every query and activates this
+  // organization's ClickHouse role.
+  const read = chReadIdentity.readerFor(organizationId)
   return {
+    // Readable so a read site can build its own tenant predicate; not writable,
+    // so it cannot choose a different tenant. Same property insertRows has.
+    organizationId,
     async insertRows(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void> {
       if (rows.length === 0) return
       if (!(await permission.allowed())) {
@@ -185,14 +208,18 @@ function chClientFor(organizationId: string) {
       }
       await chInsertMany(table, organizationId, rows as Array<Record<string, unknown>>)
     },
-    // Read-back path, unchanged for this task — reads are Task 10's concern.
-    // The incremental ADO revisions sweep uses it to recover the state each work
-    // item was already in before its window, so a status change at the window
+    // The read-back path, now SCOPED. It used to ignore `organizationId` entirely
+    // and run through the ingest singleton with no role and no predicate, so the
+    // incremental ADO revisions sweep recovered whichever TENANT's revision was
+    // newest and wrote it back as this tenant's `from_state` and dwell time. That
+    // persisted; it was not merely a read leak.
+    //
+    // The sweep still uses it for what it was built for: recovering the state each
+    // work item was already in before its window, so a status change at the window
     // boundary keeps its true from_state and dwell time instead of re-reading
     // history from Azure DevOps.
-    async queryRows<T>(sql: string): Promise<T[]> {
-      const result = await clickhouse.query({ query: sql, format: 'JSONEachRow' })
-      return (await result.json()) as T[]
+    queryRows<T>(sql: string): Promise<T[]> {
+      return read.queryRows<T>(sql)
     },
     // Jira deletion purge. Org-scoped here, in one place, for the same reason
     // insertRows is: the caller never sees an organizationId and so cannot pick
@@ -211,7 +238,7 @@ const worker = new Worker(
     console.log(`Processing jira-sync job (trigger: ${trigger})`)
     // The FACTORY goes down, not a client: handleSyncJob binds it per Jira
     // instance, to the organization that owns that instance.
-    return handleSyncJob(job.data ?? { trigger }, db, jiraAdapterFactory, chClientFor)
+    return handleSyncJob(job.data, db, jiraAdapterFactory, chClientFor)
   },
   { connection }
 )
@@ -302,7 +329,7 @@ const gitlabWorker = new Worker(
     const trigger = job.data?.trigger || 'scheduled'
     console.log(`Processing gitlab-sync job (trigger: ${trigger})`)
     return handleGitLabSyncJob(
-      job.data ?? { trigger },
+      job.data,
       db,
       gitlabPrAdapterFactory,
       gitlabCommitAdapterFactory,
@@ -378,7 +405,7 @@ function makeIntelligenceQueue(name: string, handler: (jobData: { trigger?: stri
     name,
     async (job) => {
       console.log(`Processing ${name} job (trigger: ${job.data?.trigger || 'scheduled'})`)
-      return handler(job.data ?? { trigger: 'scheduled' })
+      return handler(job.data)
     },
     {
       connection,
@@ -433,32 +460,97 @@ function makeOctokitForInstance(instance: { accessToken: string; baseUrl: string
   return new Octokit({ auth: instance.accessToken, baseUrl: instance.baseUrl ?? undefined })
 }
 
-function makeTierWorker(name: string, concurrency: number) {
-  const w = new Worker(
-    name,
-    async (job) => {
-      const repoSyncId = (job.data as { repoSyncId: string }).repoSyncId
-      const sync = await db.gitHubRepoSync.findUniqueOrThrow({
-        where: { id: repoSyncId },
-        include: { githubInstance: true },
-      })
-      const octokit = makeOctokitForInstance(sync.githubInstance)
-      // The FACTORY goes down, not a client: runIntelligenceSync binds it to the
-      // organization owning this repo's GitHub instance.
-      await runIntelligenceSync(
-        { prisma: db, octokit, rateLimiter: githubBulkRateLimiter, chClientFor },
-        repoSyncId,
-      )
-    },
-    { connection, concurrency },
-  )
+// Per-organization concurrency cap for the tier queues. These are the only
+// workers in this process with concurrency > 1, so they are the only place where
+// one tenant can actually crowd another out of a slot — everything else here runs
+// one job at a time (see the note above `makeTierWorker`'s callers, and STATE.md
+// for why a per-org cap on the sweep queues would bind on nothing).
+//
+// Default 0 = disabled, so a single-organization deployment is unchanged.
+const maxJobsPerOrg = resolveMaxJobsPerOrg(process.env.WORKER_MAX_CONCURRENT_JOBS_PER_ORG)
+const tierOrgGate = new OrgConcurrencyGate(maxJobsPerOrg)
+if (tierOrgGate.isEnabled()) {
+  console.log(`[tier-queues] per-organization concurrency cap: ${maxJobsPerOrg} job(s)`)
+}
+
+/** Payload the api's `bulkBind` enqueues onto the three tier queues. */
+type TierJobData = { repoSyncId: string }
+
+/** The repo row the tier processor needs, loaded once per job. */
+type TierRow = Awaited<ReturnType<typeof loadTierRow>>
+
+function loadTierRow(repoSyncId: string) {
+  return db.gitHubRepoSync.findUniqueOrThrow({
+    where: { id: repoSyncId },
+    include: { githubInstance: true },
+  })
+}
+
+/**
+ * @param gated Whether to wrap this tier in the per-org cap. False for `cold`,
+ *   whose concurrency is 1: a cap can never REFUSE anything there (one job in
+ *   flight is at most one per organization), so gating it would only add the
+ *   bookkeeping and never change an outcome.
+ */
+function makeTierWorker(name: string, concurrency: number, gated: boolean) {
+  const runSync = async (row: TierRow) => {
+    const octokit = makeOctokitForInstance(row.githubInstance)
+    // The FACTORY goes down, not a client: runIntelligenceSync binds it to the
+    // organization owning this repo's GitHub instance.
+    await runIntelligenceSync(
+      { prisma: db, octokit, rateLimiter: githubBulkRateLimiter, chClientFor },
+      row.id,
+    )
+  }
+
+  const processor =
+    gated && tierOrgGate.isEnabled()
+      ? makeOrgGatedProcessor<TierJobData, TierRow>({
+          gate: tierOrgGate,
+          // Loads the SAME row `process` needs and reports its owner, so the row
+          // is fetched exactly ONCE whether the cap is on or off. An earlier
+          // version fetched it twice and claimed in a comment that it did not.
+          resolve: async (job) => {
+            const row = await loadTierRow(job.data.repoSyncId)
+            return { organizationId: row.githubInstance.organizationId, context: row }
+          },
+          onDeferred: ({ job, organizationId, deferrals, warn, fromCache }) => {
+            // `warn` is true only on the deferral that CROSSES the threshold, so
+            // this is one line per stuck job — not one per job per retry
+            // interval, which is the log amplification this gate exists to avoid.
+            if (warn) {
+              console.warn(
+                `[${name}] job ${job.id} deferred ${deferrals}x — organization ${organizationId} has been at its cap for a long time; a slot may be held by a stuck job`,
+              )
+              return
+            }
+            // Only the decisions that cost a lookup are logged, for the same reason.
+            if (!fromCache) {
+              console.log(
+                `[${name}] job ${job.id} deferred: organization ${organizationId} at its concurrency cap`,
+              )
+            }
+          },
+          process: async (job, row) => runSync(row ?? (await loadTierRow(job.data.repoSyncId))),
+        })
+      : async (job: { data: TierJobData }) => runSync(await loadTierRow(job.data.repoSyncId))
+
+  // The cast is needed because the two branches above have different signatures
+  // — the gated one takes (job, token) so it can call moveToDelayed, the plain
+  // one takes (job) — and BullMQ's Processor type is invariant in the job's data
+  // parameter, so neither narrows to it without help. Both are structurally
+  // valid processors; only the union defeats inference.
+  const w = new Worker(name, processor as ConstructorParameters<typeof Worker>[1], {
+    connection,
+    concurrency,
+  })
   w.on('failed', (job, err) => console.error(`[${name}] job ${job?.id} failed: ${err.message}`))
   return w
 }
 
-makeTierWorker(GITHUB_SYNC_QUEUE_NAMES.hot, 4)
-makeTierWorker(GITHUB_SYNC_QUEUE_NAMES.warm, 2)
-makeTierWorker(GITHUB_SYNC_QUEUE_NAMES.cold, 1)
+makeTierWorker(GITHUB_SYNC_QUEUE_NAMES.hot, 4, true)
+makeTierWorker(GITHUB_SYNC_QUEUE_NAMES.warm, 2, true)
+makeTierWorker(GITHUB_SYNC_QUEUE_NAMES.cold, 1, false)
 
 // Consumer for the `github-intelligence-sync` queue. The api enqueues here from
 // the manual "Sync" button (board-sync.service + POST /intelligence/sync) with
@@ -545,7 +637,7 @@ const adoWorker = new Worker(
   async (job) => {
     const trigger = job.data?.trigger || 'scheduled';
     console.log(`Processing azure-devops-sync job (trigger: ${trigger})`);
-    return handleAzureDevOpsSyncJob(job.data ?? { trigger }, db, adoAdapterFactory, chClientFor);
+    return handleAzureDevOpsSyncJob(job.data, db, adoAdapterFactory, chClientFor);
   },
   { connection },
 );
@@ -591,7 +683,7 @@ const ghWorker = new Worker(
     console.log(`Processing github-sync job (trigger: ${trigger})`);
     // The FACTORY goes down, not a client: handleGitHubSyncJob binds it per
     // GitHub instance, to the organization that owns that instance.
-    return handleGitHubSyncJob(job.data ?? { trigger }, db, ghAdapterFactory, ghProjectsAdapterFactory, chClientFor);
+    return handleGitHubSyncJob(job.data, db, ghAdapterFactory, ghProjectsAdapterFactory, chClientFor);
   },
   { connection },
 );
@@ -649,7 +741,7 @@ const orgTreeSyncWorker = new Worker(
   async (job) => {
     const treeId = job.data?.treeId as string
     console.log(`Processing org-tree-sync job for tree ${treeId}`)
-    return handleOrgTreeSyncJob({ treeId }, db)
+    return handleOrgTreeSyncJob({ treeId }, db, chClientFor)
   },
   { connection },
 )
@@ -730,6 +822,33 @@ pruneWorker.on('failed', (_job, err) => {
   console.error(`Prune job failed: ${err.message}`);
 });
 await scheduleRepeatable(pruneQueue, 'sync-run-prune', {}, 24 * 60 * 60 * 1000, 'daily-prune');
+
+// ── Notification maintenance: digest release + due-date evaluation ─────────
+const notificationQueue = new Queue('notification-maintenance', { connection })
+const notificationWorker = new Worker(
+  'notification-maintenance',
+  async () => {
+    const result = await runNotificationMaintenance(db, new Date())
+    if (result.digestsReleased > 0 || result.dueNotified > 0) {
+      console.log(
+        `[Notifications] released ${result.digestsReleased} digest(s), ${result.dueNotified} due reminder(s)`,
+      )
+    }
+  },
+  { connection },
+)
+notificationWorker.on('failed', (job, err) => {
+  console.error(`Notification maintenance job ${job?.id} failed: ${err.message}`)
+})
+// Hourly: the digest window is measured PER USER from their oldest pending row,
+// so the job only has to run often enough to notice one has matured.
+await scheduleRepeatable(
+  notificationQueue,
+  'notification-maintenance',
+  { trigger: 'scheduled' },
+  60 * 60 * 1000,
+  'notification-maintenance-scheduled',
+)
 
 const stopPeriodicWork = startPeriodicWork(edition)
 

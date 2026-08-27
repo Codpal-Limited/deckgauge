@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   BoardAdoSourceCreateSchema,
@@ -22,6 +22,7 @@ import { clickhouse as defaultClickhouse } from '@deckgauge/db';
 import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
 import { all, board, orgRole, ORG_MEMBER } from '../auth/policy.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
+import { connectionCaller } from '../connections/connection-caller.js';
 
 // Why this is not a bare `board('VIEWER')` — see the identical constant in
 // board-jira-source.routes.ts.
@@ -44,8 +45,16 @@ export function boardAdoSourceRoutes(deps: {
 }) {
   const service = new BoardAdoSourceService(deps.prisma);
   const ch = deps.clickhouse ?? defaultClickhouse;
-  const previewSvc = new PreviewCountService({ prisma: deps.prisma, clickhouse: ch });
-  const statusesSvc = new SourceStatusesService({ prisma: deps.prisma, clickhouse: ch });
+  /**
+   * Built per request from the scoped reader (tenancy §11 precondition 8), not
+   * once at boot from the ingest singleton whose permissive policy no
+   * per-organization row policy can narrow. `ch` stays the fallback only for
+   * callers constructing this plugin without the chRead plugin, i.e. the tests.
+   */
+  const previewSvcFor = (req: FastifyRequest) =>
+    new PreviewCountService({ prisma: deps.prisma, clickhouse: req.chRead ?? ch });
+  const statusesSvcFor = (req: FastifyRequest) =>
+    new SourceStatusesService({ prisma: deps.prisma, clickhouse: req.chRead ?? ch });
   const issueTypesSvc = new SourceIssueTypesService({
     prisma: deps.prisma,
     cache: deps.typeCache ?? defaultTypeCache,
@@ -97,7 +106,7 @@ export function boardAdoSourceRoutes(deps: {
         });
         if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
         try {
-          const row = await service.attach(requireOrganizationId(req), body.data);
+          const row = await service.attach(connectionCaller(req), body.data);
           return reply.code(201).send(row);
         } catch (err) {
           if (err instanceof CrossOrganizationSyncError) {
@@ -144,7 +153,7 @@ export function boardAdoSourceRoutes(deps: {
           .safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
         try {
-          return await previewSvc.countAdoWorkItems(params.data.id);
+          return await previewSvcFor(req).countAdoWorkItems(params.data.id);
         } catch (err) {
           if (err instanceof PreviewSourceNotFoundError) {
             return reply.code(404).send({ error: err.message });
@@ -163,7 +172,7 @@ export function boardAdoSourceRoutes(deps: {
           .safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
         try {
-          const statuses = await statusesSvc.listAdo(params.data.id);
+          const statuses = await statusesSvcFor(req).listAdo(params.data.id);
           return { statuses };
         } catch (err) {
           if (err instanceof SourceStatusesNotFoundError) {

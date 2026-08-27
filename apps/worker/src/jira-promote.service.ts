@@ -1,12 +1,17 @@
 import { PrismaClient } from '@deckgauge/db';
 import {
+  customColumnKey,
   DELETED_STATUS_COLOR,
   DELETED_STATUS_LABEL,
+  extractJiraFieldValue,
   LEGACY_STATUS_LABELS,
+  shouldSync,
   STATUS_COLORS,
+  type JiraFieldSchemaShape,
   type JiraIssueExistence,
 } from '@deckgauge/shared';
 import { ensureDefaultGroup } from './sync-default-group.js';
+import { createSyncAutomationRunner, type SyncAutomationRunner } from './sync-automations.js';
 
 export interface PromoteResult {
   created: number;
@@ -103,6 +108,9 @@ export interface PromoteJiraItem {
   status: string;
   assignee?: string | null;
   type: string;
+  dueDate?: Date | null;
+  /** Raw values for mapped fields, keyed by Jira field id. */
+  extra?: Record<string, unknown>;
 }
 
 export interface PromotePayload {
@@ -121,12 +129,29 @@ export interface PromoteOptions {
   skipSourceIds?: ReadonlySet<string>;
   /**
    * The project keys this run actually fetched. Deletion detection is confined
-   * to them: promoteAll walks EVERY JiraProjectSync row, so without this every
-   * row of every key the run did not fetch looks like a deletion candidate.
+   * to them: promoteAll walks every JiraProjectSync row ON THIS CONNECTION, so
+   * without this every row of every key the run did not fetch looks like a
+   * deletion candidate.
    */
   syncedProjectKeys?: readonly string[];
-  /** The Jira connection this run belongs to — same confinement, across connections. */
-  instanceId?: string;
+  /**
+   * The Jira connection this run belongs to. **Required**, and it confines
+   * PROMOTION, not only deletion.
+   *
+   * It was optional, and confined deletion alone (`isInDeletionScope`), while
+   * `promoteAll` read every JiraProjectSync row in the deployment and matched
+   * the payload to them on `jiraProjectKey` — a natural key Jira makes unique
+   * per instance, not per deployment. Two organizations both syncing a key
+   * spelled `API`, `PLATFORM` or `OPS` therefore had one tenant's fetched
+   * issues written onto the other's boards as real `Project` rows: a
+   * cross-tenant WRITE, TENANCY-PROGRAMME §5a, fixed 2026-08-26.
+   *
+   * Required rather than defaulted because the contract now depends on it: a
+   * caller that forgets it must fail to compile, not silently promote across
+   * every connection in the deployment. The sole non-test caller
+   * (`jira-sync.processor.ts`) already had it in scope.
+   */
+  instanceId: string;
   /**
    * Asks Jira whether one issue key still resolves. Absent (or an adapter that
    * cannot answer) turns deletion detection off entirely; `'unknown'` for a key
@@ -146,6 +171,14 @@ export interface PromoteOptions {
    * logged and swallowed: the board signal is the primary outcome.
    */
   purgeAnalytics?: (issueKeys: string[]) => Promise<void>;
+  /**
+   * Jira's `schema` block for each mapped field, keyed by field id — collected
+   * once per run by `jiraSyncProcessor` (Task 8) since schemas are
+   * instance-wide, not per-issue. Consumed by `applyFieldMappings` to extract a
+   * displayable string for each mapped column. Absent or empty means "do not
+   * update mapped columns this run" — the correct outcome when discovery failed.
+   */
+  fieldSchemas?: Record<string, JiraFieldSchemaShape>;
 }
 
 export class JiraPromoteService {
@@ -153,19 +186,38 @@ export class JiraPromoteService {
 
   async promoteAll(
     payload: PromotePayload = { epics: [], issues: [] },
-    options: PromoteOptions = {},
+    options: PromoteOptions,
   ): Promise<PromoteResult> {
     let created = 0;
     let updated = 0;
     let markedRemoved = 0;
     let markedDeleted = 0;
     const withheldMassDeletions: WithheldMassDeletion[] = [];
+    // One runner per RUN: it caches each board's rules, so a board is read once
+    // however many rows this payload touches. See sync-automations.ts.
+    const automations = createSyncAutomationRunner(this.prisma);
     /** Rows whose ClickHouse history still has to go: confirmed this run, or left over from an earlier one. */
     const purgeTargets: PurgeTarget[] = [];
 
     // New model: 1 JiraProjectSync per (instance, project key); per-board filters
     // live on BoardJiraSource. One project sync fans out into N board sources.
+    //
+    // Confined to the connection this run fetched from. Everything below matches
+    // the payload to a row on `jiraProjectKey` alone, and that key is unique per
+    // Jira instance, not per deployment — so the unfiltered read this replaces
+    // promoted one tenant's issues onto another tenant's boards whenever both
+    // synced a key of the same name (§5a).
+    //
+    // Filtered in the QUERY rather than gated at the create/update path — the two
+    // candidate fixes — because no branch below does anything for a row outside
+    // this connection: the create/update path should not touch it, and the two
+    // deletion paths already refuse it through `isInDeletionScope`. Gating would
+    // leave the walk intact and one edit away from the same bug, and it would keep
+    // running a status-cache read, an exclusion read and a project read against
+    // every other tenant's boards on every sync. `promoteProjectStream` in
+    // `azure-devops-promote.service.ts` already scopes its read exactly this way.
     const projectSyncs = await this.prisma.jiraProjectSync.findMany({
+      where: { jiraInstanceId: options.instanceId },
       include: { boardSources: true },
     });
 
@@ -190,6 +242,11 @@ export class JiraPromoteService {
         const allowedTypes = boardSource.allowedIssueTypes as string[];
         const statusMapping = (boardSource.statusMapping ?? {}) as Record<string, string>;
         const fieldMappings = (boardSource.fieldMappings ?? {}) as Record<string, string>;
+        // A property of the Jira instance, not of an issue — resolved once per
+        // run by the processor (Task 8), so it lives on `options` rather than
+        // on each row. Empty means discovery failed this run; skip mapped
+        // columns entirely rather than guess.
+        const fieldSchemas = options.fieldSchemas ?? {};
         const defaultSyncedFields = (boardSource.defaultSyncedFields ?? [
           'name',
           'status',
@@ -209,7 +266,7 @@ export class JiraPromoteService {
         // by jiraProjectKey).
         const existingProjects = await this.prisma.project.findMany({
           where: { jiraProjectKey, boardId: boardSource.boardId },
-          select: { id: true, jiraKey: true, jiraProjectKey: true, status: true, statusId: true, jiraSyncedFields: true, ownerOverridden: true, jiraDeletedAt: true, jiraAnalyticsPurgedAt: true },
+          select: { id: true, jiraKey: true, jiraProjectKey: true, status: true, statusId: true, jiraSyncedFields: true, overriddenFields: true, jiraDeletedAt: true, jiraAnalyticsPurgedAt: true },
         });
         const projectByJiraKey = new Map(existingProjects.map((p) => [p.jiraKey, p]));
 
@@ -272,6 +329,8 @@ export class JiraPromoteService {
           status: string;
           assignee: string | null;
           type: string;
+          dueDate: Date | null;
+          extra: Record<string, unknown> | undefined;
         };
         const allItems: RawItem[] = [
           ...epicRows.map((e) => ({
@@ -281,6 +340,8 @@ export class JiraPromoteService {
             status: e.status,
             assignee: e.assignee ?? null,
             type: 'Epic',
+            dueDate: e.dueDate ?? null,
+            extra: e.extra,
           })),
           ...issueRows.map((i) => ({
             key: i.key,
@@ -289,6 +350,8 @@ export class JiraPromoteService {
             status: i.status,
             assignee: i.assignee ?? null,
             type: i.type,
+            dueDate: i.dueDate ?? null,
+            extra: i.extra,
           })),
         ];
 
@@ -337,6 +400,7 @@ export class JiraPromoteService {
                 jiraKey,
                 jiraProjectKey,
                 jiraType: row.type,
+                dueDate: row.dueDate ?? null,
                 jiraSyncedFields: defaultSyncedFields,
                 jiraRemovedFromSource: false,
               },
@@ -352,30 +416,56 @@ export class JiraPromoteService {
               },
             });
 
-            await this.applyFieldMappings(fieldMappings, row as Record<string, unknown>, newProject.id);
+            await this.applyFieldMappings(
+              fieldMappings,
+              row,
+              newProject.id,
+              [],
+              defaultSyncedFields,
+              fieldSchemas,
+            );
+
+            // A synced row is a new row on the board like any other, so it fires
+            // `item_created` — and `status_change` too, which is what lands an
+            // already-cancelled imported ticket in the Cancelled group.
+            await automations.run({
+              boardId: boardSource.boardId,
+              projectId: newProject.id,
+              changes: { status: legacyStatus, statusId },
+            });
           } else {
             const syncedFields = (existing.jiraSyncedFields ?? defaultSyncedFields) as string[];
+            const overriddenFields = (existing.overriddenFields ?? []) as string[];
+            // One predicate for every field: the row's allow-list decides whether
+            // the board syncs it at all, and the override set decides whether a
+            // manual edit has taken it over. See sync-field-registry.ts.
+            const syncs = (key: string) => shouldSync({ key, overriddenFields, syncedFields });
+
             const updateData: Record<string, unknown> = {
               jiraRemovedFromSource: false,
             };
 
-            if (syncedFields.includes('name')) {
+            if (syncs('name')) {
               updateData.name = row.summary;
             }
-            if (syncedFields.includes('status')) {
+            if (syncs('status')) {
               updateData.statusId = statusId;
               updateData.status = legacyStatus;
             }
+            // Assignee is the synced-truth column and has no editable
+            // counterpart, so it refreshes even when Owner is overridden. Only
+            // the editable Owner consults the override set.
             if (syncedFields.includes('owner')) {
-              // Always refresh the synced Assignee; only overwrite the editable
-              // Owner while it still follows the assignee (not manually set).
               updateData.assignee = row.assignee ?? '';
-              if (!existing.ownerOverridden) {
-                updateData.owner = row.assignee ?? '';
-              }
             }
-            if (syncedFields.includes('description')) {
+            if (syncs('owner')) {
+              updateData.owner = row.assignee ?? '';
+            }
+            if (syncs('description')) {
               updateData.description = row.description;
+            }
+            if (syncs('dueDate')) {
+              updateData.dueDate = row.dueDate ?? null;
             }
 
             await this.prisma.project.update({
@@ -395,7 +485,28 @@ export class JiraPromoteService {
               });
             }
 
-            await this.applyFieldMappings(fieldMappings, row as Record<string, unknown>, existing.id);
+            await this.applyFieldMappings(
+              fieldMappings,
+              row,
+              existing.id,
+              overriddenFields,
+              syncedFields,
+              fieldSchemas,
+            );
+
+            // Always evaluated with the full before/after pair — the rule engine is
+            // what decides whether anything actually changed, and it is the same
+            // decision the hand-edit path makes.
+            await automations.run({
+              boardId: boardSource.boardId,
+              projectId: existing.id,
+              changes: {
+                status: updateData.status as string | undefined,
+                previousStatus: existing.status as string,
+                statusId: updateData.statusId as string | undefined,
+                previousStatusId: existing.statusId as string | null,
+              },
+            });
           }
         }
 
@@ -431,6 +542,7 @@ export class JiraPromoteService {
           payloadKeys,
           statusCache,
           options,
+          automations,
         });
         markedDeleted += deletions.confirmed.length;
         purgeTargets.push(...deletions.confirmed);
@@ -483,7 +595,11 @@ export class JiraPromoteService {
     options: PromoteOptions,
   ): boolean {
     if (options.syncedProjectKeys && !options.syncedProjectKeys.includes(jiraProjectKey)) return false;
-    if (options.instanceId && options.instanceId !== jiraInstanceId) return false;
+    // Redundant since the `findMany` above gained the same predicate, and kept
+    // deliberately: this is the deletion boundary stated where deletion happens,
+    // and it must not depend on a caller elsewhere having already narrowed the
+    // walk. `syncedProjectKeys` above is the half that is still load-bearing.
+    if (options.instanceId !== jiraInstanceId) return false;
     return true;
   }
 
@@ -522,8 +638,10 @@ export class JiraPromoteService {
     payloadKeys: ReadonlySet<string>;
     statusCache: Map<string, CachedBoardStatus>;
     options: PromoteOptions;
+    automations: SyncAutomationRunner;
   }): Promise<{ confirmed: PurgeTarget[]; withheld: WithheldMassDeletion | null }> {
-    const { boardId, jiraProjectKey, existingProjects, payloadKeys, statusCache, options } = input;
+    const { boardId, jiraProjectKey, existingProjects, payloadKeys, statusCache, options, automations } =
+      input;
     const { verifyIssue } = options;
 
     if (!verifyIssue) return { confirmed: [], withheld: null };
@@ -594,6 +712,21 @@ export class JiraPromoteService {
         },
       });
       console.log(`[JiraPromote] ${jiraKey} no longer exists in Jira — row marked Deleted`);
+
+      // "Deleted" is a status like any other, so a rule targeting it fires. Only
+      // `statusId` moved here — the legacy enum is deliberately left alone above —
+      // which is exactly the custom-status path the rule engine already handles.
+      await automations.run({
+        boardId,
+        projectId: candidate.id,
+        changes: {
+          statusId: deletedStatusId,
+          previousStatusId: candidate.statusId,
+          status: candidate.status as string,
+          previousStatus: candidate.status as string,
+        },
+      });
+
       confirmed.push({ id: candidate.id, jiraKey });
     }
     return { confirmed, withheld: null };
@@ -750,20 +883,45 @@ export class JiraPromoteService {
     return null;
   }
 
+  /**
+   * Write each mapped Jira field to its board column.
+   *
+   * Three ways a field is skipped, all deliberate:
+   *   - Jira did not return it → the column keeps its last value. Blanking it
+   *     would read as "Jira cleared this field", which is a different fact.
+   *   - The user has overridden the column → their edit stands until they
+   *     revert, exactly as it does for Owner or Description.
+   *   - The value has a shape we cannot reduce to a string → write nothing.
+   *     The invariant is that "[object Object]" never reaches a board.
+   */
   private async applyFieldMappings(
     fieldMappings: Record<string, string>,
-    row: Record<string, unknown>,
-    projectId: string
+    row: { extra?: Record<string, unknown> },
+    projectId: string,
+    overriddenFields: readonly string[],
+    syncedFields: readonly string[],
+    fieldSchemas: Record<string, JiraFieldSchemaShape>,
   ): Promise<void> {
-    for (const [jiraField, columnId] of Object.entries(fieldMappings)) {
-      const value = row[jiraField];
-      if (value === undefined || value === null) continue;
+    const extra = row.extra ?? {};
 
-      const stringValue = String(value);
+    for (const [jiraFieldId, columnId] of Object.entries(fieldMappings)) {
+      const raw = extra[jiraFieldId];
+      if (raw === undefined || raw === null) continue;
+
+      if (!shouldSync({ key: customColumnKey(columnId), overriddenFields, syncedFields })) {
+        continue;
+      }
+
+      const schema = fieldSchemas[jiraFieldId];
+      if (!schema) continue;
+
+      const value = extractJiraFieldValue(schema, raw);
+      if (value === null) continue;
+
       await this.prisma.projectFieldValue.upsert({
         where: { projectId_columnId: { projectId, columnId } },
-        update: { value: stringValue },
-        create: { projectId, columnId, value: stringValue },
+        update: { value },
+        create: { projectId, columnId, value },
       });
     }
   }

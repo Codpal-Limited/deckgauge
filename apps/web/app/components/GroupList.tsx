@@ -67,6 +67,7 @@ import { VIRTUALIZE_THRESHOLD } from './board-constants';
 import { ItemDetailPanel } from './ItemDetailPanel';
 import { BulkActionBar } from './BulkActionBar';
 import { StatusManagementPanel } from './StatusManagementPanel';
+import { fetchProjectById } from '../actions/projects';
 import { sortProjects } from '../utils/sort-projects';
 import type { SortConfig } from '../utils/sort-projects';
 import { applyFilterRules } from '../utils/filter-projects';
@@ -255,6 +256,13 @@ interface GroupListProps {
   onGroupsChange?: (
     groups: (Group & { projects: (Project & { fieldValues?: Record<string, string> })[] })[]
   ) => void;
+  /**
+   * Open one item — and optionally scroll to one comment inside it — straight
+   * from the URL. This is what lets a notification land on what it is about:
+   * `ItemDetailPanel` is otherwise reachable only by clicking a row, so before
+   * this a notification could point no deeper than the board.
+   */
+  deepLink?: { itemId: string; commentId?: string };
 }
 
 export function GroupList({
@@ -281,6 +289,7 @@ export function GroupList({
   columnWidths = {},
   onColumnResize,
   onGroupsChange,
+  deepLink,
 }: GroupListProps) {
   const [isPending, setIsPending] = useState(false);
   const [isCreating, startCreating] = useTransition();
@@ -294,6 +303,18 @@ export function GroupList({
   const [detailProject, setDetailProject] = useState<
     (Project & { fieldValues?: Record<string, string> }) | null
   >(null);
+  /**
+   * The comment to scroll to once the panel is open. Held separately from
+   * `deepLink` because the params are cleared from the URL immediately (see
+   * below) while the panel may not have mounted its comment list yet.
+   */
+  const [targetCommentId, setTargetCommentId] = useState<string | undefined>(undefined);
+  /**
+   * Runs at most once per mount. Without the guard, clearing the search params
+   * re-renders, the effect sees the same `deepLink` prop and re-opens the panel
+   * the reader just closed.
+   */
+  const deepLinkHandled = useRef(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showStatusManager, setShowStatusManager] = useState(false);
 
@@ -320,6 +341,49 @@ export function GroupList({
   // Optimistic local ordering — synced from the server-derived `groups` prop
   // so the UI updates immediately on drop instead of snapping back.
   const [localGroups, setLocalGroups] = useState(() => removeDeletedFromGroups(groups));
+
+  // Opening an item from a URL, for a notification's deep link.
+  useEffect(() => {
+    if (!deepLink?.itemId || deepLinkHandled.current) return;
+    deepLinkHandled.current = true;
+    setTargetCommentId(deepLink.commentId);
+
+    const loaded = localGroups.flatMap((g) => g.projects).find((p) => p.id === deepLink.itemId);
+    if (loaded) {
+      setDetailProject(loaded);
+    } else {
+      // Not on this page: items are server-paginated at 25 and groups can be
+      // collapsed, so a notification about an older item would otherwise click
+      // through to the board and silently do nothing — the most likely way this
+      // feature feels broken.
+      void fetchProjectById(deepLink.itemId).then((project) => {
+        // A deleted item resolves to null and the board simply opens normally.
+        if (project) setDetailProject(project as typeof detailProject);
+      });
+    }
+
+    // Consume the params. Without this, closing the panel re-opens it on the
+    // next render and a refresh replays the navigation.
+    //
+    // `history.replaceState`, not `router.replace`: this route is already
+    // rendered, and a Next navigation would re-run the server component and
+    // refetch the whole board just to drop a query string. It also keeps
+    // GroupList free of an app-router dependency, which every one of its
+    // existing tests would otherwise have to mock.
+    const params = new URLSearchParams(window.location.search);
+    params.delete('itemId');
+    params.delete('commentId');
+    const query = params.toString();
+    window.history.replaceState(
+      null,
+      '',
+      query ? `${window.location.pathname}?${query}` : window.location.pathname,
+    );
+    // `localGroups` is deliberately not a dependency: it is read once, on the
+    // single run `deepLinkHandled` allows, and listing it would re-run the effect
+    // on every optimistic edit for no benefit. (This repo does not enable
+    // react-hooks/exhaustive-deps, so there is no disable comment to add.)
+  }, [deepLink]);
 
   // Commit an optimistic tree: update local state AND mirror it up to the owner
   // so BoardPageContent's server reconciliation carries moved rows forward in
@@ -1130,31 +1194,23 @@ export function GroupList({
           : (owner: string) => {
               const trimmed = owner.trim();
               if (!trimmed) return;
-              // A manual edit breaks the assignee link (server sets
-              // ownerOverridden); mirror that optimistically so the "Reset to
-              // Assignee" affordance appears immediately.
               applyToSelection(
                 project.id,
-                (groups, ids) => applyBulkPatch(groups, ids, { owner: trimmed, ownerOverridden: true }),
+                (groups, ids) =>
+                  // The VALUE goes to the whole selection; the dirty MARK goes to
+                  // the clicked row only. `overriddenFields` is per-row state, so
+                  // bulk-patching it would copy this row's dirty keys onto every
+                  // other selected row. The rest get their badge on revalidation.
+                  setProjectField(applyBulkPatch(groups, ids, { owner: trimmed }), project.id, {
+                    overriddenFields: Array.from(
+                      new Set([...(project.overriddenFields ?? []), 'owner'])
+                    ),
+                  }),
                 (id) => updateProject(id, { owner: trimmed }, boardId),
                 "Couldn't update owner"
               );
             },
       ownerOptions,
-      onResetOwnerToAssignee:
-        isViewer || isTempId(project.id)
-          ? undefined
-          : () =>
-              applyOptimistic(
-                (groups) =>
-                  setProjectField(groups, project.id, {
-                    owner: project.assignee ?? '',
-                    ownerOverridden: false,
-                  }),
-                () => updateProject(project.id, { resetOwnerToAssignee: true }, boardId),
-                "Couldn't reset owner",
-                project.id
-              ),
       onOwnerIdChange:
         isViewer || isTempId(project.id)
           ? undefined
@@ -1218,6 +1274,23 @@ export function GroupList({
       endDate: project.endDate,
       dueDate: project.dueDate,
       durationCode: project.durationCode,
+      overriddenFields: project.overriddenFields ?? [],
+      preOverrideValues: project.preOverrideValues ?? null,
+      onRevertField:
+        isViewer || isTempId(project.id)
+          ? undefined
+          : (fieldKey: string) =>
+              applyOptimistic(
+                (groups) =>
+                  setProjectField(groups, project.id, {
+                    overriddenFields: (project.overriddenFields ?? []).filter(
+                      (k: string) => k !== fieldKey
+                    ),
+                  }),
+                () => updateProject(project.id, { revertFields: [fieldKey] }, boardId),
+                "Couldn't revert the field",
+                project.id
+              ),
       onSystemFieldChange:
         isViewer || isTempId(project.id)
           ? undefined
@@ -1225,7 +1298,18 @@ export function GroupList({
               const v = value === '' ? null : value;
               applyToSelection(
                 project.id,
-                (groups, ids) => applyBulkPatch(groups, ids, { [field]: v }),
+                (groups, ids) => {
+                  const withValue = applyBulkPatch(groups, ids, { [field]: v });
+                  // Only dueDate is source-synced; startDate/endDate/durationCode
+                  // are manual-only and can never be dirty. The mark lands on the
+                  // clicked row alone — see the note on onOwnerChange above.
+                  if (field !== 'dueDate') return withValue;
+                  return setProjectField(withValue, project.id, {
+                    overriddenFields: Array.from(
+                      new Set([...(project.overriddenFields ?? []), 'dueDate'])
+                    ),
+                  });
+                },
                 (id) => updateProject(id, { [field]: v }, boardId),
                 `Couldn't save ${field}`
               );
@@ -1624,27 +1708,44 @@ export function GroupList({
       {detailProject && (
         <ItemDetailPanel
           project={detailProject}
+          targetCommentId={targetCommentId}
           columns={columns}
           boardId={boardId}
           boardKind={boardKind}
           owners={ownerOptions}
-          onClose={() => setDetailProject(null)}
+          onClose={() => {
+            setDetailProject(null);
+            setTargetCommentId(undefined);
+          }}
           onSave={(field, value) => {
-            if (field === 'resetOwnerToAssignee') {
+            if (field === 'revertField' || field === 'revertAllFields') {
+              const keys =
+                field === 'revertAllFields'
+                  ? (detailProject.overriddenFields ?? [])
+                  : [value];
+              if (keys.length === 0) return;
               applyOptimistic(
                 (groups) =>
                   setProjectField(groups, detailProject.id, {
-                    owner: detailProject.assignee ?? '',
-                    ownerOverridden: false,
+                    overriddenFields: (detailProject.overriddenFields ?? []).filter(
+                      (k: string) => !keys.includes(k)
+                    ),
                   }),
-                () => updateProject(detailProject.id, { resetOwnerToAssignee: true }, boardId),
-                "Couldn't reset owner",
+                () => updateProject(detailProject.id, { revertFields: keys }, boardId),
+                "Couldn't revert the field",
                 detailProject.id
               );
-            } else if (field === 'owner') {
+              return;
+            }
+            if (field === 'owner') {
               applyOptimistic(
                 (groups) =>
-                  setProjectField(groups, detailProject.id, { owner: value, ownerOverridden: true }),
+                  setProjectField(groups, detailProject.id, {
+                    owner: value,
+                    overriddenFields: Array.from(
+                      new Set([...(detailProject.overriddenFields ?? []), 'owner'])
+                    ),
+                  }),
                 () => updateProject(detailProject.id, { owner: value }, boardId),
                 "Couldn't save owner",
                 detailProject.id

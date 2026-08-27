@@ -21,8 +21,8 @@ import type { PrismaClient } from '@deckgauge/db';
  * connection routes. See project-sync-tenancy.test.ts.
  */
 import { ORG_MEMBER, ORG_VIEWER } from '../auth/policy.js';
-import { requireOrganizationId } from '../organizations/request-organization.js';
 import { denySyncDetach } from './sync-detach-guard.js';
+import { connectionCaller } from '../connections/connection-caller.js';
 
 const GitLabProjectSyncCreateSchema = z.object({
   gitlabInstanceId: z.string().uuid(),
@@ -40,7 +40,7 @@ export function gitlabProjectSyncRoutes(deps: { prisma: PrismaClient; singleUser
   const service = new GitLabProjectSyncService(deps.prisma);
   return async function plugin(app: FastifyInstance) {
     app.get('/project-syncs/gitlab', { config: { policy: ORG_VIEWER } }, async (req) =>
-      service.list(requireOrganizationId(req)),
+      service.list(connectionCaller(req)),
     );
 
     app.post('/project-syncs/gitlab', { config: { policy: ORG_MEMBER } }, async (req, reply) => {

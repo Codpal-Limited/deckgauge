@@ -3,13 +3,14 @@
 // arrive. No existing route in this repo streams manually via `reply.raw`,
 // so this hijacks the Fastify reply lifecycle explicitly — see the inline
 // comment at the hijack call for why that's required.
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
 import { advisorAskRequestSchema } from '@deckgauge/shared';
 import { all, board, orgRole } from '../auth/policy.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
 import { ClickhouseIntelligenceService, type ChQueryClient } from '../intelligence/clickhouse-intelligence.service.js';
 import { getBoardScope } from '../intelligence/board-scope.js';
+import { BoardReadsService } from './board-reads.service.js';
 import { AdvisorService } from './advisor.service.js';
 import { inferenceLock } from './inference-lock.js';
 import { AdvisorConfigService } from './advisor-config.service.js';
@@ -23,10 +24,35 @@ export function advisorRoutes({
   clickhouse: ChQueryClient;
 }) {
   return async function (app: FastifyInstance) {
-    // Advisor tools don't need the DeveloperProfile join `prisma` enables on
-    // this service, so it's intentionally omitted here.
-    const intel = new ClickhouseIntelligenceService({ client: clickhouse });
-    const advisor = new AdvisorService({ intel });
+    /**
+     * Built PER REQUEST from the scoped reader (tenancy §11 precondition 8),
+     * not once at boot from the ingest singleton — whose permissive
+     * `ingest_all … USING 1` policy OR's with, and therefore defeats, every
+     * per-organization row policy. Advisor answers are board-scoped by a set of
+     * raw Jira project keys and `owner/repo` strings, none of which is unique
+     * per deployment, so an unnarrowed read returns another tenant's rows for
+     * every colliding identifier.
+     *
+     * `clickhouse` stays the fallback only for callers registering this plugin
+     * without the chRead decorator, i.e. the unit tests; the route's
+     * `orgRole('VIEWER')` floor guarantees a membership — and therefore a
+     * non-null `chRead` — on every real request.
+     *
+     * Safe to build per request: AdvisorService holds no state across calls
+     * (`ask()` returns a fresh AdvisorRun) and `inferenceLock` is a module
+     * singleton, so serialisation is unaffected by where this is constructed.
+     *
+     * `ClickhouseIntelligenceService` doesn't need the DeveloperProfile join
+     * `prisma` enables, so it's intentionally omitted there. `BoardReadsService`
+     * reads board content straight from Postgres, so it does need `prisma` —
+     * built per request below, same as `intel`; it is stateless, so there is
+     * no state to leak across requests either way.
+     */
+    const advisorFor = (req: FastifyRequest) =>
+      new AdvisorService({
+        intel: new ClickhouseIntelligenceService({ client: req.chRead ?? clickhouse }),
+        boardReads: new BoardReadsService(prisma),
+      });
     const configService = new AdvisorConfigService(prisma);
 
     app.post<{ Params: { boardId: string } }>(
@@ -58,7 +84,9 @@ export function advisorRoutes({
         }
 
         const { boardId } = req.params;
-        const scope = await getBoardScope(prisma, boardId);
+        // `orgRole('VIEWER')` is part of this route's policy, so a membership is
+        // guaranteed — hence `requireOrganizationId` rather than a `?? null`.
+        const scope = await getBoardScope(prisma, boardId, requireOrganizationId(req));
         const provider = resolveProvider(config);
 
         // Take over the raw response from here on — Fastify must not try to
@@ -82,7 +110,8 @@ export function advisorRoutes({
           // nothing (spec §5.1, LIMIT 1). Scope/provider resolution stays outside,
           // so the lock is not held during database work.
           await inferenceLock.run(async () => {
-            const run = advisor.ask({
+            const run = advisorFor(req).ask({
+              boardId,
               provider,
               scope,
               question: parsed.data.question,

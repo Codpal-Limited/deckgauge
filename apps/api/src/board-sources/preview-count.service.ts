@@ -10,7 +10,8 @@
 // `apps/api/src/intelligence/board-scope.ts:54` so the preview and the real
 // intelligence queries stay consistent.
 
-import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
+import type { PrismaClient } from '@deckgauge/db';
+import type { ChReadClient } from '../analytics/ch-read-scope.js';
 
 export interface PreviewCount {
   count: number;
@@ -26,12 +27,12 @@ export class PreviewSourceNotFoundError extends Error {
 
 interface Deps {
   prisma: PrismaClient;
-  clickhouse: ClickHouseClient;
+  clickhouse: ChReadClient;
 }
 
 export class PreviewCountService {
   private readonly prisma: PrismaClient;
-  private readonly clickhouse: ClickHouseClient;
+  private readonly clickhouse: ChReadClient;
 
   constructor(deps: Deps) {
     this.prisma = deps.prisma;

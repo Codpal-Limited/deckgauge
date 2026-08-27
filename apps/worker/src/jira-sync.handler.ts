@@ -2,6 +2,7 @@ import type { PrismaClient } from '@deckgauge/db';
 import type { JiraPort, JiraConfig } from '@deckgauge/shared';
 import type { ChClientFactory } from './jira-dual-writer.js';
 import { jiraSyncProcessor } from './jira-sync.processor.js';
+import { resolveSyncJobScope } from './sync-job-scope.js';
 
 export interface SyncJobData {
   trigger?: string;
@@ -9,6 +10,15 @@ export interface SyncJobData {
   instanceId?: string;
   /** When set, sync only these project keys instead of all keys on the instance. */
   projectKeys?: string[];
+  /**
+   * The organization whose member asked for this sync.
+   *
+   * Set by the manual trigger routes from the caller's membership. Absence NEVER
+   * means "every tenant" for a manual job — see `resolveSyncJobScope`, which refuses
+   * a manual job naming no scope rather than sweeping. Scheduled and startup sweeps
+   * legitimately omit it.
+   */
+  organizationId?: string;
 }
 
 export interface SyncJobResult {
@@ -40,7 +50,30 @@ export async function handleSyncJob(
   const scopedInstanceId = jobData.instanceId;
   const scopedProjectKeys = jobData.projectKeys;
 
-  const instances = await db.jiraInstance.findMany();
+  // The tenant boundary of this handler. `resolveSyncJobScope` is fail-closed: a
+  // manual job that names no scope is refused here rather than sweeping every
+  // organization's connections. See sync-trigger-tenancy.test.ts.
+  const scope = resolveSyncJobScope(jobData);
+  if (!scope.allowed) {
+    console.error(`[Jira sync] ${scope.reason}`);
+    return [{ instance: 'none', skipped: true, error: scope.reason }];
+  }
+
+  // BOTH predicates, on the query. The instance narrowing used to happen only in the
+  // loop below (`continue`), which meant an instance-scoped job still SELECTed every
+  // tenant's row — and these rows carry the plaintext access token. Discarding a
+  // credential after reading it is not scoping it.
+  //
+  // `undefined`, not `{}`, for the no-filter case: Prisma's generated overload for
+  // this model accepts `{ where } | undefined`, and `{}` widens the union past it
+  // (TS2345).
+  const instanceWhere = {
+    ...(scope.organizationId ? { organizationId: scope.organizationId } : {}),
+    ...(scopedInstanceId ? { id: scopedInstanceId } : {}),
+  };
+  const instances = await db.jiraInstance.findMany(
+    Object.keys(instanceWhere).length > 0 ? { where: instanceWhere } : undefined,
+  );
   if (instances.length === 0) {
     console.log('No Jira instances configured — skipping sync');
     return [{ instance: 'none', skipped: true }];
@@ -103,6 +136,10 @@ export async function handleSyncJob(
         syncConfigMap,
         ch,
         instanceId: instance.id,
+        // The tenant of THIS connection, read inside the loop for the same
+        // reason `ch` is: the instances iterated here can belong to different
+        // organizations. It is stamped on the SyncRun the processor writes.
+        organizationId: instance.organizationId,
       });
       results.push({ instance: instance.name, ...result });
     } catch (error) {

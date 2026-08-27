@@ -1,4 +1,8 @@
-import type { ClickHouseClient } from '@clickhouse/client';
+// Narrow to the shared read shape so a per-request `ChScopedReader` can be
+// passed here (tenancy §11 precondition 8). This function already took its client
+// as a parameter, so the only thing that was missing was a type that admits a
+// scoped reader rather than only the raw client.
+import type { ChReadClient } from '../../analytics/ch-read-scope.js';
 import { parseSelect, serialize, ParseError } from './parser.js';
 import { validateStatement, ValidationError } from './validate.js';
 import { rewriteWithScope, ScopeError } from './rewrite.js';
@@ -39,7 +43,7 @@ export class ConsoleError extends Error {
 export async function executeUserSql(
   sql: string,
   scope: ResolvedScope,
-  ch: ClickHouseClient,
+  ch: ChReadClient,
 ): Promise<ExecuteResult> {
   let parsed;
   try {

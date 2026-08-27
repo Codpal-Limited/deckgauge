@@ -1,3 +1,4 @@
+import { withOwnershipFields, CREATED_BY_SELECT } from '../connections/connection-list-row.js';
 import type { PrismaClient } from '@deckgauge/db';
 import type {
   CreateGitHubInstanceInput,
@@ -6,6 +7,7 @@ import type {
 } from '@deckgauge/shared';
 import { normalizeRepoFullName, GitHubProjectsGraphQLAdapter } from '@deckgauge/shared';
 import { logHostRepoint, type ConnectionAuditLog } from '../connections/host-repoint-audit.js';
+import { visibleConnectionWhere, type ConnectionCaller } from '../connections/connection-visibility.js';
 
 type FetchFn = typeof fetch;
 
@@ -42,26 +44,33 @@ export class GitHubService {
    * a mis-ordered call then fails to compile instead of quietly becoming a
    * tenant bypass.
    */
-  async listInstances(organizationId: string): Promise<GitHubInstancePublic[]> {
+  async listInstances(caller: ConnectionCaller): Promise<GitHubInstancePublic[]> {
     const rows = await this.prisma.gitHubInstance.findMany({
-      where: { organizationId },
+      where: { organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
+      // `addedBy` is resolved from this join, not from a second query per row.
+      include: { createdBy: CREATED_BY_SELECT },
       orderBy: { createdAt: 'asc' },
     });
-    return rows.map((r) => mask(r as GitHubInstance));
+    return rows.map((r) => withOwnershipFields({ ...mask(r as GitHubInstance), createdBy: r.createdBy }));
   }
 
   /** `organizationId` is the tenant boundary, `createdById` ownership within it. */
   async createInstance(
-    organizationId: string,
+    caller: ConnectionCaller,
     input: CreateGitHubInstanceInput,
     actingUserId?: string,
   ): Promise<GitHubInstancePublic> {
     const row = await this.prisma.gitHubInstance.create({
       data: {
-        organizationId,
+        organizationId: caller.organizationId,
         baseUrl: input.baseUrl,
         accessToken: input.accessToken,
         repos: (input.repos ?? []).map(normalizeRepoFullName),
+        // Stamped from the creator's role and never re-derived: promoting or
+        // demoting somebody must not move a connection across the visibility
+        // boundary. An admin creates for the organization (null); a member creates
+        // for themselves.
+        ownerUserId: caller.isOrgAdmin ? null : (caller.userId ?? null),
         ...(actingUserId && { createdById: actingUserId }),
       },
     });
@@ -77,22 +86,21 @@ export class GitHubService {
    * so the guard never confirms another tenant's ids.
    */
   async updateInstanceRepos(
-    organizationId: string,
+    caller: ConnectionCaller,
     id: string,
     repos: string[],
-    actingUserId?: string,
   ): Promise<GitHubInstancePublic | null> {
     const existing = await this.prisma.gitHubInstance.findFirst({
-      where: { id, organizationId },
+      where: { id, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
     });
     if (!existing) return null;
-    // Claim-on-first-edit: an unclaimed (null owner) row is claimed by
-    // whoever edits it first. An already-claimed row keeps its owner.
-    const claim =
-      existing.createdById === null && actingUserId ? { createdById: actingUserId } : {};
+    // No claim-on-first-edit. It was ownership bookkeeping for the deleted
+    // `connectionOwner` policy, and it makes `createdById` UNTRUE: an unclaimed row
+    // edited by whoever opened it first would then display "Added by" that person,
+    // who did not add it. Ownership lives in `ownerUserId` now.
     const row = await this.prisma.gitHubInstance.update({
       where: { id },
-      data: { repos: repos.map(normalizeRepoFullName), ...claim },
+      data: { repos: repos.map(normalizeRepoFullName) },
     });
     return mask(row as GitHubInstance);
   }
@@ -102,7 +110,7 @@ export class GitHubService {
    * recover from an expired/revoked PAT without recreating the connection.
    */
   async updateInstanceToken(
-    organizationId: string,
+    caller: ConnectionCaller,
     id: string,
     data: { accessToken: string; baseUrl?: string },
     actingUserId?: string,
@@ -113,17 +121,18 @@ export class GitHubService {
     // rather than `getRawInstanceById` because the claim check below needs
     // `createdById`, which the shared `GitHubInstance` shape does not carry.
     const existing = await this.prisma.gitHubInstance.findFirst({
-      where: { id, organizationId },
+      where: { id, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
     });
     if (!existing) return null;
-    const claim =
-      existing.createdById === null && actingUserId ? { createdById: actingUserId } : {};
+    // No claim-on-first-edit. It was ownership bookkeeping for the deleted
+    // `connectionOwner` policy, and it makes `createdById` UNTRUE: an unclaimed row
+    // edited by whoever opened it first would then display "Added by" that person,
+    // who did not add it. Ownership lives in `ownerUserId` now.
     const row = await this.prisma.gitHubInstance.update({
       where: { id },
       data: {
         accessToken: data.accessToken,
         ...(data.baseUrl !== undefined ? { baseUrl: data.baseUrl } : {}),
-        ...claim,
       },
     });
     // After the write, so a rejected update is not recorded as a repoint. Note
@@ -133,7 +142,7 @@ export class GitHubService {
     logHostRepoint(log, {
       provider: 'github',
       instanceId: id,
-      organizationId,
+      organizationId: caller.organizationId,
       actingUserId,
       from: existing.baseUrl,
       to: data.baseUrl,
@@ -141,9 +150,9 @@ export class GitHubService {
     return mask(row as GitHubInstance);
   }
 
-  async deleteInstance(organizationId: string, id: string): Promise<boolean> {
+  async deleteInstance(caller: ConnectionCaller, id: string): Promise<boolean> {
     const existing = await this.prisma.gitHubInstance.findFirst({
-      where: { id, organizationId },
+      where: { id, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
     });
     if (!existing) return false;
     await this.prisma.gitHubInstance.delete({ where: { id } });
@@ -152,11 +161,11 @@ export class GitHubService {
 
   /** Returns the LIVE PAT. The tenant filter here is the credential boundary. */
   async getRawInstanceById(
-    organizationId: string,
+    caller: ConnectionCaller,
     id: string,
   ): Promise<GitHubInstance | null> {
     const row = await this.prisma.gitHubInstance.findFirst({
-      where: { id, organizationId },
+      where: { id, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
     });
     return row ? (row as GitHubInstance) : null;
   }
@@ -211,19 +220,19 @@ export class GitHubService {
   }
 
   async testConnection(
-    organizationId: string,
+    caller: ConnectionCaller,
     instanceId: string,
     fetchFn: FetchFn = fetch,
   ): Promise<{ ok: boolean; error?: string }> {
     // Scoped resolve first: a cross-organization id must never reach the
     // network as someone else's PAT.
-    const instance = await this.getRawInstanceById(organizationId, instanceId);
+    const instance = await this.getRawInstanceById(caller, instanceId);
     if (!instance) return { ok: false, error: 'Instance not found' };
     return this.probeToken(instance.baseUrl, instance.accessToken, instance.org, fetchFn);
   }
 
   async refreshToken(
-    organizationId: string,
+    caller: ConnectionCaller,
     id: string,
     newToken: string,
     fetchFn: FetchFn = fetch,
@@ -231,12 +240,12 @@ export class GitHubService {
   ): Promise<RefreshResult> {
     // The scoped resolve is what stops a cross-organization id from having its
     // stored credential overwritten.
-    const instance = await this.getRawInstanceById(organizationId, id);
+    const instance = await this.getRawInstanceById(caller, id);
     if (!instance) return { ok: false, notFound: true, error: 'Instance not found' };
     const probe = await this.probeToken(instance.baseUrl, newToken, instance.org, fetchFn);
     if (!probe.ok) return probe;
     const updated = await this.updateInstanceToken(
-      organizationId,
+      caller,
       id,
       { accessToken: newToken },
       actingUserId,
@@ -246,11 +255,11 @@ export class GitHubService {
   }
 
   async discoverRepos(
-    organizationId: string,
+    caller: ConnectionCaller,
     instanceId: string,
     fetchFn: FetchFn = fetch,
   ): Promise<string[] | null> {
-    const instance = await this.getRawInstanceById(organizationId, instanceId);
+    const instance = await this.getRawInstanceById(caller, instanceId);
     if (!instance) return null;
 
     const baseUrl = instance.baseUrl.replace(/\/+$/, '');
@@ -280,18 +289,29 @@ export class GitHubService {
     return repos;
   }
 
-  async getLastSyncRun() {
+  /**
+   * The caller's organization's latest GitHub sync run.
+   *
+   * `organizationId` is REQUIRED, and is the whole tenant boundary of this read —
+   * there is nothing behind it. Before 2026-08-26 the `where` was `{ source:
+   * 'github' }` alone against a `SyncRun` that had no tenant column, so this
+   * returned the DEPLOYMENT's newest run: one tenant's `errorMessage`, which
+   * carries the provider's failure text verbatim and routinely names a private
+   * repository, was served to every other tenant. See
+   * `__isolation__/sync-run-tenancy.test.ts`.
+   */
+  async getLastSyncRun(organizationId: string) {
     return this.prisma.syncRun.findFirst({
-      where: { source: 'github' },
+      where: { source: 'github', organizationId },
       orderBy: { startedAt: 'desc' },
     });
   }
 
-  async listProjectsForInstance(organizationId: string, instanceId: string) {
+  async listProjectsForInstance(caller: ConnectionCaller, instanceId: string) {
     // Same tenant filter as `getRawInstanceById` — this one hands the PAT to the
     // GraphQL adapter, so an unscoped read here is a live exfiltration path.
     const instance = await this.prisma.gitHubInstance.findFirst({
-      where: { id: instanceId, organizationId },
+      where: { id: instanceId, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
     });
     if (!instance) throw new Error(`GitHub instance ${instanceId} not found`);
     const adapter = this.projectsAdapterFactory({

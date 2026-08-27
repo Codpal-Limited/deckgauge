@@ -18,6 +18,10 @@ import {
  * REPLACES the global timesheet default for that one org tree — PLUS the global
  * layer those overrides sit on top of.
  *
+ * Both reads are confined to the caller's organization — see the notes on
+ * `readOrgTreeTimesheetConfigs` and `readStatusRules`, which is where the
+ * predicates live and where §5a's sweep found them missing.
+ *
  * The global layer is included rather than referred to. The page key is closure
  * state fixed by the route, so from the org page the timesheet resolver is
  * unreachable: an earlier note telling the model to "see the timesheet page
@@ -34,8 +38,8 @@ import {
  */
 export async function resolveOrgPageState(deps: PageStateDeps): Promise<PageStateResult> {
   const [configRead, ruleRead]: [OrgTreeConfigRead, StatusRuleRead] = await Promise.all([
-    readOrgTreeTimesheetConfigs(deps.prisma),
-    readStatusRules(deps.prisma),
+    readOrgTreeTimesheetConfigs(deps.prisma, deps.organizationId),
+    readStatusRules(deps.prisma, deps.organizationId),
   ]);
 
   return {

@@ -120,6 +120,11 @@ model Organization {
   advisorConfig        AdvisorConfig?
   timesheetStatusRules TimesheetStatusRule[]
   retiredJiraProjects  RetiredJiraProject[]
+  prJiraLinks          PrJiraLink[]
+  developerProfiles    DeveloperProfile[]
+  syncRuns             SyncRun[]
+  notifications        Notification[]
+  notificationPreferences NotificationPreference[]
 
   @@map("organizations")
 }
@@ -188,6 +193,7 @@ model Board {
   roadmapSubscriptions  RoadmapBoardSubscription[]
   calendarEvents        BoardCalendarEvent[]
   comparisonMemberships ComparisonMember[]
+  notificationSettings  BoardNotificationSetting[]
   calendarSource        BoardCalendarSource?
   advisorSessions       AdvisorSession[]
   organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -293,7 +299,16 @@ model Project {
   name                    String
   owner                   String
   assignee                String              @default("")
-  ownerOverridden         Boolean             @default(false) @map("owner_overridden")
+  /// Field keys a human has edited and not yet reverted. Sync skips these
+  /// cells. Keys are the registry vocabulary in
+  /// packages/shared/src/sync-field-registry.ts — plain names for Project
+  /// scalars, `col:<columnId>` for ProjectFieldValue rows.
+  overriddenFields        String[]            @default([]) @map("overridden_fields")
+  /// For each key in overriddenFields, the value the field held immediately
+  /// before its FIRST manual edit — what "revert to synced value" restores.
+  /// Written only by that first edit; sync never touches it. Entries are pruned
+  /// on revert, so this stays as small as the dirty set.
+  preOverrideValues       Json?               @map("pre_override_values")
   status                  ProjectStatus
   description             String?
   boardId                 String?             @map("board_id")
@@ -350,6 +365,7 @@ model Project {
   comments      ProjectComment[]
   uploads       Upload[]
   statusChanges ProjectStatusChange[]
+  notifications Notification[]
 
   @@unique([boardId, jiraKey, jiraProjectKey])
   @@unique([boardId, adoWorkItemId])
@@ -375,7 +391,8 @@ model ProjectComment {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  uploads Upload[]
+  uploads       Upload[]
+  notifications Notification[]
 
   @@index([projectId, pinned, createdAt])
   @@index([authorId])
@@ -438,21 +455,57 @@ model JiraInstance {
   // to 404, never to another tenant's token. `createdById` is ownership WITHIN
   // that organization (authz hardening). Null means "unclaimed" — pre-existing
   // rows from before this column existed, or rows whose creator was later
-  // deleted (onDelete: SetNull). CONNECTION_OWNER treats a null owner as
-  // editable by any signed-in user; the first edit claims it.
+  // deleted (onDelete: SetNull). Nothing claims a null `createdById` any more:
+  // the CONNECTION_OWNER policy that used to read it was deleted in Phase C, and
+  // claim-on-first-edit went with it, because a label reading "Added by" must not
+  // name whoever merely edited the row first. Access is `ownerUserId` below.
   organizationId String  @map("organization_id")
   createdById    String? @map("created_by_id")
-  createdBy      User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy      User?   @relation("CreatedJiraInstances", fields: [createdById], references: [id], onDelete: SetNull)
+  /// Whose connection this is. NULL means organization-wide: every member may
+  /// use it. A user id means personal: only that user (and an organization
+  /// ADMIN) may. Stamped from the creator's role at creation and never
+  /// re-derived, so promoting or demoting somebody cannot move a connection
+  /// across the boundary.
+  ///
+  /// Deliberately NOT `createdById`, which stays provenance for the "Added by"
+  /// label and is never a gate — reusing it as one is the `connectionOwner`
+  /// mistake Phase C removed.
+  ///
+  /// onDelete: Restrict, because SetNull here would turn a personal connection
+  /// into an organization-wide one when a user row is deleted, publishing a
+  /// credential. No route deletes a user today.
+  ownerUserId    String? @map("owner_user_id")
+  owner          User?   @relation("OwnedJiraInstances", fields: [ownerUserId], references: [id], onDelete: Restrict)
 
   projectSyncs JiraProjectSync[] // Phase 3
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
+  @@index([organizationId, ownerUserId])
   @@map("jira_instances")
 }
 
 model SyncRun {
-  id            String         @id @default(uuid())
+  id String @id @default(uuid())
+
+  // The tenant whose connection this run synced (tenancy §11 precondition 1).
+  //
+  // A run is not attributable after the fact: all four *SyncId columns below are
+  // DEAD — declared for Phase 3 and never written by any code path — and
+  // `source` names a provider, not an owner. So the tenant is passed IN at
+  // creation, from the organizationId of the connection the run is for. All
+  // three writers (the Jira, GitHub and ADO sync processors) are already called
+  // from a handler that loops per instance, so it is in scope at every call
+  // site, and it is a REQUIRED processor input for the same reason `instanceId`
+  // is: a future caller cannot forget it and quietly write an untenanted row.
+  //
+  // Why it matters more than a status word: `errorMessage` is the provider's
+  // failure text, verbatim, and routinely names a repository, an ADO team
+  // project or an Atlassian host. Both sync-status routes served the
+  // deployment's newest run to any authenticated caller.
+  organizationId String @map("organization_id")
+
   status        SyncRunStatus
   trigger       SyncRunTrigger
   startedAt     DateTime       @default(now())
@@ -466,13 +519,29 @@ model SyncRun {
   // Phase 3: link a sync run to the new project-sync models. All
   // optional and unscoped (no FK constraint) so legacy *SyncConfig-based
   // runs continue to write rows without touching these fields.
+  //
+  // NOTE (2026-08-26): all four are DEAD COLUMNS. Nothing in apps/ or packages/
+  // ever writes one — verified by sweeping every `syncRun.create`/`update` call
+  // site — so they are NULL in every row and cannot attribute a run to a tenant.
+  // That is precisely why `organizationId` above has to be passed in rather than
+  // derived, and why the backfill in
+  // `20260826000500_sync_run_tenant_key` has no join available to it.
   jiraProjectSyncId        String? @map("jira_project_sync_id")
   githubRepoSyncId         String? @map("github_repo_sync_id")
   azureDevOpsProjectSyncId String? @map("azure_devops_project_sync_id")
   gitlabProjectSyncId      String? @map("gitlab_project_sync_id")
 
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Serves the only read of this table — `where { organizationId, source }`
+  // ordered by `startedAt desc` — with the tenant first, so no reader can scan
+  // across tenants on it.
+  @@index([organizationId, source, startedAt])
+  @@index([organizationId, status])
+  // Kept, tenant-free and deliberately so: the worker's daily retention job
+  // (`pruneSyncRuns`) deletes every organization's runs older than 7 days in one
+  // statement. It is deployment-wide by design, not an unscoped tenant read.
   @@index([startedAt])
-  @@index([status])
   @@map("sync_runs")
 }
 
@@ -512,12 +581,28 @@ model GitHubInstance {
   // Tenant boundary + within-org ownership — see JiraInstance for the full rule.
   organizationId String  @map("organization_id")
   createdById    String? @map("created_by_id")
-  createdBy      User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy      User?   @relation("CreatedGitHubInstances", fields: [createdById], references: [id], onDelete: SetNull)
+  /// Whose connection this is. NULL means organization-wide: every member may
+  /// use it. A user id means personal: only that user (and an organization
+  /// ADMIN) may. Stamped from the creator's role at creation and never
+  /// re-derived, so promoting or demoting somebody cannot move a connection
+  /// across the boundary.
+  ///
+  /// Deliberately NOT `createdById`, which stays provenance for the "Added by"
+  /// label and is never a gate — reusing it as one is the `connectionOwner`
+  /// mistake Phase C removed.
+  ///
+  /// onDelete: Restrict, because SetNull here would turn a personal connection
+  /// into an organization-wide one when a user row is deleted, publishing a
+  /// credential. No route deletes a user today.
+  ownerUserId    String? @map("owner_user_id")
+  owner          User?   @relation("OwnedGitHubInstances", fields: [ownerUserId], references: [id], onDelete: Restrict)
 
   repoSyncs    GitHubRepoSync[] // Phase 3
   organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
+  @@index([organizationId, ownerUserId])
   @@map("github_instances")
 }
 
@@ -535,12 +620,28 @@ model AzureDevOpsInstance {
   // Tenant boundary + within-org ownership — see JiraInstance for the full rule.
   organizationId String  @map("organization_id")
   createdById    String? @map("created_by_id")
-  createdBy      User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy      User?   @relation("CreatedAzureDevOpsInstances", fields: [createdById], references: [id], onDelete: SetNull)
+  /// Whose connection this is. NULL means organization-wide: every member may
+  /// use it. A user id means personal: only that user (and an organization
+  /// ADMIN) may. Stamped from the creator's role at creation and never
+  /// re-derived, so promoting or demoting somebody cannot move a connection
+  /// across the boundary.
+  ///
+  /// Deliberately NOT `createdById`, which stays provenance for the "Added by"
+  /// label and is never a gate — reusing it as one is the `connectionOwner`
+  /// mistake Phase C removed.
+  ///
+  /// onDelete: Restrict, because SetNull here would turn a personal connection
+  /// into an organization-wide one when a user row is deleted, publishing a
+  /// credential. No route deletes a user today.
+  ownerUserId    String? @map("owner_user_id")
+  owner          User?   @relation("OwnedAzureDevOpsInstances", fields: [ownerUserId], references: [id], onDelete: Restrict)
 
   projectSyncs AzureDevOpsProjectSync[] // Phase 3
   organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
+  @@index([organizationId, ownerUserId])
   @@map("azure_devops_instances")
 }
 
@@ -562,22 +663,45 @@ enum BoardViewType {
 }
 
 model User {
-  id         String   @id @default(uuid())
-  keycloakId String   @unique @map("keycloak_id")
-  email      String   @unique
-  name       String
-  avatarUrl  String?  @map("avatar_url")
+  id                   String   @id @default(uuid())
+  keycloakId           String   @unique @map("keycloak_id")
+  email                String   @unique
+  name                 String
+  /// Split name, from the `given_name` / `family_name` claims. Nullable because
+  /// rows created before this existed have only a combined `name`, and a token
+  /// may legitimately carry neither.
+  firstName            String?  @map("first_name")
+  lastName             String?  @map("last_name")
+  avatarUrl            String?  @map("avatar_url")
   /// Database-side administrator flag, OR'd with the Keycloak `cockpit-admin`
   /// realm-role claim in keycloak-auth.plugin.ts. Exists because a realm role
   /// cannot be granted to an install that has already imported its realm —
   /// realm-export.json seeds fresh imports only.
-  isAdmin    Boolean  @default(false) @map("is_admin")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  isAdmin              Boolean  @default(false) @map("is_admin")
+  /// Which organization this person is currently acting in, when they belong to
+  /// more than one (tenancy §11 precondition 2).
+  ///
+  /// A PREFERENCE, not a grant: it is honoured only when it still names a
+  /// membership they hold, and ignored — falling back to the deterministic
+  /// default in MembershipService.resolveForUser — when it is stale. So revoking
+  /// a membership takes effect without anyone having to clear this column, and a
+  /// deliberately-set value can never widen access.
+  ///
+  /// On the User rather than in the session so the choice survives a token
+  /// refresh and a new device, and so it is auditable. No FK: the referenced
+  /// organization may be deleted, and a dangling value must degrade to "ignored"
+  /// rather than block the delete or cascade a surprise.
+  activeOrganizationId String?  @map("active_organization_id")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
 
   boardAccess         BoardAccess[]
   boardOwners         BoardOwner[]
   comments            ProjectComment[]
+  // Two relations to Notification, so both need explicit names: one for the
+  // person who is notified, one for the person who caused it.
+  notifications       Notification[] @relation("NotificationRecipient")
+  actedNotifications  Notification[] @relation("NotificationActor")
   developerProfiles   DeveloperProfile[]
   boardFolders        BoardFolder[]
   boardPrefs          UserBoardPref[]
@@ -588,14 +712,29 @@ model User {
   employeeBoardAccess EmployeeBoardAccess[]
   comparisonAccess    ComparisonAccess[]
   advisorSessions     AdvisorSession[]
+  notificationPreferences  NotificationPreference[]
+  boardNotificationSettings BoardNotificationSetting[]
 
   // Creator-scoped provider connections (authz hardening). A deleted user's
   // connections become unclaimed (createdById set null), not destroyed —
   // see onDelete: SetNull on each instance model's createdBy relation.
-  createdJiraInstances        JiraInstance[]
-  createdGitHubInstances      GitHubInstance[]
-  createdAzureDevOpsInstances AzureDevOpsInstance[]
-  createdGitLabInstances      GitLabInstance[]
+  createdJiraInstances        JiraInstance[]        @relation("CreatedJiraInstances")
+  createdGitHubInstances      GitHubInstance[]      @relation("CreatedGitHubInstances")
+  createdAzureDevOpsInstances AzureDevOpsInstance[] @relation("CreatedAzureDevOpsInstances")
+  createdGitLabInstances      GitLabInstance[]      @relation("CreatedGitLabInstances")
+
+  // Connections this user OWNS — personal connections, as opposed to the
+  // `created*` relations above, which are provenance only. Both sides need
+  // explicit @relation names because there are now TWO relations between User and
+  // each instance model, which Prisma cannot disambiguate on its own.
+  //
+  // onDelete: Restrict lives on the instance side: SetNull would turn a personal
+  // connection into an organization-wide one when a user row is deleted, which
+  // publishes a credential.
+  ownedJiraInstances        JiraInstance[]        @relation("OwnedJiraInstances")
+  ownedGitHubInstances      GitHubInstance[]      @relation("OwnedGitHubInstances")
+  ownedAzureDevOpsInstances AzureDevOpsInstance[] @relation("OwnedAzureDevOpsInstances")
+  ownedGitLabInstances      GitLabInstance[]      @relation("OwnedGitLabInstances")
 
   // Membership is the join — User itself is intentionally untenanted (spec §4.2
   // Class C): one person can hold memberships in several organizations.
@@ -605,21 +744,35 @@ model User {
   @@map("users")
 }
 
+/// The developer-identity map: which provider login is which local user, plus
+/// the display name and email the sync saw. A tenant root (§4.2 class A).
+///
+/// It was untenanted, classified §4.2 class C on the grounds that "a GitHub
+/// login is a global fact". True of the LOGIN and false of the ROW: the row is
+/// a per-tenant assertion ABOUT a login — which of MY users it is, what MY
+/// sync saw. Class C was applied to the key and silently inherited by the
+/// record hanging off it, which left `@@unique([provider, login])` as a
+/// deployment-global identity: two organizations whose data contained the same
+/// login resolved to ONE row and overwrote each other's PII on every sync.
+/// Same shape as `PrJiraLink`'s `"<repo>#<number>"` before slice 6a.
 model DeveloperProfile {
-  id          String   @id @default(uuid())
-  provider    String   @db.VarChar(32)
-  login       String   @db.VarChar(256)
-  displayName String?  @map("display_name") @db.VarChar(256)
-  avatarUrl   String?  @map("avatar_url")
-  email       String?  @db.VarChar(320)
-  userId      String?  @map("user_id")
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  provider       String   @db.VarChar(32)
+  login          String   @db.VarChar(256)
+  displayName    String?  @map("display_name") @db.VarChar(256)
+  avatarUrl      String?  @map("avatar_url")
+  email          String?  @db.VarChar(320)
+  userId         String?  @map("user_id")
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  @@unique([provider, login])
-  @@index([userId])
-  @@index([email])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, provider, login])
+  @@index([organizationId, userId])
+  @@index([organizationId, email])
   @@map("developer_profiles")
 }
 
@@ -788,12 +941,28 @@ model GitLabInstance {
   // Tenant boundary + within-org ownership — see JiraInstance for the full rule.
   organizationId String  @map("organization_id")
   createdById    String? @map("created_by_id")
-  createdBy      User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy      User?   @relation("CreatedGitLabInstances", fields: [createdById], references: [id], onDelete: SetNull)
+  /// Whose connection this is. NULL means organization-wide: every member may
+  /// use it. A user id means personal: only that user (and an organization
+  /// ADMIN) may. Stamped from the creator's role at creation and never
+  /// re-derived, so promoting or demoting somebody cannot move a connection
+  /// across the boundary.
+  ///
+  /// Deliberately NOT `createdById`, which stays provenance for the "Added by"
+  /// label and is never a gate — reusing it as one is the `connectionOwner`
+  /// mistake Phase C removed.
+  ///
+  /// onDelete: Restrict, because SetNull here would turn a personal connection
+  /// into an organization-wide one when a user row is deleted, publishing a
+  /// credential. No route deletes a user today.
+  ownerUserId    String? @map("owner_user_id")
+  owner          User?   @relation("OwnedGitLabInstances", fields: [ownerUserId], references: [id], onDelete: Restrict)
 
   projectSyncs GitLabProjectSync[]
   organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
+  @@index([organizationId, ownerUserId])
   @@map("gitlab_instances")
 }
 
@@ -889,18 +1058,33 @@ model GitHubRepoSync {
   @@map("github_repo_syncs")
 }
 
+/// PR-to-Jira-key links, derived from PR titles and commit messages.
+///
+/// `prId` is NOT a row id — it is the synthetic `"<repoFullName>#<prNumber>"`
+/// built by the GitHub intelligence handler. Two organizations syncing the SAME
+/// repository therefore produce the identical `prId`, and before this column the
+/// unique key made their rows collide: whichever tenant synced last, with its own
+/// Jira project-key regex, would `deleteMany` by `prId` and silently destroy the
+/// other tenant's links. That is a cross-tenant WRITE, live at one organization
+/// too whenever the same repo is connected twice.
+///
+/// Class D store (tenancy §11 precondition 1): the tenant key is carried
+/// explicitly because nothing in `prId` identifies an owner.
 model PrJiraLink {
-  id           String    @id @default(cuid())
-  prId         String    @map("pr_id")
-  repoFullName String    @map("repo_full_name")
-  jiraKey      String    @map("jira_key")
-  source       String // "pr_title" | "commit_message"
-  mergedAt     DateTime? @map("merged_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
+  id             String    @id @default(cuid())
+  organizationId String    @map("organization_id")
+  prId           String    @map("pr_id")
+  repoFullName   String    @map("repo_full_name")
+  jiraKey        String    @map("jira_key")
+  source         String // "pr_title" | "commit_message"
+  mergedAt       DateTime? @map("merged_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
 
-  @@unique([prId, jiraKey, source])
-  @@index([jiraKey])
-  @@index([repoFullName])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, prId, jiraKey, source])
+  @@index([organizationId, jiraKey])
+  @@index([organizationId, repoFullName])
   @@map("pr_jira_links")
 }
 
@@ -1171,6 +1355,17 @@ model OrgTreeAccess {
   orgTreeId String          @map("org_tree_id")
   userId    String          @map("user_id")
   role      BoardAccessRole
+  /// Salary visibility, ORTHOGONAL to `role` — an EDITOR does not see pay by
+  /// virtue of being an EDITOR, which is the whole point of a separate flag.
+  /// Someone may need to restructure a tree without seeing pay, and someone else
+  /// may need pay without editing anything; a role ladder cannot express that.
+  ///
+  /// It does not currently REPLACE the admin path: salary is visible when
+  /// `isAdmin` OR this flag, controlled by `SALARY_ADMIN_IMPLICIT` in
+  /// apps/api/src/org-trees/salary-visibility.ts. Making it exclusive is a
+  /// one-line change there plus an owner's decision — see that file's comment for
+  /// why the additive direction shipped first.
+  canViewSalary Boolean       @default(false) @map("can_view_salary")
   createdAt DateTime        @default(now()) @map("created_at")
   updatedAt DateTime        @updatedAt @map("updated_at")
 
@@ -1303,13 +1498,27 @@ model OrgEmployeeComment {
   authorName    String      @default("VP") @map("author_name")
   authorAvatar  String?     @map("author_avatar")
   pinned        Boolean     @default(false)
+  /// Author-only when true. Deliberately NOT readable by org admins or by the
+  /// tree owner — see the org-tree privacy design's D2: "private except from the
+  /// admins" is not private, and the admin bit is an instance-level break-glass
+  /// signal granted, on a fresh install, to whoever authenticates first.
+  ///
+  /// `authorId` is ON DELETE SET NULL, so a private comment whose author is
+  /// deleted becomes unreadable by everyone. That is the correct failure
+  /// direction: the alternative is a private note turning public the moment its
+  /// author is offboarded.
+  isPrivate     Boolean     @default(false) @map("is_private")
   authorId      String?     @map("author_id")
   author        User?       @relation(fields: [authorId], references: [id], onDelete: SetNull)
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
   uploads       Upload[]
+  notifications Notification[]
 
   @@index([orgEmployeeId, pinned, createdAt])
+  // The list and the count both filter on exactly this pair, per employee, on
+  // every employee-card open.
+  @@index([orgEmployeeId, isPrivate])
   @@index([authorId])
   @@map("org_employee_comments")
 }
@@ -1318,6 +1527,20 @@ model EmployeeBoard {
   id              String   @id @default(uuid())
   orgTreeId       String   @map("org_tree_id")
   name            String
+  /// Exempt from BOTH implicit-owner rules when true — the org-ADMIN floor inside
+  /// `effectiveBoardRole`, and D12's "an OWNER grant on the parent tree owns every
+  /// board in it". Only an explicit EmployeeBoardAccess row admits anyone.
+  ///
+  /// Exempting only one of the two would be worse than exempting neither: it would
+  /// read as private while still being readable. Both exemptions live in the
+  /// `employeeBoard` policy branch AND in AccessService.getEffectiveRole, which
+  /// must agree — one decides whether a request is allowed, the other what the
+  /// client renders.
+  ///
+  /// Listing, renaming and DELETING a personal board are unaffected: an org admin
+  /// can always find and destroy, because content nobody can clean up is a worse
+  /// problem than content an admin cannot read.
+  isPersonal      Boolean  @default(false) @map("is_personal")
   scopeEmployeeId String?  @map("scope_employee_id")
   columnConfig    Json?    @map("column_config")
   position        Int      @default(0)
@@ -1678,4 +1901,139 @@ model AdvisorMessage {
 
   @@index([sessionId, createdAt])
   @@map("advisor_messages")
+}
+
+/// In-app notification. IN-APP ONLY — email and push are out of scope
+/// (VP-Cockpit-PRD.md:84, planning/REQUIREMENTS.md:41).
+///
+/// Holds REFERENCES ONLY: no board name, no comment excerpt, no project title.
+/// A notification names an entity the recipient can lose access to, so what they
+/// are allowed to see is resolved at READ time through the same access helpers
+/// every other read uses. A denormalised label here would be a second, frozen
+/// copy of who-can-see-what — exactly the thing that goes stale and leaks.
+model Notification {
+  id             String @id @default(uuid())
+  /// Not redundant with `userId`: under multi-org one User holds memberships in
+  /// several organizations, and the switcher decides which one they are looking
+  /// at. Without this column the bell would mix tenants.
+  organizationId String @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// The recipient. NOT nullable — a notification nobody can read is a bug.
+  userId String @map("user_id")
+  user   User   @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  /// Who caused it. Nullable only so a deleted User does not destroy the
+  /// notification: "you were mentioned" still means something.
+  actorId String? @map("actor_id")
+  actor   User?   @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  kind    NotificationKind
+
+  /// AT MOST ONE typed subject is set — a CHECK constraint in the migration
+  /// enforces it, because two subjects is ambiguous. "No subject at all" is legal
+  /// SOLELY so a DIGEST summary row can exist. Cascading deletes mean a deleted
+  /// comment takes its notifications with it, so no route has to remember.
+  projectCommentId     String? @map("project_comment_id")
+  projectComment       ProjectComment? @relation(fields: [projectCommentId], references: [id], onDelete: Cascade)
+  orgEmployeeCommentId String? @map("org_employee_comment_id")
+  orgEmployeeComment   OrgEmployeeComment? @relation(fields: [orgEmployeeCommentId], references: [id], onDelete: Cascade)
+
+  /// Item subject: assigned, status/due-date changed, due soon, overdue,
+  /// automation, comment added. Cascades, so a deleted item takes its
+  /// notifications with it.
+  projectId String?  @map("project_id")
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// The sharing family. Polymorphic rather than five more FK columns, because
+  /// sharing is ALREADY generic here: `ACCESS_ENTITIES` is a descriptor map keyed
+  /// by AccessEntityKind. No FK is possible (the target table varies) — dangling
+  /// rows are dropped at read time by `resolve`, the same mechanism that hides a
+  /// subject the reader lost access to.
+  shareKind     String? @map("share_kind")
+  shareEntityId String? @map("share_entity_id")
+
+  /// Kind-specific extras ONLY — old/new status, an automation's message, a
+  /// digest's counts. Never labels, names or hrefs: those stay resolved at read
+  /// time, because a stored label is a frozen copy of who-can-see-what.
+  payload Json?
+
+  /// Set on rows folded into a released digest, so the summary can expand into
+  /// them. SetNull, not Cascade: deleting the summary must not delete the real
+  /// events it summarised.
+  digestId String?        @map("digest_id")
+  digest   Notification?  @relation("DigestMembers", fields: [digestId], references: [id], onDelete: SetNull)
+  members  Notification[] @relation("DigestMembers")
+
+  /// A DIGEST-mode row awaiting release: hidden from both the bell list and the
+  /// unread count until the hourly job folds it into a summary.
+  digestPending Boolean @default(false) @map("digest_pending")
+
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, readAt])
+  @@index([organizationId])
+  /// The release job's query: this user's pending rows, oldest first.
+  @@index([userId, digestPending, createdAt])
+  @@map("notifications")
+}
+
+/// The full trigger set (notification system §3), plus DIGEST for the summary
+/// row a released digest writes. An enum rather than a string so a new kind is a
+/// migration and a compile error, not a silently-mistyped literal.
+enum NotificationKind {
+  MENTION
+  ITEM_ASSIGNED
+  ITEM_STATUS_CHANGED
+  ITEM_DUE_DATE_CHANGED
+  ITEM_COMMENT_ADDED
+  ITEM_DUE_SOON
+  ITEM_OVERDUE
+  ENTITY_SHARED
+  ACCESS_ROLE_CHANGED
+  ORG_MEMBER_INVITED
+  AUTOMATION_NOTIFY
+  DIGEST
+
+  // The mapped, lower-snake name is what actually exists in Postgres — the same
+  // convention as project_status and board_access_role. Without this the client
+  // casts to "public.NotificationKind" and every write fails 42704.
+  @@map("notification_kind")
+}
+
+/// A deliberate per-kind choice. SPARSE — absent means "use the default in
+/// DEFAULT_NOTIFICATION_MODES", so a default change is a code change rather than
+/// a migration over every user who never opened the settings screen.
+model NotificationPreference {
+  id             String           @id @default(uuid())
+  userId         String           @map("user_id")
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Preferences are per-tenant: the same person can want different things in
+  /// two organizations, exactly as the notifications themselves are scoped.
+  organizationId String           @map("organization_id")
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  kind           NotificationKind
+  /// TEXT, not a Postgres enum: it is read only by code that already holds the
+  /// Zod enum, and a CHECK makes adding a mode a one-line change, not ALTER TYPE.
+  mode           String
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  @@unique([userId, organizationId, kind])
+  @@map("notification_preferences")
+}
+
+/// "Notify me about everything here / mentions only / nothing." Also sparse:
+/// absent means ALL.
+model BoardNotificationSetting {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  boardId   String   @map("board_id")
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  level     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, boardId])
+  @@index([boardId])
+  @@map("board_notification_settings")
 }

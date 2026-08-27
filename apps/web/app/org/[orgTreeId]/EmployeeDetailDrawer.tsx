@@ -56,6 +56,7 @@ interface EmployeeCommentRow {
   authorName: string;
   authorAvatar: string | null;
   pinned: boolean;
+  isPrivate?: boolean;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -69,6 +70,9 @@ function toCommentListShape(c: EmployeeCommentRow) {
     authorName: c.authorName,
     authorAvatar: c.authorAvatar,
     pinned: c.pinned,
+    // Carried through so the row shows its own marker. The API only ever returns
+    // a private comment to its author, so anything marked here is the reader's.
+    isPrivate: c.isPrivate,
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,
   };
@@ -84,6 +88,8 @@ export function EmployeeDetailDrawer({
   const [tab, setTab] = useState<Tab>(defaultTab ?? 'profile');
   const [activity, setActivity] = useState<EmployeeActivity>(EMPTY_ACTIVITY);
   const [comments, setComments] = useState<EmployeeCommentRow[]>([]);
+  /** Per-note, and reset after each post — see handleCreateComment. */
+  const [composePrivate, setComposePrivate] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [uploadIds, setUploadIds] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
@@ -126,9 +132,13 @@ export function EmployeeDetailDrawer({
 
   const handleCreateComment = (content: Record<string, unknown>) => {
     const currentUploadIds = [...uploadIds];
+    const privateNote = composePrivate;
     setUploadIds([]);
+    // Reset the toggle after posting: "private" is a decision about ONE note, and
+    // a sticky toggle would silently make every following note private too.
+    setComposePrivate(false);
     startTransition(async () => {
-      await createEmployeeComment(employee.id, content, currentUploadIds);
+      await createEmployeeComment(employee.id, content, currentUploadIds, undefined, privateNote);
       await loadComments();
     });
   };
@@ -248,6 +258,14 @@ export function EmployeeDetailDrawer({
               apiBaseUrl=""
               onUploadIdsChange={setUploadIds}
             />
+            <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                checked={composePrivate}
+                onChange={(e) => setComposePrivate(e.target.checked)}
+              />
+              Private — only you can see this
+            </label>
           </div>
 
           {editingCommentId && (

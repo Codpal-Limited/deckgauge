@@ -171,6 +171,43 @@ export {
 } from "./comment-schemas";
 
 export {
+  NotificationKindSchema,
+  NotificationDtoSchema,
+  NotificationListResponseSchema,
+  UnreadCountResponseSchema,
+  type NotificationKindValue,
+  type NotificationDto,
+  type NotificationListResponse,
+  type UnreadCountResponse,
+} from "./notification-schemas";
+
+export {
+  NotificationModeSchema,
+  BoardNotificationLevelSchema,
+  DEFAULT_NOTIFICATION_MODES,
+  NotificationPreferenceSchema,
+  NotificationPreferencesResponseSchema,
+  UpdateNotificationPreferencesInputSchema,
+  BoardNotificationSettingSchema,
+  UpdateBoardNotificationSettingInputSchema,
+  type NotificationMode,
+  type BoardNotificationLevel,
+  type NotificationPreference,
+  type NotificationPreferencesResponse,
+  type UpdateNotificationPreferencesInput,
+  type BoardNotificationSetting,
+  type UpdateBoardNotificationSettingInput,
+} from "./notification-preference-schemas";
+
+export {
+  DEFAULT_DIGEST_WINDOW_MS,
+  selectDigestReleases,
+  type PendingNotificationRow,
+  type DigestPayload,
+  type DigestRelease,
+} from "./notification-digest";
+
+export {
   JiraSyncConfigSchema,
   CreateJiraSyncConfigInputSchema,
   UpdateJiraSyncConfigInputSchema,
@@ -798,6 +835,7 @@ export type { GridColumnSpec, BoardGridOptions } from './board-grid-template';
 export {
   EmployeeBoardSummaryDtoSchema, EmployeeBoardMemberDtoSchema, EmployeeGroupDtoSchema,
   EmployeeBoardDetailDtoSchema, CreateEmployeeBoardSchema, RenameEmployeeBoardSchema,
+  SetEmployeeBoardPersonalSchema,
   CreateEmployeeGroupSchema, UpdateEmployeeGroupSchema, ReorderEmployeeGroupsSchema,
   AddExistingMembersSchema, AddNewEmployeeSchema, MoveMemberSchema, SetManagerSchema,
   EmployeeColumnDtoSchema, CreateEmployeeColumnSchema, UpdateEmployeeColumnSchema,
@@ -805,7 +843,8 @@ export {
 } from './employee-board-schemas';
 export type {
   EmployeeBoardSummaryDto, EmployeeBoardMemberDto, EmployeeGroupDto, EmployeeBoardDetailDto,
-  CreateEmployeeBoardInput, RenameEmployeeBoardInput, CreateEmployeeGroupInput,
+  CreateEmployeeBoardInput, RenameEmployeeBoardInput, SetEmployeeBoardPersonalInput,
+  CreateEmployeeGroupInput,
   UpdateEmployeeGroupInput, ReorderEmployeeGroupsInput, AddExistingMembersInput,
   AddNewEmployeeInput, MoveMemberInput, SetManagerInput,
   EmployeeColumnDto, CreateEmployeeColumnInput, UpdateEmployeeColumnInput,
@@ -896,6 +935,19 @@ export {
 } from './advisor';
 
 export {
+  listBoardRowsInputSchema,
+  DESCRIPTION_PREVIEW_MAX,
+  LIST_BOARD_ROWS_MAX_LIMIT,
+} from './advisor-board-reads';
+export type {
+  ListBoardRowsInput,
+  AdvisorBoardRowDto,
+  AdvisorBoardRowsDto,
+  AdvisorBoardStructureDto,
+  AdvisorExcludedRowDto,
+} from './advisor-board-reads';
+
+export {
   resolveJiraBrowseUrl,
   hasAnyJiraLink,
   type JiraSourceLinks,
@@ -913,7 +965,10 @@ export {
   BootstrapOrganizationSchema,
   InviteMemberSchema,
   UpdateMemberRoleSchema,
+  SwitchOrganizationSchema,
   UpdateMemberStatusSchema,
+  type OrgMembershipOptionDto,
+  type SwitchOrganizationInput,
 } from './org';
 export type {
   OrgRoleValue,
@@ -966,3 +1021,65 @@ export {
   sanitiseEditionNotices,
 } from './edition-notice';
 export type { EditionNotice, EditionNoticeAction } from './edition-notice';
+
+export {
+  SYNC_FIELDS,
+  CUSTOM_COLUMN_KEY_PREFIX,
+  syncFieldSpec,
+  syncFieldsForSource,
+  customColumnKey,
+  isCustomColumnKey,
+  columnIdFromKey,
+  shouldSync,
+  readOverrideState,
+  markOverridden,
+  clearOverride,
+} from "./sync-field-registry";
+export type { SyncSource, SyncFieldSpec, OverrideState } from "./sync-field-registry";
+
+export {
+  effectiveBoardRole,
+  personalBoardRole,
+  meetsBoardRole,
+  meetsOrgRole,
+  canCreateBoard,
+  canManageOrg,
+  type EffectiveBoardRole,
+} from "./board-role-rules";
+
+export { ACCESS_ENTITIES, type AccessEntityDescriptor } from "./access-entities";
+
+export { verbFor, isSubjectFirst } from "./notification-verbs";
+
+export {
+  manualSyncJobPayload,
+  type ManualSyncJobPayload,
+  type SweepSyncJobPayload,
+  type SweepingSyncTrigger,
+  type SyncJobPayload,
+} from "./sync-job-payload";
+
+export {
+  JiraFieldSchemaShapeSchema,
+  JiraFieldMetaSchema,
+  MappableColumnTypeSchema,
+  DiscoveredJiraFieldSchema,
+  DiscoveredJiraFieldListSchema,
+  AttachJiraFieldInputSchema,
+} from "./jira-field-schemas";
+export type {
+  JiraFieldSchemaShape,
+  JiraFieldMeta,
+  MappableColumnType,
+  DiscoveredJiraField,
+  AttachJiraFieldInput,
+} from "./jira-field-schemas";
+
+export {
+  MULTI_VALUE_DELIMITER,
+  joinMultiValue,
+  splitMultiValue,
+  columnTypeForJiraField,
+  unsupportedReasonFor,
+  extractJiraFieldValue,
+} from "./jira-field-extract";

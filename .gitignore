@@ -9,6 +9,9 @@ coverage/
 *.tsbuildinfo
 .env
 .env.local
+# Per-developer test overrides. apps/api/.env.test is TRACKED and must stay so;
+# this is where you point a run at a different database without dirtying it.
+.env.test.local
 .DS_Store
 .worktrees/
 .claude/
@@ -36,3 +39,9 @@ Business Plan/
 
 # Hosted deployment secrets — never commit
 deploy/.env.hosted
+# Same for the free-demo box. demo/env.demo.example opens with "never commit",
+# but only the example was tracked — the real file was ignored by nothing, and it
+# gets created by hand on the VM and by anyone rendering the demo overlay
+# locally (`docker compose -f docker-compose.yml -f demo/docker-compose.demo.yml`
+# requires it to exist). It carries NEXTAUTH_SECRET and KEYCLOAK_CLIENT_SECRET.
+demo/.env.demo

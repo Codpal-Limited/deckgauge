@@ -19,6 +19,12 @@ const SYSTEM = [
 
 export interface AdvisorAskParams {
   provider: LlmProvider;
+  /**
+   * The board the request was authorized against, from the route param — never
+   * the request body (`advisor.routes.ts` already rejects a body/param
+   * mismatch) and never the model.
+   */
+  boardId: string;
   scope: BoardScope;
   question: string;
   widgetType?: string;
@@ -45,7 +51,7 @@ export class AdvisorService {
     // lower step ceiling. Rich providers are unaffected.
     const tools = toolsForProvider(
       params.provider,
-      buildAdvisorTools(this.deps, params.scope),
+      buildAdvisorTools(this.deps, { boardId: params.boardId, scope: params.scope }),
       ['get_team_overview'],
     );
     const focus = params.widgetType ? ` The user is looking at the ${params.widgetType} widget.` : '';

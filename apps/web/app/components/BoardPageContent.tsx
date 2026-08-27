@@ -25,6 +25,12 @@ interface BoardPageContentProps {
   // Total project count for the board (from SSR). When it exceeds the rows the
   // SSR shipped (first page), the client progressively streams the rest.
   projectTotal: number;
+  /**
+   * Open one item — and optionally one comment inside it — straight from the
+   * URL, so a notification lands on what it is about. Threaded from
+   * `page.tsx` search params down to `GroupList`, which owns the panel state.
+   */
+  deepLink?: { itemId: string; commentId?: string };
   boardViewProps: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     board: any;
@@ -109,6 +115,7 @@ export default function BoardPageContent({
   canEdit,
   projectTotal,
   boardViewProps,
+  deepLink,
 }: BoardPageContentProps) {
   const [activeViewId, setActiveViewId] = useState(
     () => views.find((v) => v.type === 'BOARD')?.id ?? views[0]?.id ?? ''
@@ -226,6 +233,7 @@ export default function BoardPageContent({
       ) : (
         <BoardView
           {...boardViewProps}
+          deepLink={deepLink}
           groups={groups}
           commentCounts={commentCounts}
           onGroupsChange={setGroups}

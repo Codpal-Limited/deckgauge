@@ -1,5 +1,5 @@
-import type { PrismaClient } from "@deckgauge/db";
-import { ProjectSchema, ProjectStatusEnum, CostClassificationEnum, DURATION_RE, type Project } from "@deckgauge/shared";
+import type { PrismaClient, Prisma } from "@deckgauge/db";
+import { ProjectSchema, ProjectStatusEnum, CostClassificationEnum, DURATION_RE, type Project, readOverrideState, markOverridden, clearOverride, SYNC_FIELDS, isCustomColumnKey, columnIdFromKey } from "@deckgauge/shared";
 import { z } from "zod";
 import { mirrorClassification } from './classification-mirror.js';
 import {
@@ -39,6 +39,12 @@ const STATUS_ENUM_TO_LABEL: Record<string, string> = {
   DONE: 'Done',
 };
 
+// The revert-eligible field keys: the registry's tracked sync fields, plus
+// the `col:<columnId>` namespace for custom columns (not yet revertible —
+// applyRevertedValue's `default` arm still no-ops on them — but a real,
+// intended future case, so the schema must not reject it outright).
+const KNOWN_REVERT_FIELD_KEYS = new Set(SYNC_FIELDS.map((f) => f.key));
+
 export const CreateProjectInputSchema = z.object({
   name: z.string().trim().min(1),
   owner: z.string().trim().min(1),
@@ -55,7 +61,18 @@ export const UpdateProjectInputSchema = CreateProjectInputSchema.extend({
   ownerId: z.string().uuid().nullable().optional(),
   // Clears a manual Owner override: copies the synced assignee back into owner
   // and re-links the field so future syncs update it again.
-  resetOwnerToAssignee: z.boolean().optional(),
+  // Field keys to re-link to their sync source: restores each key's pre-edit
+  // synced value and drops it from the override set. A revert and an edit of
+  // the same key in one request means the revert wins. Rejected at the schema
+  // boundary (400) for anything outside the known sync-field keys or the
+  // `col:` custom-column namespace, rather than silently no-opping deep in
+  // the service.
+  revertFields: z.array(
+    z.string().refine(
+      (key) => KNOWN_REVERT_FIELD_KEYS.has(key) || isCustomColumnKey(key),
+      { message: "Unknown field key for revert" },
+    ),
+  ).optional(),
   statusId: z.string().uuid().nullable().optional(),
   startDate: z.coerce.date().nullable().optional(),
   endDate: z.coerce.date().nullable().optional(),
@@ -104,6 +121,119 @@ function mapToProject(raw: {
   });
 }
 
+/**
+ * The Project scalar each tracked field key reads from, for snapshot capture.
+ * `status` snapshots `statusId` rather than the legacy enum: the id is the real
+ * value, and the enum is derived from it on both write and revert, so a revert
+ * cannot leave the two disagreeing.
+ *
+ * Values are JSON-safe — Dates become ISO strings — because this lands in a
+ * Prisma `Json` column.
+ */
+function currentValueForKey(
+  row: Record<string, unknown>,
+  key: string,
+): unknown {
+  switch (key) {
+    case 'name':
+    case 'description':
+    case 'owner':
+      return row[key] ?? null;
+    case 'status':
+      return row.statusId ?? null;
+    case 'dueDate':
+      return row.dueDate instanceof Date ? row.dueDate.toISOString() : (row.dueDate ?? null);
+    default:
+      return null;
+  }
+}
+
+/**
+ * Writes a reverted snapshot value into the Prisma update payload. Returns
+ * whether it actually wrote one, so the caller only clears the override (and
+ * discards the snapshot) when a restore genuinely happened — never for a key
+ * this function doesn't handle, and never for a `name` snapshot too degenerate
+ * to write back.
+ *
+ * Scalar `Project` columns only. A `col:<columnId>` key restores a row in
+ * `ProjectFieldValue` instead, which this `data` object cannot express — see
+ * `columnRestoreFor` and the call site.
+ *
+ * The caller is responsible for skipping this entirely when the snapshot
+ * entry itself is missing (`undefined`) — that's a dirty flag with no
+ * captured value to restore, and must never be papered over here with a
+ * fallback default (that would be a wipe, not a revert). What reaches this
+ * function is either a legitimately-captured value, which may itself be
+ * `null` (e.g. an owner or due date that was already unset when captured).
+ *
+ * `status` is deliberately absent: reverting it feeds the restored statusId
+ * through the same derivation an explicit statusId edit uses, so both paths
+ * produce the enum identically.
+ */
+function applyRevertedValue(
+  data: Record<string, unknown>,
+  key: string,
+  value: unknown,
+): boolean {
+  switch (key) {
+    case 'name':
+      if (typeof value !== 'string' || value.trim() === '') return false;
+      data.name = value;
+      return true;
+    case 'description':
+      data.description = (value ?? null) as string | null;
+      return true;
+    case 'owner':
+      data.owner = (value ?? '') as string;
+      return true;
+    case 'dueDate':
+      data.dueDate = value == null ? null : new Date(value as string);
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * A reverted custom column, which lands in a DIFFERENT table than the scalar
+ * keys above: its value is a `ProjectFieldValue` row keyed by (projectId,
+ * columnId), not a column on `Project`. Kept out of `applyRevertedValue`'s
+ * `data` payload deliberately — smuggling a relation write through the scalar
+ * update object is exactly how the two shapes would drift apart.
+ */
+interface ColumnRestore {
+  columnId: string;
+  /**
+   * The value to write back, or `null` when the column held nothing before the
+   * edit — in which case the row is REMOVED. Writing `null` through would put
+   * the string "null" on the board, which is not what the user reverted to.
+   */
+  value: string | null;
+}
+
+/**
+ * The restore a `col:<columnId>` revert implies, or null when this key isn't a
+ * custom column or its snapshot has a shape we cannot write back. Null means
+ * the same thing it means for `applyRevertedValue`: change nothing, and leave
+ * the override in place rather than clearing it on a restore that never happened.
+ */
+function columnRestoreFor(key: string, snapshot: unknown): ColumnRestore | null {
+  const columnId = columnIdFromKey(key);
+  if (columnId === null) return null;
+  if (snapshot === null) return { columnId, value: null };
+  if (typeof snapshot === "string") return { columnId, value: snapshot };
+  return null;
+}
+
+/** Which tracked field key an update input touches, if any. */
+const INPUT_KEY_TO_FIELD: ReadonlyArray<{ inputKeys: readonly string[]; field: string }> = [
+  { inputKeys: ['name'], field: 'name' },
+  { inputKeys: ['description'], field: 'description' },
+  { inputKeys: ['owner'], field: 'owner' },
+  { inputKeys: ['dueDate'], field: 'dueDate' },
+  { inputKeys: ['status', 'statusId'], field: 'status' },
+];
+
 export class ProjectService {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -130,6 +260,27 @@ export class ProjectService {
 
     // Build the filter incrementally; collapse to `undefined` when empty so the
     // no-filter query is byte-identical to the original (and its tests).
+    //
+    // INVARIANT — `boardId` is optional in this signature but REQUIRED of every
+    // caller, and a caller that omits it reads every board in the deployment.
+    //
+    // It holds today: the only production caller is `GET /projects`, where
+    // `ProjectListQuerySchema` declares `boardId: z.string().uuid()` (required) and
+    // the route policy is `board("VIEWER", viaBoardId(fromQuery("boardId")))`. The
+    // Zod requirement is the load-bearing half — single-user mode bypasses the
+    // policy layer entirely — which is why it is stated on the schema too.
+    //
+    // This is NOT the same shape as the unscoped sync handlers fixed on
+    // 2026-08-27 (planning/TENANCY-PROGRAMME.md §5d), and the distinction is the
+    // reason this predicate is considered sufficient: there, the policy inspected
+    // no entity and the query carried no predicate at all. Here the predicate IS
+    // the id the policy authorised on the same request.
+    //
+    // **A second caller must pass `boardId`.** Making it a required parameter is
+    // the durable fix and is deliberately deferred: it changes three pre-existing
+    // assertions that pin the `where: undefined` no-filter contract, which is not
+    // a change to make as a drive-by. Do it when this service is next opened on
+    // purpose.
     const where: Record<string, unknown> = {};
     if (opts.boardId) where.boardId = opts.boardId;
     if (opts.groupId) where.groupId = opts.groupId;
@@ -235,53 +386,146 @@ export class ProjectService {
     const existing = await this.prisma.project.findUnique({ where: { id } });
     if (!existing) return null;
 
-    // When only statusId is provided (custom board-status change), derive the canonical
-    // enum status from the board status label so automations and filters work correctly.
+    const revertKeys = input.revertFields ?? [];
+    let overrides = readOverrideState(existing as Record<string, unknown>);
+
+    // Reverts are resolved first so a revert of `status` can feed its restored
+    // statusId through the derivation below — the reverted id must produce the
+    // enum exactly as an explicit statusId edit would.
+    const revertData: Record<string, unknown> = {};
+    // Custom-column reverts, collected here and applied to ProjectFieldValue
+    // after the Project row is written — they cannot ride along in `revertData`.
+    const columnRestores: ColumnRestore[] = [];
+    let revertedStatusId: string | null | undefined;
+    // Tracks whether this request actually touched a tracked field (via revert
+    // or edit), as opposed to whether the resulting override state's *content*
+    // differs from what it started as. The two are not the same: markOverridden
+    // deliberately no-ops when a field is already dirty (it must not overwrite
+    // an existing snapshot with a later edit's value), so re-editing an
+    // already-overridden field leaves `overrides` content-identical to
+    // `readOverrideState(existing)` even though the field WAS touched — and the
+    // write still needs to carry the (unchanged) override columns in that case.
+    let overridesTouched = false;
+    for (const key of revertKeys) {
+      if (!overrides.overriddenFields.includes(key)) continue; // nothing to restore
+      const snapshot = overrides.preOverrideValues[key];
+      // A missing snapshot entry (as opposed to one legitimately captured as
+      // `null`) means the field is flagged dirty but nothing was ever
+      // recorded to restore it to — writing a fallback here would wipe the
+      // field instead of reverting it, so leave the override alone entirely.
+      if (snapshot === undefined) continue;
+      let restored: boolean;
+      if (key === 'status') {
+        revertedStatusId = (snapshot ?? null) as string | null;
+        restored = true;
+      } else if (isCustomColumnKey(key)) {
+        // A mapped Jira column. Its value lives in ProjectFieldValue, so the
+        // restore is queued rather than written into `revertData`.
+        const restore = columnRestoreFor(key, snapshot);
+        if (restore) columnRestores.push(restore);
+        restored = restore !== null;
+      } else {
+        restored = applyRevertedValue(revertData, key, snapshot);
+      }
+      if (!restored) continue;
+      overrides = clearOverride(overrides, key);
+      overridesTouched = true;
+    }
+
+    // A manual edit marks the field dirty, capturing what it held beforehand.
+    // Skipped for a key being reverted in the same request: the revert wins.
+    for (const { inputKeys, field } of INPUT_KEY_TO_FIELD) {
+      if (revertKeys.includes(field)) continue;
+      const touched = inputKeys.some(
+        (k) => (input as Record<string, unknown>)[k] !== undefined,
+      );
+      if (!touched) continue;
+      overrides = markOverridden(
+        overrides,
+        field,
+        currentValueForKey(existing as Record<string, unknown>, field),
+      );
+      overridesTouched = true;
+    }
+
+    // The status id to write: a revert's restored id wins over an explicit edit.
+    const statusIdToWrite = revertedStatusId !== undefined ? revertedStatusId : input.statusId;
+
+    // When only a statusId is in play (custom board-status change, or a
+    // revert), derive the canonical enum from the board status label so
+    // automations and filters stay correct. Also runs when a status WAS
+    // reverted even if the request also sent an explicit `status` edit: the
+    // revert must win, and the only way to know what to write instead of the
+    // losing edit is to derive it from the restored id.
     let derivedStatus: string | undefined;
-    if (input.statusId !== undefined && input.statusId !== null && input.status === undefined) {
+    if (
+      statusIdToWrite !== undefined &&
+      statusIdToWrite !== null &&
+      (revertedStatusId !== undefined || input.status === undefined)
+    ) {
       const boardStatus = await this.prisma.boardStatus.findUnique({
-        where: { id: input.statusId },
+        where: { id: statusIdToWrite },
       });
       if (boardStatus) {
         derivedStatus = BOARD_STATUS_LABEL_TO_ENUM[boardStatus.label];
       }
     }
 
-    // Resolve the status to write: explicit input wins, then derived, then omit.
-    // Cast derivedStatus to the same type as input.status (a Zod-validated enum literal).
-    // BOARD_STATUS_LABEL_TO_ENUM only ever returns valid ProjectStatus values.
-    const statusToWrite = input.status ?? (derivedStatus as typeof input.status);
-
-    // Owner is a manual system field that defaults to the synced assignee.
-    // Resetting re-links it to assignee; any explicit edit breaks the link so
-    // future syncs stop overwriting it (see the promote services).
-    const ownerData: { owner?: string; ownerOverridden?: boolean } = {};
-    if (input.resetOwnerToAssignee) {
-      ownerData.owner = existing.assignee;
-      ownerData.ownerOverridden = false;
-    } else if (input.owner !== undefined) {
-      ownerData.owner = input.owner;
-      ownerData.ownerOverridden = true;
-    }
+    // Resolve the status to write: a status revert's derived enum wins over
+    // an explicit status edit in the same request (revert beats edit, and
+    // this is the only way statusId and the enum can't end up disagreeing);
+    // otherwise explicit input wins, then derived, then omit.
+    const statusToWrite =
+      revertedStatusId !== undefined
+        ? (derivedStatus as typeof input.status)
+        : (input.status ?? (derivedStatus as typeof input.status));
 
     const row = await this.prisma.project.update({
       where: { id },
       data: {
         ...(input.name !== undefined && { name: input.name }),
-        ...ownerData,
+        ...(input.owner !== undefined && { owner: input.owner }),
         ...(statusToWrite !== undefined && { status: statusToWrite }),
         ...(input.description !== undefined && { description: input.description }),
         ...(input.order !== undefined && { order: input.order }),
         ...(input.groupId !== undefined && { groupId: input.groupId }),
         ...(input.ownerId !== undefined && { ownerId: input.ownerId }),
-        ...(input.statusId !== undefined && { statusId: input.statusId }),
+        ...(statusIdToWrite !== undefined && { statusId: statusIdToWrite }),
         ...(input.startDate !== undefined && { startDate: input.startDate }),
         ...(input.endDate !== undefined && { endDate: input.endDate }),
         ...(input.dueDate !== undefined && { dueDate: input.dueDate }),
         ...(input.durationCode !== undefined && { durationCode: input.durationCode }),
         ...(input.costClassification !== undefined && { costClassification: input.costClassification }),
+        // Reverted values land AFTER the edit spreads so a revert beats an edit
+        // of the same field in one request.
+        ...revertData,
+        ...(overridesTouched && {
+          overriddenFields: overrides.overriddenFields,
+          preOverrideValues: overrides.preOverrideValues as Prisma.InputJsonValue,
+        }),
       },
     });
+
+    // Custom-column reverts, applied once the Project row (carrying the cleared
+    // override set) is committed. Ordered after deliberately: should a write
+    // here fail, the override is already cleared, so the next sync rewrites the
+    // column from Jira — the same end state a successful restore reaches. The
+    // reverse order would leave the column re-linked to nothing and frozen.
+    for (const restore of columnRestores) {
+      if (restore.value === null) {
+        // Nothing was there before the edit. `deleteMany` rather than `delete`
+        // so a row already absent is a no-op instead of a P2025 throw.
+        await this.prisma.projectFieldValue.deleteMany({
+          where: { projectId: id, columnId: restore.columnId },
+        });
+      } else {
+        await this.prisma.projectFieldValue.upsert({
+          where: { projectId_columnId: { projectId: id, columnId: restore.columnId } },
+          update: { value: restore.value },
+          create: { projectId: id, columnId: restore.columnId, value: restore.value },
+        });
+      }
+    }
 
     // Record status change if status actually changed
     const resolvedStatus = statusToWrite;

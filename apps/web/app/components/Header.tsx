@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { UserMenu } from "./UserMenu";
+import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
 import { DeckgaugeMark } from "./DeckgaugeMark";
 import { isResumableLocation, readLastLocationCookie } from "../utils/last-location-cookie";
@@ -140,6 +141,9 @@ export function Header() {
 
         {/* Right cluster */}
         <div className="ml-auto flex items-center gap-2">
+          {/* Renders nothing at all while there is nothing unread, so the header
+              does not grow a permanently-empty control. */}
+          <NotificationBell />
           <ThemeToggle />
           <UserMenu />
         </div>

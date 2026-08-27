@@ -1,5 +1,5 @@
-import type { ClickHouseClient } from '@deckgauge/db';
 import { DONE_STATUS_NAMES, toUtcIso } from '@deckgauge/shared';
+import { orgPredicate, type ChScopedReadClient } from '../ch-scoped-read.js';
 
 export interface ActivityIdentityRow {
   provider: 'github' | 'ado' | 'jira';
@@ -53,7 +53,17 @@ function normalizeTs(ts: string | null | undefined): string | null {
 }
 
 interface Spec {
-  sql: string;
+  /**
+   * Built per organization, not a constant, because the tenant predicate is part
+   * of the query rather than something applied afterwards.
+   *
+   * Every one of these SPECS previously read the whole deployment: none mentioned
+   * `organization_id`, and the rows were then matched to employees by login /
+   * email / name. So one tenant's commits, PRs, issues and assignments were
+   * credited to another tenant's employees whenever an identity collided — which
+   * the name matcher makes ordinary, not exotic.
+   */
+  sql: (organizationId: string) => string;
   provider: ActivityIdentityRow['provider'];
   kind: ActivityIdentityRow['kind'];
   isAssignment: boolean;
@@ -66,7 +76,8 @@ const SPECS: Spec[] = [
     kind: 'gh',
     isAssignment: false,
     contributedCode: true,
-    sql: `SELECT ifNull(author_login,'') login, author_name name, lower(author_email) email, repo_full_name scopeKey, toString(max(committed_at)) lastTs FROM github_commits GROUP BY 1,2,3,4`,
+    sql: (o) =>
+      `SELECT ifNull(author_login,'') login, author_name name, lower(author_email) email, repo_full_name scopeKey, toString(max(committed_at)) lastTs FROM github_commits WHERE ${orgPredicate(o)} GROUP BY 1,2,3,4`,
   },
   {
     provider: 'github',
@@ -76,21 +87,24 @@ const SPECS: Spec[] = [
     // max(updated_at), not created_at: a PR opened weeks ago but pushed to today
     // must count as recent activity, else in-flight work on long-lived PRs reads
     // as stale until merge.
-    sql: `SELECT author_login login, ifNull(author_name,'') name, '' email, repo_full_name scopeKey, toString(max(updated_at)) lastTs FROM github_pull_requests GROUP BY 1,2,3,4`,
+    sql: (o) =>
+      `SELECT author_login login, ifNull(author_name,'') name, '' email, repo_full_name scopeKey, toString(max(updated_at)) lastTs FROM github_pull_requests WHERE ${orgPredicate(o)} GROUP BY 1,2,3,4`,
   },
   {
     provider: 'ado',
     kind: 'ado',
     isAssignment: false,
     contributedCode: true,
-    sql: `SELECT '' login, author_name name, lower(author_email) email, project scopeKey, toString(max(committed_at)) lastTs FROM ado_commits GROUP BY 1,2,3,4`,
+    sql: (o) =>
+      `SELECT '' login, author_name name, lower(author_email) email, project scopeKey, toString(max(committed_at)) lastTs FROM ado_commits WHERE ${orgPredicate(o)} GROUP BY 1,2,3,4`,
   },
   {
     provider: 'ado',
     kind: 'ado',
     isAssignment: false,
     contributedCode: true,
-    sql: `SELECT created_by_login login, ifNull(created_by_name,'') name, '' email, project scopeKey, toString(max(created_at)) lastTs FROM ado_pull_requests GROUP BY 1,2,3,4`,
+    sql: (o) =>
+      `SELECT created_by_login login, ifNull(created_by_name,'') name, '' email, project scopeKey, toString(max(created_at)) lastTs FROM ado_pull_requests WHERE ${orgPredicate(o)} GROUP BY 1,2,3,4`,
   },
   {
     provider: 'jira',
@@ -110,14 +124,21 @@ const SPECS: Spec[] = [
     // (org, project, work-item) triples currently carry more than one assignee. (A
     // count of 3,406 appears if you group ADO by bare `ado_id`, but that is ids
     // colliding ACROSS projects, not stale assignees — see the row key note below.)
-    sql: `SELECT '' login, if(assignee LIKE '%@%', '', assignee) name, if(assignee LIKE '%@%', lower(assignee), '') email, rowKey, parentKey, epicKey, scopeKey, lastTs FROM (
+    // The predicate goes in the INNER query, before `GROUP BY key`. Filtering the
+    // outer result instead would be wrong twice over: a Jira key is unique per
+    // Jira site, not per deployment, so grouping across tenants first collapses
+    // two organizations' issues that share a key into one row and lets argMax pick
+    // whichever tenant's revision is newest — and there is no organization_id in
+    // the outer projection to filter on afterwards.
+    sql: (o) =>
+      `SELECT '' login, if(assignee LIKE '%@%', '', assignee) name, if(assignee LIKE '%@%', lower(assignee), '') email, rowKey, parentKey, epicKey, scopeKey, lastTs FROM (
       SELECT key rowKey,
              argMax(ifNull(assignee, ''), updated_at) assignee,
              argMax(ifNull(parent_key, ''), updated_at) parentKey,
              argMax(ifNull(epic_key, ''), updated_at) epicKey,
              argMax(project_key, updated_at) scopeKey,
              toString(max(updated_at)) lastTs
-      FROM jira_issues GROUP BY key
+      FROM jira_issues WHERE ${orgPredicate(o)} GROUP BY key
     ) WHERE assignee != ''`,
   },
   {
@@ -129,14 +150,15 @@ const SPECS: Spec[] = [
     // project, so bare ids would let two projects cross-credit each other's boards.
     // `parentKey` must carry the SAME shape — it is looked up in the same map, and a
     // bare id there resolves to nothing at all, silently disabling the parent fallback.
-    sql: `SELECT '' login, name, email, rowKey, parentKey, '' epicKey, scopeKey, lastTs FROM (
+    sql: (o) =>
+      `SELECT '' login, name, email, rowKey, parentKey, '' epicKey, scopeKey, lastTs FROM (
       SELECT concat(project, '#', toString(ado_id)) rowKey,
              argMax(ifNull(assigned_to, ''), updated_at) name,
              lower(argMax(ifNull(assigned_to_email, ''), updated_at)) email,
              argMax(if(parent_ado_id IS NULL, '', concat(project, '#', toString(parent_ado_id))), updated_at) parentKey,
              argMax(project, updated_at) scopeKey,
              toString(max(updated_at)) lastTs
-      FROM ado_work_items GROUP BY org_url, project, ado_id
+      FROM ado_work_items WHERE ${orgPredicate(o)} GROUP BY org_url, project, ado_id
     ) WHERE name != ''`,
   },
   {
@@ -144,13 +166,14 @@ const SPECS: Spec[] = [
     kind: 'gh',
     isAssignment: true,
     contributedCode: false,
-    sql: `SELECT login, name, '' email, rowKey, '' parentKey, '' epicKey, scopeKey, lastTs FROM (
+    sql: (o) =>
+      `SELECT login, name, '' email, rowKey, '' parentKey, '' epicKey, scopeKey, lastTs FROM (
       SELECT concat(repo_full_name, '#', toString(number)) rowKey,
              argMax(ifNull(assignee_login, ''), updated_at) login,
              argMax(ifNull(assignee_name, ''), updated_at) name,
              argMax(repo_full_name, updated_at) scopeKey,
              toString(max(updated_at)) lastTs
-      FROM github_issues GROUP BY repo_full_name, number
+      FROM github_issues WHERE ${orgPredicate(o)} GROUP BY repo_full_name, number
     ) WHERE login != ''`,
   },
 ];
@@ -169,16 +192,19 @@ export interface CommitHeatRow {
 // counts distinct commits so un-merged duplicate parts don't inflate the tally.
 // Identity projections mirror the code-commit SPECS above so the same matcher
 // resolves them to the same employees.
-const HEAT_SPECS: Array<{ provider: CommitHeatRow['provider']; sql: (cutoff: string) => string }> = [
+const HEAT_SPECS: Array<{
+  provider: CommitHeatRow['provider'];
+  sql: (organizationId: string, cutoff: string) => string;
+}> = [
   {
     provider: 'github',
-    sql: (cutoff) =>
-      `SELECT ifNull(author_login,'') login, author_name name, lower(author_email) email, toString(toMonday(committed_at)) weekMonday, toUInt32(uniqExact(sha)) c FROM github_commits WHERE committed_at >= toDateTime('${cutoff} 00:00:00') GROUP BY 1,2,3,4`,
+    sql: (o, cutoff) =>
+      `SELECT ifNull(author_login,'') login, author_name name, lower(author_email) email, toString(toMonday(committed_at)) weekMonday, toUInt32(uniqExact(sha)) c FROM github_commits WHERE ${orgPredicate(o)} AND committed_at >= toDateTime('${cutoff} 00:00:00') GROUP BY 1,2,3,4`,
   },
   {
     provider: 'ado',
-    sql: (cutoff) =>
-      `SELECT '' login, author_name name, lower(author_email) email, toString(toMonday(committed_at)) weekMonday, toUInt32(uniqExact(sha)) c FROM ado_commits WHERE committed_at >= toDateTime('${cutoff} 00:00:00') GROUP BY 1,2,3,4`,
+    sql: (o, cutoff) =>
+      `SELECT '' login, author_name name, lower(author_email) email, toString(toMonday(committed_at)) weekMonday, toUInt32(uniqExact(sha)) c FROM ado_commits WHERE ${orgPredicate(o)} AND committed_at >= toDateTime('${cutoff} 00:00:00') GROUP BY 1,2,3,4`,
   },
 ];
 
@@ -188,15 +214,14 @@ const HEAT_SPECS: Array<{ provider: CommitHeatRow['provider']; sql: (cutoff: str
  * so heat degrades gracefully rather than failing the whole sync.
  */
 export async function fetchCommitHeat(
-  ch: ClickHouseClient,
+  ch: ChScopedReadClient,
   cutoff: string,
 ): Promise<CommitHeatRow[]> {
   const out: CommitHeatRow[] = [];
   for (const spec of HEAT_SPECS) {
     let rows: Array<{ login: string; name: string; email: string; weekMonday: string; c: number }>;
     try {
-      const res = await ch.query({ query: spec.sql(cutoff), format: 'JSONEachRow' });
-      rows = (await res.json()) as typeof rows;
+      rows = await ch.queryRows(spec.sql(ch.organizationId, cutoff));
     } catch (err) {
       console.error(`org-sync: heat query failed, skipping: ${(err as Error).message}`);
       continue;
@@ -228,17 +253,24 @@ export async function fetchCommitHeat(
  * resolve PRs and reviews. Ambiguity is resolved by frequency: the email a login
  * commits with most often wins.
  */
-export async function fetchGithubLoginEmails(ch: ClickHouseClient): Promise<Map<string, string>> {
+export async function fetchGithubLoginEmails(
+  ch: ChScopedReadClient,
+): Promise<Map<string, string>> {
   const bridge = new Map<string, string>();
+  // Scoped like every other read here, and for a sharper reason than the rest:
+  // this bridge is what lets a tenant-suffixed login (`jane-doe_acme`) resolve to
+  // an email, and it is applied to PR and review rows by
+  // `applyLoginEmailBridge`. Learned across tenants, one organization's
+  // login->email mapping silently redirected another organization's PR and review
+  // credit — a leak with an extra hop, and the hardest of these to see.
   const sql =
     `SELECT lower(author_login) login, lower(author_email) email, toUInt32(count()) c ` +
     `FROM github_commits ` +
-    `WHERE author_login != '' AND author_email != '' ` +
+    `WHERE ${orgPredicate(ch.organizationId)} AND author_login != '' AND author_email != '' ` +
     `GROUP BY 1,2 ORDER BY login, c DESC`;
   let rows: Array<{ login: string; email: string; c: number }>;
   try {
-    const res = await ch.query({ query: sql, format: 'JSONEachRow' });
-    rows = (await res.json()) as typeof rows;
+    rows = await ch.queryRows(sql);
   } catch (err) {
     // Degrade gracefully: without the bridge, PR/review identity falls back to the
     // login/name matcher (same as before this bridge existed).
@@ -303,19 +335,19 @@ const DONE_IN = `(${DONE_STATUS_NAMES.map((s) => `'${s}'`).join(', ')})`;
 const RANKING_SPECS: Array<{
   metric: RankingMetricKind;
   provider: RankingMetricRow['provider'];
-  sql: (cutoff: string) => string;
+  sql: (organizationId: string, cutoff: string) => string;
 }> = [
   // Tickets closed — attributed to the assignee (who was working the issue), counted
   // on the transition INTO a done state.
   {
     metric: 'ticketsClosed',
     provider: 'jira',
-    sql: (c) =>
+    sql: (o, c) =>
       // Jira `assignee` is a display name, not an email (see the activity SPEC note):
       // route it by shape so the name matcher can resolve it.
       `SELECT '' login, if(assignee LIKE '%@%', '', assignee) name, if(assignee LIKE '%@%', lower(assignee), '') email, toUInt32(uniqExact(issue_key)) cnt ` +
       `FROM jira_transitions FINAL ` +
-      `WHERE assignee IS NOT NULL AND assignee != '' ` +
+      `WHERE ${orgPredicate(o)} AND assignee IS NOT NULL AND assignee != '' ` +
       `AND transitioned_at >= toDateTime('${c} 00:00:00') ` +
       `AND ${normStatusExpr('to_status')} IN ${DONE_IN} ` +
       `GROUP BY 1,2,3`,
@@ -323,10 +355,10 @@ const RANKING_SPECS: Array<{
   {
     metric: 'ticketsClosed',
     provider: 'ado',
-    sql: (c) =>
+    sql: (o, c) =>
       `SELECT '' login, ifNull(assigned_to,'') name, '' email, toUInt32(uniqExact(work_item_id)) cnt ` +
       `FROM ado_transitions FINAL ` +
-      `WHERE assigned_to IS NOT NULL AND assigned_to != '' ` +
+      `WHERE ${orgPredicate(o)} AND assigned_to IS NOT NULL AND assigned_to != '' ` +
       `AND changed_at >= toDateTime('${c} 00:00:00') ` +
       `AND ${normStatusExpr('to_state')} IN ${DONE_IN} ` +
       `GROUP BY 1,2,3`,
@@ -335,57 +367,57 @@ const RANKING_SPECS: Array<{
   {
     metric: 'prsMerged',
     provider: 'github',
-    sql: (c) =>
+    sql: (o, c) =>
       `SELECT author_login login, ifNull(author_name,'') name, '' email, toUInt32(count()) cnt ` +
       `FROM github_pull_requests FINAL ` +
-      `WHERE merged_at IS NOT NULL AND merged_at >= toDateTime('${c} 00:00:00') ` +
+      `WHERE ${orgPredicate(o)} AND merged_at IS NOT NULL AND merged_at >= toDateTime('${c} 00:00:00') ` +
       `GROUP BY 1,2,3`,
   },
   {
     metric: 'prsMerged',
     provider: 'ado',
-    sql: (c) =>
+    sql: (o, c) =>
       `SELECT created_by_login login, ifNull(created_by_name,'') name, '' email, toUInt32(count()) cnt ` +
       `FROM ado_pull_requests FINAL ` +
-      `WHERE status = 'completed' AND closed_at IS NOT NULL AND closed_at >= toDateTime('${c} 00:00:00') ` +
+      `WHERE ${orgPredicate(o)} AND status = 'completed' AND closed_at IS NOT NULL AND closed_at >= toDateTime('${c} 00:00:00') ` +
       `GROUP BY 1,2,3`,
   },
   // Commits — authored work, excluding merge-bubble commits. uniqExact(sha) is dedup-safe.
   {
     metric: 'commitsToMain',
     provider: 'github',
-    sql: (c) =>
+    sql: (o, c) =>
       `SELECT ifNull(author_login,'') login, author_name name, lower(author_email) email, toUInt32(uniqExact(sha)) cnt ` +
       `FROM github_commits ` +
-      `WHERE is_merge_commit = 0 AND committed_at >= toDateTime('${c} 00:00:00') ` +
+      `WHERE ${orgPredicate(o)} AND is_merge_commit = 0 AND committed_at >= toDateTime('${c} 00:00:00') ` +
       `GROUP BY 1,2,3`,
   },
   {
     metric: 'commitsToMain',
     provider: 'ado',
-    sql: (c) =>
+    sql: (o, c) =>
       `SELECT ifNull(author_login,'') login, author_name name, lower(author_email) email, toUInt32(uniqExact(sha)) cnt ` +
       `FROM ado_commits ` +
-      `WHERE is_merge_commit = 0 AND committed_at >= toDateTime('${c} 00:00:00') ` +
+      `WHERE ${orgPredicate(o)} AND is_merge_commit = 0 AND committed_at >= toDateTime('${c} 00:00:00') ` +
       `GROUP BY 1,2,3`,
   },
   // Review comments — attributed to the reviewer, summed across their reviews.
   {
     metric: 'reviewComments',
     provider: 'github',
-    sql: (c) =>
+    sql: (o, c) =>
       `SELECT reviewer_login login, ifNull(reviewer_name,'') name, '' email, toUInt32(sum(comment_count)) cnt ` +
       `FROM github_reviews FINAL ` +
-      `WHERE reviewer_login != '' AND submitted_at >= toDateTime('${c} 00:00:00') ` +
+      `WHERE ${orgPredicate(o)} AND reviewer_login != '' AND submitted_at >= toDateTime('${c} 00:00:00') ` +
       `GROUP BY 1,2,3`,
   },
   {
     metric: 'reviewComments',
     provider: 'ado',
-    sql: (c) =>
+    sql: (o, c) =>
       `SELECT reviewer_login login, ifNull(reviewer_name,'') name, '' email, toUInt32(sum(comment_count)) cnt ` +
       `FROM ado_reviews FINAL ` +
-      `WHERE reviewer_login != '' AND submitted_at >= toDateTime('${c} 00:00:00') ` +
+      `WHERE ${orgPredicate(o)} AND reviewer_login != '' AND submitted_at >= toDateTime('${c} 00:00:00') ` +
       `GROUP BY 1,2,3`,
   },
 ];
@@ -396,7 +428,7 @@ const RANKING_SPECS: Array<{
  * rather than failing the whole sync (mirrors `fetchCommitHeat`).
  */
 export async function fetchRankingMetrics(
-  ch: ClickHouseClient,
+  ch: ChScopedReadClient,
   cutoff: string,
   loginEmails?: Map<string, string>,
 ): Promise<RankingMetricRow[]> {
@@ -404,8 +436,7 @@ export async function fetchRankingMetrics(
   for (const spec of RANKING_SPECS) {
     let rows: Array<{ login: string; name: string; email: string; cnt: number }>;
     try {
-      const res = await ch.query({ query: spec.sql(cutoff), format: 'JSONEachRow' });
-      rows = (await res.json()) as typeof rows;
+      rows = await ch.queryRows(spec.sql(ch.organizationId, cutoff));
     } catch (err) {
       console.error(`org-sync: ranking query failed, skipping: ${(err as Error).message}`);
       continue;
@@ -425,15 +456,14 @@ export async function fetchRankingMetrics(
 }
 
 export async function fetchActivityIdentities(
-  ch: ClickHouseClient,
+  ch: ChScopedReadClient,
   loginEmails?: Map<string, string>,
 ): Promise<ActivityIdentityRow[]> {
   const out: ActivityIdentityRow[] = [];
   for (const spec of SPECS) {
     let rows: Array<{ login: string; name: string; email: string; rowKey?: string; parentKey?: string; epicKey?: string; scopeKey: string; lastTs: string }>;
     try {
-      const res = await ch.query({ query: spec.sql, format: 'JSONEachRow' });
-      rows = (await res.json()) as typeof rows;
+      rows = await ch.queryRows(spec.sql(ch.organizationId));
     } catch (err) {
       console.error(`org-sync: source query failed, skipping: ${(err as Error).message}`);
       continue;

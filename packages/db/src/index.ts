@@ -1,5 +1,11 @@
 export { PrismaClient, Prisma } from "@prisma/client";
-export { clickhouse, chInsertMany } from "./clickhouse";
+// `chInsertManyWith` is the injectable-client core of `chInsertMany` — same tenant
+// stamp, same empty-organizationId refusal, same chunking. Exported so an
+// integration suite can write through the PRODUCTION path against a throwaway
+// client instead of calling `client.insert` directly, which is how three
+// dual-writer suites came to write `organization_id = ''` and assert nothing about
+// the tenant stamp.
+export { clickhouse, chInsertMany, chInsertManyWith } from "./clickhouse";
 export type { ClickHouseClient } from "./clickhouse";
 export {
   runClickhouseMigrations,
@@ -51,6 +57,9 @@ export type {
   AdvisorMessage,
   Organization,
   OrgMembership,
+  Notification,
+  NotificationPreference,
+  BoardNotificationSetting,
 } from "@prisma/client";
 export type {
   BoardAccessRole,
@@ -59,6 +68,10 @@ export type {
   OrgRole,
   OrgMembershipStatus,
 } from "@prisma/client";
+// A VALUE export, not type-only: the notification kinds are iterated at runtime
+// (the shared Zod enum is asserted against this list, so a migration that adds a
+// kind and forgets the schema fails a test instead of a production write).
+export { NotificationKind } from "@prisma/client";
 export type {
   Roadmap,
   RoadmapAccess,
@@ -89,6 +102,7 @@ export {
   CH_ALL_OBJECTS_QUERY,
   CH_TENANT_OBJECTS_QUERY,
   CH_ISO_POLICY_OBJECTS_QUERY,
+  isoPolicyObjectsForOrganizationQuery,
 } from "./ch-row-policies";
 export type { ChPolicyObjects, ChPolicyQueryClient } from "./ch-row-policies";
 export {
@@ -96,6 +110,7 @@ export {
   chExecutorFromClient,
   provisionOrganizationAnalytics,
   reprovisionOrganizations,
+  retrofitReadIdentityGrants,
   resolveApiReadIdentityUser,
   resolveServiceIdentityUser,
   CH_DEFAULT_SERVICE_USER,
@@ -105,5 +120,6 @@ export type {
   ChCommandClient,
   ChCoverageReport,
   ChProvisionResult,
+  ReadIdentityRetrofitReport,
   ChStatementExecutor,
 } from "./ch-provisioning";

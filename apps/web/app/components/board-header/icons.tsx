@@ -119,6 +119,14 @@ export function TrashIcon({ className }: { className?: string }) {
   );
 }
 
+export function BellIcon({ className }: { className?: string }) {
+  return (
+    <Svg className={className}>
+      <path d="M18 16v-5a6 6 0 10-12 0v5l-1.5 2h15zM10 21h4" />
+    </Svg>
+  );
+}
+
 export function WarningIcon({ className }: { className?: string }) {
   return (
     <Svg className={className}>

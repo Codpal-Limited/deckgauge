@@ -7,7 +7,21 @@
  * runtime via enterprise-loader.ts. See planning/OPEN-CORE-ARCHITECTURE.md.
  */
 
-export type FeatureFlag = 'sso' | 'rbac_advanced' | 'works_council' | 'retention' | 'audit';
+/**
+ * `multi_org` is the entitlement for more than one organization per installation:
+ * the open-source edition is single-tenant by design, and a deployment serving
+ * several organizations is an enterprise one. It is named HERE, in the file that
+ * ships open-source, because the seam has to describe the boundary even though the
+ * paid implementation does not ship — otherwise the free platform cannot tell that
+ * a feature it is refusing is a licensed one rather than a missing one.
+ */
+export type FeatureFlag =
+  | 'sso'
+  | 'rbac_advanced'
+  | 'works_council'
+  | 'retention'
+  | 'audit'
+  | 'multi_org';
 
 export type LicenseState = 'valid' | 'grace' | 'expired' | 'invalid' | 'absent';
 

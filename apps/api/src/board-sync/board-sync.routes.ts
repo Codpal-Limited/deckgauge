@@ -16,6 +16,7 @@ import { GitHubService } from '../github/github.service.js';
 import { GitLabService } from '../gitlab/gitlab.service.js';
 import { AzureDevOpsService } from '../azure-devops/azure-devops.service.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
+import { boardOwnedConnectionCaller } from '../connections/connection-caller.js';
 
 interface Deps {
   prisma: PrismaClient;
@@ -40,16 +41,20 @@ export function boardSyncRoutes(deps: Deps) {
     // stronger guarantee than a parameter the health service would only forward.
     const buildHealthService = (req: FastifyRequest) => {
       if (deps.healthServiceFactory) return deps.healthServiceFactory();
+      // Board-owned, not caller-owned: these probe the connection behind a source
+      // already attached to a board, so ownership must not filter them or a shared
+      // board's health column would differ per viewer. Tenant boundary still applies.
       const organizationId = requireOrganizationId(req);
+      const caller = boardOwnedConnectionCaller(organizationId);
       const jira = new JiraInstanceService(deps.prisma);
       const github = new GitHubService(deps.prisma);
       const gitlab = new GitLabService(deps.prisma);
       const ado = new AzureDevOpsService(deps.prisma);
       const probes: BoardSourceProbes = {
-        jira: (id) => jira.testConnection(organizationId, id),
-        github: (id) => github.testConnection(organizationId, id),
-        gitlab: (id) => gitlab.testConnection(organizationId, id),
-        ado: (id) => ado.testConnection(organizationId, id),
+        jira: (id) => jira.testConnection(caller, id),
+        github: (id) => github.testConnection(caller, id),
+        gitlab: (id) => gitlab.testConnection(caller, id),
+        ado: (id) => ado.testConnection(caller, id),
       };
       return new BoardSourceHealthService(deps.prisma, probes);
     };

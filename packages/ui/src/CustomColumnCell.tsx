@@ -1,6 +1,7 @@
 "use client";
 
 import type { BoardColumn } from "@deckgauge/shared";
+import { splitMultiValue } from "@deckgauge/shared";
 
 interface CustomColumnCellProps {
   column: BoardColumn;
@@ -131,6 +132,47 @@ export function CustomColumnCell({
 
   // Display mode
   const displayValue = value || "\u2014";
+
+  // Multi-value columns store their values joined (percent-escaped, then
+  // comma-joined) because that is what a plain-text read of the column
+  // should show. Chip rendering is gated on `config.multiValue` alone: a
+  // joined "backend, api" and a hand-typed "backend, api" are byte-identical
+  // once stored, so the config flag is the only thing that can tell them
+  // apart. Splitting unconditionally would turn any ordinary text column
+  // containing a comma into chips.
+  const isMultiValue = (column.config as Record<string, unknown> | null | undefined)?.multiValue === true;
+  if (isMultiValue) {
+    const values = splitMultiValue(value);
+    if (values.length === 0) {
+      // Empty for the entire window between attaching a Jira field and the
+      // next sync populating it — that is the first thing a user sees after
+      // using the field picker. Fall back to the same placeholder every other
+      // column type uses so it reads as an empty cell, not a broken one, and
+      // stays clickable into the editing branch.
+      return (
+        <div
+          onClick={onEdit}
+          className="text-xs text-slate-400 cursor-pointer hover:text-slate-700 rounded px-1 py-1 truncate transition-colors"
+          title={displayValue}
+        >
+          {displayValue}
+        </div>
+      );
+    }
+    return (
+      <div onClick={onEdit} className="flex flex-wrap items-center gap-1 cursor-pointer" title={value}>
+        {values.map((entry, index) => (
+          <span
+            key={`${entry}-${index}`}
+            data-testid="value-chip"
+            className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+          >
+            {entry}
+          </span>
+        ))}
+      </div>
+    );
+  }
 
   if (column.type === "LINK" && value) {
     return (

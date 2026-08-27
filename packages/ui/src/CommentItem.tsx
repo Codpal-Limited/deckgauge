@@ -16,6 +16,8 @@ interface CommentData {
   authorName: string;
   authorAvatar: string | null;
   pinned: boolean;
+  /** Optional: only employee comments carry privacy (see CommentList). */
+  isPrivate?: boolean;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -84,6 +86,13 @@ export function CommentItem({ comment, onEdit, onDelete, onTogglePin }: CommentI
       {comment.pinned && (
         <div className="flex items-center gap-1 mb-2">
           <span className="text-xs text-amber-700 font-medium">Pinned</span>
+        </div>
+      )}
+      {comment.isPrivate && (
+        // Marked on the row rather than only in the composer: the author needs to
+        // see, later, which of their notes nobody else can read.
+        <div className="flex items-center gap-1 mb-2">
+          <span className="text-xs text-slate-500 font-medium">{'\u{1F512}'} Private — only you can see this</span>
         </div>
       )}
       <div className="flex gap-3">

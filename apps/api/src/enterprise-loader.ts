@@ -27,6 +27,12 @@ export async function loadEnterprise(): Promise<EnterpriseModule | null> {
   // NOT attempted — apps must not depend on the private package.
   const modulePath = process.env.DECKGAUGE_ENTERPRISE_MODULE;
   if (!modulePath) {
+    // Loud, because this combination is always a misconfiguration: the operator
+    // asked for enterprise and every paid feature is about to be silently absent
+    // on a stack whose /health is green.
+    console.warn(
+      '[enterprise] DECKGAUGE_EDITION=enterprise but DECKGAUGE_ENTERPRISE_MODULE is unset; running Community.',
+    );
     return null;
   }
 
@@ -35,6 +41,9 @@ export async function loadEnterprise(): Promise<EnterpriseModule | null> {
       createEnterprise?: () => EnterpriseModule;
     };
     if (typeof mod.createEnterprise !== 'function') {
+      console.warn(
+        `[enterprise] ${modulePath} loaded but exports no createEnterprise(); running Community.`,
+      );
       return null;
     }
     return mod.createEnterprise();

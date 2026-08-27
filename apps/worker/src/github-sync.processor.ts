@@ -19,6 +19,32 @@ interface ProcessorInput {
   trigger: string;
   db: PrismaClient;
   /**
+   * The GitHub connection these repos belong to. **Required.**
+   *
+   * Scopes both reads below that key off `repoFullName` — the project-mode
+   * lookup and, through `promoteAll`, promotion itself. `owner/repo` is unique
+   * per GitHub host and not per Deckgauge deployment, so without this a repo of
+   * the same name on another tenant's connection decided where this run's issues
+   * landed (TENANCY-PROGRAMME §5a, fixed 2026-08-26).
+   *
+   * `github-sync.handler.ts` already loops per instance and had `instance.id` in
+   * scope; requiring it means no future caller can forget.
+   */
+  instanceId: string;
+  /**
+   * The organization that owns the connection being synced. **Required.**
+   *
+   * Stamped onto the `SyncRun` this processor writes — the only way that row can
+   * be attributed, since `SyncRun`'s four `*SyncId` columns are dead and it had
+   * no tenant column at all until 2026-08-26. Required rather than optional so a
+   * future caller cannot silently write a row every other tenant's
+   * `GET /github/sync/status` could read.
+   *
+   * `github-sync.handler.ts` already loops per instance and passes
+   * `instance.organizationId` from the same object it takes `instance.id` from.
+   */
+  organizationId: string;
+  /**
    * Optional ClickHouse client. When provided, the processor dual-writes the
    * full unfiltered set of fetched issues + milestones into the `github_issues`
    * and `github_milestones` CH tables BEFORE running promote/Postgres upserts.
@@ -40,10 +66,11 @@ interface ProcessorOutput {
 }
 
 export async function githubSyncProcessor(input: ProcessorInput): Promise<ProcessorOutput> {
-  const { adapter, repos, trigger, db, ch } = input;
+  const { adapter, repos, trigger, db, ch, instanceId, organizationId } = input;
 
   const syncRun = await db.syncRun.create({
     data: {
+      organizationId,
       status: 'PENDING',
       trigger: normalizeTrigger(trigger),
       startedAt: new Date(),
@@ -61,7 +88,13 @@ export async function githubSyncProcessor(input: ProcessorInput): Promise<Proces
     // BoardGitHubSource → GitHubRepoSync (1 repo sync per instance+repo,
     // N board sources fan out). projectNodeId is optional and may live on
     // GitHubRepoSync after the legacy GitHubSyncConfig retires.
+    //
+    // Scoped to this run's connection through the repo-sync relation. Keyed by
+    // `repoFullName` below, so an unscoped read let another tenant's
+    // `projectNodeId` decide this run's project-mode behaviour for a repo that
+    // merely shares a name (§5a).
     const boardSources = await db.boardGitHubSource.findMany({
+      where: { gitHubRepoSync: { githubInstanceId: instanceId } },
       include: { gitHubRepoSync: true },
     });
     const projectConfigByRepo = new Map<string, { projectNodeId: string }>();
@@ -193,7 +226,7 @@ export async function githubSyncProcessor(input: ProcessorInput): Promise<Proces
 
     // Promote GitHub issues to Project rows
     const promoteService = new GitHubPromoteService(db);
-    const promoteResult = await promoteService.promoteAll({ issuesByRepo, milestonesByRepo });
+    const promoteResult = await promoteService.promoteAll({ issuesByRepo, milestonesByRepo }, { instanceId });
     console.log(
       `[GitHub Processor] Promote: ${promoteResult.created} created, ${promoteResult.updated} updated, ${promoteResult.markedRemoved} marked removed`,
     );

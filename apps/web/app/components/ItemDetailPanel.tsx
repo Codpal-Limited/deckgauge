@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { SlideOverPanel, CommentEditor, CommentList } from "@deckgauge/ui";
 import type { Project, ProjectStatus, BoardColumn, Comment } from "@deckgauge/shared";
-import { boardCapabilities } from "@deckgauge/shared";
+import { boardCapabilities, syncFieldSpec } from "@deckgauge/shared";
 import {
   getComments,
   createComment,
@@ -31,6 +31,11 @@ interface ItemDetailPanelProps {
   defaultTab?: "updates" | "details";
   /** existing board owner names for the Owner combobox (closed list + type-new) */
   owners?: string[];
+  /**
+   * A comment to scroll into view and highlight, from a notification's deep
+   * link. Forwarded to `CommentList`, which owns the scroll.
+   */
+  targetCommentId?: string;
 }
 
 export function ItemDetailPanel({
@@ -42,6 +47,7 @@ export function ItemDetailPanel({
   onSave,
   defaultTab = "updates",
   owners,
+  targetCommentId,
 }: ItemDetailPanelProps) {
   const canOnboard = !!boardId && boardCapabilities(boardKind ?? "").onboardTarget;
   const [activeTab, setActiveTab] = useState<"updates" | "details">(defaultTab);
@@ -205,6 +211,7 @@ export function ItemDetailPanel({
             onEdit={handleEditComment}
             onDelete={handleDeleteComment}
             onTogglePin={handleTogglePin}
+            targetCommentId={targetCommentId}
           />
         </div>
       )}
@@ -238,21 +245,9 @@ export function ItemDetailPanel({
 
           {/* Owner — closed list of existing board owners + type a new name */}
           <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label className="block text-xs font-medium text-slate-400">Owner</label>
-              {project.ownerOverridden && !!project.assignee?.trim() && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOwnerValue(project.assignee ?? "");
-                    onSave("resetOwnerToAssignee", "");
-                  }}
-                  className="text-xs text-indigo-500 hover:text-indigo-600"
-                >
-                  ↺ Reset to Assignee
-                </button>
-              )}
-            </div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              Owner
+            </label>
             <input
               type="text"
               list="item-owner-options"
@@ -274,6 +269,50 @@ export function ItemDetailPanel({
               </datalist>
             )}
           </div>
+
+          {/* Manual edits — every field a manual edit has taken over from sync,
+              each revertable back to the value the source last supplied. */}
+          {(project.overriddenFields ?? []).length > 0 && (
+            <div className="rounded border border-amber-200 bg-amber-50/50 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-medium text-amber-900">Manual edits</span>
+                {(project.overriddenFields ?? []).length > 1 && (
+                  <button
+                    type="button"
+                    aria-label="Revert all manual edits"
+                    onClick={() => onSave("revertAllFields", "")}
+                    className="text-xs text-indigo-600 hover:text-indigo-700"
+                  >
+                    {"\u21BA"} Revert all
+                  </button>
+                )}
+              </div>
+              <ul className="space-y-1">
+                {(project.overriddenFields ?? []).map((key) => {
+                  const label = syncFieldSpec(key)?.label ?? key;
+                  const snapshot = (project.preOverrideValues ?? {})[key];
+                  const shown =
+                    snapshot == null || snapshot === "" ? "empty" : String(snapshot);
+                  return (
+                    <li key={key} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="truncate text-slate-700">
+                        {label} — synced value was{" "}
+                        <span className="font-medium text-slate-900">{shown}</span>
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Revert ${label}`}
+                        onClick={() => onSave("revertField", key)}
+                        className="shrink-0 text-indigo-600 hover:text-indigo-700"
+                      >
+                        {"\u21BA"} Revert
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
 
           {/* Assignee — read-only synced source person */}
           <div>

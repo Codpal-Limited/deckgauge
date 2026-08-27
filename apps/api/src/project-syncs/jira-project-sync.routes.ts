@@ -22,8 +22,8 @@ import type { PrismaClient } from '@deckgauge/db';
  * connection routes. See project-sync-tenancy.test.ts.
  */
 import { ORG_MEMBER, ORG_VIEWER } from '../auth/policy.js';
-import { requireOrganizationId } from '../organizations/request-organization.js';
 import { denySyncDetach } from './sync-detach-guard.js';
+import { connectionCaller } from '../connections/connection-caller.js';
 
 // JiraProjectSync has no boardId of its own — it's keyed by
 // (jiraInstanceId, jiraProjectKey) and attaches to boards through a separate
@@ -34,7 +34,7 @@ export function jiraProjectSyncRoutes(deps: { prisma: PrismaClient; singleUser?:
   const service = new JiraProjectSyncService(deps.prisma);
   return async function plugin(app: FastifyInstance) {
     app.get('/project-syncs/jira', { config: { policy: ORG_VIEWER } }, async (req) =>
-      service.list(requireOrganizationId(req)),
+      service.list(connectionCaller(req)),
     );
 
     app.post('/project-syncs/jira', { config: { policy: ORG_MEMBER } }, async (req, reply) => {

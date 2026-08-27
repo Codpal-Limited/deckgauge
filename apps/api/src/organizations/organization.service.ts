@@ -1,6 +1,7 @@
 import type { ChStatementExecutor, PrismaClient, Organization } from '@deckgauge/db';
 import { provisionOrganizationAnalytics } from '@deckgauge/db';
 import { BootstrapOrganizationSchema, type BootstrapOrganizationInput } from '@deckgauge/shared';
+import type { FeatureFlag } from '../enterprise-contract.js';
 
 /** Thrown when a deployment already has an organization and multi-org is off. */
 export class OrganizationExistsError extends Error {
@@ -10,8 +11,26 @@ export class OrganizationExistsError extends Error {
   }
 }
 
-function multiOrgEnabled(): boolean {
-  return process.env.DECKGAUGE_MULTI_ORG === 'true';
+/**
+ * Whether this deployment may hold more than one organization.
+ *
+ * TWO independent conditions, and neither alone is sufficient:
+ *
+ * - the LICENCE must carry `multi_org`. Multi-tenancy is an enterprise
+ *   entitlement; the open-source edition is one organization per installation.
+ *   Before this check the environment variable was the entire gate, so an
+ *   open-source install could hold as many organizations as it liked.
+ * - the OPERATOR must still set `DECKGAUGE_MULTI_ORG`. Without that half, renewing
+ *   into a tier that happens to include `multi_org` would silently convert a
+ *   single-tenant deployment into a multi-tenant one, with no action by whoever
+ *   runs it and no reason for them to expect it.
+ *
+ * Community edition therefore answers false however the environment is set, which
+ * is also what an api image built without `packages/enterprise` resolves to — the
+ * safe direction for a mis-built image to fail in.
+ */
+function multiOrgEnabled(features: readonly FeatureFlag[]): boolean {
+  return process.env.DECKGAUGE_MULTI_ORG === 'true' && features.includes('multi_org');
 }
 
 export interface OrganizationServiceDeps {
@@ -24,6 +43,20 @@ export interface OrganizationServiceDeps {
    * analytics provisioning is reported as not done rather than attempted.
    */
   chExec?: ChStatementExecutor;
+  /**
+   * The features this deployment's licence currently entitles it to.
+   *
+   * A getter rather than a value because the licence is resolved asynchronously at
+   * boot; the FEATURES rather than the whole `LicenseStatus` because that is all
+   * this service needs, and because the module derives the effective set itself
+   * (`enabledFeatures`) — an expired licence yields none even though its status
+   * still lists them.
+   *
+   * Injected, never imported, for the same reason as `chExec`: a test must be able
+   * to state an entitlement with no module on disk. Defaults to NONE, so an absent
+   * licence refuses the paid feature.
+   */
+  entitledFeatures?: () => readonly FeatureFlag[];
 }
 
 /**
@@ -43,9 +76,11 @@ export interface BootstrapResult {
 export class OrganizationService {
   private readonly prisma: PrismaClient;
   private readonly chExec?: ChStatementExecutor;
+  private readonly entitledFeatures: () => readonly FeatureFlag[];
 
   constructor(deps: OrganizationServiceDeps) {
     this.prisma = deps.prisma;
+    this.entitledFeatures = deps.entitledFeatures ?? (() => []);
     this.chExec = deps.chExec;
   }
 
@@ -106,13 +141,19 @@ export class OrganizationService {
       //
       // In multi-org mode bootstrap means "create MY organization": there is no
       // single "the" organization, and picking one by createdAt would enrol the
-      // caller as ADMIN of an arbitrary tenant. Recovering a specific admin-less
-      // organization there requires naming it, which is deferred to the work that
-      // lifts the cap (spec §11).
-      const singleOrgMode = !multiOrgEnabled();
+      // caller as ADMIN of an arbitrary tenant.
+      //
+      // But an admin-less organization must still be recoverable there, so the
+      // caller may NAME one — and the input already names it: the slug. Adoption
+      // is subject to the identical living-admins gate below, so naming an
+      // organization you have no relationship to gains nothing; if it has an
+      // admin you get the same 409 you would have got from the unique
+      // constraint. A slug that names nothing falls through to create, which is
+      // the ordinary case and must stay unchanged.
+      const singleOrgMode = !multiOrgEnabled(this.entitledFeatures());
       const adoptable = singleOrgMode
         ? await tx.organization.findFirst({ orderBy: { createdAt: 'asc' } })
-        : null;
+        : await tx.organization.findUnique({ where: { slug: validated.slug } });
 
       if (adoptable) {
         // Must agree with MembershipService.assertNotLastAdmin's definition of

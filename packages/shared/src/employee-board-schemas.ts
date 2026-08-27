@@ -55,11 +55,25 @@ export type EmployeeBoardDetailDto = z.infer<typeof EmployeeBoardDetailDtoSchema
 export const CreateEmployeeBoardSchema = z.object({
   name: z.string().min(1).max(120),
   scopeEmployeeId: uuid.nullable(),
+  /**
+   * A personal board is exempt from both implicit-owner rules — the org-ADMIN
+   * floor and D12's tree-OWNER rule — so only explicit grants admit anyone.
+   * Opt-in; omitted means an ordinary shared board.
+   */
+  isPersonal: z.boolean().optional().default(false),
 });
 export type CreateEmployeeBoardInput = z.infer<typeof CreateEmployeeBoardSchema>;
 
 export const RenameEmployeeBoardSchema = z.object({ name: z.string().min(1).max(120) });
 export type RenameEmployeeBoardInput = z.infer<typeof RenameEmployeeBoardSchema>;
+
+/**
+ * Its own input, and its own route, rather than a field on the rename PATCH:
+ * renaming is an editing action (EDITOR), while deciding who may READ a board is
+ * not — so the two carry different policies.
+ */
+export const SetEmployeeBoardPersonalSchema = z.object({ isPersonal: z.boolean() });
+export type SetEmployeeBoardPersonalInput = z.infer<typeof SetEmployeeBoardPersonalSchema>;
 
 export const CreateEmployeeGroupSchema = z.object({
   name: z.string().min(1).max(120),

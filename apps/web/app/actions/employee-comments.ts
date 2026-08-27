@@ -19,11 +19,16 @@ export async function createEmployeeComment(
   content: unknown,
   uploadIds: string[],
   authorName?: string,
+  /**
+   * Author-only visibility. Omitted means public, matching the API's default —
+   * so every existing caller keeps its behaviour.
+   */
+  isPrivate?: boolean,
 ): Promise<void> {
   await apiRequest(`/org-employees/${employeeId}/comments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content, authorName, uploadIds }),
+    body: JSON.stringify({ content, authorName, uploadIds, isPrivate }),
   });
   revalidatePath('/org');
 }
@@ -31,7 +36,7 @@ export async function createEmployeeComment(
 export async function updateEmployeeComment(
   employeeId: string,
   commentId: string,
-  data: { content?: unknown; pinned?: boolean },
+  data: { content?: unknown; pinned?: boolean; isPrivate?: boolean },
 ): Promise<void> {
   await apiRequest(`/org-employees/${employeeId}/comments/${commentId}`, {
     method: 'PATCH',

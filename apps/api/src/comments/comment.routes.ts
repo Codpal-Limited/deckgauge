@@ -6,6 +6,11 @@ import { CreateCommentInputSchema, UpdateCommentInputSchema } from "@deckgauge/s
 import { z } from "zod";
 import type { UploadService } from "../uploads/upload.service.js";
 import { board, viaEntity, fromParam, fromQueryCsv, parseCsvParam } from "../auth/policy.js";
+import { notifyItemCommentAdded } from '../notifications/triggers/item-comment-added.js';
+import {
+  notifyCommentMentions,
+  readPreviousCommentContent,
+} from "../notifications/comment-mention-hook.js";
 
 const UuidSchema = z.string().uuid();
 
@@ -69,6 +74,28 @@ export async function commentRoutes(
         content: parsed.data.content as Prisma.InputJsonValue,
         authorName: parsed.data.authorName,
         uploadIds: parsed.data.uploadIds,
+        // From the session, never from the body: `authorName` is a
+        // client-supplied display string defaulting to 'VP'.
+        authorId: req.user?.id ?? null,
+      });
+
+      // AFTER the comment is committed, and it cannot fail the request: a lost
+      // notification is an annoyance, a 500 on a saved comment is a lie. Every
+      // query this needs lives inside the hook, behind its try/catch.
+      await notifyCommentMentions(prisma, req, {
+        kind: "projectComment",
+        commentId: comment.id,
+        after: parsed.data.content,
+      });
+
+      // After the mention hook, which owns the more specific message. CREATE
+      // only: editing a comment must not re-notify, which is why the mention
+      // hook diffs before/after on the PATCH path. Every query it needs — the
+      // board included — is inside its own try/catch.
+      await notifyItemCommentAdded(prisma, req, {
+        commentId: comment.id,
+        projectId: idParsed.data,
+        content: comment.content,
       });
       return reply.status(201).send(comment);
     },
@@ -92,11 +119,31 @@ export async function commentRoutes(
       if (!parsed.success) {
         return reply.status(400).send({ error: parsed.error.flatten() });
       }
+      // Read BEFORE the update, because the update destroys it. Only when the
+      // edit touches the content — a pin toggle changes no mentions. Returns
+      // null on any failure, and a null must SKIP notifying rather than fall
+      // back to create semantics, which would re-notify everyone named in the
+      // comment on a routine typo fix.
+      const previous =
+        parsed.data.content !== undefined
+          ? await readPreviousCommentContent(prisma, "projectComment", cidParsed.data, req.log)
+          : null;
+
       const comment = await service.update(cidParsed.data, {
         ...parsed.data,
         content: parsed.data.content as Prisma.InputJsonValue | undefined,
       });
       if (!comment) return reply.status(404).send({ error: "Not found" });
+
+      // `before` present means "notify the ADDED ids only".
+      if (previous) {
+        await notifyCommentMentions(prisma, req, {
+          kind: "projectComment",
+          commentId: comment.id,
+          before: previous.content,
+          after: parsed.data.content,
+        });
+      }
       return reply.send(comment);
     },
   );

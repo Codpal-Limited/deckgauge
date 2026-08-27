@@ -30,9 +30,9 @@ import {
 } from '../actions/connections';
 import { listRetiredProjects } from '../actions/retired-projects';
 import { getBootstrapState } from '../actions/organization';
-import { isOrganizationAdmin } from '../lib/org-role';
+import { isOrganizationAdmin, canManageOwnConnections } from '../lib/org-role';
 import {
-  ORG_ADMIN_REQUIRED,
+  VIEWER_CANNOT_ADD_CONNECTIONS,
   MEMBERSHIP_SUSPENDED_MESSAGE,
   NO_ORGANIZATION_MESSAGE,
 } from '../lib/connection-permission';
@@ -97,6 +97,9 @@ export default async function SourcesPage() {
   }
 
   const canManageConnections = isOrganizationAdmin(state);
+  // Member-level now: only a VIEWER is refused. See canManageOwnConnections for
+  // why this cannot read `state.membership`.
+  const canAddConnections = canManageOwnConnections(state);
 
   const [jiraSyncs, githubSyncs, adoSyncs, gitlabSyncs, retiredProjects] = await Promise.all([
     listJiraProjectSyncs().catch(() => []),
@@ -106,19 +109,18 @@ export default async function SourcesPage() {
     listRetiredProjects().catch(() => []),
   ]);
 
-  // The instance catalog feeds nothing but the admin-only InstancesPanels, so a
-  // member never issues these four requests. They would not 403 today (the list
-  // reads stayed on orgRole(MEMBER)) but fetching a catalog to render nothing is
-  // four round-trips of waste, and if the reads ever tighten this is already
-  // right.
-  const [jiraInstances, githubInstances, adoInstances, gitlabInstances] = canManageConnections
-    ? await Promise.all([
-        listJiraInstances().catch(() => []),
-        listGitHubInstances().catch(() => []),
-        listAdoInstances().catch(() => []),
-        listGitLabInstances().catch(() => []),
-      ])
-    : [[], [], [], []];
+  // Fetched for every member, not just administrators. The InstancesPanels are no
+  // longer admin-only: a member manages their own connections and the
+  // organization-wide ones, so an empty catalog would hide connections they are
+  // entitled to see and manage. The API filters the list — organization-wide plus
+  // the caller's own, everything for an admin — so this page does not decide who
+  // sees what, which is the only place that decision belongs.
+  const [jiraInstances, githubInstances, adoInstances, gitlabInstances] = await Promise.all([
+    listJiraInstances().catch(() => []),
+    listGitHubInstances().catch(() => []),
+    listAdoInstances().catch(() => []),
+    listGitLabInstances().catch(() => []),
+  ]);
 
   const knownProjectKeys = Array.from(
     new Set(jiraSyncs.map((s) => s.jiraProjectKey.toUpperCase())),
@@ -136,7 +138,13 @@ export default async function SourcesPage() {
         <IntelligenceSyncTrigger />
       </section>
 
-      {canManageConnections ? (
+      {/* No longer admin-gated. Every member may add a connection and manage the
+          ones they may use, which is the whole point of this phase — an
+          administrator was the bottleneck for anyone wanting to pull their own
+          project onto a board. What a member sees is decided by the API's
+          filtering, not here. A VIEWER is still refused, by orgRole('MEMBER') on
+          the routes, and sees the notice below. */}
+      {canAddConnections ? (
         <>
           <AddConnectionPanel />
 
@@ -179,7 +187,7 @@ export default async function SourcesPage() {
         </>
       ) : (
         <p className="rounded-lg border border-slate-200 bg-white px-6 py-4 text-sm text-slate-600">
-          {ORG_ADMIN_REQUIRED} You can still manage the project syncs below.
+          {VIEWER_CANNOT_ADD_CONNECTIONS} You can still manage the project syncs below.
         </p>
       )}
 

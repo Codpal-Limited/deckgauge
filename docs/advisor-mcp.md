@@ -51,10 +51,18 @@ never mint one by hand.
 Every tool call is scoped to exactly one board and takes a required `boardId`
 argument. On each call the server:
 
-1. Confirms the authenticated user has at least `VIEWER` access to that board
-   (`hasBoardAccess`, checked fresh per call — not cached, not assumed from a prior
-   call in the same session). A user without access gets a tool error
-   (`forbidden: no access to board`), not board data.
+1. Confirms the authenticated user meets the tool's minimum board role via
+   `AccessService.getEffectiveRole('board', boardId, userId, membership)` and
+   `meetsBoardRole` — resolved fresh per call from the database, never cached and
+   never assumed from a prior call in the same session. Each tool declares its own
+   minimum role on its spec; all seven tools available today sit at `VIEWER`.
+   `getEffectiveRole` honours the same implicit-ownership rule every other board
+   route does — an organization ADMIN is an implicit OWNER of every board in
+   their organization and holds no grant row for it — but resolves the board
+   through the caller's own organization, so a board belonging to another
+   tenant answers "no role" rather than inheriting that implicit-owner rule. A
+   user who doesn't meet the minimum gets a tool error (`forbidden: no access
+   to board`), not board data.
 2. Builds the board's data scope itself server-side (`getBoardScope`) from the
    board's connected Jira/GitHub/ADO/GitLab sources. The scope is never a tool
    input — a client cannot ask the tool to look outside the board it was granted
@@ -64,7 +72,7 @@ argument. On each call the server:
 
 ## Available tools
 
-All four tools come from the same provider-neutral catalog (`ADVISOR_TOOL_SPECS`)
+All seven tools come from the same provider-neutral catalog (`ADVISOR_TOOL_SPECS`)
 used by the in-app Advisor chat loop, so behavior is identical between the two
 surfaces. Every tool takes `boardId` plus the arguments below.
 
@@ -74,6 +82,9 @@ surfaces. Every tool takes `boardId` plus the arguments below.
 | `find_slowdowns` | `boardId` (string), `thresholdPct` (number ≤ 0, default -0.4) | Developers whose merge throughput dropped sharply vs. their own baseline |
 | `get_ai_breakdown` | `boardId` (string), `fromDays` (int, 1-365, default 90) | AI-assisted PR share per developer over the last N days |
 | `get_ticket_timeline` | `boardId` (string), `ticketKey` (string) | Unified activity timeline (Jira/GitHub/GitLab/ADO) for one ticket key |
+| `list_board_rows` | `boardId` (string), `groupId` (string, optional), `statusId` (string, optional), `hasDescription` (boolean, optional), `search` (string, optional), `limit` (int, 1-200, default 50), `cursor` (string, optional) | A page of board rows — name, group, status, owner, assignee, description, Jira key, custom column values — plus `nextCursor` and `totalMatching` |
+| `get_board_structure` | `boardId` (string) | The board's groups, statuses and custom columns (with their ids), plus `syncOwnedFields` per connected source |
+| `list_excluded_rows` | `boardId` (string) | The board's sync blacklist — rows excluded from re-sync, with source, external id, and who excluded them |
 
 Each tool returns a single text content block containing a JSON payload (or a JSON
 error payload with `isError: true` on unauthorized/forbidden access).

@@ -16,11 +16,21 @@ import {
   type OctokitLike,
   type RunIntelligenceSyncDeps,
 } from './github-intelligence-sync.handler.js';
+import { resolveSyncJobScope } from './sync-job-scope.js';
 
 export interface GithubIntelligenceJobData {
   trigger: 'manual' | 'scheduled' | 'startup';
   instanceId?: string;
   repos?: string[];
+  /**
+   * The organization whose admin asked for this fan-out — REQUIRED for a `manual` job.
+   *
+   * This handler's own comment used to admit "the unscoped POST /intelligence/sync
+   * path fans out over every active repo", which is what that was: every tenant's.
+   * Applied through the parent, since `GitHubRepoSync` inherits its tenant. Built by
+   * `manualSyncJobPayload` in @deckgauge/shared.
+   */
+  organizationId?: string;
 }
 
 export interface GithubIntelligenceResult {
@@ -59,9 +69,19 @@ export async function handleGithubIntelligenceSync(
 ): Promise<GithubIntelligenceResult> {
   const result: GithubIntelligenceResult = { reposProcessed: 0, errors: [] };
 
+  // The tenant boundary. Fail-closed — see sync-trigger-tenancy.test.ts.
+  const scope = resolveSyncJobScope(job);
+  if (!scope.allowed) {
+    console.error(`[GitHub intel fan-out] ${scope.reason}`);
+    result.errors.push({ repoFullName: 'none', message: scope.reason });
+    return result;
+  }
+
   const where: Record<string, unknown> = { disabledAt: null };
   if (job.instanceId) where.githubInstanceId = job.instanceId;
   if (job.repos && job.repos.length > 0) where.repoFullName = { in: job.repos };
+  // Through the parent: `GitHubRepoSync` carries no `organizationId` of its own.
+  if (scope.organizationId) where.githubInstance = { organizationId: scope.organizationId };
 
   const syncs = await db.gitHubRepoSync.findMany({ where, include: { githubInstance: true } });
 

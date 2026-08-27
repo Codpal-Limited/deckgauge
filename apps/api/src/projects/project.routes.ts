@@ -6,6 +6,7 @@ import {
   ReorderInputSchema,
 } from "./project.service.js";
 import { AutomationService } from "../automations/automation.service.js";
+import { notifyItemChanged } from '../notifications/triggers/item-changed.js';
 import type { PrismaClient } from "@deckgauge/db";
 import { z } from "zod";
 import {
@@ -120,6 +121,26 @@ export async function projectRoutes(
         return reply.status(400).send({ error: parsed.error.flatten() });
       }
       const project = await service.create(parsed.data);
+
+      // `item_created` fires here and nowhere else on the hand-edit path. The
+      // sync fires the same trigger for the rows it creates, because a synced row
+      // is a new row on the board like any other — see sync-automations.ts.
+      if (project.boardId) {
+        try {
+          await automationService.evaluateTriggers(
+            project.boardId,
+            project.id,
+            { status: project.status, statusId: project.statusId },
+            {
+              actorId: req.user?.id ?? null,
+              organizationId: req.membership?.organizationId ?? null,
+            },
+          );
+        } catch (err) {
+          app.log.error(err, 'Automation trigger evaluation failed');
+        }
+      }
+
       return reply.status(201).send(project);
     },
   );
@@ -145,15 +166,47 @@ export async function projectRoutes(
       // Pass both enum status and statusId so custom board-status changes also fire.
       if (project.boardId) {
         try {
-          await automationService.evaluateTriggers(project.boardId, project.id, {
-            status: project.status,
-            previousStatus: before.status,
-            statusId: project.statusId,
-            previousStatusId: before.statusId,
-          });
+          await automationService.evaluateTriggers(
+            project.boardId,
+            project.id,
+            {
+              status: project.status,
+              previousStatus: before.status,
+              statusId: project.statusId,
+              previousStatusId: before.statusId,
+            },
+            // A `notify` action needs to know who to credit and which tenant to
+            // file under. Absent on the sync paths, which is what keeps a bulk
+            // import from firing every rule at everybody.
+            {
+              actorId: req.user?.id ?? null,
+              organizationId: req.membership?.organizationId ?? null,
+            },
+          );
         } catch (err) {
           app.log.error(err, 'Automation trigger evaluation failed');
         }
+      }
+
+      // Notifications last: the update is already committed, the automation may
+      // have changed the row again, and neither must be blocked by a bell.
+      if (project.boardId) {
+        await notifyItemChanged(prisma, req, {
+          projectId: project.id,
+          boardId: project.boardId,
+          before: {
+            owner: before.owner,
+            ownerId: before.ownerId,
+            status: before.status,
+            dueDate: before.dueDate,
+          },
+          after: {
+            owner: project.owner,
+            ownerId: project.ownerId,
+            status: project.status,
+            dueDate: project.dueDate,
+          },
+        });
       }
 
       return reply.send(project);

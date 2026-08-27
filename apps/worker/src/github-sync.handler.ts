@@ -3,6 +3,7 @@ import type { GitHubPort, GitHubProjectsPort } from '@deckgauge/shared';
 import { normalizeRepoFullName } from '@deckgauge/shared';
 import type { ChClientFactory } from './jira-dual-writer.js';
 import { githubSyncProcessor } from './github-sync.processor.js';
+import { resolveSyncJobScope } from './sync-job-scope.js';
 
 export interface GitHubSyncJobData {
   trigger?: string;
@@ -10,6 +11,15 @@ export interface GitHubSyncJobData {
   instanceId?: string;
   /** When set, sync only these repos instead of all repos on the instance. */
   repos?: string[];
+  /**
+   * The organization whose member asked for this sync.
+   *
+   * Set by the manual trigger routes from the caller's membership. Absence NEVER
+   * means "every tenant" for a manual job — see `resolveSyncJobScope`, which refuses
+   * a manual job naming no scope rather than sweeping. Scheduled and startup sweeps
+   * legitimately omit it.
+   */
+  organizationId?: string;
 }
 
 export interface GitHubSyncJobResult {
@@ -50,7 +60,30 @@ export async function handleGitHubSyncJob(
   const scopedInstanceId = jobData.instanceId;
   const scopedRepos = jobData.repos;
 
-  const instances = await db.gitHubInstance.findMany();
+  // The tenant boundary of this handler. `resolveSyncJobScope` is fail-closed: a
+  // manual job that names no scope is refused here rather than sweeping every
+  // organization's connections. See sync-trigger-tenancy.test.ts.
+  const scope = resolveSyncJobScope(jobData);
+  if (!scope.allowed) {
+    console.error(`[GitHub sync] ${scope.reason}`);
+    return [{ instance: 'none', skipped: true, error: scope.reason }];
+  }
+
+  // BOTH predicates, on the query. The instance narrowing used to happen only in the
+  // loop below (`continue`), which meant an instance-scoped job still SELECTed every
+  // tenant's row — and these rows carry the plaintext access token. Discarding a
+  // credential after reading it is not scoping it.
+  //
+  // `undefined`, not `{}`, for the no-filter case: Prisma's generated overload for
+  // this model accepts `{ where } | undefined`, and `{}` widens the union past it
+  // (TS2345).
+  const instanceWhere = {
+    ...(scope.organizationId ? { organizationId: scope.organizationId } : {}),
+    ...(scopedInstanceId ? { id: scopedInstanceId } : {}),
+  };
+  const instances = await db.gitHubInstance.findMany(
+    Object.keys(instanceWhere).length > 0 ? { where: instanceWhere } : undefined,
+  );
   if (instances.length === 0) {
     console.log('No GitHub instances configured — skipping sync');
     return [{ instance: 'none', skipped: true }];
@@ -96,7 +129,19 @@ export async function handleGitHubSyncJob(
         accessToken: instance.accessToken,
       });
 
-      const result = await githubSyncProcessor({ adapter, projectsAdapter, repos, trigger, db, ch });
+      // `organizationId` is the tenant of THIS connection, read inside the loop
+      // for the same reason `ch` is — the instances iterated here can belong to
+      // different organizations. It is stamped on the SyncRun the processor writes.
+      const result = await githubSyncProcessor({
+        adapter,
+        projectsAdapter,
+        repos,
+        trigger,
+        db,
+        ch,
+        instanceId: instance.id,
+        organizationId: instance.organizationId,
+      });
       results.push({
         instance: instance.id,
         status: result.status,

@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import type { FastifyInstance, FastifyPluginAsync, FastifyRequest } from 'fastify';
 import type { PrismaClient, ClickHouseClient } from '@deckgauge/db';
 import { z } from 'zod';
 import { PutOrgTreeTimesheetConfigSchema } from '@deckgauge/shared';
@@ -15,7 +15,18 @@ const uuid = z.string().uuid();
 
 export function orgTreeTimesheetRoutes(deps: OrgTreeTimesheetRoutesDeps): FastifyPluginAsync {
   const config = new OrgTreeTimesheetConfigService(deps.prisma);
-  const pool = new OrgTreeStatusPoolService({ prisma: deps.prisma, clickhouse: deps.clickhouse });
+  /**
+   * Built per request from the scoped reader (tenancy §11 precondition 8). This
+   * service has no cache of its own, so unlike TimesheetService it can simply be
+   * constructed per request rather than needing a reader factory.
+   * `deps.clickhouse` remains the fallback for callers that construct this plugin
+   * without the chRead plugin registered, i.e. the unit tests.
+   */
+  const poolFor = (req: FastifyRequest) =>
+    new OrgTreeStatusPoolService({
+      prisma: deps.prisma,
+      clickhouse: req.chRead ?? deps.clickhouse,
+    });
 
   async function treeExists(id: string): Promise<boolean> {
     return (await deps.prisma.orgTree.findUnique({ where: { id }, select: { id: true } })) !== null;
@@ -44,7 +55,7 @@ export function orgTreeTimesheetRoutes(deps: OrgTreeTimesheetRoutesDeps): Fastif
     app.get<{ Params: { id: string } }>('/org-trees/:id/timesheet-status-pool', { config: { policy: orgTree('VIEWER') } }, async (req, reply) => {
       if (!uuid.safeParse(req.params.id).success) return reply.code(400).send({ error: 'bad id' });
       if (!(await treeExists(req.params.id))) return reply.code(404).send({ error: 'not found' });
-      return reply.send(await pool.listForTree(req.params.id));
+      return reply.send(await poolFor(req).listForTree(req.params.id));
     });
   };
 }

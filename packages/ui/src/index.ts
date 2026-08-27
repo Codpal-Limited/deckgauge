@@ -36,3 +36,4 @@ export { ShortcutHelpPanel } from "./ShortcutHelpPanel";
 export { colorForValue, PILL_PALETTE, EMPTY_PILL_COLOR } from './colorForValue';
 export { ColoredSelect } from './ColoredSelect';
 export { OwnerSelect } from './OwnerSelect';
+export { OverrideBadge } from './OverrideBadge';

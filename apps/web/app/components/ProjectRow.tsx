@@ -20,8 +20,12 @@ export interface ProjectRowProps {
   onFieldChange?: (columnId: string, value: string) => void;
   onNameChange?: (name: string) => void;
   onOwnerChange?: (owner: string) => void;
-  onResetOwnerToAssignee?: () => void;
   ownerOptions?: string[];
+  /** Field keys whose value a manual edit has taken over from sync. */
+  overriddenFields?: string[];
+  /** What each overridden field held before its first manual edit. */
+  preOverrideValues?: Record<string, unknown> | null;
+  onRevertField?: (fieldKey: string) => void;
   onStatusChange?: (status: ProjectStatus) => void;
   onStatusIdChange?: (statusId: string) => void;
   onOwnerIdChange?: (ownerId: string | null) => void;
@@ -75,8 +79,10 @@ export function ProjectRow({
   onFieldChange,
   onNameChange,
   onOwnerChange,
-  onResetOwnerToAssignee,
   ownerOptions,
+  overriddenFields,
+  preOverrideValues,
+  onRevertField,
   onStatusChange,
   onStatusIdChange,
   onOwnerIdChange,
@@ -114,9 +120,10 @@ export function ProjectRow({
       owner={project.owner}
       ownerId={project.ownerId}
       assignee={project.assignee}
-      ownerOverridden={project.ownerOverridden}
       ownerOptions={ownerOptions}
-      onResetOwnerToAssignee={onResetOwnerToAssignee}
+      overriddenFields={overriddenFields}
+      preOverrideValues={preOverrideValues}
+      onRevertField={onRevertField}
       status={project.status}
       statusId={project.statusId}
       description={project.description ?? undefined}

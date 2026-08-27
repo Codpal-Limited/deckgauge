@@ -3,12 +3,28 @@
 // the route looks up the board, resolves its BoardScope, and forwards the scope
 // to the service. When the board doesn't exist we return 404. When omitted, the
 // route behaves exactly as before (global all-boards aggregate).
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
 import { z } from 'zod';
 import { ClickhouseIntelligenceService } from './clickhouse-intelligence.service.js';
 import { getBoardScope, type BoardScope } from './board-scope.js';
-import { ANALYTICS, ADMIN } from '../auth/policy.js';
+import { ANALYTICS, ADMIN, all, orgRole } from '../auth/policy.js';
+import { requireOrganizationId } from '../organizations/request-organization.js';
+
+/**
+ * The six routes that accept a caller-supplied `?boardId=`.
+ *
+ * `ANALYTICS` alone resolves no membership, and `resolveScope` below needs one
+ * to scope the board read by — `requireOrganizationId` THROWS rather than
+ * denying when a route reaches it without a membership, deliberately, so that a
+ * missing floor surfaces as a 500 to fix rather than a plausible-looking 403.
+ *
+ * Not a behaviour regression: these handlers already refused a membership-less
+ * caller at `readerFor`, which answers 403 NO_ORGANIZATION when `request.chRead`
+ * is null. This moves that refusal from the handler to the policy layer, where
+ * the route inventory can see it.
+ */
+const SCOPED_ANALYTICS = all(ANALYTICS, orgRole('VIEWER'));
 
 const DateRangeQuery = z.object({
   from: z.string().datetime().optional(),
@@ -34,12 +50,45 @@ export interface IntelligenceRoutesDeps {
   prisma?: PrismaClient;
   // EI-022 — optional callback the API can use to enqueue a manual sync.
   // Wired in server.ts when the API process has access to the BullMQ queues.
-  enqueueSync?: (source: 'jira' | 'github' | 'ado' | 'gitlab' | 'all') => Promise<void>;
+  /**
+   * `organizationId` is REQUIRED, and is the tenant boundary of the manual sync.
+   *
+   * Before 2026-08-27 this took only `source` and enqueued `{ trigger: 'manual' }` to
+   * every queue with no scope, so the worker swept EVERY tenant's connections —
+   * spending their Atlassian/GitHub/ADO/GitLab credentials. Required rather than
+   * optional so a future caller cannot silently restore that.
+   */
+  enqueueSync?: (
+    source: 'jira' | 'github' | 'ado' | 'gitlab' | 'all',
+    organizationId: string,
+  ) => Promise<void>;
 }
 
 export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
   return async function plugin(app: FastifyInstance) {
-    const { service, prisma } = deps;
+    const { service: fallbackService, prisma } = deps;
+
+    /**
+     * The intelligence service for THIS request, reading through a ClickHouse
+     * reader scoped to the caller's organization (tenancy §11 precondition 8).
+     *
+     * `ChScopedReader` satisfies the same narrow `query()` shape the service
+     * already accepts, so nothing inside the service changes — only which
+     * identity answers, and with which organization's role activated.
+     *
+     * `null` when the request has no membership. These routes are gated on
+     * `ANALYTICS`, a Keycloak realm role that does not imply one, so that state
+     * is reachable — and it is refused rather than served from the boot-time
+     * ingest client, which would read every tenant. `deps.service` remains the
+     * fallback ONLY for callers that construct this plugin without the chRead
+     * plugin registered, i.e. the unit tests.
+     */
+    const readerFor = (req: FastifyRequest): ClickhouseIntelligenceService | null => {
+      if (req.chRead) return new ClickhouseIntelligenceService({ client: req.chRead });
+      // No decorator at all: the plugin was registered standalone (unit tests).
+      // A decorated-but-null chRead means a real request with no organization.
+      return 'chRead' in req ? null : fallbackService;
+    };
 
     /**
      * Resolves an optional `?boardId=` query param to a BoardScope.
@@ -50,31 +99,59 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
      */
     async function resolveScope(
       boardId: string | undefined,
+      req: FastifyRequest,
     ): Promise<{ scope: BoardScope } | { notFound: true } | null> {
       if (!boardId) return null;
       if (!prisma) return null;
-      const board = await prisma.board.findUnique({ where: { id: boardId } });
+      /**
+       * Resolved HERE, after the early returns, and not passed in as an
+       * argument. `requireOrganizationId` throws, so evaluating it at the call
+       * site made a membership-less caller who supplied NO `boardId` a 500 —
+       * where the correct answer is the handler's own 403 NO_ORGANIZATION from
+       * `readerFor` below. Nothing is weakened: reaching this line means a
+       * `boardId` WAS supplied, and `SCOPED_ANALYTICS` guarantees the membership,
+       * so a throw here still means the route table is wrong.
+       */
+      const organizationId = requireOrganizationId(req);
+      /**
+       * Scoped, so a board in another organization is indistinguishable from one
+       * that does not exist.
+       *
+       * This read is the ONLY tenant boundary on `?boardId=`. `ANALYTICS` gates a
+       * Keycloak realm role and inspects no entity — by design, since the routes
+       * it was written for carry no id — so nothing upstream has checked that
+       * this board belongs to the caller. Previously it was `findUnique` by id,
+       * which made the 404-vs-200 answer an existence oracle for every board in
+       * the deployment, and handed a foreign board's Jira keys and repo names to
+       * `getBoardScope` as ClickHouse filters.
+       */
+      const board = await prisma.board.findFirst({
+        where: { id: boardId, organizationId },
+        select: { id: true },
+      });
       if (!board) return { notFound: true };
-      const scope = await getBoardScope(prisma, boardId);
+      const scope = await getBoardScope(prisma, boardId, organizationId);
       return { scope };
     }
 
-    app.get('/intelligence/overview', { config: { policy: ANALYTICS } }, async (req, reply) => {
+    app.get('/intelligence/overview', { config: { policy: SCOPED_ANALYTICS } }, async (req, reply) => {
       const parsed = DateRangeQuery.safeParse(req.query);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
       const from = parsed.data.from ? new Date(parsed.data.from) : defaultFrom();
       const to = parsed.data.to ? new Date(parsed.data.to) : new Date();
 
-      const resolved = await resolveScope(parsed.data.boardId);
+      const resolved = await resolveScope(parsed.data.boardId, req);
       if (resolved && 'notFound' in resolved) {
         return reply.code(404).send({ error: 'board not found' });
       }
       const scope = resolved && 'scope' in resolved ? resolved.scope : undefined;
+      const service = readerFor(req);
+      if (!service) return reply.status(403).send({ error: 'NO_ORGANIZATION' });
       const data = await service.getTeamOverview(from, to, scope);
       return reply.send(data);
     });
 
-    app.get('/intelligence/developers/:login/weekly', { config: { policy: ANALYTICS } }, async (req, reply) => {
+    app.get('/intelligence/developers/:login/weekly', { config: { policy: SCOPED_ANALYTICS } }, async (req, reply) => {
       const params = z.object({ login: z.string().min(1) }).safeParse(req.params);
       if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
       const parsed = DateRangeQuery.safeParse(req.query);
@@ -82,11 +159,13 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
       const from = parsed.data.from ? new Date(parsed.data.from) : defaultFrom();
       const to = parsed.data.to ? new Date(parsed.data.to) : new Date();
 
-      const resolved = await resolveScope(parsed.data.boardId);
+      const resolved = await resolveScope(parsed.data.boardId, req);
       if (resolved && 'notFound' in resolved) {
         return reply.code(404).send({ error: 'board not found' });
       }
       const scope = resolved && 'scope' in resolved ? resolved.scope : undefined;
+      const service = readerFor(req);
+      if (!service) return reply.status(403).send({ error: 'NO_ORGANIZATION' });
       const data = await service.getDeveloperWeeklyTimeSeries(
         params.data.login,
         from,
@@ -96,7 +175,7 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
       return reply.send(data);
     });
 
-    app.get('/intelligence/anomalies', { config: { policy: ANALYTICS } }, async (req, reply) => {
+    app.get('/intelligence/anomalies', { config: { policy: SCOPED_ANALYTICS } }, async (req, reply) => {
       const parsed = z
         .object({
           threshold: z.coerce.number().lt(0).gt(-1).optional(),
@@ -105,55 +184,63 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
         .safeParse(req.query);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
-      const resolved = await resolveScope(parsed.data.boardId);
+      const resolved = await resolveScope(parsed.data.boardId, req);
       if (resolved && 'notFound' in resolved) {
         return reply.code(404).send({ error: 'board not found' });
       }
       const scope = resolved && 'scope' in resolved ? resolved.scope : undefined;
+      const service = readerFor(req);
+      if (!service) return reply.status(403).send({ error: 'NO_ORGANIZATION' });
       const data = await service.detectSlowdownAnomalies(parsed.data.threshold ?? -0.4, scope);
       return reply.send(data);
     });
 
-    app.get('/intelligence/ai-breakdown', { config: { policy: ANALYTICS } }, async (req, reply) => {
+    app.get('/intelligence/ai-breakdown', { config: { policy: SCOPED_ANALYTICS } }, async (req, reply) => {
       const parsed = DateRangeQuery.safeParse(req.query);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
       const from = parsed.data.from ? new Date(parsed.data.from) : defaultFrom();
 
-      const resolved = await resolveScope(parsed.data.boardId);
+      const resolved = await resolveScope(parsed.data.boardId, req);
       if (resolved && 'notFound' in resolved) {
         return reply.code(404).send({ error: 'board not found' });
       }
       const scope = resolved && 'scope' in resolved ? resolved.scope : undefined;
+      const service = readerFor(req);
+      if (!service) return reply.status(403).send({ error: 'NO_ORGANIZATION' });
       const data = await service.getAiBreakdownByDeveloper(from, scope);
       return reply.send(data);
     });
 
-    app.get('/intelligence/coverage', { config: { policy: ANALYTICS } }, async (req, reply) => {
+    app.get('/intelligence/coverage', { config: { policy: SCOPED_ANALYTICS } }, async (req, reply) => {
       const parsed = DateRangeQuery.safeParse(req.query);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
       const from = parsed.data.from ? new Date(parsed.data.from) : defaultFrom();
 
-      const resolved = await resolveScope(parsed.data.boardId);
+      const resolved = await resolveScope(parsed.data.boardId, req);
       if (resolved && 'notFound' in resolved) {
         return reply.code(404).send({ error: 'board not found' });
       }
       const scope = resolved && 'scope' in resolved ? resolved.scope : undefined;
+      const service = readerFor(req);
+      if (!service) return reply.status(403).send({ error: 'NO_ORGANIZATION' });
       const data = await service.getTicketCoverage(from, scope);
       return reply.send(data);
     });
 
     // EI-021 — unified ticket timeline.
-    app.get('/intelligence/tickets/:key', { config: { policy: ANALYTICS } }, async (req, reply) => {
+    app.get('/intelligence/tickets/:key', { config: { policy: SCOPED_ANALYTICS } }, async (req, reply) => {
       const params = z.object({ key: z.string().min(1) }).safeParse(req.params);
       if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
       const parsed = BoardIdQuery.safeParse(req.query);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
-      const resolved = await resolveScope(parsed.data.boardId);
+      const resolved = await resolveScope(parsed.data.boardId, req);
       if (resolved && 'notFound' in resolved) {
         return reply.code(404).send({ error: 'board not found' });
       }
       const scope = resolved && 'scope' in resolved ? resolved.scope : undefined;
+      const service = readerFor(req);
+      if (!service) return reply.status(403).send({ error: 'NO_ORGANIZATION' });
       const data = await service.getTicketTimeline(params.data.key, scope);
       return reply.send(data);
     });
@@ -166,6 +253,8 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
       const from = parsed.data.from
         ? new Date(parsed.data.from)
         : new Date(to.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+      const service = readerFor(req);
+      if (!service) return reply.status(403).send({ error: 'NO_ORGANIZATION' });
       const data = await service.getDeveloperTable(from, to);
       return reply.send(data);
     });
@@ -178,6 +267,8 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
         req.query,
       );
       if (!q.success) return reply.code(400).send({ error: q.error.flatten() });
+      const service = readerFor(req);
+      if (!service) return reply.status(403).send({ error: 'NO_ORGANIZATION' });
       const data = await service.getDeveloperDetail(params.data.login, q.data.days ?? 90);
       return reply.send(data);
     });
@@ -191,6 +282,8 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
       const to = parsed.data.to ? new Date(parsed.data.to) : new Date();
       const from = parsed.data.from ? new Date(parsed.data.from) : defaultFrom();
+      const service = readerFor(req);
+      if (!service) return reply.status(403).send({ error: 'NO_ORGANIZATION' });
       const data = await service.getPullRequestList({
         from,
         to,
@@ -208,6 +301,8 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
       const from = parsed.data.from
         ? new Date(parsed.data.from)
         : new Date(to.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+      const service = readerFor(req);
+      if (!service) return reply.status(403).send({ error: 'NO_ORGANIZATION' });
       const data = await service.getAiWeeklyTrend(from, to);
       return reply.send(data);
     });
@@ -226,7 +321,17 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
           .code(503)
           .send({ error: 'manual sync enqueue not configured on this server' });
       }
-      await deps.enqueueSync(body.data.source);
+      // The tenant this sync is for. `ADMIN` does NOT guarantee a membership — it is
+      // satisfied by `ctx.isAdmin`, which the auth plugin also sets from the
+      // instance-level break-glass signals (`users.is_admin`, a Keycloak realm role)
+      // for a caller who holds no membership at all. So this cannot use
+      // `requireOrganizationId`, which would answer 500 for that caller. 403
+      // `NO_ORGANIZATION` is what every other read in this file answers in the same
+      // situation (see `readerFor`), and it is the honest answer: a caller with no
+      // organization has no connections to sync.
+      const organizationId = req.membership?.organizationId ?? null;
+      if (!organizationId) return reply.status(403).send({ error: 'NO_ORGANIZATION' });
+      await deps.enqueueSync(body.data.source, organizationId);
       return reply.code(202).send({ accepted: body.data.source });
     });
   };

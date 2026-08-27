@@ -4,8 +4,26 @@ import { buildFilteredKeyJql, stripJqlOrderBy, type JiraPort } from '@deckgauge/
 export interface JqlFilterDeps {
   db: PrismaClient;
   adapter: Pick<JiraPort, 'fetchIssueKeys'>;
-  /** Restricts the lookup to one Jira connection. Omitted only by callers that sync every instance at once. */
-  instanceId?: string;
+  /**
+   * The Jira connection this run belongs to. **Required.**
+   *
+   * A Jira project key is unique per HOST, not per deployment, so two connections
+   * syncing a project called `SOE` is ordinary. Without this clause the lookup
+   * below matches board sources on EVERY connection with that key — another
+   * tenant's rows — and then sends their `jqlFilter` text to this run's Jira host
+   * as a query.
+   *
+   * It was optional, documented as "omitted only by callers that sync every
+   * instance at once", and no such caller ever existed. **An optional tenant
+   * parameter fails open and silently**: the caller that forgets it gets a wider
+   * answer, no error, and a result indistinguishable from a correct one. Required
+   * makes forgetting a compile error, matching `ProcessorInput.instanceId` and
+   * `buildBoardReverseIndex`'s `organizationId`.
+   *
+   * The type is half the boundary; `undefined` and `''` both arrive past a cast or
+   * a `!`, so `resolveJqlAllowLists` also refuses them at runtime.
+   */
+  instanceId: string;
   projectKeys: string[];
 }
 
@@ -40,6 +58,25 @@ export interface JqlAllowLists {
 export async function resolveJqlAllowLists(deps: JqlFilterDeps): Promise<JqlAllowLists> {
   const { db, adapter, instanceId, projectKeys } = deps;
 
+  // The connection boundary, checked FIRST — ahead of the empty-`projectKeys`
+  // shortcut below, which would otherwise let a boundary-less caller succeed
+  // whenever its run happened to have no work. A boundary that only complains
+  // when there is work surfaces the caller's bug at random.
+  //
+  // Thrown, not degraded into an empty result: an empty `allowedKeysBySourceId`
+  // with an empty `skipSourceIds` reads as "no board source carries a filter",
+  // which promotes every issue in the project UNFILTERED — the exact failure this
+  // module exists to prevent, and the same reasoning that makes a Jira-rejected
+  // filter land in `skipSourceIds` instead of being dropped. `jiraSyncProcessor`
+  // records the run as FAILED, so a caller that lost the boundary is loud rather
+  // than quietly over-broad.
+  if (!instanceId) {
+    throw new Error(
+      'resolveJqlAllowLists: instanceId is required — refusing to resolve per-board JQL filters ' +
+        'across every Jira connection in the deployment (a project key is unique per host, not per deployment).',
+    );
+  }
+
   const allowedKeysBySourceId = new Map<string, Set<string>>();
   const skipSourceIds = new Set<string>();
   const errors: JqlFilterError[] = [];
@@ -51,8 +88,13 @@ export async function resolveJqlAllowLists(deps: JqlFilterDeps): Promise<JqlAllo
   const rows = await db.boardJiraSource.findMany({
     where: {
       jqlFilter: { not: null },
+      // Unconditional, not a spread of a conditional clause. A spread that
+      // evaluates to `{}` produces a query indistinguishable from a deliberate
+      // deployment-wide read, so the scoped and unscoped forms would differ only
+      // in the author's intent. The guard above is what makes the unconditional
+      // form safe.
       jiraProjectSync: {
-        ...(instanceId ? { jiraInstanceId: instanceId } : {}),
+        jiraInstanceId: instanceId,
         jiraProjectKey: { in: projectKeys },
       },
     },

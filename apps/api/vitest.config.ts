@@ -1,41 +1,36 @@
 import { defineConfig } from "vitest/config";
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolveCheckoutTestDatabase } from "../../packages/db/src/test-support/test-database";
 
-// Load .env.test if present (intentionally no dotenv dependency).
-// Skips blank lines and # comments. Unwraps matching single/double quotes.
-function loadTestEnv(): Record<string, string> {
-  const file = resolve(__dirname, ".env.test");
-  if (!existsSync(file)) return {};
-  const out: Record<string, string> = {};
-  for (const raw of readFileSync(file, "utf8").split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#")) continue;
-    const eq = line.indexOf("=");
-    if (eq < 1) continue;
-    const key = line.slice(0, eq).trim();
-    let value = line.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    out[key] = value;
-  }
-  return out;
-}
+/**
+ * DATABASE_URL is DERIVED here, not read from a file — see
+ * `packages/db/src/test-support/test-database.ts` for why, and
+ * `apps/api/.env.test` for how to override it.
+ *
+ * It has to happen in this file: `test.env` OVERRIDES the ambient environment, so
+ * exporting DATABASE_URL in a shell does nothing. That is the constraint that made
+ * the old scheme require editing a tracked file.
+ */
+const testDatabase = resolveCheckoutTestDatabase(__dirname);
 
 export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
-    // Every integration suite here shares one Postgres, and the one-org cap
-    // (OrganizationService.bootstrap does an unfiltered findFirst) can only be
-    // asserted when no other file is creating organizations concurrently.
-    // Prefix-scoped cleanup cannot substitute: the assertion is global by
-    // nature, not per-fixture.
+    // Every suite in this run shares one Postgres — this checkout's own, never
+    // another session's — and the one-org cap (OrganizationService.bootstrap does
+    // an unfiltered findFirst) can only be asserted when no other file is creating
+    // organizations concurrently. Prefix-scoped cleanup cannot substitute: the
+    // assertion is global by nature, not per-fixture.
     fileParallelism: false,
-    env: loadTestEnv(),
+    // Creates and migrates the derived database, or refuses to start with a named
+    // reason, and takes the exclusive-run lock so no second run can touch this
+    // database concurrently.
+    //
+    // It DOES have a teardown now — this comment said "deliberately has no teardown"
+    // and was made stale by the commit that added one. What that teardown does is
+    // release the lock and close its one connection; the property the old wording was
+    // protecting still holds exactly: nothing here ever drops a database.
+    globalSetup: ["./vitest.globalsetup.ts"],
+    env: testDatabase.env,
   },
 });

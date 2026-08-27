@@ -140,15 +140,57 @@ export class OrgTreeService {
   }
 
   /**
-   * List trees, optionally restricted to `orgTreeIds`. An empty array must
-   * yield an empty result, not every tree — `orgTreeIds === undefined` (not
-   * a falsy/length check) is what distinguishes "no filter" from "filter to
-   * nothing", since `{ id: { in: [] } }` and omitting the clause entirely
-   * are very different queries to Prisma.
+   * List trees, optionally restricted to `organizationId` and/or `orgTreeIds`.
+   *
+   * The two clauses are independent and AND together. `organizationId` is the
+   * TENANT boundary; `orgTreeIds` is the caller's reach INSIDE a tenant. Passing
+   * both is the normal case for a member, and passing the tenant alone is what an
+   * organization admin gets — "every tree" has always meant every tree in the
+   * caller's organization, and until `GET /org-trees` supplied this it meant
+   * every tree in the deployment.
+   *
+   * An empty `orgTreeIds` array must yield an empty result, not every tree —
+   * `=== undefined` (not a falsy/length check) is what distinguishes "no filter"
+   * from "filter to nothing", since `{ id: { in: [] } }` and omitting the clause
+   * entirely are very different queries to Prisma. The same test applies to
+   * `organizationId`, and composing the two must not let either resurrect the
+   * other's omission into "no filter at all" — hence one predicate assembled from
+   * two independent decisions rather than a nested ternary.
+   *
+   * ### `organizationId` is optional and therefore FAILS OPEN — know this
+   *
+   * Omitting it returns every organization's trees, silently. That is not a
+   * latent bug, it is the contract two callers need: single-user mode and the
+   * membership-less break-glass path both reach `GET /org-trees` with no tenant
+   * to scope to, so the parameter cannot simply be made required. But it means
+   * `list({ organizationId: undefined, orgTreeIds })` — a caller who meant to
+   * scope and passed a value that was `undefined` at runtime — is an
+   * unrepresentable-in-review, cross-tenant read that type-checks. It is the same
+   * shape this class of defect keeps returning in, and the reason the three
+   * promote services' `instanceId` and `PageStateDeps.organizationId` were all
+   * made REQUIRED.
+   *
+   * The durable fix is a discriminated option — `{ unscoped: true } | { organizationId: string }`
+   * — which keeps both callers expressible while making the unsafe call impossible
+   * to write by omission. Deliberately not done in the change that added this
+   * parameter: it would have widened a security fix into a signature refactor.
+   * Until then, EVERY new caller must be read as "does this path have a tenant,
+   * and does it pass it?", because the compiler will not ask.
    */
-  async list(opts: { orgTreeIds?: string[] } = {}): Promise<OrgTreeSummary[]> {
+  async list(
+    opts: { organizationId?: string; orgTreeIds?: string[] } = {},
+  ): Promise<OrgTreeSummary[]> {
+    const where =
+      opts.organizationId === undefined && opts.orgTreeIds === undefined
+        ? undefined
+        : {
+            ...(opts.organizationId === undefined
+              ? {}
+              : { organizationId: opts.organizationId }),
+            ...(opts.orgTreeIds === undefined ? {} : { id: { in: opts.orgTreeIds } }),
+          };
     const rows = await this.prisma.orgTree.findMany({
-      where: opts.orgTreeIds === undefined ? undefined : { id: { in: opts.orgTreeIds } },
+      where,
       orderBy: { position: 'asc' },
     });
     return rows.map((r) => ({
