@@ -359,9 +359,11 @@ const TABLE_COLUMNS: Readonly<
 
 export async function buildSchemaPayload(
   prisma: PrismaClient,
-  boardId: string
+  boardId: string,
+  /** Caller's organization; `null` is the membership-less break-glass identity. */
+  organizationId: string | null
 ): Promise<IntelligenceSchema> {
-  const scope = await resolveScope(prisma, boardId);
+  const scope = await resolveScope(prisma, boardId, organizationId);
   const sourceTypes: SourceType[] = [];
   if (scope.github.length > 0) sourceTypes.push('github');
   if (scope.jira.length > 0) sourceTypes.push('jira');

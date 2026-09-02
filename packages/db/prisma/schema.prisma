@@ -196,6 +196,7 @@ model Board {
   notificationSettings  BoardNotificationSetting[]
   calendarSource        BoardCalendarSource?
   advisorSessions       AdvisorSession[]
+  advisorChangeSets     AdvisorChangeSet[]
   organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
@@ -712,6 +713,7 @@ model User {
   employeeBoardAccess EmployeeBoardAccess[]
   comparisonAccess    ComparisonAccess[]
   advisorSessions     AdvisorSession[]
+  advisorChangeSets   AdvisorChangeSet[]
   notificationPreferences  NotificationPreference[]
   boardNotificationSettings BoardNotificationSetting[]
 
@@ -1901,6 +1903,55 @@ model AdvisorMessage {
 
   @@index([sessionId, createdAt])
   @@map("advisor_messages")
+}
+
+enum AdvisorChangeSetStatus {
+  PENDING
+  APPLIED
+  DISCARDED
+  STALE
+  EXPIRED
+
+  @@map("advisor_change_set_status")
+}
+
+/// A batch of board edits the Advisor proposed and a human has not yet applied.
+///
+/// The model that proposes one cannot apply it: there is no apply tool on the
+/// MCP surface, and the apply endpoint authorizes the human's own JWT.
+model AdvisorChangeSet {
+  id              String                 @id @default(uuid())
+  boardId         String                 @map("board_id")
+  /// The tenant predicate, stored rather than derived: board id plus creator is
+  /// not a tenant check (TENANCY-PROGRAMME §5a).
+  organizationId  String                 @map("organization_id")
+  createdByUserId String                 @map("created_by_user_id")
+  status          AdvisorChangeSetStatus @default(PENDING)
+  /// One-line human summary, computed server-side at propose time.
+  summary         String
+  /// The validated op list, in order. Read as a whole; never queried per-op.
+  ops             Json
+  /// The row-level preview the human approves — this, verbatim, is what they
+  /// signed off on. Apply does NOT recompute and value-compare this preview
+  /// against the board: it re-validates that every id an op names (rows,
+  /// groups, statuses) still exists and still belongs to this board, which
+  /// catches the entities-vanished case (STALE) without freezing the feature
+  /// on a busy board where fields have merely changed value since propose.
+  /// Value-level drift detection is deferred to stage 3, where the UI can
+  /// re-render a fresh preview immediately before Apply.
+  preview         Json
+  expiresAt       DateTime               @map("expires_at")
+  appliedAt       DateTime?              @map("applied_at")
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  board     Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdBy User  @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([boardId, status])
+  @@index([createdByUserId, status])
+  @@index([organizationId])
+  @@map("advisor_change_sets")
 }
 
 /// In-app notification. IN-APP ONLY — email and push are out of scope

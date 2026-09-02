@@ -55,6 +55,7 @@ export type {
   AdvisorConfig,
   AdvisorSession,
   AdvisorMessage,
+  AdvisorChangeSet,
   Organization,
   OrgMembership,
   Notification,
@@ -67,6 +68,7 @@ export type {
   SyncSource,
   OrgRole,
   OrgMembershipStatus,
+  AdvisorChangeSetStatus,
 } from "@prisma/client";
 // A VALUE export, not type-only: the notification kinds are iterated at runtime
 // (the shared Zod enum is asserted against this list, so a migration that adds a

@@ -9,7 +9,7 @@ import {
   manualSyncJobPayload,
 } from '@deckgauge/shared';
 import { GitHubService } from './github.service.js';
-import { AUTHENTICATED, ORG_MEMBER } from '../auth/policy.js';
+import { ORG_MEMBER, ORG_VIEWER } from '../auth/policy.js';
 import { connectionCaller } from '../connections/connection-caller.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
 
@@ -198,23 +198,35 @@ export async function githubRoutes(
 
   // GET /github/sync/status
   //
-  // The POLICY is `AUTHENTICATED` and the tenant boundary is the `where` in the
-  // service, not the policy.
+  // ORG_VIEWER, and the tenant boundary is the `where` in the service. Both
+  // halves are load-bearing and neither replaces the other.
   //
-  // It is NOT true that `AUTHENTICATED` leaves the handler without a tenant.
-  // `request.membership` is resolved in keycloak-auth.plugin's `preHandler` for
-  // every caller who holds an ACTIVE membership, whatever policy the route
-  // declares — the `orgRole` policies GUARANTEE a membership, they do not produce
-  // one. So the leak was never caused by the policy: it was caused by the handler
-  // taking `_req` and the table having no tenant column. Raising the floor without
-  // adding the `where` would narrow WHO may call and leave WHAT they see untouched.
+  // The `where` is what stops the leak. This route returns a whole `SyncRun`
+  // row, `errorMessage` included, which is written verbatim from the provider
+  // failure and routinely names a repository, a host or a connection. Until
+  // `SyncRun` gained `organizationId` the read was `findFirst({ where: { source } })`
+  // — the DEPLOYMENT's newest run — and no policy floor could have narrowed it,
+  // because a floor narrows WHO may call, not WHAT they see.
   //
-  // `AUTHENTICATED` does mean a caller may legitimately have no membership at all
-  // (a first-run admin before bootstrap). That caller owns no sync runs, so NEVER
-  // is the true answer — and it is also the safe one. Answering it here rather than
-  // passing `null` down keeps `getLastSyncRun`'s tenant argument a required
-  // non-null string, so no future caller can reach the query without a tenant.
-  app.get('/github/sync/status', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
+  // The floor is the invariant this route is held to: a tenant-scoped read takes
+  // ORG_VIEWER. That is `policy.ts`'s stated rule for the shape, and it is what
+  // removes the caller this route was actually open to — a token holder with no
+  // membership at all, which `authenticated` admits by definition.
+  //
+  // VIEWER, not MEMBER, deliberately, and it is the ONLY route in either file that
+  // is not ORG_MEMBER — the other twenty either write, or read connection
+  // configuration (hosts, PATs' metadata, project and repo inventories). This one
+  // only reads, and what it reads is now confined to the caller's own tenant. VIEWER
+  // exists to be read-only, and the response is rendered on the board itself, by
+  // GitHubGroupSection via BoardView.tsx, which a VIEWER can see — gating it on
+  // MEMBER would blank that panel for the role whose whole purpose is reading.
+  //
+  // The no-membership arm below is therefore unreachable through the policy
+  // plugin and kept as belt-and-braces. It is not dead: the route-level tests
+  // register this plugin on a bare Fastify with no policy plugin, so they reach
+  // it, and it is what keeps `getLastSyncRun`'s tenant argument a required
+  // non-null string — a future caller cannot reach the query without a tenant.
+  app.get('/github/sync/status', { config: { policy: ORG_VIEWER } }, async (req, reply) => {
     const organizationId = req.membership?.organizationId ?? null;
     if (!organizationId) {
       return reply.send({ status: 'NEVER', finishedAt: null });

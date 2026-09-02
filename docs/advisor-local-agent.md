@@ -4,18 +4,23 @@ If you have [Claude Code](https://docs.claude.com/en/docs/claude-code) or
 [Codex](https://github.com/openai/codex) installed and signed in on your machine,
 Deckgauge's Advisor panel can drive that local agent to answer board questions
 directly — no API key, no model config, no separate LLM bill. The agent reaches
-board data through the same read-only, board-scoped [`/mcp` tools](./advisor-mcp.md)
-that any external MCP client would use; this bridge just wires your local agent
-up to them and gives the in-app panel a "Local agent" mode.
+board data through the same board-scoped [`/mcp` tools](./advisor-mcp.md) that
+any external MCP client would use; this bridge just wires your local agent up to
+them and gives the in-app panel a "Local agent" mode. Seven of those tools are
+reads; the eighth can propose a batch of board changes for the user to approve,
+but nothing reachable through `/mcp` — from this bridge or any other client —
+can apply one. See [Security model](#security-model) below for what that means
+for a local agent driven this way.
 
 It is the host-side companion to the server-side `/mcp` endpoint documented in
 [`advisor-mcp.md`](./advisor-mcp.md).
 Read that doc first if you want the details of the tools themselves — the
 engineering-intelligence reads (`get_team_overview`, `find_slowdowns`,
-`get_ai_breakdown`, `get_ticket_timeline`) and the board-content reads
-(`list_board_rows`, `get_board_structure`, `list_excluded_rows`) — and the
-board-access contract; this doc covers the bridge that lets your own local
-agent call them from inside the Advisor panel.
+`get_ai_breakdown`, `get_ticket_timeline`), the board-content reads
+(`list_board_rows`, `get_board_structure`, `list_excluded_rows`), and the one
+proposal tool (`propose_board_changes`) — and the board-access contract; this
+doc covers the bridge that lets your own local agent call them from inside the
+Advisor panel.
 
 ## What it is
 
@@ -238,23 +243,35 @@ user.
 This is the part worth reading closely if you're wondering what letting a
 local agent drive Deckgauge questions actually exposes:
 
-1. **Board data access is read-only and board-scoped, and the bridge adds no
-   new path to it.** The agent can only reach Deckgauge data through the
-   `/mcp` tools — the exact same server-side tools documented in
-   [`docs/advisor-mcp.md`](./advisor-mcp.md). Every call re-resolves the
-   calling token's effective role on the named board — `AccessService`
-   `.getEffectiveRole` gated by `meetsBoardRole`, fresh per call, never cached
-   and never inherited from an earlier call in the same session — and each tool
-   declares its own minimum role, which today is `VIEWER` for all of them.
-   Deliberately not a `BoardAccess` grant-row check: the resolver reads the
-   board *through* the caller's organization, so a board in another tenant
-   answers "no role" rather than inheriting any implicit ownership, while an
-   organization ADMIN — an implicit owner of every board in their own
-   organization, holding no grant row — is correctly admitted. The board's data
-   scope is then built server-side; it is never something the agent (or the
-   bridge) can supply as input. Nothing behind `/mcp` writes to Postgres, Jira,
-   GitHub, ADO, or GitLab. The bridge is a wire — it doesn't add a second,
-   looser data path alongside `/mcp`.
+1. **Board data access is board-scoped, and the bridge adds no new path to
+   it — including the one path that isn't a plain read.** The agent can only
+   reach Deckgauge data through the `/mcp` tools — the exact same server-side
+   tools documented in [`docs/advisor-mcp.md`](./advisor-mcp.md). Every call
+   re-resolves the calling token's effective role on the named board —
+   `AccessService.getEffectiveRole` gated by `meetsBoardRole`, fresh per call,
+   never cached and never inherited from an earlier call in the same session —
+   and each tool declares its own minimum role: seven sit at `VIEWER`, and
+   `propose_board_changes` sits at `EDITOR`. Deliberately not a `BoardAccess`
+   grant-row check: the resolver reads the board *through* the caller's
+   organization, so a board in another tenant answers "no role" rather than
+   inheriting any implicit ownership, while an organization ADMIN — an implicit
+   owner of every board in their own organization, holding no grant row — is
+   correctly admitted. The board's data scope is then built server-side; it is
+   never something the agent (or the bridge) can supply as input.
+
+   `propose_board_changes` is the one tool that writes anything, and what it
+   writes is narrow: one row in `advisor_change_sets`, owned by the token's own
+   user, carrying a preview. It does not touch a board — no row, group,
+   status, or column changes as a result of calling it. Applying that proposal
+   is a separate, authenticated REST call
+   (`POST /boards/:boardId/advisor/change-sets/:id/apply`) outside `/mcp`
+   entirely, gated at `EDITOR` again and restricted to the change-set's own
+   creator — there is no apply tool for the agent to call, on this bridge or
+   any other MCP client, so an agent driven through this bridge can propose a
+   change but cannot make one happen. **Nothing behind `/mcp` writes to Jira,
+   GitHub, ADO, or GitLab — that remains true without qualification, for every
+   tool, at every role.** The bridge is a wire — it doesn't add a second,
+   looser data path alongside `/mcp`, and it doesn't add a path to apply either.
 2. **The bridge is localhost-only.** It binds `127.0.0.1` exclusively and is
    never exposed as a network service. It's a local developer companion
    process you run next to `pnpm dev`, not something reachable from another
@@ -295,17 +312,36 @@ local agent drive Deckgauge questions actually exposes:
    the argv leak on the http path narrows the exposure; it doesn't make a
    multi-user host safe. The bridge is a localhost developer companion that
    drives an agent authenticated as you.
-3. **Destructive local tool calls are denied, not just unprompted.** Running
-   this bridge means the local agent answers headlessly — there's no
-   interactive terminal for it to ask "may I run this?". So the bridge itself
-   answers every ACP permission request on the agent's behalf: it
-   auto-approves non-destructive tool calls (read/search/fetch — including
-   the read-only Deckgauge MCP calls), so the agent can actually gather
-   evidence and answer. But it auto-**denies** any tool call classified as
-   destructive (`edit`, `delete`, `move`, or `execute` — i.e. local file
-   writes/deletes/moves or shell execution). Driving your local agent through
-   this bridge will not let it silently edit or delete files, or run shell
-   commands, on your machine.
+3. **Destructive local tool calls are denied, not just unprompted — and this
+   is the guard that actually closes off the write path, now that one
+   exists.** Running this bridge means the local agent answers headlessly —
+   there's no interactive terminal for it to ask "may I run this?". So the
+   bridge itself answers every ACP permission request on the agent's behalf:
+   it auto-approves non-destructive tool calls (read/search/fetch — including
+   every Deckgauge MCP call, `propose_board_changes` among them, since from
+   the ACP classifier's point of view a remote MCP call is not a local file
+   edit or shell execution), so the agent can actually gather evidence,
+   propose a change, and answer. But it auto-**denies** any tool call
+   classified as destructive (`edit`, `delete`, `move`, or `execute` — i.e.
+   local file writes/deletes/moves or shell execution). Driving your local
+   agent through this bridge will not let it silently edit or delete files, or
+   run shell commands, on your machine.
+
+   This deny is more load-bearing than it used to be. Before a write path
+   existed at all, denying `execute` only protected the developer's own
+   filesystem. Now the bridge hands the agent the user's live Deckgauge
+   session token (see [Auth](#auth--the-operator-token) above) for every
+   `/mcp` call — and that token authenticates against the *whole* API, not
+   just `/mcp`. If the agent could run a shell command, it would not need
+   `propose_board_changes` or the apply endpoint's own `EDITOR` re-check at
+   all: it could simply `curl` the board's REST API directly with that same
+   token and write to the board itself, walking straight past the proposal
+   gate this feature exists to enforce. The `execute` deny is what stands
+   between "the agent can only ever propose, never apply" and "the agent can
+   silently do anything the token's user is authorized to do." It is the
+   single point closing that bypass — not the tool catalog, not the `EDITOR`
+   floor on `propose_board_changes`, both of which a shell-capable agent could
+   simply route around.
 
    For that policy to be the one in force, the bridge asks for the session
    mode where the **client** decides permissions. Claude Code's adapter opens

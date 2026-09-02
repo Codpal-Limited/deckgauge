@@ -1060,6 +1060,26 @@ export {
 } from "./sync-job-payload";
 
 export {
+  boardOpSchema,
+  proposeBoardChangesInputSchema,
+  parseOpRef,
+  OP_REF_PATTERN,
+  MAX_OPS_PER_CHANGE_SET,
+  MAX_ROWS_PER_OP,
+  MAX_TOTAL_ROWS_PER_CHANGE_SET,
+} from "./advisor-change-set";
+export type {
+  BoardOp,
+  ProposeBoardChangesInput,
+  AdvisorChangeSetPreviewRowDto,
+  AdvisorChangeSetPreviewDto,
+  AdvisorChangeSetStatusDto,
+  AdvisorChangeSetDto,
+  BoardOpErrorDto,
+  ProposeBoardChangesResultDto,
+} from "./advisor-change-set";
+
+export {
   JiraFieldSchemaShapeSchema,
   JiraFieldMetaSchema,
   MappableColumnTypeSchema,

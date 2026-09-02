@@ -363,15 +363,25 @@ function isDestructiveToolCall(kind: ToolKind | null | undefined): boolean {
 /**
  * Decides how `AcpClient` answers a `session/request_permission` call.
  *
- * This bridge only drives the agent to ANSWER board questions via the
- * read-only Deckgauge MCP tools — those surface as `read`/`fetch`/`other`
- * (and sometimes `search`/`think`/`switch_mode`) tool calls, which are safe
- * to auto-approve since there's no interactive user to ask. But this
- * permission gate is the *only* checkpoint between an unattended headless
- * session and the agent editing/deleting files or running shell commands on
- * the developer's machine — entirely outside the read-only MCP boundary. So
- * destructive kinds (`edit`, `delete`, `move`, `execute`) are auto-DENIED
- * instead: never silently authorize local file mutation or shell execution.
+ * This bridge only drives the agent to ANSWER board questions via the Deckgauge
+ * MCP tools — those surface as `read`/`fetch`/`other` (and sometimes
+ * `search`/`think`/`switch_mode`) tool calls, which are safe to auto-approve
+ * since there's no interactive user to ask. That set is safe because of what the
+ * MCP surface itself permits, not because it is read-only: seven of its eight
+ * tools only read, and the eighth (`propose_board_changes`) writes one proposal
+ * row for a board EDITOR, which a human must then apply in Deckgauge. Every one
+ * of them is board-scoped, authorized server-side per call, and cannot touch the
+ * developer's machine.
+ *
+ * This permission gate is the *only* checkpoint between an unattended headless
+ * session and the agent editing/deleting files or running shell commands on the
+ * developer's machine — a capability the local agent has of its own accord,
+ * entirely outside the MCP surface and unconstrained by anything Deckgauge
+ * authorizes. So destructive kinds (`edit`, `delete`, `move`, `execute`) are
+ * auto-DENIED instead: never silently authorize local file mutation or shell
+ * execution. Widening the MCP tool catalogue is NOT a reason to relax this deny;
+ * the two are unrelated boundaries.
+ *
  * Kept as one small pure function so the policy is unit-testable without a
  * live connection.
  */

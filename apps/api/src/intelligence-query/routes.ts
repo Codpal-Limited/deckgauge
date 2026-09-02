@@ -25,7 +25,11 @@ export async function intelligenceQueryRoutes(
     '/boards/:boardId/intelligence/schema',
     { config: { policy: board('VIEWER') } },
     async (req, reply) => {
-      const payload = await buildSchemaPayload(prisma, req.params.boardId);
+      const payload = await buildSchemaPayload(
+        prisma,
+        req.params.boardId,
+        req.membership?.organizationId ?? null,
+      );
       return reply.code(200).send(payload);
     }
   );
@@ -140,7 +144,7 @@ export async function intelligenceQueryRoutes(
       }
       const { sql } = parsed.data;
 
-      const scope = await resolveScope(prisma, boardId);
+      const scope = await resolveScope(prisma, boardId, req.membership?.organizationId ?? null);
 
       try {
         const result = await executeUserSql(sql, scope, resolveCh());

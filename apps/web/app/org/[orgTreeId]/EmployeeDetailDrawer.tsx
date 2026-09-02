@@ -15,7 +15,7 @@ import {
   updateEmployeeComment,
   deleteEmployeeComment,
 } from '../../actions/employee-comments';
-import { ActivityTables } from './ActivityTables';
+import { ActivityLists } from './ActivityLists';
 import { RankingPanel } from './RankingPanel';
 
 const EMPTY_ACTIVITY: EmployeeActivity = { commits: [], pullRequests: [], assignedIssues: [] };
@@ -486,7 +486,7 @@ export function EmployeeDetailDrawer({
 
       {/* Activity tab */}
       {tab === 'activity' && (
-        <ActivityTables activity={activity} />
+        <ActivityLists activity={activity} />
       )}
 
       {/* Ranking tab */}

@@ -8,7 +8,7 @@ import {
   manualSyncJobPayload,
 } from '@deckgauge/shared';
 import { AzureDevOpsService } from './azure-devops.service.js';
-import { AUTHENTICATED, ORG_MEMBER } from '../auth/policy.js';
+import { ORG_MEMBER, ORG_VIEWER } from '../auth/policy.js';
 import { connectionCaller } from '../connections/connection-caller.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
 
@@ -202,15 +202,14 @@ export async function azureDevOpsRoutes(
 
   // GET /azure-devops/sync/status
   //
-  // Policy is `AUTHENTICATED`; the tenant boundary is the `where` in the service.
-  // See the note on GET /github/sync/status — `request.membership` is resolved by
-  // the auth plugin regardless of the declared policy, so the policy was never
-  // what leaked.
+  // ORG_VIEWER, and the tenant boundary is the `where` in the service. See the
+  // note on GET /github/sync/status for why both halves are needed and why the
+  // no-membership arm below is unreachable through the policy plugin yet kept.
   //
   // ADO is the most revealing of the three sources: `errorMessage` carries the
   // team project name verbatim (`TF200016: The following project does not exist:
   // <name>`).
-  app.get('/azure-devops/sync/status', { config: { policy: AUTHENTICATED } }, async (req, reply) => {
+  app.get('/azure-devops/sync/status', { config: { policy: ORG_VIEWER } }, async (req, reply) => {
     const organizationId = req.membership?.organizationId ?? null;
     if (!organizationId) {
       return reply.send({ status: 'NEVER', finishedAt: null });

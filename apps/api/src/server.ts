@@ -63,6 +63,7 @@ import { advisorRoutes } from "./advisor/advisor.routes.js";
 import { advisorHelpRoutes } from "./advisor/advisor-help.routes.js";
 import { advisorConfigRoutes } from "./advisor/advisor-config.routes.js";
 import { advisorSessionRoutes } from "./advisor/advisor-session.routes.js";
+import { advisorChangeSetRoutes } from "./advisor/advisor-change-set.routes.js";
 import { mcpRoutes } from "./mcp/mcp.routes.js";
 import { boardSyncRoutes } from "./board-sync/board-sync.routes.js";
 import { boardTreeRoutes } from "./board-tree/board-tree.routes.js";
@@ -276,6 +277,7 @@ export function buildServer(prisma: PrismaClient) {
     protectedApp.register(advisorHelpRoutes({ prisma }));
     protectedApp.register(advisorConfigRoutes({ prisma }));
     protectedApp.register(advisorSessionRoutes({ prisma }));
+    protectedApp.register(advisorChangeSetRoutes(prisma));
     protectedApp.register(mcpRoutes({ prisma, clickhouse }));
     protectedApp.register(roadmapRoutes, { prisma });
     protectedApp.register(roadmapsRoutes, { prisma });

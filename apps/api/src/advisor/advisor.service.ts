@@ -1,5 +1,5 @@
 import { streamText, stepCountIs } from 'ai';
-import type { AdvisorHistoryMessage } from '@deckgauge/shared';
+import type { AdvisorHistoryMessage, EffectiveBoardRole } from '@deckgauge/shared';
 import { buildAdvisorTools, type AdvisorToolDeps } from './tools.js';
 import type { LlmProvider } from './llm-provider.js';
 import { stepsForProvider, toolsForProvider } from './local-tier.js';
@@ -10,10 +10,28 @@ export const MAX_STEPS = 6;
 // Per-answer output token budget guardrail.
 export const MAX_TOKENS = 4000;
 
+/**
+ * Deliberately describes only what the tools can actually do.
+ *
+ * It used to say "read-only analyst" that "cannot change anything" — on the
+ * exact surface that now hands an EDITOR `propose_board_changes`. A prompt that
+ * contradicts the toolset is the shape that makes a model either refuse a
+ * capability it has or narrate a proposal as a completed change.
+ *
+ * One prompt for both roles, stated as a conditional ("if a tool is offered"),
+ * because `buildAdvisorTools` composes the toolset by the caller's board role:
+ * a VIEWER never sees `propose_board_changes` at all, so promising them the
+ * capability would be the same lie in the other direction. The last two
+ * sentences mirror the tool's own description rather than restating it in
+ * different words, so the two cannot drift into disagreeing.
+ */
 const SYSTEM = [
-  'You are the Deckgauge Advisor, a read-only analyst for one engineering board.',
+  'You are the Deckgauge Advisor, an analyst for one engineering board.',
   'Answer questions by calling the provided tools to fetch real numbers — never invent metrics.',
-  'You can only read data for the current board; you cannot change anything.',
+  'You can only read data for the current board, and you cannot change the board yourself.',
+  'If a tool for proposing board changes is offered to you, it only creates a proposal a human must',
+  'approve in Deckgauge — so never claim a change has been made; report the preview and say it is',
+  'waiting for their approval. If no such tool is offered, you cannot propose changes at all: say so.',
   'Ground every claim in a tool result, cite the concrete numbers, and end with one concrete next step.',
 ].join(' ');
 
@@ -25,6 +43,14 @@ export interface AdvisorAskParams {
    * mismatch) and never the model.
    */
   boardId: string;
+  /**
+   * The caller's effective board role, resolved by the route AFTER
+   * authorization (`AccessService.getEffectiveRole`) — never from the model,
+   * the request body, or a header. `buildAdvisorTools` uses it to compose the
+   * toolset, so this is what keeps a board VIEWER from being offered
+   * `propose_board_changes` on a route whose own floor is only VIEWER.
+   */
+  role: EffectiveBoardRole;
   scope: BoardScope;
   question: string;
   widgetType?: string;
@@ -51,7 +77,11 @@ export class AdvisorService {
     // lower step ceiling. Rich providers are unaffected.
     const tools = toolsForProvider(
       params.provider,
-      buildAdvisorTools(this.deps, { boardId: params.boardId, scope: params.scope }),
+      buildAdvisorTools(this.deps, {
+        boardId: params.boardId,
+        scope: params.scope,
+        role: params.role,
+      }),
       ['get_team_overview'],
     );
     const focus = params.widgetType ? ` The user is looking at the ${params.widgetType} widget.` : '';

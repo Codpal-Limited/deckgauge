@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { meetsBoardRole, type OrgRoleValue } from '@deckgauge/shared';
 import { ADVISOR_TOOL_SPECS } from '../advisor/tools.js';
 import { BoardReadsService } from '../advisor/board-reads.service.js';
+import { ChangeSetService } from '../advisor/change-set/change-set.service.js';
 import { AccessService } from '../access/access.service.js';
 import { getBoardScope } from '../intelligence/board-scope.js';
 import type { ClickhouseIntelligenceService } from '../intelligence/clickhouse-intelligence.service.js';
@@ -40,6 +41,18 @@ function textResult(value: unknown, isError = false) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(value) }], isError };
 }
 
+/**
+ * `AdvisorToolDeps.membership` is required and non-null — every handler that
+ * actually dereferences it (only `propose_board_changes` today) is refused
+ * before it is ever called when `BoardToolDeps.membership` is the
+ * membership-less break-glass identity (`null`; see the field's own comment).
+ * This value is passed through to VIEWER-floor handlers purely to satisfy
+ * that required shape; none of them read it, so an unreachable placeholder is
+ * honest, whereas synthesising a real-looking empty-string organizationId
+ * would look like a live tenant to a future reader.
+ */
+const UNREACHABLE_MEMBERSHIP = { organizationId: '<unreachable: no organization>' };
+
 export function registerBoardTools(server: ToolRegistrar, deps: BoardToolDeps): void {
   /**
    * Both stateless, so constructing them here rather than threading them
@@ -49,6 +62,7 @@ export function registerBoardTools(server: ToolRegistrar, deps: BoardToolDeps): 
    */
   const access = new AccessService(deps.prisma);
   const boardReads = new BoardReadsService(deps.prisma);
+  const changeSets = new ChangeSetService(deps.prisma);
 
   for (const spec of ADVISOR_TOOL_SPECS) {
     // MCP input schema = the spec's fields PLUS a required boardId.
@@ -81,7 +95,26 @@ export function registerBoardTools(server: ToolRegistrar, deps: BoardToolDeps): 
          */
         const role = await access.getEffectiveRole('board', boardId, userId, deps.membership);
         if (!meetsBoardRole(role, spec.minRole)) {
-          return textResult({ error: 'forbidden: no access to board' }, true);
+          return textResult(
+            {
+              error:
+                spec.minRole === 'VIEWER'
+                  ? 'forbidden: no access to board'
+                  : 'forbidden: no edit access to board',
+            },
+            true,
+          );
+        }
+
+        /**
+         * Above VIEWER, a tool writes into the board's tenant
+         * (`propose_board_changes` today; stage 2b's other write ops later), so
+         * it needs a REAL organization to stamp onto what it creates. The
+         * membership-less break-glass identity has none — fail closed here
+         * rather than let a fabricated tenant reach `ChangeSetService.propose`.
+         */
+        if (spec.minRole !== 'VIEWER' && !deps.membership) {
+          return textResult({ error: 'forbidden: no organization' }, true);
         }
 
         const scope = await getBoardScope(
@@ -90,7 +123,20 @@ export function registerBoardTools(server: ToolRegistrar, deps: BoardToolDeps): 
           deps.membership?.organizationId ?? null,
         );
         const { boardId: _omit, ...toolInput } = args;
-        const result = await spec.handler(toolInput, { boardId, scope }, { intel: deps.intel, boardReads });
+        // `role` is in the context for the SAME reason `boardId` is: it is
+        // closure state resolved after authorization, never a tool input. This
+        // surface refuses above the floor before reaching the handler (just
+        // above), whereas the AI-SDK surface enforces it by COMPOSITION in
+        // `buildAdvisorTools` — two mechanisms, one declared floor.
+        const result = await spec.handler(toolInput, { boardId, scope, role }, {
+          intel: deps.intel,
+          boardReads,
+          changeSets,
+          userId,
+          membership: deps.membership
+            ? { organizationId: deps.membership.organizationId }
+            : UNREACHABLE_MEMBERSHIP,
+        });
         return textResult(result);
       },
     );
