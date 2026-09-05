@@ -1,4 +1,4 @@
-import type { StatusSpan } from './types';
+import type { StatusSpan } from './types.js';
 
 /** UPPERCASE Jira project key -> cutoff instant in epoch-ms. */
 export type RetiredProjectMap = ReadonlyMap<string, number>;

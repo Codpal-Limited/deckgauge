@@ -36,11 +36,12 @@
  * Idempotent: every statement it issues is `IF NOT EXISTS` or an idempotent
  * drop-then-create.
  */
-import { PrismaClient } from '@prisma/client';
 import { chExecutorFromClient, reprovisionOrganizations } from '../ch-provisioning.js';
+import { createPrismaClient } from "../client.js";
+import { isMainModule } from '../esm-main.js';
 
 async function main(): Promise<void> {
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
   // Imported inside main() for the reason ChStatementExecutor exists at all:
   // clickhouse.ts builds its client at import time with a hard-coded fallback of
   // localhost:8123 — the staging server — so a top-level import would build a
@@ -124,7 +125,7 @@ async function main(): Promise<void> {
 
 // Guarded so importing this module never triggers a live run against a real
 // ClickHouse — only executing the file directly does.
-if (require.main === module) {
+if (isMainModule(import.meta.url)) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);

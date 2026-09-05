@@ -19,7 +19,7 @@ export {
   type CreateGroupInput,
   type UpdateGroupInput,
   type ReorderGroupsInput,
-} from "./schemas";
+} from "./schemas.js";
 
 export {
   BoardFolderSchema,
@@ -44,31 +44,31 @@ export {
   type FolderNodeData,
   type SidebarNode,
   type BoardTree,
-} from "./board-tree-schemas";
+} from "./board-tree-schemas.js";
 
-export { buildBoardTree } from "./build-board-tree";
+export { buildBoardTree } from "./build-board-tree.js";
 
 export {
   CreateRetiredJiraProjectInputSchema,
   UpdateRetiredJiraProjectInputSchema,
   RetiredJiraProjectDtoSchema,
-} from './retired-projects-schemas';
+} from './retired-projects-schemas.js';
 export type {
   CreateRetiredJiraProjectInput,
   UpdateRetiredJiraProjectInput,
   RetiredJiraProjectDto,
-} from './retired-projects-schemas';
+} from './retired-projects-schemas.js';
 
 export {
   WidgetDataBatchItemSchema,
   WidgetDataBatchRequestSchema,
-} from './widget-data-batch-schemas';
+} from './widget-data-batch-schemas.js';
 export type {
   WidgetDataBatchItem,
   WidgetDataBatchRequest,
   WidgetDataBatchResultEntry,
   WidgetDataBatchResponse,
-} from './widget-data-batch-schemas';
+} from './widget-data-batch-schemas.js';
 
 export {
   JiraEpicSchema,
@@ -81,24 +81,24 @@ export {
   type SyncRun,
   type SyncRunStatus,
   type SyncRunTrigger,
-} from "./jira-schemas";
+} from "./jira-schemas.js";
 
-export type { JiraPort, JiraIssueExistence, JiraCredentialState } from "./jira-port";
+export type { JiraPort, JiraIssueExistence, JiraCredentialState } from "./jira-port.js";
 
-export { FakeJiraAdapter } from "./fake-jira-adapter";
+export { FakeJiraAdapter } from "./fake-jira-adapter.js";
 
 export {
   JiraCloudAdapter,
   JiraAuthError,
-} from "./jira-cloud-adapter";
+} from "./jira-cloud-adapter.js";
 
-export { stripJqlOrderBy, buildFilteredKeyJql } from "./jira-jql";
+export { stripJqlOrderBy, buildFilteredKeyJql } from "./jira-jql.js";
 
 export {
   JiraConfigSchema,
   type JiraConfig,
-} from "./jira-config-schema";
-export { formatAbsoluteShort, formatRelative } from "./format-date";
+} from "./jira-config-schema.js";
+export { formatAbsoluteShort, formatRelative } from "./format-date.js";
 
 export {
   JiraInstanceSchema,
@@ -111,7 +111,7 @@ export {
   type CreateJiraInstanceInput,
   type UpdateJiraInstanceInput,
   type ConnectionHint,
-} from "./jira-instance-schemas";
+} from "./jira-instance-schemas.js";
 
 export {
   ColumnTypeEnum,
@@ -127,7 +127,7 @@ export {
   type UpdateColumnInput,
   type FieldValue,
   type UpsertFieldValueInput,
-} from "./column-schemas";
+} from "./column-schemas.js";
 
 export {
   MIN_COLUMN_WIDTH,
@@ -142,7 +142,7 @@ export {
   isSystemColumnVisible,
   type BoardSystemColumnKey,
   type ColumnLayout,
-} from "./column-layout-schemas";
+} from "./column-layout-schemas.js";
 
 export {
   AutomationTriggerTypeEnum,
@@ -159,7 +159,7 @@ export {
   type AutomationRule,
   type CreateAutomationRuleInput,
   type UpdateAutomationRuleInput,
-} from "./automation-schemas";
+} from "./automation-schemas.js";
 
 export {
   CommentSchema,
@@ -168,7 +168,7 @@ export {
   type Comment,
   type CreateCommentInput,
   type UpdateCommentInput,
-} from "./comment-schemas";
+} from "./comment-schemas.js";
 
 export {
   NotificationKindSchema,
@@ -179,7 +179,7 @@ export {
   type NotificationDto,
   type NotificationListResponse,
   type UnreadCountResponse,
-} from "./notification-schemas";
+} from "./notification-schemas.js";
 
 export {
   NotificationModeSchema,
@@ -197,7 +197,7 @@ export {
   type UpdateNotificationPreferencesInput,
   type BoardNotificationSetting,
   type UpdateBoardNotificationSettingInput,
-} from "./notification-preference-schemas";
+} from "./notification-preference-schemas.js";
 
 export {
   DEFAULT_DIGEST_WINDOW_MS,
@@ -205,7 +205,7 @@ export {
   type PendingNotificationRow,
   type DigestPayload,
   type DigestRelease,
-} from "./notification-digest";
+} from "./notification-digest.js";
 
 export {
   JiraSyncConfigSchema,
@@ -217,7 +217,7 @@ export {
   DEFAULT_STATUS_MAPPING,
   LEGACY_STATUS_LABELS,
   CURATED_JIRA_FIELDS,
-} from "./jira-sync-config-schemas";
+} from "./jira-sync-config-schemas.js";
 
 export {
   OWNER_COLORS,
@@ -227,7 +227,7 @@ export {
   type BoardOwner,
   type CreateOwnerInput,
   type UpdateOwnerInput,
-} from "./owner-schemas";
+} from "./owner-schemas.js";
 
 export {
   STATUS_COLORS,
@@ -240,7 +240,7 @@ export {
   type BoardStatus,
   type CreateBoardStatusInput,
   type UpdateBoardStatusInput,
-} from "./board-status-schemas";
+} from "./board-status-schemas.js";
 
 export {
   BOARD_KINDS,
@@ -256,12 +256,12 @@ export {
   type TemplateColumnConfig,
   type TemplateGroup,
   type TemplateViews,
-} from "./board-templates";
+} from "./board-templates.js";
 
 export {
   boardCapabilities,
   type BoardCapabilities,
-} from "./board-capabilities";
+} from "./board-capabilities.js";
 
 export {
   GitHubMilestoneSchema,
@@ -288,21 +288,21 @@ export {
   GitHubProjectStatusOptionSchema,
   type GitHubProject,
   type GitHubProjectStatusOption,
-} from "./github-schemas";
+} from "./github-schemas.js";
 
-export type { GitHubPort } from "./github-port";
-export type { GitHubProjectsPort, GitHubProjectItem } from "./github-projects-port";
+export type { GitHubPort } from "./github-port.js";
+export type { GitHubProjectsPort, GitHubProjectItem } from "./github-projects-port.js";
 
-export { GitHubRestAdapter, GitHubAuthError } from "./github-rest-adapter";
+export { GitHubRestAdapter, GitHubAuthError } from "./github-rest-adapter.js";
 
-export { FakeGitHubAdapter } from "./fake-github-adapter";
+export { FakeGitHubAdapter } from "./fake-github-adapter.js";
 
-export { FakeGitHubProjectsAdapter } from "./fake-github-projects-adapter";
-export type { FakeProjectsSeed } from "./fake-github-projects-adapter";
+export { FakeGitHubProjectsAdapter } from "./fake-github-projects-adapter.js";
+export type { FakeProjectsSeed } from "./fake-github-projects-adapter.js";
 
-export { GitHubProjectsGraphQLAdapter, GitHubProjectsAuthError } from "./github-projects-graphql-adapter";
+export { GitHubProjectsGraphQLAdapter, GitHubProjectsAuthError } from "./github-projects-graphql-adapter.js";
 
-export { extractPlainText } from './adf-to-plain-text';
+export { extractPlainText } from './adf-to-plain-text.js';
 
 export {
   AzureDevOpsAuthMethodSchema,
@@ -326,33 +326,33 @@ export {
   type UpsertAzureDevOpsProjectSyncInput,
   type UpdateAzureDevOpsProjectSyncInput,
   type AzureDevOpsRepository,
-} from './azure-devops-schemas';
+} from './azure-devops-schemas.js';
 
-export type { AzureDevOpsPort } from './azure-devops-port';
-export type { AdoWorkItemRevision } from './ado-work-item-revision';
-export { buildAdoTransitions } from './ado-transition-builder';
-export type { AdoTransitionRow, AdoPriorState } from './ado-transition-builder';
-export { RequestThrottle } from './request-throttle';
-export type { Throttle, RequestThrottleOpts, ThrottleClock } from './request-throttle';
+export type { AzureDevOpsPort } from './azure-devops-port.js';
+export type { AdoWorkItemRevision } from './ado-work-item-revision.js';
+export { buildAdoTransitions } from './ado-transition-builder.js';
+export type { AdoTransitionRow, AdoPriorState } from './ado-transition-builder.js';
+export { RequestThrottle } from './request-throttle.js';
+export type { Throttle, RequestThrottleOpts, ThrottleClock } from './request-throttle.js';
 
 export {
   AzureDevOpsRestAdapter,
   AzureDevOpsAuthError,
   AzureDevOpsCircuitOpenError,
-} from './azure-devops-rest-adapter';
+} from './azure-devops-rest-adapter.js';
 
-export { FakeAzureDevOpsAdapter } from './fake-azure-devops-adapter';
+export { FakeAzureDevOpsAdapter } from './fake-azure-devops-adapter.js';
 
 // Phase 3 (EI-009) — AI-assistance detection for commits/PRs.
-export { detectAiAssistance } from './ai-detection';
-export type { AiSignalInput, AiDetectionResult } from './ai-detection';
+export { detectAiAssistance } from './ai-detection.js';
+export type { AiSignalInput, AiDetectionResult } from './ai-detection.js';
 
 // Phase 3 (EI-010) — Ticket-key extraction from commit messages, PR text, branch names.
-export { extractTicketKeys } from './ticket-link-extractor';
-export type { TicketLinkInput } from './ticket-link-extractor';
+export { extractTicketKeys } from './ticket-link-extractor.js';
+export type { TicketLinkInput } from './ticket-link-extractor.js';
 
 // Phase 3 (EI-003) — GitHub pull request adapter (all PRs incl. drafts, plus reviews).
-export { GitHubPrAdapter, FakeGitHubPrAdapter, transformGitHubPr } from './github-pr-adapter';
+export { GitHubPrAdapter, FakeGitHubPrAdapter, transformGitHubPr } from './github-pr-adapter.js';
 export type {
   GitHubPrPort,
   GitHubPrFetchOpts,
@@ -361,61 +361,61 @@ export type {
   RawPr as GitHubRawPr,
   RawReview as GitHubRawReview,
   RawReviewComment as GitHubRawReviewComment,
-} from './github-pr-adapter';
+} from './github-pr-adapter.js';
 
 // Phase 3 (EI-004) — GitHub commit adapter with incremental watermark + AI detection.
-export { GitHubCommitAdapter, FakeGitHubCommitAdapter } from './github-commit-adapter';
+export { GitHubCommitAdapter, FakeGitHubCommitAdapter } from './github-commit-adapter.js';
 export type {
   GitHubCommitPort,
   GitHubCommitFetchOpts,
   GitHubCommitRow,
-} from './github-commit-adapter';
+} from './github-commit-adapter.js';
 
 // Phase 3 — GitLab base URL normalization (web URL → /api/v4 REST root).
-export { gitlabApiBase } from './gitlab-api-base';
+export { gitlabApiBase } from './gitlab-api-base.js';
 
 // Phase 3 (EI-005) — GitLab MR adapter (all states + approvals + first-review proxy).
-export { GitLabPrAdapter, FakeGitLabPrAdapter } from './gitlab-pr-adapter';
+export { GitLabPrAdapter, FakeGitLabPrAdapter } from './gitlab-pr-adapter.js';
 export type {
   GitLabPrPort,
   GitLabPrFetchOpts,
   GitLabMergeRequestRow,
   GitLabMergeRequestPage,
-} from './gitlab-pr-adapter';
+} from './gitlab-pr-adapter.js';
 
 // Phase 3 (EI-006) — GitLab commit adapter with diff stats + merge detection.
-export { GitLabCommitAdapter, FakeGitLabCommitAdapter } from './gitlab-commit-adapter';
+export { GitLabCommitAdapter, FakeGitLabCommitAdapter } from './gitlab-commit-adapter.js';
 export type {
   GitLabCommitPort,
   GitLabCommitFetchOpts,
   GitLabCommitRow,
-} from './gitlab-commit-adapter';
+} from './gitlab-commit-adapter.js';
 
 // Phase 3 — GitLab MR review row shape (parity with GitHub reviews).
-export { buildGitLabReviews } from './gitlab-review-adapter';
-export type { GitLabReviewRow } from './gitlab-review-adapter';
+export { buildGitLabReviews } from './gitlab-review-adapter.js';
+export type { GitLabReviewRow } from './gitlab-review-adapter.js';
 
 // Phase 3 — GitLab issues adapter (streaming, parity with GitHubIssueRow).
-export { GitLabIssueAdapter, FakeGitLabIssueAdapter } from './gitlab-issue-adapter';
-export type { GitLabIssuePort, GitLabIssueFetchOpts, GitLabIssueRow } from './gitlab-issue-adapter';
+export { GitLabIssueAdapter, FakeGitLabIssueAdapter } from './gitlab-issue-adapter.js';
+export type { GitLabIssuePort, GitLabIssueFetchOpts, GitLabIssueRow } from './gitlab-issue-adapter.js';
 
 // Phase 3 (EI-007) — ADO Repos PR adapter (lists repos, fetches PRs + threads).
-export { AdoPrAdapter, FakeAdoPrAdapter } from './ado-pr-adapter';
+export { AdoPrAdapter, FakeAdoPrAdapter } from './ado-pr-adapter.js';
 export type {
   AdoPrPort,
   AdoPrFetchOpts,
   AdoPrFetchResult,
   AdoPullRequestRow,
   AdoReviewRow,
-} from './ado-pr-adapter';
+} from './ado-pr-adapter.js';
 
 // Phase 3 (EI-007b) — ADO commit adapter (all branches, per-repo, dedupe by SHA).
-export { AdoCommitAdapter, FakeAdoCommitAdapter } from './ado-commit-adapter';
+export { AdoCommitAdapter, FakeAdoCommitAdapter } from './ado-commit-adapter.js';
 export type {
   AdoCommitPort,
   AdoCommitFetchOpts,
   AdoCommitRow,
-} from './ado-commit-adapter';
+} from './ado-commit-adapter.js';
 
 // Real ADO deployment records (classic Release pipelines) — the source DORA's
 // deploy frequency prefers over the merged-PR proxy.
@@ -423,30 +423,30 @@ export {
   AdoDeploymentAdapter,
   FakeAdoDeploymentAdapter,
   releaseHost,
-} from './ado-deployment-adapter';
+} from './ado-deployment-adapter.js';
 export type {
   AdoDeploymentPort,
   AdoDeploymentFetchOpts,
   AdoDeploymentRow,
-} from './ado-deployment-adapter';
+} from './ado-deployment-adapter.js';
 
 // Resilient JSON fetch (per-attempt timeout covering the body read + bounded
 // retry) for long upstream-API sync loops.
-export { resilientFetchJson } from './resilient-fetch';
-export type { ResilientFetchOpts, ResilientJsonResult } from './resilient-fetch';
+export { resilientFetchJson } from './resilient-fetch.js';
+export type { ResilientFetchOpts, ResilientJsonResult } from './resilient-fetch.js';
 
 // Phase 3 (EI-008) — Jira intelligence adapter (changelog + worklogs + full fields).
 export {
   JiraIntelligenceAdapter,
   FakeJiraIntelligenceAdapter,
-} from './jira-intelligence-adapter';
+} from './jira-intelligence-adapter.js';
 export type {
   JiraIntelligencePort,
   JiraIntelligenceFetchOpts,
   JiraIssueRow,
   JiraTransitionRow,
   JiraWorklogRow,
-} from './jira-intelligence-adapter';
+} from './jira-intelligence-adapter.js';
 
 // Phase 3 (EI-002) — Zod intelligence DTO schemas, shared by api routes + web fetches.
 export {
@@ -457,7 +457,7 @@ export {
   TicketCoverageSchema,
   TicketTimelineEventSchema,
   SyncTriggerSourceSchema,
-} from './intelligence-schemas';
+} from './intelligence-schemas.js';
 export type {
   TeamOverview,
   DeveloperWeeklyPoint,
@@ -466,7 +466,7 @@ export type {
   TicketCoverage,
   TicketTimelineEvent,
   SyncTriggerSource,
-} from './intelligence-schemas';
+} from './intelligence-schemas.js';
 
 export {
   DeveloperProviderSchema,
@@ -474,8 +474,8 @@ export {
   DeveloperProfileLinkSchema,
   type DeveloperProvider,
   type DeveloperProfileDto,
-} from './developer-profile-schemas';
-export { BENCHMARKS_V1, tierFor, type BenchmarkConfig, type Tier } from './benchmarks';
+} from './developer-profile-schemas.js';
+export { BENCHMARKS_V1, tierFor, type BenchmarkConfig, type Tier } from './benchmarks.js';
 
 export {
   NEW_WIDGET_TYPES,
@@ -486,7 +486,7 @@ export {
   WIDGET_SOURCE_KINDS,
   WIDGET_SCOPE_REQUIREMENTS,
   widgetIsSupportedByScope,
-} from './widget-types';
+} from './widget-types.js';
 export type {
   NewWidgetType,
   ComparisonWidgetType,
@@ -495,7 +495,7 @@ export type {
   ChartKind,
   WidgetSourceKind,
   WidgetScopeFlags,
-} from './widget-types';
+} from './widget-types.js';
 
 export {
   JiraProjectSyncSchema,
@@ -514,7 +514,7 @@ export {
   BoardGitLabSourceCreateSchema,
   BoardGitLabSourcePatchSchema,
   type JiraProjectSyncDto,
-} from './connections-schemas';
+} from './connections-schemas.js';
 
 export {
   BoardSyncEnqueueResponseSchema,
@@ -537,7 +537,7 @@ export {
   type BoardSyncExclusionListResponse,
   type RestoreBoardSyncExclusionsInput,
   type RestoreBoardSyncExclusionsResponse,
-} from './board-sync';
+} from './board-sync.js';
 
 export {
   periodPresetSchema,
@@ -549,7 +549,7 @@ export {
   type BoardPeriod,
   type IntelligenceSchema,
   type IntelligenceSqlResponse,
-} from './intelligence-query';
+} from './intelligence-query.js';
 
 
 export {
@@ -561,7 +561,7 @@ export {
   computeSchedule,
   resolveWidthDays,
   compareOrder,
-} from './roadmap-schedule';
+} from './roadmap-schedule.js';
 export type {
   SizeLabel,
   SizeDurations,
@@ -569,13 +569,13 @@ export type {
   ScheduleProject,
   ScheduleGroup,
   ScheduledBar,
-} from './roadmap-schedule';
+} from './roadmap-schedule.js';
 export {
   SizeDurationsSchema,
   RoadmapConfigPayloadSchema,
   UpdateRoadmapConfigInputSchema,
-} from './roadmap-config';
-export type { RoadmapConfigPayload, UpdateRoadmapConfigInput } from './roadmap-config';
+} from './roadmap-config.js';
+export type { RoadmapConfigPayload, UpdateRoadmapConfigInput } from './roadmap-config.js';
 
 export {
   PickerQuerySchema,
@@ -590,10 +590,10 @@ export {
   type GitHubPickerError,
   type BulkBindRequest,
   type BulkBindResponse,
-} from './github/picker.schema';
+} from './github/picker.schema.js';
 
-export { computeTier, type Tier as GitHubRepoTier } from './github/tier';
-export { estimateBackfillCost, type RepoCostInput } from './github/backfill-estimator';
+export { computeTier, type Tier as GitHubRepoTier } from './github/tier.js';
+export { estimateBackfillCost, type RepoCostInput } from './github/backfill-estimator.js';
 
 export {
   GITHUB_SYNC_TIER_INTERVAL_MS,
@@ -601,17 +601,17 @@ export {
   makeGitHubQueueClient,
   type GitHubQueueClient,
   type BullMqQueueLike,
-} from './github/queue-client';
+} from './github/queue-client.js';
 
-export { SIZE_COLUMN_NAME, SIZE_COLUMN_CONFIG } from './roadmap-size-column';
+export { SIZE_COLUMN_NAME, SIZE_COLUMN_CONFIG } from './roadmap-size-column.js';
 
 export {
   DURATION_RE,
   parseDuration,
   durationToDays,
   formatDuration,
-} from './duration';
-export type { DurationUnit } from './duration';
+} from './duration.js';
+export type { DurationUnit } from './duration.js';
 
 export {
   SetScheduleInputSchema,
@@ -620,14 +620,14 @@ export {
   type SetScheduleInput,
   type HiddenSystemFields,
   type SystemFieldKey,
-} from './roadmap-schedule-input';
+} from './roadmap-schedule-input.js';
 
 export {
   reconcileRoadmapGroups,
   type ExistingRow,
   type ReconcileInput,
   type ReconcileResult,
-} from './reconcile-roadmap-groups';
+} from './reconcile-roadmap-groups.js';
 
 export {
   normalizeName,
@@ -635,8 +635,8 @@ export {
   flKey,
   buildMatchIndex,
   matchIdentity,
-} from './org-employee-matcher';
-export type { MatchIndex } from './org-employee-matcher';
+} from './org-employee-matcher.js';
+export type { MatchIndex } from './org-employee-matcher.js';
 
 export {
   OrgProviderSchema, OrgAliasKindSchema, BoardStatSchema, EmployeeStatsSchema,
@@ -644,35 +644,35 @@ export {
   OrgEmployeeAliasDtoSchema, OrgEmployeeDtoSchema, OrgTreeDtoSchema,
   CreateOrgTreeSchema, RenameOrgTreeSchema, OrgEmployeeAliasInputSchema, ImportResultSchema, SyncStatusSchema,
   CreateEmployeeSchema, UpdateEmployeeSchema, UpdateEmployeeProfileSchema, MoveEmployeeSchema,
-} from './org-tree-schemas';
+} from './org-tree-schemas.js';
 export type {
   EmployeeStats, RankingCounts, RankingMetricDetail, RankingTier, EmployeeRankingDto,
   OrgEmployeeAliasDto, OrgEmployeeDto, OrgTreeDto, ImportResult, SyncStatus,
   CreateEmployeeInput, UpdateEmployeeInput, UpdateEmployeeProfileInput, MoveEmployeeInput,
-} from './org-tree-schemas';
+} from './org-tree-schemas.js';
 
 export {
   ACTIVE_WINDOW_DAYS, UNMAPPED, isWithinActiveWindow, reduceEmployeeSnapshot, toUtcIso,
-} from './org-employee-stats';
-export type { MatchedActivityRow } from './org-employee-stats';
+} from './org-employee-stats.js';
+export type { MatchedActivityRow } from './org-employee-stats.js';
 
-export { computeRanking, rankTier, RANKING_WEIGHTS } from './org-ranking';
-export type { RankingInput, RankingMetricKey } from './org-ranking';
+export { computeRanking, rankTier, RANKING_WEIGHTS } from './org-ranking.js';
+export type { RankingInput, RankingMetricKey } from './org-ranking.js';
 
 export {
   INVESTMENT_CATEGORIES,
   classifyInvestmentType,
   aggregateInvestmentAllocation,
-} from './investment-allocation';
+} from './investment-allocation.js';
 export type {
   InvestmentCategory,
   InvestmentTypeCount,
   InvestmentSlice,
   InvestmentAllocation,
-} from './investment-allocation';
+} from './investment-allocation.js';
 
-export { DORA_BENCHMARKS, DORA_METRIC_LABELS, classifyDora, buildDoraScorecard } from './dora';
-export type { DoraMetricKey, DoraMetric, DoraInputs } from './dora';
+export { DORA_BENCHMARKS, DORA_METRIC_LABELS, classifyDora, buildDoraScorecard } from './dora.js';
+export type { DoraMetricKey, DoraMetric, DoraInputs } from './dora.js';
 
 export {
   computeDelta,
@@ -683,22 +683,22 @@ export {
   type PeriodDelta,
   type PeriodComparisonMetric,
   type PeriodComparisonInputs,
-} from './period-comparison';
+} from './period-comparison.js';
 
-export { costFromSeconds, DEFAULT_BLENDED_HOURLY_RATE } from './timesheet-cost';
+export { costFromSeconds, DEFAULT_BLENDED_HOURLY_RATE } from './timesheet-cost.js';
 
-export { gradeTrajectory, type TrajectoryGrade, type TrajectoryVerdict } from './trajectory';
+export { gradeTrajectory, type TrajectoryGrade, type TrajectoryVerdict } from './trajectory.js';
 
-export { HEAT_WEEKS, emptyHeat, mondayOf, weekSlotIndex } from './commit-heat';
+export { HEAT_WEEKS, emptyHeat, mondayOf, weekSlotIndex } from './commit-heat.js';
 
 export {
   isVacancyRow,
   normalizeOrgRows,
   resolveHierarchy,
-} from './org-chart-rows';
-export type { RawOrgRow, ParsedEmployee } from './org-chart-rows';
+} from './org-chart-rows.js';
+export type { RawOrgRow, ParsedEmployee } from './org-chart-rows.js';
 
-export { wouldCreateCycle } from './org-tree-edit';
+export { wouldCreateCycle } from './org-tree-edit.js';
 
 // Timesheet compute engine (Phase 2a) — capex/opex allocation.
 // NOTE: explicit named re-exports (not `export *`). The api/worker load this
@@ -722,7 +722,7 @@ export {
   resolveEpicKey,
   buildEpicBreakdown,
   NON_IN_PROGRESS_STATUSES,
-} from './timesheet/index';
+} from './timesheet/index.js';
 export type {
   Provider,
   RawTransition,
@@ -742,7 +742,7 @@ export type {
   EpicBreakdownInput,
   EpicEmployeeSeconds,
   RetiredProjectMap,
-} from './timesheet/index';
+} from './timesheet/index.js';
 
 // Timesheet API schemas (Phase 2b-ii) — request/response validation.
 export {
@@ -771,7 +771,7 @@ export {
   OrgTreeTimesheetConfigDtoSchema,
   PutOrgTreeTimesheetConfigSchema,
   StatusPoolResponseSchema,
-} from './timesheet-api-schemas';
+} from './timesheet-api-schemas.js';
 export type {
   TimesheetGridQuery,
   CapexReportQuery,
@@ -791,7 +791,7 @@ export type {
   OrgTreeTimesheetConfigDto,
   PutOrgTreeTimesheetConfig,
   StatusPoolResponse,
-} from './timesheet-api-schemas';
+} from './timesheet-api-schemas.js';
 
 export {
   SYSTEM_COLUMN_KEYS,
@@ -812,25 +812,25 @@ export {
   type RoadmapGroupResolved,
   type RoadmapSummary,
   type RoadmapDetail,
-} from './roadmap-entity-schemas';
+} from './roadmap-entity-schemas.js';
 
-export { lengthOfService } from './org-board-groups';
+export { lengthOfService } from './org-board-groups.js';
 
 export {
   resolveEmployeeIdentities,
   isEmptyIdentities,
   type EmployeeIdentities,
-} from './employee-identities';
+} from './employee-identities.js';
 
-export { collectSubtreeEmployeeIds } from './employee-board-subtree';
+export { collectSubtreeEmployeeIds } from './employee-board-subtree.js';
 
 export {
   EMPLOYEE_BOARD_COLUMN_KEYS, EmployeeBoardColumnKeySchema, DEFAULT_COLUMN_ORDER,
   EmployeeBoardColumnConfigSchema, resolveColumns, EmployeeColumnTypeSchema,
-} from './employee-board-columns';
-export type { EmployeeBoardColumnKey, EmployeeBoardColumnConfig, EmployeeColumnType } from './employee-board-columns';
-export { buildBoardGridTemplate } from './board-grid-template';
-export type { GridColumnSpec, BoardGridOptions } from './board-grid-template';
+} from './employee-board-columns.js';
+export type { EmployeeBoardColumnKey, EmployeeBoardColumnConfig, EmployeeColumnType } from './employee-board-columns.js';
+export { buildBoardGridTemplate } from './board-grid-template.js';
+export type { GridColumnSpec, BoardGridOptions } from './board-grid-template.js';
 
 export {
   EmployeeBoardSummaryDtoSchema, EmployeeBoardMemberDtoSchema, EmployeeGroupDtoSchema,
@@ -840,7 +840,7 @@ export {
   AddExistingMembersSchema, AddNewEmployeeSchema, MoveMemberSchema, SetManagerSchema,
   EmployeeColumnDtoSchema, CreateEmployeeColumnSchema, UpdateEmployeeColumnSchema,
   SetEmployeeFieldValueSchema,
-} from './employee-board-schemas';
+} from './employee-board-schemas.js';
 export type {
   EmployeeBoardSummaryDto, EmployeeBoardMemberDto, EmployeeGroupDto, EmployeeBoardDetailDto,
   CreateEmployeeBoardInput, RenameEmployeeBoardInput, SetEmployeeBoardPersonalInput,
@@ -849,23 +849,23 @@ export type {
   AddNewEmployeeInput, MoveMemberInput, SetManagerInput,
   EmployeeColumnDto, CreateEmployeeColumnInput, UpdateEmployeeColumnInput,
   SetEmployeeFieldValueInput,
-} from './employee-board-schemas';
+} from './employee-board-schemas.js';
 
 export {
   valueForColumn, sortEmployeeRows, filterEmployeeRows, searchEmployeeRows,
-} from './employee-row-query';
-export type { EmployeeSortConfig, EmployeeFilterRule } from './employee-row-query';
+} from './employee-row-query.js';
+export type { EmployeeSortConfig, EmployeeFilterRule } from './employee-row-query.js';
 
 export {
   EmployeeCommentSchema,
   CreateEmployeeCommentInputSchema,
   UpdateEmployeeCommentInputSchema,
-} from './employee-comment-schemas';
+} from './employee-comment-schemas.js';
 export type {
   EmployeeComment,
   CreateEmployeeCommentInput,
   UpdateEmployeeCommentInput,
-} from './employee-comment-schemas';
+} from './employee-comment-schemas.js';
 
 export {
   SaveOrgSourceInputSchema,
@@ -876,20 +876,20 @@ export {
   type OrgSourceSyncSummaryT,
   type OrgSourceConfig,
   type SaveOrgSourceConnectionInput,
-} from './org-source-schemas';
+} from './org-source-schemas.js';
 
 export {
   BoardCalendarSourceConfigSchema,
   SaveCalendarSourceConnectionSchema,
   type BoardCalendarSourceConfig,
   type SaveCalendarSourceConnectionInput,
-} from './calendar-source-schemas';
+} from './calendar-source-schemas.js';
 
 export {
   mapGraphUserToEmployee,
   type GraphUser,
   type MappedGraphEmployee,
-} from './graph-user-map';
+} from './graph-user-map.js';
 
 export {
   reconcileScope,
@@ -897,13 +897,13 @@ export {
   type OrgSourceExistingRow,
   type ReconcileUpsert,
   type ReconcilePlan,
-} from './org-source-reconcile';
+} from './org-source-reconcile.js';
 
 export {
   LocationSuggestionSchema,
   LocationSearchResponseSchema,
-} from './location-schemas';
-export type { LocationSuggestion, LocationSearchResponse } from './location-schemas';
+} from './location-schemas.js';
+export type { LocationSuggestion, LocationSearchResponse } from './location-schemas.js';
 
 export {
   advisorAskRequestSchema,
@@ -932,26 +932,26 @@ export {
   type AdvisorSessionSummaryDto,
   type AdvisorSessionMessageDto,
   type AdvisorSessionTranscriptDto,
-} from './advisor';
+} from './advisor.js';
 
 export {
   listBoardRowsInputSchema,
   DESCRIPTION_PREVIEW_MAX,
   LIST_BOARD_ROWS_MAX_LIMIT,
-} from './advisor-board-reads';
+} from './advisor-board-reads.js';
 export type {
   ListBoardRowsInput,
   AdvisorBoardRowDto,
   AdvisorBoardRowsDto,
   AdvisorBoardStructureDto,
   AdvisorExcludedRowDto,
-} from './advisor-board-reads';
+} from './advisor-board-reads.js';
 
 export {
   resolveJiraBrowseUrl,
   hasAnyJiraLink,
   type JiraSourceLinks,
-} from './jira-source-links';
+} from './jira-source-links.js';
 
 
 // Organization tenancy contracts (spec §4). Named re-exports only — this barrel
@@ -969,7 +969,7 @@ export {
   UpdateMemberStatusSchema,
   type OrgMembershipOptionDto,
   type SwitchOrganizationInput,
-} from './org';
+} from './org.js';
 export type {
   OrgRoleValue,
   OrgMembershipStatusValue,
@@ -980,9 +980,9 @@ export type {
   OrgBoardDto,
   UpdateMemberRoleInput,
   UpdateMemberStatusInput,
-} from './org';
+} from './org.js';
 
-export { slugify } from './slugify';
+export { slugify } from './slugify.js';
 
 // Sharing contracts — one vocabulary for all five shareable entities
 // (2026-08-18-monday-style-board-sharing-design.md §5).
@@ -1001,7 +1001,7 @@ export {
   MyRoleSchema,
   canEditEntity,
   canManageEntity,
-} from './access';
+} from './access.js';
 export type {
   AccessRoleValue,
   AccessEntityKind,
@@ -1010,7 +1010,7 @@ export type {
   GrantAccessInput,
   UpdateAccessRoleInput,
   MyRole,
-} from './access';
+} from './access.js';
 
 export {
   EditionNoticeSchema,
@@ -1019,8 +1019,8 @@ export {
   MAX_NOTICES,
   MAX_ACTIONS,
   sanitiseEditionNotices,
-} from './edition-notice';
-export type { EditionNotice, EditionNoticeAction } from './edition-notice';
+} from './edition-notice.js';
+export type { EditionNotice, EditionNoticeAction } from './edition-notice.js';
 
 export {
   SYNC_FIELDS,
@@ -1034,8 +1034,8 @@ export {
   readOverrideState,
   markOverridden,
   clearOverride,
-} from "./sync-field-registry";
-export type { SyncSource, SyncFieldSpec, OverrideState } from "./sync-field-registry";
+} from "./sync-field-registry.js";
+export type { SyncSource, SyncFieldSpec, OverrideState } from "./sync-field-registry.js";
 
 export {
   effectiveBoardRole,
@@ -1045,11 +1045,11 @@ export {
   canCreateBoard,
   canManageOrg,
   type EffectiveBoardRole,
-} from "./board-role-rules";
+} from "./board-role-rules.js";
 
-export { ACCESS_ENTITIES, type AccessEntityDescriptor } from "./access-entities";
+export { ACCESS_ENTITIES, type AccessEntityDescriptor } from "./access-entities.js";
 
-export { verbFor, isSubjectFirst } from "./notification-verbs";
+export { verbFor, isSubjectFirst } from "./notification-verbs.js";
 
 export {
   manualSyncJobPayload,
@@ -1057,7 +1057,7 @@ export {
   type SweepSyncJobPayload,
   type SweepingSyncTrigger,
   type SyncJobPayload,
-} from "./sync-job-payload";
+} from "./sync-job-payload.js";
 
 export {
   boardOpSchema,
@@ -1067,7 +1067,7 @@ export {
   MAX_OPS_PER_CHANGE_SET,
   MAX_ROWS_PER_OP,
   MAX_TOTAL_ROWS_PER_CHANGE_SET,
-} from "./advisor-change-set";
+} from "./advisor-change-set.js";
 export type {
   BoardOp,
   ProposeBoardChangesInput,
@@ -1077,7 +1077,7 @@ export type {
   AdvisorChangeSetDto,
   BoardOpErrorDto,
   ProposeBoardChangesResultDto,
-} from "./advisor-change-set";
+} from "./advisor-change-set.js";
 
 export {
   JiraFieldSchemaShapeSchema,
@@ -1086,14 +1086,14 @@ export {
   DiscoveredJiraFieldSchema,
   DiscoveredJiraFieldListSchema,
   AttachJiraFieldInputSchema,
-} from "./jira-field-schemas";
+} from "./jira-field-schemas.js";
 export type {
   JiraFieldSchemaShape,
   JiraFieldMeta,
   MappableColumnType,
   DiscoveredJiraField,
   AttachJiraFieldInput,
-} from "./jira-field-schemas";
+} from "./jira-field-schemas.js";
 
 export {
   MULTI_VALUE_DELIMITER,
@@ -1102,4 +1102,4 @@ export {
   columnTypeForJiraField,
   unsupportedReasonFor,
   extractJiraFieldValue,
-} from "./jira-field-extract";
+} from "./jira-field-extract.js";

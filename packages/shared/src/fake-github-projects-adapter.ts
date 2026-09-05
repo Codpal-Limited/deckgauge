@@ -1,8 +1,8 @@
 import {
   GitHubProjectsPort,
   GitHubProjectItem,
-} from './github-projects-port';
-import { GitHubProject, GitHubProjectStatusOption } from './github-schemas';
+} from './github-projects-port.js';
+import { GitHubProject, GitHubProjectStatusOption } from './github-schemas.js';
 
 export interface FakeProjectsSeed {
   projects: GitHubProject[];

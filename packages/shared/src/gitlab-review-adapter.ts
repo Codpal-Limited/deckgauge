@@ -1,5 +1,5 @@
 // EI-0xx — GitLab MR review row shape (parity with GitHubReviewRow).
-import { chDateTimeRequired } from './clickhouse-datetime';
+import { chDateTimeRequired } from './clickhouse-datetime.js';
 
 export type GitLabReviewRow = {
   id: string;

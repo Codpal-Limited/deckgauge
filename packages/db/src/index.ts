@@ -1,20 +1,21 @@
-export { PrismaClient, Prisma } from "@prisma/client";
+export { PrismaClient, Prisma } from "./generated/prisma/client.js";
+export { createPrismaClient } from "./client.js";
 // `chInsertManyWith` is the injectable-client core of `chInsertMany` — same tenant
 // stamp, same empty-organizationId refusal, same chunking. Exported so an
 // integration suite can write through the PRODUCTION path against a throwaway
 // client instead of calling `client.insert` directly, which is how three
 // dual-writer suites came to write `organization_id = ''` and assert nothing about
 // the tenant stamp.
-export { clickhouse, chInsertMany, chInsertManyWith } from "./clickhouse";
-export type { ClickHouseClient } from "./clickhouse";
+export { clickhouse, chInsertMany, chInsertManyWith } from "./clickhouse.js";
+export type { ClickHouseClient } from "./clickhouse.js";
 export {
   runClickhouseMigrations,
-} from "./clickhouse-migrate";
+} from "./clickhouse-migrate.js";
 export type {
   ClickhouseExecClient,
   ClickhouseMigrationOptions,
   ClickhouseMigrationResult,
-} from "./clickhouse-migrate";
+} from "./clickhouse-migrate.js";
 export type {
   Project,
   Board,
@@ -61,7 +62,7 @@ export type {
   Notification,
   NotificationPreference,
   BoardNotificationSetting,
-} from "@prisma/client";
+} from "./generated/prisma/client.js";
 export type {
   BoardAccessRole,
   BoardViewType,
@@ -69,11 +70,11 @@ export type {
   OrgRole,
   OrgMembershipStatus,
   AdvisorChangeSetStatus,
-} from "@prisma/client";
+} from "./generated/prisma/client.js";
 // A VALUE export, not type-only: the notification kinds are iterated at runtime
 // (the shared Zod enum is asserted against this list, so a migration that adds a
 // kind and forgets the schema fails a test instead of a production write).
-export { NotificationKind } from "@prisma/client";
+export { NotificationKind } from "./generated/prisma/client.js";
 export type {
   Roadmap,
   RoadmapAccess,
@@ -85,10 +86,10 @@ export type {
   RoadmapAccessRole,
   RoadmapGroupSource,
   RoadmapViewType,
-} from "@prisma/client";
-export type { TimesheetStatusRule, TimesheetRuleScope } from "@prisma/client";
-export { CH_TENANT_TABLES } from "./ch-tenancy-tables";
-export type { ChTenantTable } from "./ch-tenancy-tables";
+} from "./generated/prisma/client.js";
+export type { TimesheetStatusRule, TimesheetRuleScope } from "./generated/prisma/client.js";
+export { CH_TENANT_TABLES } from "./ch-tenancy-tables.js";
+export type { ChTenantTable } from "./ch-tenancy-tables.js";
 export {
   catchAllDenyDdl,
   organizationPolicyDdl,
@@ -105,8 +106,8 @@ export {
   CH_TENANT_OBJECTS_QUERY,
   CH_ISO_POLICY_OBJECTS_QUERY,
   isoPolicyObjectsForOrganizationQuery,
-} from "./ch-row-policies";
-export type { ChPolicyObjects, ChPolicyQueryClient } from "./ch-row-policies";
+} from "./ch-row-policies.js";
+export type { ChPolicyObjects, ChPolicyQueryClient } from "./ch-row-policies.js";
 export {
   applyRowPolicyBaseline,
   chExecutorFromClient,
@@ -116,7 +117,7 @@ export {
   resolveApiReadIdentityUser,
   resolveServiceIdentityUser,
   CH_DEFAULT_SERVICE_USER,
-} from "./ch-provisioning";
+} from "./ch-provisioning.js";
 export type {
   ChBaselineOptions,
   ChCommandClient,
@@ -124,4 +125,4 @@ export type {
   ChProvisionResult,
   ReadIdentityRetrofitReport,
   ChStatementExecutor,
-} from "./ch-provisioning";
+} from "./ch-provisioning.js";

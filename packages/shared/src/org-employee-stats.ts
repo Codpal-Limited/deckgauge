@@ -1,4 +1,4 @@
-import type { EmployeeStats } from './org-tree-schemas';
+import type { EmployeeStats } from './org-tree-schemas.js';
 
 export const ACTIVE_WINDOW_DAYS = 90;
 export const UNMAPPED = '(unmapped)';

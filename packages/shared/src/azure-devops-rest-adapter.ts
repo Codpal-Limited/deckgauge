@@ -1,7 +1,7 @@
-import { AzureDevOpsPort } from './azure-devops-port';
-import { AzureDevOpsWorkItem } from './azure-devops-schemas';
-import { AdoWorkItemRevision } from './ado-work-item-revision';
-import type { Throttle } from './request-throttle';
+import { AzureDevOpsPort } from './azure-devops-port.js';
+import { AzureDevOpsWorkItem } from './azure-devops-schemas.js';
+import { AdoWorkItemRevision } from './ado-work-item-revision.js';
+import type { Throttle } from './request-throttle.js';
 
 // ── Error Classes ─────────────────────────────────────────────────────────────
 

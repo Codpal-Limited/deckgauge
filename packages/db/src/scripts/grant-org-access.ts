@@ -1,4 +1,5 @@
-import { PrismaClient, type BoardAccessRole } from '@prisma/client';
+import { type BoardAccessRole } from '../generated/prisma/client.js';
+import { createPrismaClient } from "../client.js";
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -19,7 +20,7 @@ async function main() {
     process.exit(1);
   }
 
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
   try {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {

@@ -1,4 +1,4 @@
-import type { EmployeeRankingDto, RankingCounts, RankingTier } from './org-tree-schemas';
+import type { EmployeeRankingDto, RankingCounts, RankingTier } from './org-tree-schemas.js';
 
 /**
  * Composite-score weights for the org-tree employee leaderboard. Delivery-weighted:

@@ -1,0 +1,380 @@
+name: __PROJECT_NAME__
+services:
+  api:
+    build:
+      context: __PROJECT_ROOT__
+      dockerfile: apps/api/Dockerfile
+      args:
+        EDITION: community
+    container_name: vp-cockpit-api
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+        required: true
+      postgres:
+        condition: service_healthy
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+    deploy:
+      resources:
+        limits:
+          memory: "1610612736"
+    environment:
+      CLICKHOUSE_READ_URL: ""
+      CLICKHOUSE_URL: http://cockpit:cockpit@clickhouse:8123/cockpit
+      DATABASE_URL: postgresql://cockpit:cockpit@postgres:5432/cockpit
+      DECKGAUGE_EDITION: community
+      DECKGAUGE_ENTERPRISE_MODULE: ""
+      DECKGAUGE_LICENSE_FILE: ""
+      DECKGAUGE_MULTI_ORG: "false"
+      JIRA_CONFIG_PATH: /app/config/jira.yaml
+      KEYCLOAK_ISSUER: http://localhost:8080/realms/vp-cockpit
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/vp-cockpit/protocol/openid-connect/certs
+      NODE_OPTIONS: --max-old-space-size=1280
+      REDIS_URL: redis://redis:6379
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://localhost:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      timeout: 5s
+      interval: 10s
+      retries: 10
+      start_period: 1m30s
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 3001
+        published: "3001"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: uploads_data
+        target: /app/uploads
+        volume: {}
+      - type: bind
+        source: __PROJECT_ROOT__/.license-keys
+        target: /app/.license-keys
+        read_only: true
+        bind:
+          create_host_path: true
+  clickhouse:
+    container_name: vp-cockpit-clickhouse
+    deploy:
+      resources:
+        limits:
+          memory: "3221225472"
+    environment:
+      CLICKHOUSE_DB: cockpit
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+      CLICKHOUSE_PASSWORD: cockpit
+      CLICKHOUSE_USER: cockpit
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - clickhouse-client --user cockpit --password cockpit --query 'SELECT 1'
+      timeout: 5s
+      interval: 10s
+      retries: 12
+      start_period: 20s
+    image: clickhouse/clickhouse-server:24.8-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8123
+        published: "8123"
+        protocol: tcp
+      - mode: ingress
+        target: 9000
+        published: "9000"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: clickhouse_data
+        target: /var/lib/clickhouse
+        volume: {}
+      - type: bind
+        source: __PROJECT_ROOT__/clickhouse/config
+        target: /etc/clickhouse-server/config.d
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: __PROJECT_ROOT__/clickhouse/schemas
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+        bind:
+          create_host_path: true
+  keycloak:
+    command:
+      - /opt/keycloak/bin/kc.sh
+      - start-dev
+      - --import-realm
+    container_name: vp-cockpit-keycloak
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+        required: true
+    deploy:
+      resources:
+        limits:
+          memory: "536870912"
+    entrypoint:
+      - /opt/keycloak/configure-microsoft-idp.sh
+    environment:
+      JAVA_OPTS_APPEND: -Xms128m -Xmx384m
+      KC_DB: postgres
+      KC_DB_PASSWORD: keycloak
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: "8080"
+      KC_HOSTNAME_STRICT: "false"
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_PUBLIC_ORIGIN: ""
+      MICROSOFT_CLIENT_ID: ""
+      MICROSOFT_CLIENT_SECRET: ""
+      MICROSOFT_TENANT_ID: ""
+    image: quay.io/keycloak/keycloak:24.0
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8080"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: __PROJECT_ROOT__/keycloak/realm-export.json
+        target: /opt/keycloak/realm-src/realm.json
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: __PROJECT_ROOT__/keycloak/configure-microsoft-idp.sh
+        target: /opt/keycloak/configure-microsoft-idp.sh
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: __PROJECT_ROOT__/keycloak/themes
+        target: /opt/keycloak/themes
+        read_only: true
+        bind:
+          create_host_path: true
+  keycloak-db:
+    container_name: vp-cockpit-keycloak-db
+    deploy:
+      resources:
+        limits:
+          memory: "134217728"
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_PASSWORD: keycloak
+      POSTGRES_USER: keycloak
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U keycloak -d keycloak
+      timeout: 5s
+      interval: 5s
+      retries: 6
+      start_period: 10s
+    image: postgres:16-alpine
+    networks:
+      default: null
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: keycloak_db_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  postgres:
+    command:
+      - postgres
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - max_connections=30
+    container_name: vp-cockpit-postgres
+    deploy:
+      resources:
+        limits:
+          memory: "268435456"
+    environment:
+      POSTGRES_DB: cockpit
+      POSTGRES_PASSWORD: cockpit
+      POSTGRES_USER: cockpit
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U cockpit -d cockpit
+      timeout: 5s
+      interval: 5s
+      retries: 6
+      start_period: 10s
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "5433"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: postgres_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  redis:
+    command:
+      - redis-server
+      - --save
+      - "60"
+      - "1"
+      - --maxmemory
+      - 384mb
+      - --maxmemory-policy
+      - noeviction
+      - --loglevel
+      - warning
+    container_name: vp-cockpit-redis
+    deploy:
+      resources:
+        limits:
+          memory: "536870912"
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      timeout: 5s
+      interval: 5s
+      retries: 6
+      start_period: 5s
+    image: redis:7-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 6379
+        published: "6379"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: redis_data
+        target: /data
+        volume: {}
+  web:
+    build:
+      context: __PROJECT_ROOT__
+      dockerfile: apps/web/Dockerfile
+    container_name: vp-cockpit-web
+    depends_on:
+      api:
+        condition: service_started
+        required: true
+    deploy:
+      resources:
+        limits:
+          memory: "1572864000"
+    environment:
+      API_URL: http://api:3001
+      AUTH_TRUST_HOST: "true"
+      KEYCLOAK_CLIENT_ID: vp-cockpit-web
+      KEYCLOAK_CLIENT_SECRET: vp-cockpit-secret
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080/realms/vp-cockpit
+      KEYCLOAK_ISSUER: http://localhost:8080/realms/vp-cockpit
+      MICROSOFT_CLIENT_ID: ""
+      MICROSOFT_CLIENT_SECRET: ""
+      MICROSOFT_TENANT_ID: ""
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXTAUTH_SECRET: vp-cockpit-nextauth-secret
+      NEXTAUTH_URL: http://localhost:3000
+      NODE_OPTIONS: --max-old-space-size=1280
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 3000
+        published: "3000"
+        protocol: tcp
+    restart: unless-stopped
+  worker:
+    build:
+      context: __PROJECT_ROOT__
+      dockerfile: apps/worker/Dockerfile
+      args:
+        EDITION: community
+    container_name: vp-cockpit-worker
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+        required: true
+      postgres:
+        condition: service_healthy
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+    deploy:
+      resources:
+        limits:
+          memory: "805306368"
+    environment:
+      ADO_BACKFILL_CHUNK_DAYS: ""
+      ADO_BACKFILL_ENABLED: ""
+      ADO_BACKFILL_FLOOR_DAYS: ""
+      ADO_BACKFILL_REPOS_PER_RUN: ""
+      ADO_CRON_INTERVAL: ""
+      ADO_REPO_INTEL_TIMEOUT_MS: ""
+      CLICKHOUSE_READ_URL: ""
+      CLICKHOUSE_URL: http://cockpit:cockpit@clickhouse:8123/cockpit
+      DATABASE_URL: postgresql://cockpit:cockpit@postgres:5432/cockpit
+      DECKGAUGE_EDITION: community
+      DECKGAUGE_ENTERPRISE_MODULE: ""
+      DECKGAUGE_LICENSE_FILE: ""
+      JIRA_ALLOW_MASS_DELETION: "0"
+      JIRA_CONFIG_PATH: /app/config/jira.yaml
+      MICROSOFT_CLIENT_ID: ""
+      MICROSOFT_CLIENT_SECRET: ""
+      MICROSOFT_TENANT_ID: ""
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      REDIS_URL: redis://redis:6379
+      WORKER_MAX_CONCURRENT_JOBS_PER_ORG: ""
+    networks:
+      default: null
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: __PROJECT_ROOT__/.license-keys
+        target: /app/.license-keys
+        read_only: true
+        bind:
+          create_host_path: true
+networks:
+  default:
+    name: __PROJECT_NAME___default
+volumes:
+  clickhouse_data:
+    name: __PROJECT_NAME___clickhouse_data
+  keycloak_db_data:
+    name: __PROJECT_NAME___keycloak_db_data
+  postgres_data:
+    name: __PROJECT_NAME___postgres_data
+  redis_data:
+    name: __PROJECT_NAME___redis_data
+  uploads_data:
+    name: __PROJECT_NAME___uploads_data

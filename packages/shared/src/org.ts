@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AccessEntry } from './access';
+import type { AccessEntry } from './access.js';
 
 /** Organization-level roles. The ceiling on any per-board grant (spec D3). */
 export const ORG_ROLES = ['ADMIN', 'MEMBER', 'VIEWER'] as const;

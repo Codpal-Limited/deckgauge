@@ -1,4 +1,4 @@
-import type { NotificationKindValue } from "./notification-schemas";
+import type { NotificationKindValue } from "./notification-schemas.js";
 
 /**
  * The digest release rule.

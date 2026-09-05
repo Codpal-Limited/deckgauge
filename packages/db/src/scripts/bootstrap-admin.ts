@@ -1,4 +1,6 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '../generated/prisma/client.js';
+import { createPrismaClient } from "../client.js";
+import { isMainModule } from '../esm-main.js';
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -98,7 +100,7 @@ export async function revokeAdmin(prisma: PrismaClient, email: string): Promise<
 }
 
 async function main() {
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
   try {
     if (flag('list')) {
       const admins = await listAdmins(prisma);
@@ -131,7 +133,7 @@ async function main() {
 // Guard the CLI entry point so importing this module for its exported
 // functions (as bootstrap-admin.test.ts does) never triggers a live run
 // against process.argv — only running the file directly does.
-if (require.main === module) {
+if (isMainModule(import.meta.url)) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);

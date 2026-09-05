@@ -1,4 +1,4 @@
-import type { AccessEntityKind } from './access';
+import type { AccessEntityKind } from './access.js';
 
 /**
  * What the generic service needs to know about one shareable entity: which

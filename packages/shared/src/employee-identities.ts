@@ -1,4 +1,4 @@
-import { normalizeName, nameFromEmail } from './org-employee-matcher';
+import { normalizeName, nameFromEmail } from './org-employee-matcher.js';
 
 export interface EmployeeIdentities {
   logins: string[];

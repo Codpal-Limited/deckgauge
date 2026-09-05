@@ -1,5 +1,5 @@
-import { AzureDevOpsWorkItem } from './azure-devops-schemas';
-import { AdoWorkItemRevision } from './ado-work-item-revision';
+import { AzureDevOpsWorkItem } from './azure-devops-schemas.js';
+import { AdoWorkItemRevision } from './ado-work-item-revision.js';
 
 export interface AzureDevOpsPort {
   fetchWorkItems(project: string): Promise<AzureDevOpsWorkItem[]>;

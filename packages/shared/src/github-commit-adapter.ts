@@ -4,9 +4,9 @@
 // (CLICKHOUSE-ARCHITECTURE.md §5.5 — github_commits section).
 // Does NOT write to ClickHouse; processor (EI-013) does that.
 
-import { detectAiAssistance } from './ai-detection';
-import { extractTicketKeys } from './ticket-link-extractor';
-import { chDateTimeRequired } from './clickhouse-datetime';
+import { detectAiAssistance } from './ai-detection.js';
+import { extractTicketKeys } from './ticket-link-extractor.js';
+import { chDateTimeRequired } from './clickhouse-datetime.js';
 
 export interface GitHubCommitFetchOpts {
   repoFullName: string;

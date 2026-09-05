@@ -9,7 +9,7 @@ import type {
   RoadmapNodeData,
   FolderNodeData,
   SidebarNode,
-} from './board-tree-schemas';
+} from './board-tree-schemas.js';
 
 const NO_PREF_POSITION = Number.MAX_SAFE_INTEGER;
 

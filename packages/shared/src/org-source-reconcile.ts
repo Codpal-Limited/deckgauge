@@ -1,4 +1,4 @@
-import { mapGraphUserToEmployee, type GraphUser, type MappedGraphEmployee } from './graph-user-map';
+import { mapGraphUserToEmployee, type GraphUser, type MappedGraphEmployee } from './graph-user-map.js';
 
 export interface ScopeNode {
   user: GraphUser;

@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { NotificationKindSchema, type NotificationKindValue } from "./notification-schemas";
+import { NotificationKindSchema, type NotificationKindValue } from "./notification-schemas.js";
 
 /**
  * Notification preferences. IN-APP ONLY — "IMMEDIATE" means the bell, and

@@ -1,8 +1,8 @@
-import { JiraPort, JiraIssueExistence, JiraCredentialState } from "./jira-port";
-import { JiraEpic, JiraIssue } from "./jira-schemas";
-import { JiraConfig } from "./jira-config-schema";
-import { extractPlainText } from './adf-to-plain-text';
-import { JiraFieldMetaSchema, type JiraFieldMeta } from "./jira-field-schemas";
+import { JiraPort, JiraIssueExistence, JiraCredentialState } from "./jira-port.js";
+import { JiraEpic, JiraIssue } from "./jira-schemas.js";
+import { JiraConfig } from "./jira-config-schema.js";
+import { extractPlainText } from './adf-to-plain-text.js';
+import { JiraFieldMetaSchema, type JiraFieldMeta } from "./jira-field-schemas.js";
 
 export class JiraAuthError extends Error {
   constructor(message: string) {

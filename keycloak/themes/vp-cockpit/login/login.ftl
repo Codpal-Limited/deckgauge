@@ -33,6 +33,12 @@
         />
       </label>
 
+      <#if realm.resetPasswordAllowed>
+        <p class="vp-forgot">
+          <a tabindex="5" href="${url.loginResetCredentialsUrl}" class="vp-link">Forgot password?</a>
+        </p>
+      </#if>
+
       <#if messagesPerField.existsError('username','password')>
         <div class="vp-field-error">${kcSanitize(messagesPerField.getFirstError('username','password'))?no_esc}</div>
       </#if>

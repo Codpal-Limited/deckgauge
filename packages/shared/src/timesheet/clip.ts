@@ -1,4 +1,4 @@
-import type { StatusSpan } from './types';
+import type { StatusSpan } from './types.js';
 
 /** Intersect a span with the half-open window [fromMs, toMs). Null if empty. */
 export function clipToWindow(span: StatusSpan, fromMs: number, toMs: number): StatusSpan | null {

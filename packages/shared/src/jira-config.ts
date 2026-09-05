@@ -1,8 +1,8 @@
 import * as fs from "fs";
 import * as yaml from "js-yaml";
-import { JiraConfigSchema, type JiraConfig } from "./jira-config-schema";
+import { JiraConfigSchema, type JiraConfig } from "./jira-config-schema.js";
 
-export { JiraConfigSchema, type JiraConfig } from "./jira-config-schema";
+export { JiraConfigSchema, type JiraConfig } from "./jira-config-schema.js";
 
 export class ConfigNotFoundError extends Error {
   constructor(path: string) {

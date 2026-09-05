@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { RoadmapConfigPayload } from './roadmap-config';
+import type { RoadmapConfigPayload } from './roadmap-config.js';
 
 export const SYSTEM_COLUMN_KEYS = ['title', 'size', 'startDate', 'endDate', 'duration'] as const;
 export type SystemColumnKey = (typeof SYSTEM_COLUMN_KEYS)[number];

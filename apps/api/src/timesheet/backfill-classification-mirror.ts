@@ -18,8 +18,8 @@ export async function backfillClassificationMirror(
 }
 
 async function runFromCli(): Promise<void> {
-  const { PrismaClient, chInsertMany } = await import('@deckgauge/db');
-  const prisma = new PrismaClient();
+  const { createPrismaClient, chInsertMany } = await import('@deckgauge/db');
+  const prisma = createPrismaClient();
   try {
     // Connections are an organization property now, and this CLI script has
     // no request to take an organization from. Under the enforced

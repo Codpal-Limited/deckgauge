@@ -80,6 +80,15 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
   );
   const widgetsRef = useRef(widgets);
   widgetsRef.current = widgets;
+  const batchRef = useRef(batch);
+  batchRef.current = batch;
+  // Which (board, view) the entries currently in batchRef were fetched FOR.
+  // `widgetBatchKey` is `${widgetType}:${JSON.stringify(config)}` with no board
+  // in it, so keys collide across boards trivially — two boards each holding a
+  // TOTAL_COUNT with an empty config produce one key for two different numbers.
+  // Without this the guard below could serve another board's data, silently and
+  // with no request to contradict it.
+  const batchIdentityRef = useRef<string | null>(null);
 
   useEffect(() => {
     const current = widgetsRef.current;
@@ -87,9 +96,6 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
       setBatch({ status: 'ready', entries: new Map() });
       return;
     }
-
-    let cancelled = false;
-    setBatch({ status: 'loading', entries: new Map() });
 
     // De-duplicate: two widgets of the same type+config share one result.
     const seen = new Set<string>();
@@ -102,6 +108,24 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
       })
       .map((w) => ({ widgetType: w.widgetType, config: w.config }));
 
+    // Removing a widget only ever SHRINKS this key set, and results fetched for
+    // THIS board and view stay valid — so refetching would flash every surviving
+    // widget back to its loading state for nothing. Skip only when the entries in
+    // hand were fetched for this same identity and cover every key still needed;
+    // a board or view change falls through to a real fetch as it always did.
+    const identity = `${boardId}:${viewId}`;
+    const resolved = batchRef.current;
+    if (
+      batchIdentityRef.current === identity &&
+      resolved.status === 'ready' &&
+      items.every((item) => resolved.entries.has(widgetBatchKey(item.widgetType, item.config)))
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    setBatch({ status: 'loading', entries: new Map() });
+
     fetchWidgetDataBatch(boardId, items)
       .then((res) => {
         if (cancelled) return;
@@ -111,12 +135,15 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
             { data: r.data, error: r.error },
           ])
         );
+        batchIdentityRef.current = identity;
         setBatch({ status: 'ready', entries });
       })
       .catch(() => {
         // Batch endpoint unavailable → mark ready with no entries so each
         // widget falls back to its own per-widget fetch (previous behaviour).
-        if (!cancelled) setBatch({ status: 'ready', entries: new Map() });
+        if (cancelled) return;
+        batchIdentityRef.current = identity;
+        setBatch({ status: 'ready', entries: new Map() });
       });
 
     return () => {
@@ -174,6 +201,10 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
     },
     [boardId, viewId, canEdit, widgets]
   );
+
+  const handleRemoved = useCallback((widgetId: string) => {
+    setWidgets((prev) => prev.filter((w) => w.id !== widgetId));
+  }, []);
 
   const handleGestureStop = useCallback(
     (newLayout: Layout) => {
@@ -303,6 +334,7 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
                 widgetType={widget.widgetType}
                 title={widget.title}
                 canEdit={canEdit}
+                onRemoved={() => handleRemoved(widget.id)}
               >
                 {WidgetComponent ? (
                   <WidgetComponent boardId={boardId} config={widget.config} />

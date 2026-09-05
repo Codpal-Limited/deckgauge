@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { DURATION_RE } from './duration';
+import { DURATION_RE } from './duration.js';
 
 const isoDate = z.string().datetime();
 const durationStr = z.string().regex(DURATION_RE, 'Invalid duration (use e.g. 1d, 2w, 1m, 1y)');

@@ -1,8 +1,8 @@
 // EI-005 — GitLabPrAdapter (Merge Requests).
-import { detectAiAssistance } from './ai-detection';
-import { extractTicketKeys } from './ticket-link-extractor';
-import { gitlabApiBase } from './gitlab-api-base';
-import { buildGitLabReviews, type GitLabReviewRow } from './gitlab-review-adapter';
+import { detectAiAssistance } from './ai-detection.js';
+import { extractTicketKeys } from './ticket-link-extractor.js';
+import { gitlabApiBase } from './gitlab-api-base.js';
+import { buildGitLabReviews, type GitLabReviewRow } from './gitlab-review-adapter.js';
 
 export interface GitLabPrFetchOpts {
   projectPath: string;

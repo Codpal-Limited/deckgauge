@@ -32,6 +32,33 @@
 # port lists across `-f` files rather than replacing them, so an overlay can add
 # a mapping but can never retract or re-bind one. The interface has to be
 # controllable at the point of declaration.
+#
+# ---------------------------------------------------------------------------
+# The HOST side of every mapping is a ${..._PORT:-<current value>} variable.
+#
+# Unset, each renders the literal it always was, so a fresh clone, the OSS
+# distribution and scripts/check-compose-defaults.sh (which renders with an
+# EMPTY env file) are all unaffected. Setting them in .env moves the whole
+# stack off the defaults, which is what lets a second, vanilla installation —
+# the public open-source build, which knows only 3000/3001/5433/6379/8080/8123
+# — run beside this one on the same machine.
+#
+#   WEB_PORT 3000 · API_PORT 3001 · POSTGRES_PORT 5433 · REDIS_PORT 6379
+#   KEYCLOAK_PORT 8080 · CLICKHOUSE_HTTP_PORT 8123 · CLICKHOUSE_NATIVE_PORT 9000
+#   (SITE_PORT 3020 lives in docker-compose.site.yml)
+#
+# Moving a port is never enough on its own. The CONTAINER side stays fixed, so
+# nothing inside the compose network changes — but four things outside it must
+# move in step, and each fails in a way that does not name the port:
+#   - the URL-shaped values in .env (DATABASE_URL, REDIS_URL, NEXTAUTH_URL,
+#     NEXT_PUBLIC_API_URL, KEYCLOAK_ISSUER, DECKGAUGE_API_URL);
+#   - KC_HOSTNAME_PORT, or Keycloak builds redirect URLs on the old port;
+#   - the vp-cockpit-web client's redirectUris/webOrigins in the RUNNING
+#     Keycloak — realm-export.json is imported only into an empty Keycloak DB,
+#     so an existing stack needs kcadm, not a new KEYCLOAK_PUBLIC_ORIGIN;
+#   - the host-side scripts, which read these same keys through
+#     scripts/lib/staging-ports.sh rather than hardcoding them again.
+# ---------------------------------------------------------------------------
 services:
   postgres:
     image: postgres:16-alpine
@@ -54,7 +81,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cockpit}
       POSTGRES_DB: ${POSTGRES_DB:-cockpit}
     ports:
-      - "${BIND_HOST-}5433:5432"
+      - "${BIND_HOST-}${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -73,8 +100,8 @@ services:
         limits:
           memory: 3G   # server-side cap in clickhouse/config/memory.xml is 2.5 GiB (~500 MiB headroom for kernel/page cache and process overhead)
     ports:
-      - "${BIND_HOST-}8123:8123"   # HTTP interface (used by @clickhouse/client and backup scripts)
-      - "${BIND_HOST-}9000:9000"   # Native TCP (optional, for CLI)
+      - "${BIND_HOST-}${CLICKHOUSE_HTTP_PORT:-8123}:8123"   # HTTP interface (used by @clickhouse/client and backup scripts)
+      - "${BIND_HOST-}${CLICKHOUSE_NATIVE_PORT:-9000}:9000"   # Native TCP (optional, for CLI)
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./clickhouse/config:/etc/clickhouse-server/config.d:ro
@@ -121,7 +148,7 @@ services:
       - "--loglevel"
       - "warning"
     ports:
-      - "${BIND_HOST-}6379:6379"
+      - "${BIND_HOST-}${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -189,8 +216,24 @@ services:
       MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
       MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
       MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-}
+      # SMTP — powers the forgot-password flow (realm resetPasswordAllowed).
+      # Keycloak speaks SMTP only, so there is no API alternative. Defaults point
+      # at the mailpit sink below: a stock local stack gets a working reset flow
+      # that delivers to a web inbox instead of the internet. A real deployment
+      # overrides these (deploy/env.hosted.example) — SMTP_AUTH is derived from
+      # SMTP_USER when left unset, so supplying credentials is enough.
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@deckgauge.com}
+      SMTP_FROM_DISPLAY_NAME: ${SMTP_FROM_DISPLAY_NAME:-Deckgauge}
+      SMTP_REPLY_TO: ${SMTP_REPLY_TO:-}
+      SMTP_SSL: ${SMTP_SSL:-false}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
+      SMTP_AUTH: ${SMTP_AUTH:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
     ports:
-      - "${BIND_HOST-}8080:8080"
+      - "${BIND_HOST-}${KEYCLOAK_PORT:-8080}:8080"
     volumes:
       # Read-only, and NOT at the import path: the entrypoint processes this into
       # /opt/keycloak/data/import/realm.json inside the container. Mounting it at
@@ -203,6 +246,29 @@ services:
       keycloak-db:
         condition: service_healthy
 
+
+  # Local mail sink for the forgot-password flow. Accepts everything Keycloak
+  # sends and delivers nothing — reset links are read in its web inbox instead
+  # of the internet, so the flow is testable end to end with no mail account,
+  # no domain and no credentials anywhere.
+  #
+  # The SMTP port (1025) is deliberately NOT published: Keycloak reaches it over
+  # the compose network by service name, and an open relay on a host port is not
+  # something a dev stack should offer. Only the inbox UI is published.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-mailpit
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    environment:
+      MP_MAX_MESSAGES: "500"
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    ports:
+      - "${BIND_HOST-}8025:8025"
   api:
     build:
       context: .
@@ -219,7 +285,7 @@ services:
         limits:
           memory: 1536M   # Fastify API; 256M->768M->1536M. Bumped after the timesheet engine OOM'd Node ("JS heap out of memory") on a large org (~95k ADO items / ~42k with transitions): the report page now runs two engine passes — the month CapEx report AND the year-window epic breakdown — and computeTimesheet slices every span per-day, so the annual pass allocates ~12x the monthly one; several of these cached in the 60s TtlCache crossed the 768M cap. Follow-up cure: bound fetchTransitions by the window `from` and/or cap TtlCache size instead of loading all history each pass.
     ports:
-      - "${BIND_HOST-}3001:3001"
+      - "${BIND_HOST-}${API_PORT:-3001}:3001"
     environment:
       # Pin V8's heap below the cgroup cap so it GCs hard instead of cgroup-OOM-killing (mirrors the web service). ~256M headroom for non-heap.
       NODE_OPTIONS: "--max-old-space-size=1280"
@@ -339,7 +405,7 @@ services:
         limits:
           memory: 1500M   # Next.js production server; bumped 384M -> 768M -> 1500M as Phase 3 widget load + board RSC payload grew. The real cure is reducing per-mutation over-fetch (see projects.ts revalidate cleanup + page.tsx fetchAllProjects caching); this cap is the headroom band-aid.
     ports:
-      - "${BIND_HOST-}3000:3000"
+      - "${BIND_HOST-}${WEB_PORT:-3000}:3000"
     environment:
       NODE_OPTIONS: "--max-old-space-size=1280"
       # Corporate networks MITM outbound TLS; the worker already runs with cert

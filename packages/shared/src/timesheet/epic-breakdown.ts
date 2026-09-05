@@ -1,6 +1,6 @@
-import type { Provider } from './types';
-import type { GridCell } from './aggregate';
-import type { Classification } from './classification';
+import type { Provider } from './types.js';
+import type { GridCell } from './aggregate.js';
+import type { Classification } from './classification.js';
 
 interface ClassSplit {
   capexSeconds: number;

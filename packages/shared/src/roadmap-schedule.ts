@@ -1,4 +1,4 @@
-import { durationToDays } from './duration';
+import { durationToDays } from './duration.js';
 
 export type SizeLabel = 'XXS' | 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL';
 

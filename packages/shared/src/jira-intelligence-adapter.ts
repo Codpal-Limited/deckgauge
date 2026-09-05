@@ -1,6 +1,6 @@
 // EI-008 — JiraIntelligenceAdapter (peer to JiraCloudAdapter for analytics fetches).
 
-import { chDate, chDateTime, chDateTimeRequired } from './clickhouse-datetime';
+import { chDate, chDateTime, chDateTimeRequired } from './clickhouse-datetime.js';
 
 export interface JiraIntelligenceFetchOpts {
   projectKeys: string[];

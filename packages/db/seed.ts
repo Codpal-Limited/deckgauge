@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from "./src/client.js";
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function seed() {
   console.log('🌱 Seeding Jira data...');

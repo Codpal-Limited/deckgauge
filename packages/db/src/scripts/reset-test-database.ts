@@ -20,14 +20,16 @@
  * Listing is READ-ONLY on purpose; it prints the `DROP` for a human to run, and
  * this file never drops a database it did not derive.
  */
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../generated/prisma/client.js';
 import {
   DERIVED_DATABASE_PREFIX,
   NEVER_TEST_DATABASES,
   derivedDatabaseName,
   isDerivedDatabaseName,
   resolveCheckoutTestDatabase,
-} from '../test-support/test-database';
+} from '../test-support/test-database.js';
+import { createPrismaClient } from "../client.js";
+import { dirnameOf } from '../esm-main.js';
 
 interface DerivedDatabaseRow {
   datname: string;
@@ -84,13 +86,14 @@ async function listOrphans(admin: PrismaClient): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  // `__dirname` is fine here and only here: this script is only ever run by tsx,
-  // and `packages/db` has no `"type": "module"`, so it executes as CJS.
-  const resolution = resolveCheckoutTestDatabase(__dirname);
+  // This script is only ever run by tsx. It used `__dirname`, which no longer
+  // exists: `packages/db` IS `"type": "module"` since the Prisma 7 upgrade.
+  // See src/esm-main.ts for why tsc and the test suite both miss that.
+  const resolution = resolveCheckoutTestDatabase(dirnameOf(import.meta.url));
   // NOTE: `maintenanceUrl` follows TEST_POSTGRES_SERVER_URL, never a DATABASE_URL
   // override — otherwise an override would redirect `DROP … WITH (FORCE)` at
   // whatever server it names.
-  const admin = new PrismaClient({ datasources: { db: { url: resolution.maintenanceUrl } } });
+  const admin = createPrismaClient(resolution.maintenanceUrl);
 
   try {
     if (process.argv.includes('--list-orphans')) {

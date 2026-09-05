@@ -1,10 +1,21 @@
 generator client {
-  provider = "prisma-client-js"
+  // Prisma 7 retires `prisma-client-js`. The `prisma-client` generator emits
+  // portable TypeScript with no native engine, which is what lets the Docker
+  // images run without downloading a Linux engine binary — see the note in
+  // prisma.config.ts.
+  provider            = "prisma-client"
+  // Inside src/ so `tsc --build` compiles it into dist/ along with everything
+  // else; rootDir is src, so an output beside it would be out of scope.
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  // Emit `./enums.js` rather than `./enums.ts` in the generated imports.
+  // tsc cannot emit from a .ts-extensioned import without
+  // allowImportingTsExtensions, which in turn forbids emitting at all.
+  importFileExtension = "js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum ProjectStatus {

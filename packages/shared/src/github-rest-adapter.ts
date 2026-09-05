@@ -1,5 +1,5 @@
-import { GitHubPort } from './github-port';
-import { GitHubIssue, GitHubMilestone } from './github-schemas';
+import { GitHubPort } from './github-port.js';
+import { GitHubIssue, GitHubMilestone } from './github-schemas.js';
 
 export class GitHubAuthError extends Error {
   constructor(message: string) {

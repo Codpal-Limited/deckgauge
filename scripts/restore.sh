@@ -31,6 +31,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
+# Published host ports from .env, defaults where unset.
+DG_PROJECT_ROOT="$PROJECT_ROOT"
+# shellcheck source=lib/staging-ports.sh
+source "$PROJECT_ROOT/scripts/lib/staging-ports.sh"
+
 # ─── Args ────────────────────────────────────────────────────────────────────
 if [ $# -lt 1 ]; then
   echo "Usage: $0 <backup.tar.gz> [--stack main|next] [--skip-clickhouse] [--skip-uploads] [--yes]"
@@ -63,7 +68,10 @@ fi
 case "$STACK" in
   main)
     : "${COMPOSE_PROJECT_NAME:=vp-cockpit}"
-    : "${CH_PORT:=8123}"
+    # CH_PORT is a HOST port, so it follows CLICKHOUSE_HTTP_PORT out of .env
+    # when this stack has been moved off the defaults. `--stack next` keeps its
+    # literal: that overlay hardcodes 8124 and reads no .env.
+    : "${CH_PORT:=${CLICKHOUSE_HTTP_PORT}}"
     : "${PG_CONTAINER:=vp-cockpit-postgres}"
     : "${KC_DB_CONTAINER:=vp-cockpit-keycloak-db}"
     : "${API_CONTAINER:=vp-cockpit-api}"
@@ -127,10 +135,24 @@ ch_import_table() {
     log_info "  skipping $table (no backup file found)"
     return 0
   fi
+  # Measure the DECOMPRESSED size, not the file size.
+  #
+  # This used to be `wc -c < "$src"`, which is the size of the GZIP STREAM — and
+  # gzip of an empty input is still 20 bytes of header and trailer, never 0. So
+  # the "empty backup file" branch below was unreachable, and a table that was
+  # legitimately empty at backup time fell through to the import, landed 0 rows,
+  # and tripped the "0 rows are present after import" abort at the end of this
+  # function — after truncating the table.
+  #
+  # In the 20260902 archive that is five tables (_ch_migrations,
+  # developer_identity_map, github_milestones, gitlab_issues, jira_worklogs), and
+  # because _ch_migrations sorts first the whole restore aborted on table one,
+  # having restored nothing. An empty export is a fact about the source, not a
+  # failure, and it must not be reported as one.
   local bytes
-  bytes=$(wc -c < "$src" || echo 0)
-  if [ "$bytes" -eq 0 ]; then
-    log_info "  $table: empty backup file — skipping"
+  bytes=$(gunzip -c "$src" 2>/dev/null | wc -c | tr -d '[:space:]') || bytes=0
+  if [ "${bytes:-0}" -eq 0 ]; then
+    log_info "  $table: empty at backup time (0 rows exported) — leaving table untouched"
     return 0
   fi
 
@@ -165,7 +187,7 @@ ch_import_table() {
 
   # A non-empty export that lands zero rows is a silent failure by another name.
   if [ "${count:-0}" -eq 0 ]; then
-    log_fail "  $table: export was ${bytes} bytes but 0 rows are present after import."
+    log_fail "  $table: export held ${bytes} bytes of decompressed rows but 0 rows are present after import."
     log_fail "  Aborting rather than reporting a successful restore."
     exit 1
   fi
@@ -464,11 +486,12 @@ docker compose "${COMPOSE_FILES[@]}" up -d keycloak api web worker
 log_step "Running health checks..."
 api_ok=false; web_ok=false; ch_ok=false
 
-# Host ports per stack, for the post-restore health checks. These are the
-# defaults each stack publishes; if you've remapped them, the restore itself
-# still succeeded even when these checks report a failure.
+# Host ports per stack, for the post-restore health checks. `main` reads them
+# from .env via lib/staging-ports.sh, so a remapped stack checks the right
+# ports. `next` is the phase-3 overlay, which hardcodes its own and reads no
+# .env — remap that one and the restore still succeeded even if these FAIL.
 case "$STACK" in
-  main) WEB_PORT=3000; API_PORT=3001 ;;
+  main) : ;;   # WEB_PORT / API_PORT already resolved by lib/staging-ports.sh
   next) WEB_PORT=3010; API_PORT=3011 ;;
 esac
 

@@ -1,4 +1,4 @@
-import type { RawTransition, StatusSpan } from './types';
+import type { RawTransition, StatusSpan } from './types.js';
 
 /**
  * Reconstruct contiguous status spans per issue from its transition events.

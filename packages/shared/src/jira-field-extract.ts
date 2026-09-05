@@ -1,4 +1,4 @@
-import type { JiraFieldSchemaShape, MappableColumnType } from "./jira-field-schemas";
+import type { JiraFieldSchemaShape, MappableColumnType } from "./jira-field-schemas.js";
 
 /**
  * How a joined multi-value column is stored and re-split.

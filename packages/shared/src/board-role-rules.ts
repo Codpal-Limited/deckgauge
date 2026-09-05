@@ -6,8 +6,8 @@
 // Roles are spelled with `AccessRoleValue` rather than Prisma's
 // `BoardAccessRole`; the two unions are identical members (see access.ts), and
 // using the local one is what keeps packages/shared free of a Prisma dependency.
-import { ACCESS_ROLE_RANK, type AccessRoleValue } from "./access";
-import { ORG_ROLE_RANK, type OrgRoleValue } from "./org";
+import { ACCESS_ROLE_RANK, type AccessRoleValue } from "./access.js";
+import { ORG_ROLE_RANK, type OrgRoleValue } from "./org.js";
 
 /** `null` means no access to the board at all. */
 export type EffectiveBoardRole = AccessRoleValue | null;

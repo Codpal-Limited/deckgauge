@@ -1,9 +1,9 @@
 // EI-007 — AdoPrAdapter.
-import { detectAiAssistance } from './ai-detection';
-import { extractTicketKeys } from './ticket-link-extractor';
-import { chDateTime, chDateTimeRequired } from './clickhouse-datetime';
-import { resilientFetchJson } from './resilient-fetch';
-import type { Throttle } from './request-throttle';
+import { detectAiAssistance } from './ai-detection.js';
+import { extractTicketKeys } from './ticket-link-extractor.js';
+import { chDateTime, chDateTimeRequired } from './clickhouse-datetime.js';
+import { resilientFetchJson } from './resilient-fetch.js';
+import type { Throttle } from './request-throttle.js';
 
 export interface AdoPrFetchOpts {
   project: string;

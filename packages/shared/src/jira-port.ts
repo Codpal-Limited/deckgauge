@@ -1,5 +1,5 @@
-import { JiraEpic, JiraIssue } from "./jira-schemas";
-import type { JiraFieldMeta } from "./jira-field-schemas";
+import { JiraEpic, JiraIssue } from "./jira-schemas.js";
+import type { JiraFieldMeta } from "./jira-field-schemas.js";
 
 /**
  * What a single existence probe could establish about an issue key.

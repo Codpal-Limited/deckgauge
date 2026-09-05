@@ -34,7 +34,7 @@
  * whole run — and released in `teardown`. Nothing is created and nothing is dropped:
  * this file adds a lock and closes a client.
  */
-import { PrismaClient } from '@prisma/client';
+import { Client } from "pg";
 
 /**
  * The lock id. Any 64-bit integer works; a fixed arbitrary constant so every checkout
@@ -53,9 +53,42 @@ export interface LockClient {
 
 let held: LockClient | null = null;
 
-/** Exported for the tests; production passes nothing. */
+/**
+ * Exported for the tests; production passes nothing.
+ *
+ * A single dedicated `pg.Client`, deliberately NOT a Prisma client and NOT a pool.
+ * `pg_try_advisory_lock` takes a SESSION lock, which lives on one connection — the
+ * "one process, one connection" the header promises. Prisma 7 connects through
+ * `@prisma/adapter-pg`, i.e. a `pg.Pool`, and a pool hands its connection back after
+ * each query: the lock is then taken on a connection nobody holds, so a later
+ * `pg_try_advisory_lock` from a different client SUCCEEDS and the guard silently
+ * cannot fire. That is not a test artifact — it is the isolation guarantee in
+ * CLAUDE.md § Testing ("one run at a time per database, and it is enforced")
+ * evaporating, with two apps/api suites that CLEAR `organizations` on the other side
+ * of it. Prisma 5 happened to keep one connection here; nothing promised it would.
+ *
+ * One connection also preserves the property the header calls the reason for choosing
+ * an advisory lock at all: Postgres drops it when the connection dies, so a crashed
+ * run leaves nothing stale behind.
+ */
 export function defaultLockClient(url: string): LockClient {
-  return new PrismaClient({ datasources: { db: { url } } }) as unknown as LockClient;
+  const client = new Client({ connectionString: url });
+  let connecting: Promise<void> | null = null;
+  // pg types connect() as Promise<Client>; the cached promise only marks readiness.
+  const connected = () => (connecting ??= client.connect().then(() => undefined));
+
+  return {
+    async $queryRawUnsafe<T>(query: string): Promise<T> {
+      await connected();
+      const result = await client.query(query);
+      return result.rows as T;
+    },
+    async $disconnect(): Promise<void> {
+      if (!connecting) return;
+      await connecting.catch(() => undefined);
+      await client.end().catch(() => undefined);
+    },
+  };
 }
 
 export function exclusiveRunLockUnavailableMessage(database: string): string {

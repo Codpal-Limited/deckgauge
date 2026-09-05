@@ -1,6 +1,6 @@
-import { JiraPort, JiraIssueExistence, JiraCredentialState } from "./jira-port";
-import { JiraEpic, JiraIssue } from "./jira-schemas";
-import type { JiraFieldMeta } from "./jira-field-schemas";
+import { JiraPort, JiraIssueExistence, JiraCredentialState } from "./jira-port.js";
+import { JiraEpic, JiraIssue } from "./jira-schemas.js";
+import type { JiraFieldMeta } from "./jira-field-schemas.js";
 
 export class FakeJiraAdapter implements JiraPort {
   public fixtureIssueTypesByProject: Record<string, string[]> = {};

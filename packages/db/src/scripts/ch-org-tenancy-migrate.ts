@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { CH_TENANT_TABLES, type ChTenantTable } from '../ch-tenancy-tables.js';
 import { applyRowPolicyBaseline, chExecutorFromClient } from '../ch-provisioning.js';
+import { dirnameOf, isMainModule } from '../esm-main.js';
 
 /**
  * Migrates an EXISTING ClickHouse database to organization-keyed tables.
@@ -45,7 +46,7 @@ const FLOW_VIEW = 'mv_jira_flow_efficiency';
  * gets cannot drift apart. packages/db/src/scripts → repo root is four levels;
  * the compiled dist/scripts/ sits at the same depth.
  */
-const MV_SCHEMA_FILE = resolve(__dirname, '../../../../clickhouse/schemas/50_materialized_views.sql');
+const MV_SCHEMA_FILE = resolve(dirnameOf(import.meta.url), '../../../../clickhouse/schemas/50_materialized_views.sql');
 
 /** The slice of @clickhouse/client this script needs — keeps tests injectable. */
 export interface ChExec {
@@ -762,7 +763,7 @@ async function runFromCli(): Promise<void> {
 
 // Guard the entry point so importing this module (as the test and Task 4 do)
 // never triggers a live run.
-if (require.main === module) {
+if (isMainModule(import.meta.url)) {
   runFromCli().catch((err) => {
     console.error(err);
     process.exit(1);

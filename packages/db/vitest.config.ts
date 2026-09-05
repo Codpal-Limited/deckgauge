@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config';
-import { resolveCheckoutTestDatabase } from './src/test-support/test-database';
-import { dockerCapabilityEnv } from './src/test-support/integration-capability';
+import { resolveCheckoutTestDatabase } from './src/test-support/test-database.js';
+import { dockerCapabilityEnv } from './src/test-support/integration-capability.js';
 
 /**
  * This config used to call `dotenv.config` on the ROOT `.env`, whose `DATABASE_URL`

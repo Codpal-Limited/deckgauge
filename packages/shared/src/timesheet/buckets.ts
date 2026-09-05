@@ -1,4 +1,4 @@
-import type { StatusSpan } from './types';
+import type { StatusSpan } from './types.js';
 
 export type Granularity = 'day' | 'week' | 'month';
 

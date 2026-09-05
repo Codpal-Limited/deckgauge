@@ -1,9 +1,9 @@
-import type { Provider, StatusSpan } from './types';
-import { clipToWindow } from './clip';
-import { resolveInProgressStatuses, spanIsInProgress, type StatusRule, type ResolvedStatusConfig } from './status-rules';
-import { splitIntoBuckets, bucketKeyFor, type Granularity } from './buckets';
-import { normalizeConcurrent } from './normalize';
-import { resolveClassification, type Classification } from './classification';
+import type { Provider, StatusSpan } from './types.js';
+import { clipToWindow } from './clip.js';
+import { resolveInProgressStatuses, spanIsInProgress, type StatusRule, type ResolvedStatusConfig } from './status-rules.js';
+import { splitIntoBuckets, bucketKeyFor, type Granularity } from './buckets.js';
+import { normalizeConcurrent } from './normalize.js';
+import { resolveClassification, type Classification } from './classification.js';
 
 export interface EmployeeInput {
   id: string;

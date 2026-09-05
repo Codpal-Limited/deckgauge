@@ -22,12 +22,12 @@ import {
   acquireExclusiveRunLock,
   releaseExclusiveRunLock,
 } from './exclusive-run-lock.js';
-import { ensureTestDatabase, type EnsureTestDatabaseOptions } from './ensure-test-database';
+import { ensureTestDatabase, type EnsureTestDatabaseOptions } from './ensure-test-database.js';
 import {
   resetHintFor,
   resolveCheckoutTestDatabase,
   type TestDatabaseResolution,
-} from './test-database';
+} from './test-database.js';
 
 /**
  * Turns a resolution into the options `ensureTestDatabase` needs.

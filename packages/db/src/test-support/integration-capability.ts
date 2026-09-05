@@ -126,7 +126,8 @@ export const CAPABILITIES: Readonly<Record<CapabilityName, CapabilityDefinition>
      * NOT validated the way `TEST_POSTGRES_SERVER_URL` is, and that asymmetry is a
      * known slice rather than a decision.
      *
-     * `assertSafeTestServerUrl` refuses port 5433 (staging Postgres) and
+     * `assertSafeTestServerUrl` refuses every staging Postgres port (5433, and
+     * 5533 where this checkout publishes it) and
      * `assertSafeTestDatabaseUrl` refuses the `cockpit` database under any flag. There
      * is no equivalent for this variable: whatever it names is where the suites read
      * and — since this branch — WRITE and DELETE. It is not reachable by accident,

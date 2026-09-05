@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { SIZE_LABELS } from './roadmap-schedule';
+import { SIZE_LABELS } from './roadmap-schedule.js';
 
 export const SizeDurationsSchema = z.object(
   Object.fromEntries(SIZE_LABELS.map((s) => [s, z.number().positive()])) as Record<

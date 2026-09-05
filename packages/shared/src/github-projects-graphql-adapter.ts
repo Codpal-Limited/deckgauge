@@ -1,5 +1,5 @@
-import { GitHubProjectsPort, GitHubProjectItem } from './github-projects-port';
-import { GitHubProject, GitHubProjectStatusOption } from './github-schemas';
+import { GitHubProjectsPort, GitHubProjectItem } from './github-projects-port.js';
+import { GitHubProject, GitHubProjectStatusOption } from './github-schemas.js';
 
 export class GitHubProjectsAuthError extends Error {
   constructor(message: string) {

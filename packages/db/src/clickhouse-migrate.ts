@@ -5,6 +5,7 @@ import {
   chExecutorFromClient,
   type ChCoverageReport,
 } from './ch-provisioning.js';
+import { dirnameOf, isMainModule } from './esm-main.js';
 
 export interface ClickhouseExecClient {
   exec(params: { query: string }): Promise<unknown>;
@@ -152,7 +153,7 @@ export async function runClickhouseMigrations(
 
 async function runFromCli(): Promise<void> {
   const { clickhouse } = await import('./clickhouse.js');
-  const repoRoot = path.resolve(__dirname, '../../..');
+  const repoRoot = path.resolve(dirnameOf(import.meta.url), '../../..');
   const schemasDir = process.env.CLICKHOUSE_SCHEMAS_DIR
     ?? path.join(repoRoot, 'clickhouse', 'schemas');
 
@@ -234,7 +235,7 @@ async function runFromCli(): Promise<void> {
   console.log(`Done. ${result.applied.length} applied, ${result.skipped.length} skipped.`);
 }
 
-const invokedDirectly = require.main === module;
+const invokedDirectly = isMainModule(import.meta.url);
 if (invokedDirectly) {
   runFromCli().catch((err) => {
     console.error(err);

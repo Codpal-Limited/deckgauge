@@ -4,9 +4,9 @@
 // cockpit.github_pull_requests ClickHouse table (CLICKHOUSE-ARCHITECTURE.md §5.5).
 // The adapter does NOT write to ClickHouse — the processor (EI-013) does that.
 
-import { detectAiAssistance } from './ai-detection';
-import { extractTicketKeys } from './ticket-link-extractor';
-import { chDateTime, chDateTimeRequired } from './clickhouse-datetime';
+import { detectAiAssistance } from './ai-detection.js';
+import { extractTicketKeys } from './ticket-link-extractor.js';
+import { chDateTime, chDateTimeRequired } from './clickhouse-datetime.js';
 
 export interface GitHubPrFetchOpts {
   repoFullName: string;          // "owner/repo"

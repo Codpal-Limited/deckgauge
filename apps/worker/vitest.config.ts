@@ -5,7 +5,7 @@ import { resolveCheckoutTestDatabase } from '../../packages/db/src/test-support/
  * The worker's DB-touching suites used to reach the single shared `…:55432/cockpit`
  * every worktree wrote to — `notification-maintenance.handler.test.ts` via
  * `WORKER_TEST_DATABASE_URL`'s hardcoded default, and
- * `org-tree-sync/board-reverse-index.test.ts` via a bare `new PrismaClient()` with
+ * `org-tree-sync/board-reverse-index.test.ts` via a bare `createPrismaClient()` with
  * no `DATABASE_URL` set at all (undefined in a clean shell, LIVE STAGING if the
  * operator had sourced the root `.env`).
  *
@@ -55,6 +55,14 @@ export default defineConfig({
        * reason — rather than this line silently substituting a default.
        */
       INTEGRATION_CLICKHOUSE_URL: testDatabase.env.INTEGRATION_CLICKHOUSE_URL ?? '',
+      /**
+       * BullMQ's Redis for the queue suites. Same reasoning, same source file, and
+       * the same `??` rather than `||`: an operator who sets it empty gets empty,
+       * and the suite fails by name instead of this line quietly substituting
+       * localhost:6379 — which is what staging's Redis answered on until the port
+       * remap, so those suites were enqueueing real jobs into the live queue.
+       */
+      REDIS_URL: testDatabase.env.TEST_REDIS_URL ?? '',
     },
   },
 })

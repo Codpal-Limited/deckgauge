@@ -1,4 +1,4 @@
-import type { NotificationKindValue } from "./notification-schemas";
+import type { NotificationKindValue } from "./notification-schemas.js";
 
 /**
  * The verb phrase each kind renders as.

@@ -1,7 +1,7 @@
 // EI-0xx — GitLab issue row shape (parity with GitHubIssueRow).
-import { extractTicketKeys } from './ticket-link-extractor';
-import { gitlabApiBase } from './gitlab-api-base';
-import { chDateTime, chDateTimeRequired } from './clickhouse-datetime';
+import { extractTicketKeys } from './ticket-link-extractor.js';
+import { gitlabApiBase } from './gitlab-api-base.js';
+import { chDateTime, chDateTimeRequired } from './clickhouse-datetime.js';
 
 export type GitLabIssueRow = {
   id: string;

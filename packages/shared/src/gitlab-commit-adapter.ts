@@ -1,7 +1,7 @@
 // EI-006 — GitLabCommitAdapter.
-import { detectAiAssistance } from './ai-detection';
-import { extractTicketKeys } from './ticket-link-extractor';
-import { gitlabApiBase } from './gitlab-api-base';
+import { detectAiAssistance } from './ai-detection.js';
+import { extractTicketKeys } from './ticket-link-extractor.js';
+import { gitlabApiBase } from './gitlab-api-base.js';
 
 export interface GitLabCommitFetchOpts {
   projectPath: string;

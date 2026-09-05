@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import { PrismaClient } from "@deckgauge/db";
+import { createPrismaClient } from "@deckgauge/db";
 import { buildServer } from "./server.js";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -24,7 +24,7 @@ if (envFilePath) {
 const PORT = Number(process.env["PORT"] ?? 3001);
 const HOST = process.env["HOST"] ?? "0.0.0.0";
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function main() {
   // Verify DB connection at startup — exit non-zero if it fails

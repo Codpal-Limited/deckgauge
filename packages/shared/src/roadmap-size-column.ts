@@ -1,4 +1,4 @@
-import { SIZE_LABELS, type SizeLabel } from './roadmap-schedule';
+import { SIZE_LABELS, type SizeLabel } from './roadmap-schedule.js';
 
 export const SIZE_COLUMN_NAME = 'Size';
 

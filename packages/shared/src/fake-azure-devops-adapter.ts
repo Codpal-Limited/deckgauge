@@ -1,6 +1,6 @@
-import { AzureDevOpsPort } from './azure-devops-port';
-import { AzureDevOpsWorkItem } from './azure-devops-schemas';
-import { AdoWorkItemRevision } from './ado-work-item-revision';
+import { AzureDevOpsPort } from './azure-devops-port.js';
+import { AzureDevOpsWorkItem } from './azure-devops-schemas.js';
+import { AdoWorkItemRevision } from './ado-work-item-revision.js';
 
 const PROJECT_A = 'ProjectAlpha';
 const PROJECT_B = 'ProjectBeta';

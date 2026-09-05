@@ -32,6 +32,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
+# Published host ports from .env, defaults where unset.
+DG_PROJECT_ROOT="$PROJECT_ROOT"
+# shellcheck source=lib/staging-ports.sh
+source "$PROJECT_ROOT/scripts/lib/staging-ports.sh"
+
 # ─── Args ────────────────────────────────────────────────────────────────────
 DEST_DIR="$PROJECT_ROOT/backups"
 TAG="$(date +%Y%m%d-%H%M%S)"
@@ -52,7 +57,10 @@ done
 case "$STACK" in
   main)
     : "${COMPOSE_PROJECT_NAME:=vp-cockpit}"
-    : "${CH_PORT:=8123}"
+    # CH_PORT is a HOST port, so it follows CLICKHOUSE_HTTP_PORT out of .env
+    # when this stack has been moved off the defaults. `--stack next` keeps its
+    # literal: that overlay hardcodes 8124 and reads no .env.
+    : "${CH_PORT:=${CLICKHOUSE_HTTP_PORT}}"
     : "${PG_CONTAINER:=vp-cockpit-postgres}"
     : "${KC_DB_CONTAINER:=vp-cockpit-keycloak-db}"
     : "${API_CONTAINER:=vp-cockpit-api}"

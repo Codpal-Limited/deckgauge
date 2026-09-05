@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
-import { AzureDevOpsConfigSchema, type AzureDevOpsConfig } from './azure-devops-config-schema';
+import { AzureDevOpsConfigSchema, type AzureDevOpsConfig } from './azure-devops-config-schema.js';
 
-export { AzureDevOpsConfigSchema, type AzureDevOpsConfig } from './azure-devops-config-schema';
+export { AzureDevOpsConfigSchema, type AzureDevOpsConfig } from './azure-devops-config-schema.js';
 
 export class AdoConfigNotFoundError extends Error {
   constructor(path: string) {

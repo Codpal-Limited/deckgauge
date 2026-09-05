@@ -2,7 +2,7 @@
 // combines the whole-path direction (first vs last) with the recent move (last
 // ~3 buckets). The interesting case is "stalling": improved overall but the
 // recent buckets are reversing — a plain two-point diff misses this.
-import type { MetricDirection } from './period-comparison';
+import type { MetricDirection } from './period-comparison.js';
 
 export type TrajectoryGrade = 'improving' | 'regressing' | 'flat' | 'stalling' | 'recovering';
 

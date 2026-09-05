@@ -1,4 +1,4 @@
-import { GitHubProject, GitHubProjectStatusOption } from './github-schemas';
+import { GitHubProject, GitHubProjectStatusOption } from './github-schemas.js';
 
 export interface GitHubProjectItem {
   itemId: string;

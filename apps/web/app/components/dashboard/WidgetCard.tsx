@@ -13,6 +13,10 @@ interface WidgetCardProps {
   widgetType: string;
   canEdit: boolean;
   onConfigure?: () => void;
+  // The board owns the widget list in client state, so a successful delete has
+  // to be reported back — otherwise the removed card sits on the canvas until a
+  // full page reload remounts the board and refetches the list.
+  onRemoved?: () => void;
   children: React.ReactNode;
 }
 
@@ -24,6 +28,7 @@ export default function WidgetCard({
   widgetType,
   canEdit,
   onConfigure,
+  onRemoved,
   children,
 }: WidgetCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -33,6 +38,7 @@ export default function WidgetCard({
     if (!confirm('Remove this widget?')) return;
     startTransition(async () => {
       await deleteWidget(boardId, viewId, widgetId);
+      onRemoved?.();
     });
   };
 

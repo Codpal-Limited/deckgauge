@@ -2,7 +2,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { config } from 'dotenv'
 import { Queue, Worker } from 'bullmq'
-import { PrismaClient, clickhouse, chInsertMany } from '@deckgauge/db'
+import { clickhouse, chInsertMany } from '@deckgauge/db'
 import { loadEdition, type WorkerEditionModule } from './edition-loader.js'
 import { createIngestPermission } from './ingest-permission.js'
 import { buildWorkerChReadIdentity } from './ch-read-identity.js'
@@ -70,6 +70,7 @@ import {
   StaticTokenGraphDirectoryClient,
   type GraphDirectoryClient,
 } from './org-source-sync/graph-directory-client.js'
+import { createPrismaClient } from "@deckgauge/db";
 
 // Load .env from the repository root
 const __filename = fileURLToPath(import.meta.url)
@@ -87,7 +88,7 @@ if (!REDIS_URL) {
 }
 
 // Initialize Prisma client
-const db = new PrismaClient()
+const db = createPrismaClient()
 
 const jiraAdapterFactory = (cfg: {
   atlassianUrl: string

@@ -20,7 +20,7 @@
 //   - Time to Restore   : PROXY — p50 hours from bug-issue opened → closed;
 //                         there is no incident source.
 // Thresholds follow the commonly-cited DORA state-of-DevOps bands.
-import { type BenchmarkConfig, type Tier, tierFor } from './benchmarks';
+import { type BenchmarkConfig, type Tier, tierFor } from './benchmarks.js';
 
 export const DORA_BENCHMARKS = {
   lead_time: { direction: 'lower_is_better', elite: 24, high: 168, medium: 720, unit: 'hours' },

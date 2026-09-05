@@ -16,9 +16,9 @@
 //   - Build/pipeline runs (/_apis/build/builds). A build succeeding is not a
 //     deploy; a single large org can carry 55k+ builds, so counting them would
 //     inflate deploy frequency far worse than the proxy this replaces.
-import { chDateTime } from './clickhouse-datetime';
-import { resilientFetchJson } from './resilient-fetch';
-import type { Throttle } from './request-throttle';
+import { chDateTime } from './clickhouse-datetime.js';
+import { resilientFetchJson } from './resilient-fetch.js';
+import type { Throttle } from './request-throttle.js';
 
 export interface AdoDeploymentFetchOpts {
   project: string;

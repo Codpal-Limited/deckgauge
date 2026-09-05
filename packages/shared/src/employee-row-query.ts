@@ -1,5 +1,5 @@
-import type { EmployeeBoardMemberDto } from './employee-board-schemas';
-import type { EmployeeBoardColumnKey } from './employee-board-columns';
+import type { EmployeeBoardMemberDto } from './employee-board-schemas.js';
+import type { EmployeeBoardColumnKey } from './employee-board-columns.js';
 
 export interface EmployeeSortConfig {
   column: string;

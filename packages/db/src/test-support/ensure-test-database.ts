@@ -35,8 +35,8 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { PrismaClient } from '@prisma/client';
-import { compareMigrations, type MigrationRecord } from './test-database';
+import { compareMigrations, type MigrationRecord } from './test-database.js';
+import { createPrismaClient } from "../client.js";
 
 /** Thrown when the database's migration state and this checkout's disagree. */
 export class TestDatabaseDriftError extends Error {
@@ -113,7 +113,7 @@ function unreachable(url: string): Error {
 }
 
 function defaultOpenClient(url: string): TestDatabaseClient {
-  return new PrismaClient({ datasources: { db: { url } } }) as unknown as TestDatabaseClient;
+  return createPrismaClient(url) as unknown as TestDatabaseClient;
 }
 
 function migrationDirNames(migrationsDir: string): string[] {

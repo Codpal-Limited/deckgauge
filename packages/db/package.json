@@ -2,11 +2,12 @@
   "name": "@deckgauge/db",
   "version": "0.0.1",
   "private": true,
+  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc --build",
-    "generate": "prisma generate",
+    "generate": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} prisma generate",
     "migrate:deploy": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} prisma migrate deploy",
     "migrate:dev": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} prisma migrate dev",
     "migrate:clickhouse": "tsx src/clickhouse-migrate.ts",
@@ -23,12 +24,15 @@
   },
   "dependencies": {
     "@clickhouse/client": "^1.19.0",
-    "@prisma/client": "^5.13.0"
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "pg": "^8.13.0"
   },
   "devDependencies": {
     "@deckgauge/test-utils": "workspace:*",
+    "@types/pg": "^8.11.10",
     "dotenv": "^16.4.5",
-    "prisma": "^5.13.0",
+    "prisma": "^7.10.0",
     "tsx": "^4.15.7",
     "vitest": "^4.1.4"
   }

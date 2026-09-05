@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { OrgRoleSchema } from './org';
+import { OrgRoleSchema } from './org.js';
 
 /**
  * Per-entity grant roles. Mirrors `BoardAccessRole` and `RoadmapAccessRole` in

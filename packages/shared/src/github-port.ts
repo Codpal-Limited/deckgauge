@@ -1,4 +1,4 @@
-import { GitHubIssue, GitHubMilestone } from './github-schemas';
+import { GitHubIssue, GitHubMilestone } from './github-schemas.js';
 
 export interface GitHubPort {
   fetchMilestones(repoFullName: string): Promise<GitHubMilestone[]>;

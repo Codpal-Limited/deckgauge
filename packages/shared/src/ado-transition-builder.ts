@@ -1,4 +1,4 @@
-import type { AdoWorkItemRevision } from './ado-work-item-revision';
+import type { AdoWorkItemRevision } from './ado-work-item-revision.js';
 
 /**
  * A row matching the `cockpit.ado_transitions` table (synced_at is CH-defaulted).

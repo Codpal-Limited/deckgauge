@@ -78,12 +78,31 @@ export const ALLOW_NON_DERIVED_ENV = 'DECKGAUGE_TEST_DB_ALLOW_SHARED';
 export const DEFAULT_TEST_POSTGRES_SERVER_URL = 'postgresql://cockpit:cockpit@localhost:55432';
 
 /**
- * The STAGING Postgres. `packages/db`'s own vitest config loads the root `.env`,
- * which points here — this repository has already had test suites write to it.
- * A test URL that resolves to this port is a configuration accident, not a
+ * Ports a REAL Postgres is published on, which a test run must therefore never
+ * open. `packages/db`'s own vitest config used to load the root `.env`, which
+ * points at one of these — this repository has already had test suites write to
+ * staging. A test URL that resolves here is a configuration accident, not a
  * choice, so it is refused rather than used.
+ *
+ * Two entries, because the port is now configurable:
+ *  - 5433 is the compose DEFAULT (`${POSTGRES_PORT:-5433}` in
+ *    docker-compose.yml), so it is what a fresh clone, the OSS distribution and
+ *    every other checkout publish. It stays listed forever.
+ *  - 5533 is where THIS checkout publishes it. Staging was moved off the
+ *    defaults so a second, vanilla installation could take them — and a guard
+ *    naming only 5433 would have gone quietly blind to the live stack the
+ *    moment it moved, which is the precise failure it exists to prevent.
+ *
+ * `POSTGRES_PORT` is unioned in when the environment carries it, so a checkout
+ * that moves again is covered without editing this file. That is a convenience,
+ * not the mechanism: nothing in the test path exports it, so the literals above
+ * are what actually does the work. Move POSTGRES_PORT and add it here.
  */
-const STAGING_POSTGRES_PORT = '5433';
+const STAGING_POSTGRES_PORTS: ReadonlySet<string> = new Set(
+  ['5433', '5533', process.env.POSTGRES_PORT].filter(
+    (p): p is string => typeof p === 'string' && p !== '',
+  ),
+);
 
 /**
  * Slug budget inside the derived name. Changing it changes
@@ -244,7 +263,8 @@ export function databaseNameOf(url: string): string {
  * `DROP DATABASE`.
  *
  * Two refusals, each with its own scar:
- *  - the staging PORT (:5433) — `packages/db`'s tests already write there;
+ *  - a staging PORT (see STAGING_POSTGRES_PORTS) — `packages/db`'s tests already
+ *    write there;
  *  - NO explicit port — `@localhost/cockpit` is nobody's intent, and a port-only
  *    staging check waves it through to Postgres' default 5432.
  */
@@ -257,9 +277,9 @@ export function assertSafeTestServerUrl(url: string, context?: string): URL {
     throw new Error(`Test database URL${where} is not a valid URL: ${url}`);
   }
 
-  if (parsed.port === STAGING_POSTGRES_PORT) {
+  if (STAGING_POSTGRES_PORTS.has(parsed.port)) {
     throw new Error(
-      `Refusing to run tests against ${parsed.host}${where} — port ${STAGING_POSTGRES_PORT} is ` +
+      `Refusing to run tests against ${parsed.host}${where} — port ${parsed.port} is ` +
         'the STAGING Postgres and the suites here create, mutate and delete rows. ' +
         'Point at the disposable test stack (docker-compose.test.yml, :55432), or remove the ' +
         'override from apps/api/.env.test.local.',

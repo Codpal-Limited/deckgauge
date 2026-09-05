@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { OrgEmployeeDtoSchema } from './org-tree-schemas';
-import { EmployeeBoardColumnConfigSchema, EmployeeColumnTypeSchema } from './employee-board-columns';
+import { OrgEmployeeDtoSchema } from './org-tree-schemas.js';
+import { EmployeeBoardColumnConfigSchema, EmployeeColumnTypeSchema } from './employee-board-columns.js';
 
 const uuid = z.string().uuid();
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);

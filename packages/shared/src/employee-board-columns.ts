@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH } from './column-layout-schemas';
+import { MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH } from './column-layout-schemas.js';
 
 export const EMPLOYEE_BOARD_COLUMN_KEYS = [
   'name',
