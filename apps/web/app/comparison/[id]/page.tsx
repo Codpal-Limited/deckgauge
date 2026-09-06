@@ -4,10 +4,11 @@ import { fetchComparison } from '../../actions/comparison';
 import ComparisonPageContent from '../../components/comparison/ComparisonPageContent';
 
 interface ComparisonPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default async function ComparisonPage({ params }: ComparisonPageProps) {
+export default async function ComparisonPage(props: ComparisonPageProps) {
+  const params = await props.params;
   // A missing comparison (deleted, or not owned by this user) must render the
   // 404 page, not throw — a raw throw here surfaces as a Server Components
   // render error instead. Ownership is enforced API-side, so anything the user

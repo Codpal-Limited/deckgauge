@@ -1,6 +1,7 @@
 {
   "name": "@deckgauge/db",
   "version": "0.0.1",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -11,7 +12,7 @@
     "migrate:deploy": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} prisma migrate deploy",
     "migrate:dev": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} prisma migrate dev",
     "migrate:clickhouse": "tsx src/clickhouse-migrate.ts",
-    "seed": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} tsx seed.ts",
+    "seed:demo": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} tsx src/demo/seed-demo.ts",
     "grant-owner": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} tsx scripts/grant-owner-access.ts",
     "grant:org-access": "tsx src/scripts/grant-org-access.ts",
     "bootstrap:admin": "tsx src/scripts/bootstrap-admin.ts",
@@ -34,6 +35,7 @@
     "dotenv": "^16.4.5",
     "prisma": "^7.10.0",
     "tsx": "^4.15.7",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.11",
+    "zod": "^4.3.6"
   }
 }

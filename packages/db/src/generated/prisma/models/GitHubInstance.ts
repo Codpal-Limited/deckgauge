@@ -29,6 +29,7 @@ export type GitHubInstanceMinAggregateOutputType = {
   baseUrl: string | null
   accessToken: string | null
   org: string | null
+  isDemo: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
   organizationId: string | null
@@ -41,6 +42,7 @@ export type GitHubInstanceMaxAggregateOutputType = {
   baseUrl: string | null
   accessToken: string | null
   org: string | null
+  isDemo: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
   organizationId: string | null
@@ -54,6 +56,7 @@ export type GitHubInstanceCountAggregateOutputType = {
   accessToken: number
   org: number
   repos: number
+  isDemo: number
   createdAt: number
   updatedAt: number
   organizationId: number
@@ -68,6 +71,7 @@ export type GitHubInstanceMinAggregateInputType = {
   baseUrl?: true
   accessToken?: true
   org?: true
+  isDemo?: true
   createdAt?: true
   updatedAt?: true
   organizationId?: true
@@ -80,6 +84,7 @@ export type GitHubInstanceMaxAggregateInputType = {
   baseUrl?: true
   accessToken?: true
   org?: true
+  isDemo?: true
   createdAt?: true
   updatedAt?: true
   organizationId?: true
@@ -93,6 +98,7 @@ export type GitHubInstanceCountAggregateInputType = {
   accessToken?: true
   org?: true
   repos?: true
+  isDemo?: true
   createdAt?: true
   updatedAt?: true
   organizationId?: true
@@ -179,6 +185,7 @@ export type GitHubInstanceGroupByOutputType = {
   accessToken: string
   org: string
   repos: string[]
+  isDemo: boolean
   createdAt: Date
   updatedAt: Date
   organizationId: string
@@ -213,6 +220,7 @@ export type GitHubInstanceWhereInput = {
   accessToken?: Prisma.StringFilter<"GitHubInstance"> | string
   org?: Prisma.StringFilter<"GitHubInstance"> | string
   repos?: Prisma.StringNullableListFilter<"GitHubInstance">
+  isDemo?: Prisma.BoolFilter<"GitHubInstance"> | boolean
   createdAt?: Prisma.DateTimeFilter<"GitHubInstance"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"GitHubInstance"> | Date | string
   organizationId?: Prisma.StringFilter<"GitHubInstance"> | string
@@ -230,6 +238,7 @@ export type GitHubInstanceOrderByWithRelationInput = {
   accessToken?: Prisma.SortOrder
   org?: Prisma.SortOrder
   repos?: Prisma.SortOrder
+  isDemo?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
@@ -250,6 +259,7 @@ export type GitHubInstanceWhereUniqueInput = Prisma.AtLeast<{
   accessToken?: Prisma.StringFilter<"GitHubInstance"> | string
   org?: Prisma.StringFilter<"GitHubInstance"> | string
   repos?: Prisma.StringNullableListFilter<"GitHubInstance">
+  isDemo?: Prisma.BoolFilter<"GitHubInstance"> | boolean
   createdAt?: Prisma.DateTimeFilter<"GitHubInstance"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"GitHubInstance"> | Date | string
   organizationId?: Prisma.StringFilter<"GitHubInstance"> | string
@@ -267,6 +277,7 @@ export type GitHubInstanceOrderByWithAggregationInput = {
   accessToken?: Prisma.SortOrder
   org?: Prisma.SortOrder
   repos?: Prisma.SortOrder
+  isDemo?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
@@ -286,6 +297,7 @@ export type GitHubInstanceScalarWhereWithAggregatesInput = {
   accessToken?: Prisma.StringWithAggregatesFilter<"GitHubInstance"> | string
   org?: Prisma.StringWithAggregatesFilter<"GitHubInstance"> | string
   repos?: Prisma.StringNullableListFilter<"GitHubInstance">
+  isDemo?: Prisma.BoolWithAggregatesFilter<"GitHubInstance"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"GitHubInstance"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"GitHubInstance"> | Date | string
   organizationId?: Prisma.StringWithAggregatesFilter<"GitHubInstance"> | string
@@ -299,6 +311,7 @@ export type GitHubInstanceCreateInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   createdBy?: Prisma.UserCreateNestedOneWithoutCreatedGitHubInstancesInput
@@ -313,6 +326,7 @@ export type GitHubInstanceUncheckedCreateInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   organizationId: string
@@ -327,6 +341,7 @@ export type GitHubInstanceUpdateInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdBy?: Prisma.UserUpdateOneWithoutCreatedGitHubInstancesNestedInput
@@ -341,6 +356,7 @@ export type GitHubInstanceUncheckedUpdateInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -355,6 +371,7 @@ export type GitHubInstanceCreateManyInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   organizationId: string
@@ -368,6 +385,7 @@ export type GitHubInstanceUpdateManyMutationInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -378,6 +396,7 @@ export type GitHubInstanceUncheckedUpdateManyInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -401,6 +420,7 @@ export type GitHubInstanceCountOrderByAggregateInput = {
   accessToken?: Prisma.SortOrder
   org?: Prisma.SortOrder
   repos?: Prisma.SortOrder
+  isDemo?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
@@ -413,6 +433,7 @@ export type GitHubInstanceMaxOrderByAggregateInput = {
   baseUrl?: Prisma.SortOrder
   accessToken?: Prisma.SortOrder
   org?: Prisma.SortOrder
+  isDemo?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
@@ -425,6 +446,7 @@ export type GitHubInstanceMinOrderByAggregateInput = {
   baseUrl?: Prisma.SortOrder
   accessToken?: Prisma.SortOrder
   org?: Prisma.SortOrder
+  isDemo?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
@@ -592,6 +614,7 @@ export type GitHubInstanceCreateWithoutOrganizationInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   createdBy?: Prisma.UserCreateNestedOneWithoutCreatedGitHubInstancesInput
@@ -605,6 +628,7 @@ export type GitHubInstanceUncheckedCreateWithoutOrganizationInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -647,6 +671,7 @@ export type GitHubInstanceScalarWhereInput = {
   accessToken?: Prisma.StringFilter<"GitHubInstance"> | string
   org?: Prisma.StringFilter<"GitHubInstance"> | string
   repos?: Prisma.StringNullableListFilter<"GitHubInstance">
+  isDemo?: Prisma.BoolFilter<"GitHubInstance"> | boolean
   createdAt?: Prisma.DateTimeFilter<"GitHubInstance"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"GitHubInstance"> | Date | string
   organizationId?: Prisma.StringFilter<"GitHubInstance"> | string
@@ -660,6 +685,7 @@ export type GitHubInstanceCreateWithoutCreatedByInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   owner?: Prisma.UserCreateNestedOneWithoutOwnedGitHubInstancesInput
@@ -673,6 +699,7 @@ export type GitHubInstanceUncheckedCreateWithoutCreatedByInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   organizationId: string
@@ -696,6 +723,7 @@ export type GitHubInstanceCreateWithoutOwnerInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   createdBy?: Prisma.UserCreateNestedOneWithoutCreatedGitHubInstancesInput
@@ -709,6 +737,7 @@ export type GitHubInstanceUncheckedCreateWithoutOwnerInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   organizationId: string
@@ -764,6 +793,7 @@ export type GitHubInstanceCreateWithoutRepoSyncsInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   createdBy?: Prisma.UserCreateNestedOneWithoutCreatedGitHubInstancesInput
@@ -777,6 +807,7 @@ export type GitHubInstanceUncheckedCreateWithoutRepoSyncsInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   organizationId: string
@@ -806,6 +837,7 @@ export type GitHubInstanceUpdateWithoutRepoSyncsInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdBy?: Prisma.UserUpdateOneWithoutCreatedGitHubInstancesNestedInput
@@ -819,6 +851,7 @@ export type GitHubInstanceUncheckedUpdateWithoutRepoSyncsInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -832,6 +865,7 @@ export type GitHubInstanceCreateManyOrganizationInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -844,6 +878,7 @@ export type GitHubInstanceUpdateWithoutOrganizationInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdBy?: Prisma.UserUpdateOneWithoutCreatedGitHubInstancesNestedInput
@@ -857,6 +892,7 @@ export type GitHubInstanceUncheckedUpdateWithoutOrganizationInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -870,6 +906,7 @@ export type GitHubInstanceUncheckedUpdateManyWithoutOrganizationInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -882,6 +919,7 @@ export type GitHubInstanceCreateManyCreatedByInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   organizationId: string
@@ -894,6 +932,7 @@ export type GitHubInstanceCreateManyOwnerInput = {
   accessToken: string
   org?: string
   repos?: Prisma.GitHubInstanceCreatereposInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   organizationId: string
@@ -906,6 +945,7 @@ export type GitHubInstanceUpdateWithoutCreatedByInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneWithoutOwnedGitHubInstancesNestedInput
@@ -919,6 +959,7 @@ export type GitHubInstanceUncheckedUpdateWithoutCreatedByInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -932,6 +973,7 @@ export type GitHubInstanceUncheckedUpdateManyWithoutCreatedByInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -944,6 +986,7 @@ export type GitHubInstanceUpdateWithoutOwnerInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdBy?: Prisma.UserUpdateOneWithoutCreatedGitHubInstancesNestedInput
@@ -957,6 +1000,7 @@ export type GitHubInstanceUncheckedUpdateWithoutOwnerInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -970,6 +1014,7 @@ export type GitHubInstanceUncheckedUpdateManyWithoutOwnerInput = {
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   org?: Prisma.StringFieldUpdateOperationsInput | string
   repos?: Prisma.GitHubInstanceUpdatereposInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1013,6 +1058,7 @@ export type GitHubInstanceSelect<ExtArgs extends runtime.Types.Extensions.Intern
   accessToken?: boolean
   org?: boolean
   repos?: boolean
+  isDemo?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   organizationId?: boolean
@@ -1031,6 +1077,7 @@ export type GitHubInstanceSelectCreateManyAndReturn<ExtArgs extends runtime.Type
   accessToken?: boolean
   org?: boolean
   repos?: boolean
+  isDemo?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   organizationId?: boolean
@@ -1047,6 +1094,7 @@ export type GitHubInstanceSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   accessToken?: boolean
   org?: boolean
   repos?: boolean
+  isDemo?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   organizationId?: boolean
@@ -1063,6 +1111,7 @@ export type GitHubInstanceSelectScalar = {
   accessToken?: boolean
   org?: boolean
   repos?: boolean
+  isDemo?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   organizationId?: boolean
@@ -1070,7 +1119,7 @@ export type GitHubInstanceSelectScalar = {
   ownerUserId?: boolean
 }
 
-export type GitHubInstanceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "baseUrl" | "accessToken" | "org" | "repos" | "createdAt" | "updatedAt" | "organizationId" | "createdById" | "ownerUserId", ExtArgs["result"]["gitHubInstance"]>
+export type GitHubInstanceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "baseUrl" | "accessToken" | "org" | "repos" | "isDemo" | "createdAt" | "updatedAt" | "organizationId" | "createdById" | "ownerUserId", ExtArgs["result"]["gitHubInstance"]>
 export type GitHubInstanceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   createdBy?: boolean | Prisma.GitHubInstance$createdByArgs<ExtArgs>
   owner?: boolean | Prisma.GitHubInstance$ownerArgs<ExtArgs>
@@ -1103,6 +1152,10 @@ export type $GitHubInstancePayload<ExtArgs extends runtime.Types.Extensions.Inte
     accessToken: string
     org: string
     repos: string[]
+    /**
+     * Seeded demo connection — see JiraInstance.isDemo.
+     */
+    isDemo: boolean
     createdAt: Date
     updatedAt: Date
     organizationId: string
@@ -1555,6 +1608,7 @@ export interface GitHubInstanceFieldRefs {
   readonly accessToken: Prisma.FieldRef<"GitHubInstance", 'String'>
   readonly org: Prisma.FieldRef<"GitHubInstance", 'String'>
   readonly repos: Prisma.FieldRef<"GitHubInstance", 'String[]'>
+  readonly isDemo: Prisma.FieldRef<"GitHubInstance", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"GitHubInstance", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"GitHubInstance", 'DateTime'>
   readonly organizationId: Prisma.FieldRef<"GitHubInstance", 'String'>

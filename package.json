@@ -1,9 +1,10 @@
 {
   "name": "deckgauge",
   "version": "0.0.1",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "engines": {
-    "node": ">=20",
+    "node": ">=24",
     "pnpm": ">=9"
   },
   "packageManager": "pnpm@9.0.0",
@@ -27,19 +28,35 @@
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^25.6.0",
+    "@types/node": "^24.10.1",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^9.0.0",
     "nock": "^14.0.12",
     "prettier": "^3.0.0",
-    "turbo": "^2.0.0",
+    "turbo": "^2.10.12",
     "typescript": "^5.4.0",
-    "typescript-eslint": "^8.0.0",
-    "vitest": "^4.1.4"
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^4.1.11"
   },
   "pnpm": {
     "neverBuiltDependencies": [
       "@prisma/engines"
-    ]
+    ],
+    "//overrides": "Transitive-only advisories, pinned forward to their patched release. Every entry here is a SAME-MAJOR bump of a package no workspace depends on directly \u2014 they arrive through eslint, typescript-eslint, vitest, next and prisma, none of which had shipped a release picking up the fix. The alternative was a breaking eslint 9\u219210 major to move one grandchild, which is a worse trade. Scoped `name@major` keys are deliberate where two majors coexist in the tree (brace-expansion 1.x via eslint's minimatch@3, 5.x via typescript-eslint's minimatch@10; fast-uri 2.x via fastify, 3.x via ajv@8): a blanket override would force one consumer across a major boundary. Re-check each entry when its parent is next upgraded \u2014 an override that the dependency has caught up with is dead weight that silently pins a version.",
+    "overrides": {
+      "js-yaml": "^4.3.2",
+      "brace-expansion@1": "^1.1.18",
+      "brace-expansion@5": "^5.0.9",
+      "fast-uri@2": "^2.4.6",
+      "fast-uri@3": "^3.1.7",
+      "nanoid@3": "^3.3.18",
+      "form-data@4": "^4.0.6",
+      "browserslist@4": "^4.28.9",
+      "uuid@11": "^11.1.1",
+      "fflate@0.8": "^0.8.3",
+      "ws@8": "^8.21.3",
+      "postcss@8": "^8.5.12",
+      "dompurify@3": "^3.4.14"
+    }
   }
 }

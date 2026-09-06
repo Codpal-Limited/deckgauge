@@ -283,7 +283,7 @@ export function orgTreeRoutes(deps: OrgTreeRoutesDeps) {
       const file = await req.file();
       if (!file) return reply.code(400).send({ error: 'no file' });
       const buf = await file.toBuffer();
-      const rows = parseOrgChartBuffer(buf, file.filename);
+      const rows = await parseOrgChartBuffer(buf, file.filename);
       return service.importEmployees(req.params.id, rows);
     });
 

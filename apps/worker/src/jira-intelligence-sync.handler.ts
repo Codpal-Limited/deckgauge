@@ -1,5 +1,5 @@
 // EI-012 — Jira intelligence sync (additive dual-write).
-import { PrismaClient } from '@deckgauge/db';
+import { PrismaClient, EXCLUDE_DEMO_INSTANCE } from '@deckgauge/db';
 import type { JiraIntelligencePort } from '@deckgauge/shared';
 import { resolveSyncJobScope } from './sync-job-scope.js';
 
@@ -87,7 +87,7 @@ export async function handleJiraIntelligenceSync(
     return result;
   }
 
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = { ...EXCLUDE_DEMO_INSTANCE };
   if (job.instanceId) where.id = job.instanceId;
   if (scope.organizationId) where.organizationId = scope.organizationId;
   const instances = await db.jiraInstance.findMany({ where });

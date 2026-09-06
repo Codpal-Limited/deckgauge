@@ -5,6 +5,7 @@ import { Queue, Worker } from 'bullmq'
 import { clickhouse, chInsertMany } from '@deckgauge/db'
 import { loadEdition, type WorkerEditionModule } from './edition-loader.js'
 import { createIngestPermission } from './ingest-permission.js'
+import { createSyncPermission } from './sync-permission.js'
 import { buildWorkerChReadIdentity } from './ch-read-identity.js'
 import { startPeriodicWork } from './periodic-work.js'
 import { runNotificationMaintenance } from './notification-maintenance.handler.js'
@@ -181,6 +182,20 @@ const chReadIdentity = buildWorkerChReadIdentity({
   log: { warn: (m) => console.warn(m), info: (m) => console.log(m) },
 })
 
+// The SYNC half of the edition seam, and a sibling of the ingest half inside
+// `chClientFor` below rather than a replacement for it. The ingest gate sits on the
+// ClickHouse write and is bound to one organization; this one is consulted per
+// organization by the sync handlers, BEFORE a provider is called or a Postgres board
+// row is written.
+//
+// One instance for the process, not one per job: the memo is per organization, and
+// a billing state that changed mid-job should not take effect halfway through it.
+// The queues are long-lived, so this is the same lifetime as `edition` itself.
+//
+// Null in Community, where it allows everything — the free product has no such
+// restriction at all, there is no feature here to disable.
+const syncPermission = createSyncPermission(edition)
+
 function chClientFor(organizationId: string) {
   // The edition seam for ingest sits HERE rather than in each handler, because this
   // is already the one place every ClickHouse write passes through with a tenant
@@ -239,7 +254,7 @@ const worker = new Worker(
     console.log(`Processing jira-sync job (trigger: ${trigger})`)
     // The FACTORY goes down, not a client: handleSyncJob binds it per Jira
     // instance, to the organization that owns that instance.
-    return handleSyncJob(job.data, db, jiraAdapterFactory, chClientFor)
+    return handleSyncJob(job.data, db, jiraAdapterFactory, chClientFor, syncPermission)
   },
   { connection }
 )
@@ -338,6 +353,7 @@ const gitlabWorker = new Worker(
       // The FACTORY goes down, not a client: handleGitLabSyncJob binds it per
       // GitLab instance, to the organization that owns that instance.
       chClientFor,
+      syncPermission,
     )
   },
   { connection },
@@ -638,7 +654,7 @@ const adoWorker = new Worker(
   async (job) => {
     const trigger = job.data?.trigger || 'scheduled';
     console.log(`Processing azure-devops-sync job (trigger: ${trigger})`);
-    return handleAzureDevOpsSyncJob(job.data, db, adoAdapterFactory, chClientFor);
+    return handleAzureDevOpsSyncJob(job.data, db, adoAdapterFactory, chClientFor, syncPermission);
   },
   { connection },
 );
@@ -684,7 +700,14 @@ const ghWorker = new Worker(
     console.log(`Processing github-sync job (trigger: ${trigger})`);
     // The FACTORY goes down, not a client: handleGitHubSyncJob binds it per
     // GitHub instance, to the organization that owns that instance.
-    return handleGitHubSyncJob(job.data, db, ghAdapterFactory, ghProjectsAdapterFactory, chClientFor);
+    return handleGitHubSyncJob(
+      job.data,
+      db,
+      ghAdapterFactory,
+      ghProjectsAdapterFactory,
+      chClientFor,
+      syncPermission,
+    );
   },
   { connection },
 );

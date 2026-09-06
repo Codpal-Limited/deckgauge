@@ -6,7 +6,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
 import { advisorAskRequestSchema } from '@deckgauge/shared';
-import { all, board, orgRole } from '../auth/policy.js';
+import { all, board, orgRole, UNRESTRICTED } from '../auth/policy.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
 import { AccessService } from '../access/access.service.js';
 import { ClickhouseIntelligenceService, type ChQueryClient } from '../intelligence/clickhouse-intelligence.service.js';
@@ -81,7 +81,15 @@ export function advisorRoutes({
       // floor is what supplies the tenant whose advisor config answers. Board
       // access alone cannot: a break-glass admin holds board access with no
       // membership, and there would be no organization to read a config from.
-      { config: { policy: all(board('VIEWER'), orgRole('VIEWER')) } },
+      //
+      // UNRESTRICTED is the third term because the first two cannot express it.
+      // Asking is a read, so both role halves are satisfied by a VIEWER — and a
+      // read-only organization IS a VIEWER, because that is precisely what the
+      // edition's clamp reduces it to. So the role gates pass by construction for
+      // exactly the caller who should be refused, and inference — the one operation
+      // here with a real marginal cost — kept running for organizations that had
+      // stopped paying. This is the only surface in the API where a read costs money.
+      { config: { policy: all(board('VIEWER'), orgRole('VIEWER'), UNRESTRICTED) } },
       async (req, reply) => {
         const parsed = advisorAskRequestSchema.safeParse(req.body);
         if (!parsed.success) {

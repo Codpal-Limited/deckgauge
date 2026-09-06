@@ -202,7 +202,23 @@ function defaultRunMigrations(url: string, dbPackageRoot: string): void {
     execFileSync(
       prismaBin,
       ['migrate', 'deploy', '--schema', join(dbPackageRoot, 'prisma', 'schema.prisma')],
-      { env: { ...process.env, DATABASE_URL: url }, stdio: 'pipe', encoding: 'utf8' },
+      {
+        // `cwd` is load-bearing under Prisma 7, and `--schema` does not cover for
+        // it. Prisma 7 moved the connection URL out of `schema.prisma` and into
+        // `prisma.config.ts`, which the CLI discovers from its WORKING DIRECTORY —
+        // so without this the CLI inherits vitest's cwd (`apps/api`, `apps/worker`),
+        // finds no config, and dies with "The datasource.url property is required
+        // in your Prisma config file", whatever `--schema` points at.
+        //
+        // It only ever fires on the path that CREATES a database — an existing,
+        // up-to-date one never calls this — so it is invisible in a checkout whose
+        // test database already exists and breaks every fresh clone, new worktree
+        // and `test:db:reset` instead.
+        cwd: dbPackageRoot,
+        env: { ...process.env, DATABASE_URL: url },
+        stdio: 'pipe',
+        encoding: 'utf8',
+      },
     );
   } catch (err) {
     const detail = err as { stdout?: string; stderr?: string };

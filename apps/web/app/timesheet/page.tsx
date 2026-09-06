@@ -5,11 +5,12 @@ import { resolveWindow } from './lib/timesheet-ui';
 import { TimesheetView } from './components/TimesheetView';
 import { TimesheetTabs } from './components/TimesheetTabs';
 
-export default async function TimesheetPage({
-  searchParams,
-}: {
-  searchParams?: { orgTreeId?: string };
-}) {
+export default async function TimesheetPage(
+  props: {
+    searchParams?: Promise<{ orgTreeId?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const trees = await listOrgTrees();
   const orgTrees = trees.map((t) => ({ id: t.id, name: t.name }));
   // Honor ?orgTreeId= from the sidebar Timesheets panel when it names a real

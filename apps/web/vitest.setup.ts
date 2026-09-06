@@ -1,18 +1,17 @@
-// Matchers are registered through the ESM entry rather than
-// `@testing-library/jest-dom/vitest`. That convenience entry is CJS and does a
-// bare `require('vitest')`, which Node resolves from jest-dom's own location in
-// the pnpm store — where there is no vitest — so it walks up to the WORKSPACE
-// ROOT and finds the root's vitest (4.x) instead of the 1.x this app runs on.
-// jest-dom then extends the 4.x `expect`, and vitest 1.x's runner subsequently
-// fails with "Cannot set property testPath of #<Object> which has only a
-// getter", because 4.x made that state property getter-only. Importing the
-// matchers and calling expect.extend ourselves keeps the resolution inside this
-// app's own module graph, so the versions cannot diverge.
-// Remove this workaround once apps/web is on the same vitest major as the root.
-import * as matchers from '@testing-library/jest-dom/matchers';
-import { expect, vi } from 'vitest';
-
-expect.extend(matchers);
+// The standard vitest entry. This used to import the matchers manually and call
+// `expect.extend` because apps/web ran vitest 1.x while the workspace root ran
+// 4.x: jest-dom's CJS entry does a bare `require('vitest')`, which resolved from
+// its own place in the pnpm store up to the ROOT's 4.x, so the matchers extended
+// a different `expect` than the one this app's runner used. Both are on the same
+// major now, which is the condition that workaround named for its own removal.
+//
+// Keeping it would not have been merely redundant. With both on 4.x the manual
+// extension bound `toBeInTheDocument` to a different realm than the runner's,
+// and the failure was a liar: `findByText` located the element and the MATCHER
+// then reported "element could not be found in the document" about a node that
+// was demonstrably rendered.
+import '@testing-library/jest-dom/vitest';
+import { vi } from 'vitest';
 
 // This environment's jsdom exposes a `localStorage` object that is missing the
 // full Storage API (e.g. `clear()` is not a function), which crashes any test

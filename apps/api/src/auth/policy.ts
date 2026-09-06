@@ -265,6 +265,7 @@ export type Policy =
   | { kind: 'orgRole'; role: OrgRoleValue }
   | { kind: 'employeeBoard'; role: BoardAccessRole; source?: EmployeeBoardSource }
   | { kind: 'employeeBoardInTree'; role: BoardAccessRole }
+  | { kind: 'unrestricted' }
   | { kind: 'all'; policies: Policy[] }
   | { kind: 'any'; policies: Policy[] };
 
@@ -278,6 +279,33 @@ export const AUTHENTICATED: Policy = { kind: 'authenticated' };
 export const ANALYTICS: Policy = { kind: 'analytics' };
 /** Global settings with no per-entity owner: timesheet status rules, LLM provider config. */
 export const ADMIN: Policy = { kind: 'admin' };
+/**
+ * The caller's organization must not be under an edition-imposed restriction.
+ *
+ * **Why a role check cannot express this.** An edition module may REDUCE an
+ * organization's effective role (see `restrictMembership` in
+ * `enterprise-contract.ts`) — the seam by which a hosted deployment makes a tenant
+ * read-only. Reducing to VIEWER stops writes, because every write policy asks for
+ * MEMBER or better. It stops no reads at all, and a route whose floor IS `VIEWER`
+ * therefore keeps serving a restricted organization: the clamp PRODUCES exactly the
+ * role such a route requires, so the two can never disagree.
+ *
+ * That is not hypothetical. `POST /boards/:boardId/advisor/ask` is a read by policy
+ * and gated at `board('VIEWER')` + `orgRole('VIEWER')`, so a read-only organization
+ * went on asking the Advisor questions — the one surface with a real marginal
+ * inference cost, and the reason the hosted design caps it in the first place.
+ *
+ * Use this on any route that is a READ by authorization but a COST in practice.
+ * Ordinary reads must not carry it: this denies the whole route, and a page that
+ * 403s instead of rendering read-only is the one outcome a read-only mode must not
+ * produce.
+ *
+ * The core never learns WHY the membership was restricted — only that it was. The
+ * denial it returns is a plain 403, which `policy.plugin.ts` then offers to the
+ * module's `restrictDenial` hook to re-express (a 402, in the hosted edition). In
+ * Community no module is loaded, nothing is ever restricted, and this always allows.
+ */
+export const UNRESTRICTED: Policy = { kind: 'unrestricted' };
 /**
  * A comparison, as a tiered decision (design D15). Replaces
  * `COMPARISON_CREATOR`, which answered one boolean — "did you make this?" — and
@@ -451,6 +479,15 @@ export interface PolicyContext {
    * gets one implicitly — see the plugin's `request.isAdmin` union.
    */
   membership?: { organizationId: string; role: OrgRoleValue } | null;
+  /**
+   * True when an edition module reduced this caller's effective role — i.e. the
+   * organization is read-only. Mirrors `request.membershipRestriction !== null`.
+   *
+   * Absent means unrestricted, which is the Community behaviour: no module is
+   * loaded, so nothing is ever restricted. Read only by the `unrestricted` policy;
+   * the core never interprets the reason behind it.
+   */
+  restricted?: boolean;
 }
 
 export type PolicyDenial = { ok: false; status: 401 | 403 | 404; error: string };
@@ -1359,6 +1396,10 @@ export async function evaluatePolicy(
 
   if (policy.kind === 'analytics') return ctx.canViewAnalytics ? ALLOW : DENY_403;
   if (policy.kind === 'admin') return ctx.isAdmin ? ALLOW : DENY_403;
+  // Absent means unrestricted — Community loads no module, so nothing can restrict.
+  // A plain 403; policy.plugin.ts hands it to the edition's restrictDenial hook,
+  // which is where it becomes a 402 with a payment message.
+  if (policy.kind === 'unrestricted') return ctx.restricted === true ? DENY_403 : ALLOW;
 
   if (policy.kind === 'employeeBoard') {
     const boardIds = await resolveEmployeeBoardIds(deps.prisma, policy.source, ctx);

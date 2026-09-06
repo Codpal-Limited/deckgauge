@@ -7,7 +7,7 @@ import { OrgTabs } from './OrgTabs';
 import { OrgTreeHeaderActions } from './OrgTreeHeaderActions';
 
 interface OrgTreePageProps {
-  params: { orgTreeId: string };
+  params: Promise<{ orgTreeId: string }>;
 }
 
 /**
@@ -27,7 +27,8 @@ function AccessDeniedPanel() {
   );
 }
 
-export default async function OrgTreePage({ params }: OrgTreePageProps) {
+export default async function OrgTreePage(props: OrgTreePageProps) {
+  const params = await props.params;
   const result = await getOrgTreeOrDenied(params.orgTreeId);
   if (!result.ok) {
     if (result.reason === 'forbidden') return <AccessDeniedPanel />;

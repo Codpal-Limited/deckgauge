@@ -30,6 +30,7 @@ export type JiraInstanceMinAggregateOutputType = {
   atlassianUrl: string | null
   email: string | null
   apiToken: string | null
+  isDemo: boolean | null
   createdAt: Date | null
   organizationId: string | null
   createdById: string | null
@@ -42,6 +43,7 @@ export type JiraInstanceMaxAggregateOutputType = {
   atlassianUrl: string | null
   email: string | null
   apiToken: string | null
+  isDemo: boolean | null
   createdAt: Date | null
   organizationId: string | null
   createdById: string | null
@@ -55,6 +57,7 @@ export type JiraInstanceCountAggregateOutputType = {
   email: number
   apiToken: number
   projectKeys: number
+  isDemo: number
   createdAt: number
   organizationId: number
   createdById: number
@@ -69,6 +72,7 @@ export type JiraInstanceMinAggregateInputType = {
   atlassianUrl?: true
   email?: true
   apiToken?: true
+  isDemo?: true
   createdAt?: true
   organizationId?: true
   createdById?: true
@@ -81,6 +85,7 @@ export type JiraInstanceMaxAggregateInputType = {
   atlassianUrl?: true
   email?: true
   apiToken?: true
+  isDemo?: true
   createdAt?: true
   organizationId?: true
   createdById?: true
@@ -94,6 +99,7 @@ export type JiraInstanceCountAggregateInputType = {
   email?: true
   apiToken?: true
   projectKeys?: true
+  isDemo?: true
   createdAt?: true
   organizationId?: true
   createdById?: true
@@ -180,6 +186,7 @@ export type JiraInstanceGroupByOutputType = {
   email: string
   apiToken: string
   projectKeys: string[]
+  isDemo: boolean
   createdAt: Date
   organizationId: string
   createdById: string | null
@@ -214,6 +221,7 @@ export type JiraInstanceWhereInput = {
   email?: Prisma.StringFilter<"JiraInstance"> | string
   apiToken?: Prisma.StringFilter<"JiraInstance"> | string
   projectKeys?: Prisma.StringNullableListFilter<"JiraInstance">
+  isDemo?: Prisma.BoolFilter<"JiraInstance"> | boolean
   createdAt?: Prisma.DateTimeFilter<"JiraInstance"> | Date | string
   organizationId?: Prisma.StringFilter<"JiraInstance"> | string
   createdById?: Prisma.StringNullableFilter<"JiraInstance"> | string | null
@@ -231,6 +239,7 @@ export type JiraInstanceOrderByWithRelationInput = {
   email?: Prisma.SortOrder
   apiToken?: Prisma.SortOrder
   projectKeys?: Prisma.SortOrder
+  isDemo?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   createdById?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -251,6 +260,7 @@ export type JiraInstanceWhereUniqueInput = Prisma.AtLeast<{
   email?: Prisma.StringFilter<"JiraInstance"> | string
   apiToken?: Prisma.StringFilter<"JiraInstance"> | string
   projectKeys?: Prisma.StringNullableListFilter<"JiraInstance">
+  isDemo?: Prisma.BoolFilter<"JiraInstance"> | boolean
   createdAt?: Prisma.DateTimeFilter<"JiraInstance"> | Date | string
   organizationId?: Prisma.StringFilter<"JiraInstance"> | string
   createdById?: Prisma.StringNullableFilter<"JiraInstance"> | string | null
@@ -268,6 +278,7 @@ export type JiraInstanceOrderByWithAggregationInput = {
   email?: Prisma.SortOrder
   apiToken?: Prisma.SortOrder
   projectKeys?: Prisma.SortOrder
+  isDemo?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   createdById?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -287,6 +298,7 @@ export type JiraInstanceScalarWhereWithAggregatesInput = {
   email?: Prisma.StringWithAggregatesFilter<"JiraInstance"> | string
   apiToken?: Prisma.StringWithAggregatesFilter<"JiraInstance"> | string
   projectKeys?: Prisma.StringNullableListFilter<"JiraInstance">
+  isDemo?: Prisma.BoolWithAggregatesFilter<"JiraInstance"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"JiraInstance"> | Date | string
   organizationId?: Prisma.StringWithAggregatesFilter<"JiraInstance"> | string
   createdById?: Prisma.StringNullableWithAggregatesFilter<"JiraInstance"> | string | null
@@ -300,6 +312,7 @@ export type JiraInstanceCreateInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   createdBy?: Prisma.UserCreateNestedOneWithoutCreatedJiraInstancesInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedJiraInstancesInput
@@ -314,6 +327,7 @@ export type JiraInstanceUncheckedCreateInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   organizationId: string
   createdById?: string | null
@@ -328,6 +342,7 @@ export type JiraInstanceUpdateInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdBy?: Prisma.UserUpdateOneWithoutCreatedJiraInstancesNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedJiraInstancesNestedInput
@@ -342,6 +357,7 @@ export type JiraInstanceUncheckedUpdateInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -356,6 +372,7 @@ export type JiraInstanceCreateManyInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   organizationId: string
   createdById?: string | null
@@ -369,6 +386,7 @@ export type JiraInstanceUpdateManyMutationInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -379,6 +397,7 @@ export type JiraInstanceUncheckedUpdateManyInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -402,6 +421,7 @@ export type JiraInstanceCountOrderByAggregateInput = {
   email?: Prisma.SortOrder
   apiToken?: Prisma.SortOrder
   projectKeys?: Prisma.SortOrder
+  isDemo?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   createdById?: Prisma.SortOrder
@@ -414,6 +434,7 @@ export type JiraInstanceMaxOrderByAggregateInput = {
   atlassianUrl?: Prisma.SortOrder
   email?: Prisma.SortOrder
   apiToken?: Prisma.SortOrder
+  isDemo?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   createdById?: Prisma.SortOrder
@@ -426,6 +447,7 @@ export type JiraInstanceMinOrderByAggregateInput = {
   atlassianUrl?: Prisma.SortOrder
   email?: Prisma.SortOrder
   apiToken?: Prisma.SortOrder
+  isDemo?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   createdById?: Prisma.SortOrder
@@ -593,6 +615,7 @@ export type JiraInstanceCreateWithoutOrganizationInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   createdBy?: Prisma.UserCreateNestedOneWithoutCreatedJiraInstancesInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedJiraInstancesInput
@@ -606,6 +629,7 @@ export type JiraInstanceUncheckedCreateWithoutOrganizationInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   createdById?: string | null
   ownerUserId?: string | null
@@ -648,6 +672,7 @@ export type JiraInstanceScalarWhereInput = {
   email?: Prisma.StringFilter<"JiraInstance"> | string
   apiToken?: Prisma.StringFilter<"JiraInstance"> | string
   projectKeys?: Prisma.StringNullableListFilter<"JiraInstance">
+  isDemo?: Prisma.BoolFilter<"JiraInstance"> | boolean
   createdAt?: Prisma.DateTimeFilter<"JiraInstance"> | Date | string
   organizationId?: Prisma.StringFilter<"JiraInstance"> | string
   createdById?: Prisma.StringNullableFilter<"JiraInstance"> | string | null
@@ -661,6 +686,7 @@ export type JiraInstanceCreateWithoutCreatedByInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   owner?: Prisma.UserCreateNestedOneWithoutOwnedJiraInstancesInput
   projectSyncs?: Prisma.JiraProjectSyncCreateNestedManyWithoutJiraInstanceInput
@@ -674,6 +700,7 @@ export type JiraInstanceUncheckedCreateWithoutCreatedByInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   organizationId: string
   ownerUserId?: string | null
@@ -697,6 +724,7 @@ export type JiraInstanceCreateWithoutOwnerInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   createdBy?: Prisma.UserCreateNestedOneWithoutCreatedJiraInstancesInput
   projectSyncs?: Prisma.JiraProjectSyncCreateNestedManyWithoutJiraInstanceInput
@@ -710,6 +738,7 @@ export type JiraInstanceUncheckedCreateWithoutOwnerInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   organizationId: string
   createdById?: string | null
@@ -765,6 +794,7 @@ export type JiraInstanceCreateWithoutProjectSyncsInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   createdBy?: Prisma.UserCreateNestedOneWithoutCreatedJiraInstancesInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedJiraInstancesInput
@@ -778,6 +808,7 @@ export type JiraInstanceUncheckedCreateWithoutProjectSyncsInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   organizationId: string
   createdById?: string | null
@@ -807,6 +838,7 @@ export type JiraInstanceUpdateWithoutProjectSyncsInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdBy?: Prisma.UserUpdateOneWithoutCreatedJiraInstancesNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedJiraInstancesNestedInput
@@ -820,6 +852,7 @@ export type JiraInstanceUncheckedUpdateWithoutProjectSyncsInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -833,6 +866,7 @@ export type JiraInstanceCreateManyOrganizationInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   createdById?: string | null
   ownerUserId?: string | null
@@ -845,6 +879,7 @@ export type JiraInstanceUpdateWithoutOrganizationInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdBy?: Prisma.UserUpdateOneWithoutCreatedJiraInstancesNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedJiraInstancesNestedInput
@@ -858,6 +893,7 @@ export type JiraInstanceUncheckedUpdateWithoutOrganizationInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -871,6 +907,7 @@ export type JiraInstanceUncheckedUpdateManyWithoutOrganizationInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -883,6 +920,7 @@ export type JiraInstanceCreateManyCreatedByInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   organizationId: string
   ownerUserId?: string | null
@@ -895,6 +933,7 @@ export type JiraInstanceCreateManyOwnerInput = {
   email: string
   apiToken: string
   projectKeys?: Prisma.JiraInstanceCreateprojectKeysInput | string[]
+  isDemo?: boolean
   createdAt?: Date | string
   organizationId: string
   createdById?: string | null
@@ -907,6 +946,7 @@ export type JiraInstanceUpdateWithoutCreatedByInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneWithoutOwnedJiraInstancesNestedInput
   projectSyncs?: Prisma.JiraProjectSyncUpdateManyWithoutJiraInstanceNestedInput
@@ -920,6 +960,7 @@ export type JiraInstanceUncheckedUpdateWithoutCreatedByInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -933,6 +974,7 @@ export type JiraInstanceUncheckedUpdateManyWithoutCreatedByInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -945,6 +987,7 @@ export type JiraInstanceUpdateWithoutOwnerInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdBy?: Prisma.UserUpdateOneWithoutCreatedJiraInstancesNestedInput
   projectSyncs?: Prisma.JiraProjectSyncUpdateManyWithoutJiraInstanceNestedInput
@@ -958,6 +1001,7 @@ export type JiraInstanceUncheckedUpdateWithoutOwnerInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -971,6 +1015,7 @@ export type JiraInstanceUncheckedUpdateManyWithoutOwnerInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   apiToken?: Prisma.StringFieldUpdateOperationsInput | string
   projectKeys?: Prisma.JiraInstanceUpdateprojectKeysInput | string[]
+  isDemo?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1014,6 +1059,7 @@ export type JiraInstanceSelect<ExtArgs extends runtime.Types.Extensions.Internal
   email?: boolean
   apiToken?: boolean
   projectKeys?: boolean
+  isDemo?: boolean
   createdAt?: boolean
   organizationId?: boolean
   createdById?: boolean
@@ -1032,6 +1078,7 @@ export type JiraInstanceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   email?: boolean
   apiToken?: boolean
   projectKeys?: boolean
+  isDemo?: boolean
   createdAt?: boolean
   organizationId?: boolean
   createdById?: boolean
@@ -1048,6 +1095,7 @@ export type JiraInstanceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   email?: boolean
   apiToken?: boolean
   projectKeys?: boolean
+  isDemo?: boolean
   createdAt?: boolean
   organizationId?: boolean
   createdById?: boolean
@@ -1064,13 +1112,14 @@ export type JiraInstanceSelectScalar = {
   email?: boolean
   apiToken?: boolean
   projectKeys?: boolean
+  isDemo?: boolean
   createdAt?: boolean
   organizationId?: boolean
   createdById?: boolean
   ownerUserId?: boolean
 }
 
-export type JiraInstanceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "atlassianUrl" | "email" | "apiToken" | "projectKeys" | "createdAt" | "organizationId" | "createdById" | "ownerUserId", ExtArgs["result"]["jiraInstance"]>
+export type JiraInstanceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "atlassianUrl" | "email" | "apiToken" | "projectKeys" | "isDemo" | "createdAt" | "organizationId" | "createdById" | "ownerUserId", ExtArgs["result"]["jiraInstance"]>
 export type JiraInstanceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   createdBy?: boolean | Prisma.JiraInstance$createdByArgs<ExtArgs>
   owner?: boolean | Prisma.JiraInstance$ownerArgs<ExtArgs>
@@ -1104,6 +1153,15 @@ export type $JiraInstancePayload<ExtArgs extends runtime.Types.Extensions.Intern
     email: string
     apiToken: string
     projectKeys: string[]
+    /**
+     * Seeded by `src/demo/seed-demo.ts`. The URL and token behind a demo
+     * connection are not real, so every sync enumeration filters these rows out
+     * (`EXCLUDE_DEMO_INSTANCE`) — an unguarded handler would call a nonexistent
+     * host every 15 minutes and, through deletion detection, purge the demo's
+     * ClickHouse rows. The API does NOT filter them: the connections page shows
+     * them, labelled, so an installer can delete the demo deliberately.
+     */
+    isDemo: boolean
     createdAt: Date
     organizationId: string
     createdById: string | null
@@ -1556,6 +1614,7 @@ export interface JiraInstanceFieldRefs {
   readonly email: Prisma.FieldRef<"JiraInstance", 'String'>
   readonly apiToken: Prisma.FieldRef<"JiraInstance", 'String'>
   readonly projectKeys: Prisma.FieldRef<"JiraInstance", 'String[]'>
+  readonly isDemo: Prisma.FieldRef<"JiraInstance", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"JiraInstance", 'DateTime'>
   readonly organizationId: Prisma.FieldRef<"JiraInstance", 'String'>
   readonly createdById: Prisma.FieldRef<"JiraInstance", 'String'>

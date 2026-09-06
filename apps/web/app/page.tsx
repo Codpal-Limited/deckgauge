@@ -15,7 +15,7 @@ import { LAST_BOARD_COOKIE } from "./utils/last-board-cookie";
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  searchParams?: Record<string, string | string[]>;
+  searchParams?: Promise<Record<string, string | string[]>>;
 }
 
 // SSR fetches only the FIRST page of a board's projects (plus the total count).
@@ -192,7 +192,7 @@ async function ensureDefaultBoard(boardId?: string): Promise<string | null> {
     const res = await authFetch("/boards", { tags: [boardsListTag()] });
     if (!res.ok) return null;
     const boards = (await res.json()) as Array<{ id: string }>;
-    const lastBoardId = cookies().get(LAST_BOARD_COOKIE)?.value;
+    const lastBoardId = (await cookies()).get(LAST_BOARD_COOKIE)?.value;
     return selectDefaultBoard(boards, lastBoardId);
   } catch {
     return null;
@@ -200,7 +200,8 @@ async function ensureDefaultBoard(boardId?: string): Promise<string | null> {
 }
 
 
-export default async function BoardPage({ searchParams }: PageProps) {
+export default async function BoardPage(props: PageProps) {
+  const searchParams = await props.searchParams;
   const boardId = searchParams?.boardId as string | undefined;
   // A notification's deep link. Consumed and cleared client-side by GroupList,
   // so closing the panel does not reopen it and a refresh does not replay it.

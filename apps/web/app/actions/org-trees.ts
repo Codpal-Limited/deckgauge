@@ -236,7 +236,12 @@ export async function getEmployeeActivity(employeeId: string): Promise<EmployeeA
   try {
     const res = await apiRequest(`/org-employees/${employeeId}/activity`);
     return (await res.json()) as EmployeeActivity;
-  } catch {
+  } catch (err) {
+    // Still degrades to empty — the drawer should open even when activity
+    // cannot be fetched. But this used to swallow the reason entirely, so a
+    // failing request and a genuinely inactive employee rendered identically
+    // and there was nothing anywhere to distinguish them.
+    console.error(`[org-activity] fetch failed for employee ${employeeId}:`, err);
     return { commits: [], pullRequests: [], assignedIssues: [] };
   }
 }

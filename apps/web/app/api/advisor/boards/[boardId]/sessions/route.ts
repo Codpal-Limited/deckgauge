@@ -6,17 +6,13 @@ import { passthrough } from '../../../passthrough';
 // browser. Never cache: session lists are per-user and change constantly.
 export const dynamic = 'force-dynamic';
 
-export async function GET(
-  _req: Request,
-  { params }: { params: { boardId: string } },
-): Promise<Response> {
+export async function GET(_req: Request, props: { params: Promise<{ boardId: string }> }): Promise<Response> {
+  const params = await props.params;
   return passthrough(await authFetch(`/boards/${params.boardId}/advisor/sessions`));
 }
 
-export async function POST(
-  _req: Request,
-  { params }: { params: { boardId: string } },
-): Promise<Response> {
+export async function POST(_req: Request, props: { params: Promise<{ boardId: string }> }): Promise<Response> {
+  const params = await props.params;
   return passthrough(
     await authFetch(`/boards/${params.boardId}/advisor/sessions`, { method: 'POST' }),
   );

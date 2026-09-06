@@ -14,7 +14,7 @@
 # runtime edition, so the image cannot be built as one edition and run as the other.
 ARG EDITION=community
 
-FROM node:20-slim AS base
+FROM node:24-slim AS base
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN npm i -g corepack && corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app

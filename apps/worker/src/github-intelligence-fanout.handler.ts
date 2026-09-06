@@ -8,7 +8,7 @@
 // This mirrors the Jira/ADO intelligence-sync consumers: resolve the target
 // GitHubRepoSync rows and run the per-repo `runIntelligenceSync` for each,
 // isolating a failing repo so the rest still sync.
-import { PrismaClient } from '@deckgauge/db';
+import { PrismaClient, EXCLUDE_DEMO_REPO_SYNC } from '@deckgauge/db';
 import { RateLimiter } from './github-rate-limiter.js';
 import {
   runIntelligenceSync,
@@ -77,11 +77,19 @@ export async function handleGithubIntelligenceSync(
     return result;
   }
 
-  const where: Record<string, unknown> = { disabledAt: null };
+  const where: Record<string, unknown> = { disabledAt: null, ...EXCLUDE_DEMO_REPO_SYNC };
   if (job.instanceId) where.githubInstanceId = job.instanceId;
   if (job.repos && job.repos.length > 0) where.repoFullName = { in: job.repos };
   // Through the parent: `GitHubRepoSync` carries no `organizationId` of its own.
-  if (scope.organizationId) where.githubInstance = { organizationId: scope.organizationId };
+  // Merged into `where.githubInstance` rather than assigned — assigning would
+  // overwrite (and silently drop) the `EXCLUDE_DEMO_REPO_SYNC` predicate spread
+  // in above whenever a job is org-scoped.
+  if (scope.organizationId) {
+    where.githubInstance = {
+      ...(where.githubInstance as Record<string, unknown>),
+      organizationId: scope.organizationId,
+    };
+  }
 
   const syncs = await db.gitHubRepoSync.findMany({ where, include: { githubInstance: true } });
 

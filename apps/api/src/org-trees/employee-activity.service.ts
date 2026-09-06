@@ -101,8 +101,20 @@ interface RawRow {
   url: string;
 }
 
+/**
+ * Just enough of a logger to report a degraded source. Optional so every
+ * existing construction site keeps working; defaults to `console`, which is
+ * where the api's other non-Fastify diagnostics already go.
+ */
+export interface ActivityLogger {
+  error: (...args: unknown[]) => void;
+}
+
 export class EmployeeActivityService {
-  constructor(private readonly ch: ChReadClient) {}
+  constructor(
+    private readonly ch: ChReadClient,
+    private readonly log: ActivityLogger = console,
+  ) {}
 
   /**
    * Union the employee's alias logins with GitHub logins learned from
@@ -127,7 +139,13 @@ export class EmployeeActivityService {
       });
       const rows = (await res.json()) as Array<{ author_login: string }>;
       return [...new Set([...ids.logins, ...rows.map((r) => r.author_login)])];
-    } catch {
+    } catch (err) {
+      // Degrade to the alias logins, but SAY SO. Silent degradation here means
+      // an employee's PRs quietly stop matching with nothing to point at.
+      this.log.error(
+        '[employee-activity] github login expansion failed; falling back to alias logins:',
+        err instanceof Error ? err.message : err,
+      );
       return ids.logins;
     }
   }
@@ -165,9 +183,16 @@ export class EmployeeActivityService {
               url: r.url ? r.url : null,
             });
           }
-        } catch {
+        } catch (err) {
           // ClickHouse unreachable or a table missing — degrade to empty for
-          // this source; never break the drawer.
+          // this source; never break the drawer. But an empty drawer and a
+          // BROKEN one looked identical from the outside, which is how a live
+          // ClickHouse fault read as "this employee has no activity". Keep the
+          // degradation, drop the silence.
+          this.log.error(
+            `[employee-activity] source '${source.category}' failed; returning no rows for it:`,
+            err instanceof Error ? err.message : err,
+          );
         }
       }),
     );

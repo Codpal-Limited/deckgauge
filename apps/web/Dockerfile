@@ -1,4 +1,4 @@
-FROM node:20-slim AS base
+FROM node:24-slim AS base
 RUN npm i -g corepack && corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
@@ -71,7 +71,7 @@ ENV NODE_OPTIONS=--max-old-space-size=2048
 RUN pnpm --filter @deckgauge/web build
 
 # Production — Next.js standalone
-FROM node:20-slim AS runner
+FROM node:24-slim AS runner
 WORKDIR /app
 
 COPY --from=build /app/apps/web/.next/standalone ./

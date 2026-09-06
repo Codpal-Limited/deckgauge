@@ -1,3 +1,5 @@
+import { EXCLUDE_DEMO_REPO_SYNC } from '@deckgauge/db';
+
 // Startup reconciliation for GitHub per-repo intelligence backfills.
 //
 // Per-repo backfill jobs are normally enqueued by the api's bulkBind when a
@@ -29,7 +31,7 @@ export interface BackfillQueueClient {
 export interface RepoSyncFinder {
   gitHubRepoSync: {
     findMany(args: {
-      where: { disabledAt: null; backfillCompleteAt: null };
+      where: { disabledAt: null; backfillCompleteAt: null; githubInstance?: { isDemo: boolean } };
       select: { id: true; tier: true };
     }): Promise<Array<{ id: string; tier: string }>>;
   };
@@ -41,7 +43,7 @@ export async function reconcileGitHubBackfills(deps: {
   log?: (message: string) => void;
 }): Promise<{ enqueued: number }> {
   const pending = await deps.prisma.gitHubRepoSync.findMany({
-    where: { disabledAt: null, backfillCompleteAt: null },
+    where: { disabledAt: null, backfillCompleteAt: null, ...EXCLUDE_DEMO_REPO_SYNC },
     select: { id: true, tier: true },
   });
 
@@ -76,7 +78,7 @@ export interface ScheduleQueueClient {
 export interface ActiveRepoFinder {
   gitHubRepoSync: {
     findMany(args: {
-      where: { disabledAt: null };
+      where: { disabledAt: null; githubInstance?: { isDemo: boolean } };
       select: { id: true; tier: true };
     }): Promise<Array<{ id: string; tier: string }>>;
   };
@@ -88,7 +90,7 @@ export async function reconcileGitHubSchedules(deps: {
   log?: (message: string) => void;
 }): Promise<{ ensured: number }> {
   const active = await deps.prisma.gitHubRepoSync.findMany({
-    where: { disabledAt: null },
+    where: { disabledAt: null, ...EXCLUDE_DEMO_REPO_SYNC },
     select: { id: true, tier: true },
   });
 

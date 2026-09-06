@@ -5,8 +5,9 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(
   req: Request,
-  { params }: { params: { boardId: string; sessionId: string } },
+  props: { params: Promise<{ boardId: string; sessionId: string }> }
 ): Promise<Response> {
+  const params = await props.params;
   const body = await req.text();
   return passthrough(
     await authFetch(

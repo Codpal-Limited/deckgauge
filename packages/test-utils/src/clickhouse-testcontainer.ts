@@ -96,7 +96,7 @@ export async function startClickHouseContainer(opts: StartOpts = {}): Promise<Cl
   // `docker-compose.test.yml`; a test image older than production is how a
   // version-specific behaviour hides.
   const image =
-    opts.image ?? process.env.CLICKHOUSE_TEST_IMAGE ?? 'clickhouse/clickhouse-server:24.8-alpine';
+    opts.image ?? process.env.CLICKHOUSE_TEST_IMAGE ?? 'clickhouse/clickhouse-server:25.8-alpine';
   const port = opts.port ?? (await freePort());
   const name = `vpc-ch-test-${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
 

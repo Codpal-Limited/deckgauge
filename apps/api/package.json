@@ -1,6 +1,7 @@
 {
   "name": "@deckgauge/api",
   "version": "0.0.1",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -19,10 +20,10 @@
     "@deckgauge/db": "workspace:*",
     "@deckgauge/notifications": "workspace:*",
     "@deckgauge/shared": "workspace:*",
-    "@fastify/cors": "9",
-    "@fastify/multipart": "^8.3.1",
-    "@fastify/rate-limit": "^9.1.0",
-    "@fastify/sensible": "^5.6.0",
+    "@fastify/cors": "^11.3.0",
+    "@fastify/multipart": "^10.1.1",
+    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/sensible": "^6.0.5",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@octokit/rest": "^22.0.1",
     "ai": "^7.0.48",
@@ -30,22 +31,24 @@
     "bullmq": "^5.4.2",
     "countries-list": "^3.3.0",
     "dotenv": "^16.4.5",
-    "fastify": "^4.27.0",
-    "fastify-plugin": "^5.1.0",
+    "fastify": "^5.12.3",
+    "fastify-plugin": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^4.0.1",
     "minimatch": "10",
     "node-sql-parser": "^5.4.0",
     "ollama-ai-provider-v2": "^4.0.1",
+    "papaparse": "^5.7.0",
+    "read-excel-file": "^9.3.10",
     "undici": "^6.21.1",
-    "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^20.14.0",
+    "@types/node": "^24.10.1",
+    "@types/papaparse": "^5.3.16",
     "tsx": "^4.15.7",
     "typescript": "^5.4.0",
-    "vitest": "^1.6.0"
+    "vitest": "^4.1.11"
   }
 }

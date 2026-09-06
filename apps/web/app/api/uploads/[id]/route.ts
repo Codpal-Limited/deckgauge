@@ -1,9 +1,7 @@
 import { getApiUrl, getAuthHeaders } from '../../../lib/api-server';
 
-export async function GET(
-  _request: Request,
-  { params }: { params: { id: string } },
-): Promise<Response> {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }): Promise<Response> {
+  const params = await props.params;
   const authHeaders = await getAuthHeaders();
   const res = await fetch(
     `${getApiUrl()}/api/uploads/${encodeURIComponent(params.id)}`,

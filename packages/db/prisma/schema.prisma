@@ -460,6 +460,13 @@ model JiraInstance {
   email        String
   apiToken     String
   projectKeys  String[]
+  /// Seeded by `src/demo/seed-demo.ts`. The URL and token behind a demo
+  /// connection are not real, so every sync enumeration filters these rows out
+  /// (`EXCLUDE_DEMO_INSTANCE`) — an unguarded handler would call a nonexistent
+  /// host every 15 minutes and, through deletion detection, purge the demo's
+  /// ClickHouse rows. The API does NOT filter them: the connections page shows
+  /// them, labelled, so an installer can delete the demo deliberately.
+  isDemo       Boolean  @default(false) @map("is_demo")
   createdAt    DateTime @default(now())
 
   // Two orthogonal ownership axes, deliberately both present:
@@ -587,6 +594,8 @@ model GitHubInstance {
   // DEPRECATED — read-only. Use GitHubRepoSync rows instead. Backfilled by
   // migration <ts>_github_bulk_repo_ingestion. Kept for one release for safety.
   repos       String[]
+  /// Seeded demo connection — see JiraInstance.isDemo.
+  isDemo      Boolean  @default(false) @map("is_demo")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

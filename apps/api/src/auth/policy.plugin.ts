@@ -81,6 +81,11 @@ export function buildPolicyPlugin(
           isAdmin: request.isAdmin === true,
           canViewAnalytics: request.canViewAnalytics === true,
           membership: request.membership ?? null,
+          // The same signal the denial path below reads, made available to the
+          // `unrestricted` policy. Threaded as a boolean, never the reason string:
+          // the evaluator must not be able to branch on WHY an edition restricted
+          // this membership, only that it did.
+          restricted: request.membershipRestriction !== null,
           log: request.log,
         },
       );

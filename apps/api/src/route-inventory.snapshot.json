@@ -197,7 +197,7 @@
   "GET /boards/:boardId/intelligence/schema": "board(VIEWER)",
   "GET /boards/:boardId/intelligence/sql": "board(VIEWER)",
   "POST /boards/:boardId/intelligence/execute": "board(VIEWER)",
-  "POST /boards/:boardId/advisor/ask": "all(board(VIEWER), orgRole(VIEWER))",
+  "POST /boards/:boardId/advisor/ask": "all(board(VIEWER), orgRole(VIEWER), unrestricted)",
   "POST /advisor/help/ask": "orgRole(VIEWER)",
   "GET /advisor/config": "orgRole(ADMIN)",
   "PUT /advisor/config/source-lookup": "orgRole(ADMIN)",

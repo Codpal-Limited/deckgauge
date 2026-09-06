@@ -12,7 +12,8 @@ set -e
 # exercised on a developer machine (see apps/web/__tests__/keycloak-password-reset.test.ts).
 # Nothing sets them in any compose file, so the container behaviour is unchanged.
 #
-# NOTE: `jq` is NOT present in quay.io/keycloak/keycloak:24.0 (verified). Every
+# NOTE: `jq` is NOT present in quay.io/keycloak/keycloak:26.7 (re-verified on
+# the 24 -> 26 upgrade; it was not in 24.0 either). Every
 # transformation below must work with `sed` alone.
 SOURCE_FILE="${REALM_SRC_FILE:-/opt/keycloak/realm-src/realm.json}"
 IMPORT_FILE="${REALM_IMPORT_FILE:-/opt/keycloak/data/import/realm.json}"

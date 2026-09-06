@@ -4,6 +4,17 @@
 
 FSL-1.1-Apache-2.0
 
+## SPDX Identifier
+
+FSL-1.1-ALv2
+
+This is the SPDX-registered identifier for this licence, and it is what
+`package.json` declares. `FSL-1.1-Apache-2.0` above is the name the licence text
+itself uses; the two denote the same licence. Both are stated because automated
+tooling matches on the SPDX id and will report an unrecognised licence — which a
+scanner treats as more restrictive than a known one — while a human reading the
+file expects the name the licence gives itself.
+
 ## Notice
 
 Copyright 2026 Codpal Limited

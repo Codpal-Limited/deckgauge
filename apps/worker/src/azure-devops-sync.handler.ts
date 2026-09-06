@@ -3,6 +3,11 @@ import type { AzureDevOpsPort } from '@deckgauge/shared';
 import type { ChClientFactory } from './jira-dual-writer.js';
 import { azureDevOpsSyncProcessor } from './azure-devops-sync.processor.js';
 import { resolveSyncJobScope } from './sync-job-scope.js';
+import {
+  createSyncPermission,
+  filterSyncableInstances,
+  type SyncPermission,
+} from './sync-permission.js';
 
 export interface AzureDevOpsSyncJobData {
   trigger?: string;
@@ -47,6 +52,11 @@ export async function handleAzureDevOpsSyncJob(
    * this job iterates can belong to different tenants.
    */
   chClientFor?: ChClientFactory,
+  /**
+   * Whether each instance's organization may sync at all. Optional, and absent
+   * means allow — the Community behaviour.
+   */
+  syncPermission: SyncPermission = createSyncPermission(null),
 ): Promise<AzureDevOpsSyncJobResult[]> {
   const trigger = jobData.trigger || 'scheduled';
   const scopedInstanceId = jobData.instanceId;
@@ -81,9 +91,20 @@ export async function handleAzureDevOpsSyncJob(
     return [{ instance: 'none', skipped: true }];
   }
 
-  const results: AzureDevOpsSyncJobResult[] = [];
+  // BEFORE the loop — see the note in jira-sync.handler.ts. Deciding inside the
+  // loop would mean the customer's ADO token had already been used. This one also
+  // carries a contractual edge: Microsoft's API terms govern what we may do with
+  // data obtained through their APIs, so not calling them at all for an
+  // organization we have paused is the cleaner position.
+  const { syncable, skipped } = await filterSyncableInstances(instances, syncPermission);
+  const results: AzureDevOpsSyncJobResult[] = skipped.map((instance) => {
+    console.log(
+      `[ADO sync] skipping instance ${instance.id}: organization ${instance.organizationId} may not sync`,
+    );
+    return { instance: instance.id, skipped: true, trigger, status: 'billing_paused' };
+  });
 
-  for (const instance of instances) {
+  for (const instance of syncable) {
     if (scopedInstanceId && instance.id !== scopedInstanceId) continue;
 
     // Determine which ADO projects to sync.

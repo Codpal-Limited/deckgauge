@@ -11,6 +11,7 @@ import type {
 } from '@deckgauge/shared';
 import { processGitLabSync } from './gitlab-sync.processor.js';
 import { resolveSyncJobScope } from './sync-job-scope.js';
+import { createSyncPermission, type SyncPermission } from './sync-permission.js';
 
 export interface GitLabSyncJobData {
   trigger: 'manual' | 'scheduled' | 'startup';
@@ -55,6 +56,12 @@ export interface GitLabSyncResult {
   commitsWritten: number;
   issuesWritten: number;
   errors: Array<{ instanceId: string; projectPath: string; message: string }>;
+  /**
+   * Instances whose organization may not sync, so nothing was fetched for them.
+   * Distinct from `errors` on purpose: this is a deliberate refusal, not a failure,
+   * and conflating the two would put a paused tenant in an alert channel.
+   */
+  skippedInstances: string[];
 }
 
 export interface ChClient {
@@ -81,6 +88,11 @@ export async function handleGitLabSyncJob(
    * this job iterates can belong to different tenants.
    */
   chClientFor: ChClientFactory,
+  /**
+   * Whether each instance's organization may sync at all. Optional, and absent
+   * means allow — the Community behaviour.
+   */
+  syncPermission: SyncPermission = createSyncPermission(null),
 ): Promise<GitLabSyncResult> {
   const result: GitLabSyncResult = {
     instancesProcessed: 0,
@@ -90,6 +102,7 @@ export async function handleGitLabSyncJob(
     commitsWritten: 0,
     issuesWritten: 0,
     errors: [],
+    skippedInstances: [],
   };
 
   // The tenant boundary of this handler, fail-closed: a manual job naming no scope
@@ -117,8 +130,27 @@ export async function handleGitLabSyncJob(
     ? projectSyncs.filter((ps) => job.projectPaths!.includes(ps.projectPath))
     : projectSyncs;
 
-  const byInstance = new Map<string, typeof filtered>();
+  // BEFORE grouping, so a paused organization's project syncs never reach the loop
+  // that would use its access token — see the note in jira-sync.handler.ts. The
+  // shape differs from its three siblings (project-sync rows rather than instances,
+  // organization reached through the parent), so the instance identity is derived
+  // here rather than by `filterSyncableInstances`.
+  const syncable: typeof filtered = [];
+  const skippedIds = new Set<string>();
   for (const ps of filtered) {
+    if (await syncPermission.allowed(ps.gitlabInstance.organizationId)) {
+      syncable.push(ps);
+    } else if (!skippedIds.has(ps.gitlabInstanceId)) {
+      skippedIds.add(ps.gitlabInstanceId);
+      console.log(
+        `[GitLab sync] skipping instance ${ps.gitlabInstanceId}: organization ${ps.gitlabInstance.organizationId} may not sync`,
+      );
+    }
+  }
+  result.skippedInstances = [...skippedIds];
+
+  const byInstance = new Map<string, typeof filtered>();
+  for (const ps of syncable) {
     const list = byInstance.get(ps.gitlabInstanceId) ?? [];
     list.push(ps);
     byInstance.set(ps.gitlabInstanceId, list);

@@ -31,7 +31,8 @@ import { CalendarSourceScreen } from '../../../components/CalendarSourceScreen';
 
 export const dynamic = 'force-dynamic';
 
-export default async function BoardSourcesPage({ params }: { params: { boardId: string } }) {
+export default async function BoardSourcesPage(props: { params: Promise<{ boardId: string }> }) {
+  const params = await props.params;
   const [
     jiraSources,
     jiraSyncs,

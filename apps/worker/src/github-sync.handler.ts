@@ -1,9 +1,15 @@
 import type { PrismaClient } from '@deckgauge/db';
+import { EXCLUDE_DEMO_INSTANCE, EXCLUDE_DEMO_REPO_SYNC } from '@deckgauge/db';
 import type { GitHubPort, GitHubProjectsPort } from '@deckgauge/shared';
 import { normalizeRepoFullName } from '@deckgauge/shared';
 import type { ChClientFactory } from './jira-dual-writer.js';
 import { githubSyncProcessor } from './github-sync.processor.js';
 import { resolveSyncJobScope } from './sync-job-scope.js';
+import {
+  createSyncPermission,
+  filterSyncableInstances,
+  type SyncPermission,
+} from './sync-permission.js';
 
 export interface GitHubSyncJobData {
   trigger?: string;
@@ -55,6 +61,11 @@ export async function handleGitHubSyncJob(
    * this job iterates can belong to different tenants.
    */
   chClientFor?: ChClientFactory,
+  /**
+   * Whether each instance's organization may sync at all. Optional, and absent
+   * means allow — the Community behaviour.
+   */
+  syncPermission: SyncPermission = createSyncPermission(null),
 ): Promise<GitHubSyncJobResult[]> {
   const trigger = jobData.trigger || 'scheduled';
   const scopedInstanceId = jobData.instanceId;
@@ -73,25 +84,28 @@ export async function handleGitHubSyncJob(
   // loop below (`continue`), which meant an instance-scoped job still SELECTed every
   // tenant's row — and these rows carry the plaintext access token. Discarding a
   // credential after reading it is not scoping it.
-  //
-  // `undefined`, not `{}`, for the no-filter case: Prisma's generated overload for
-  // this model accepts `{ where } | undefined`, and `{}` widens the union past it
-  // (TS2345).
   const instanceWhere = {
+    ...EXCLUDE_DEMO_INSTANCE,
     ...(scope.organizationId ? { organizationId: scope.organizationId } : {}),
     ...(scopedInstanceId ? { id: scopedInstanceId } : {}),
   };
-  const instances = await db.gitHubInstance.findMany(
-    Object.keys(instanceWhere).length > 0 ? { where: instanceWhere } : undefined,
-  );
+  const instances = await db.gitHubInstance.findMany({ where: instanceWhere });
   if (instances.length === 0) {
     console.log('No GitHub instances configured — skipping sync');
     return [{ instance: 'none', skipped: true }];
   }
 
-  const results: GitHubSyncJobResult[] = [];
+  // BEFORE the loop — see the note in jira-sync.handler.ts. Deciding inside the
+  // loop would mean the customer's GitHub token had already been used.
+  const { syncable, skipped } = await filterSyncableInstances(instances, syncPermission);
+  const results: GitHubSyncJobResult[] = skipped.map((instance) => {
+    console.log(
+      `[GitHub sync] skipping instance ${instance.id}: organization ${instance.organizationId} may not sync`,
+    );
+    return { instance: instance.id, skipped: true, trigger, status: 'billing_paused' };
+  });
 
-  for (const instance of instances) {
+  for (const instance of syncable) {
     // If scoped to a specific instance, skip all others
     if (scopedInstanceId && instance.id !== scopedInstanceId) continue;
 
@@ -105,7 +119,7 @@ export async function handleGitHubSyncJob(
       repos = scopedRepos.map(normalizeRepoFullName);
     } else {
       const repoSyncs = await db.gitHubRepoSync.findMany({
-        where: { githubInstanceId: instance.id },
+        where: { githubInstanceId: instance.id, ...EXCLUDE_DEMO_REPO_SYNC },
         select: { repoFullName: true },
       });
       const syncRepoNames = repoSyncs.map((rs) => rs.repoFullName);

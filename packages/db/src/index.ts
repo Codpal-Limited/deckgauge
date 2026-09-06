@@ -126,3 +126,4 @@ export type {
   ReadIdentityRetrofitReport,
   ChStatementExecutor,
 } from "./ch-provisioning.js";
+export { EXCLUDE_DEMO_INSTANCE, EXCLUDE_DEMO_REPO_SYNC } from "./demo/sync-exclusion.js";

@@ -1,8 +1,11 @@
 <!--
 PUBLIC-FACING README for the open-source Deckgauge repo (published as README.md).
 Separate from the private repo's own README. Keep it public-appropriate.
-TODO before launch: drop real product GIFs/screenshots into docs/media/ and reference them
-in the "See it in action" section (replace the placeholder comments).
+
+The "See it in action" GIFs are served from deckgauge.com/media/ rather than
+committed here, so they stay out of the clone and can be updated without a
+publish. Verify they still resolve before a launch — a broken hero image is the
+first thing a visitor sees.
 -->
 
 <div align="center">
@@ -78,14 +81,60 @@ docker compose up -d
 docker compose run --rm api sh -c "cd /app/packages/db && npx prisma db push --skip-generate"
 ```
 
+Then open `http://localhost:3000`, sign in, and create your organization —
+only the first person to sign in can, and the demo below attaches to it. It
+never creates one for you.
+
+**Want something to look at?** One command fills your organization with a
+fictional company: two boards carrying 240 items, a roadmap, a
+Platform-vs-Mobile comparison dashboard, a 25-person org chart, timesheets,
+and six months of engineering history behind the intelligence dashboards.
+
+```bash
+docker compose run --rm api node /app/packages/db/dist/demo/seed-demo.js
+```
+
+One more step to see the per-engineer views: open the demo org chart and press
+**Sync**. The org tree, roles, locations and timesheets are there as soon as
+the seed finishes, but the per-engineer leaderboard, the heat strip and the
+per-employee board list are computed by the org-tree sync from the seeded
+activity — they stay empty until it has run once.
+
+Remove it whenever you like, and only it — your own boards, connections, and
+data are untouched:
+
+```bash
+docker compose run --rm api node /app/packages/db/dist/demo/seed-demo.js --remove
+```
+
 Full setup — connecting sources, SSO, access control — is in the [docs](https://deckgauge.com/docs).
+
+### Upgrading an existing install
+
+**Back up first.** `docker compose up -d` after a `git pull` starts whatever
+image versions that commit pins, and two of those upgrade your data in place:
+
+```bash
+./scripts/backup.sh      # Postgres, Keycloak, ClickHouse, uploads
+git pull && docker compose up -d
+```
+
+Keycloak migrates its own database schema on first start of a new version and
+that migration is **one-way** — rolling the image back does not roll the schema
+back. ClickHouse likewise upgrades its data directory in place. Both are
+routine and neither needs manual steps; the backup is what makes them
+reversible if something about your install is unusual.
+
+Your existing `.env` keeps working. The compose file passes only the variables
+it names, so keys that later releases stop using are ignored rather than
+breaking startup.
 
 ---
 
 ## What you get
 
 - **📊 Monitoring & visibility** — DORA, flow, throughput, review time, WIP as widgets you watch, centralized across all four tools.
-- **🏆 Automatic ranking** — rank contributors by PRs, tickets, commits, and review comments (weights you choose) to find your champions; org-tree badges for delivery streaks and who’s gone quiet.
+- **🤝 Contribution insight, not a scoreboard** — see PRs, tickets, commits and review comments per person, with weights you choose, to recognise the people carrying the load and spot who has gone quiet because they are stuck. Decision support with a human in the loop — never an automated performance rating. Team and org totals are the default view; per-person detail is there when you need it.
 - **🗂️ Alignment dashboards** — pull imported issues into one board for leadership meetings: comment conclusions, re-prioritize, set due dates, resync for live status.
 - **🛣️ Auto-generated roadmaps** — timelines built from live board data, with progress and a today line.
 - **💰 CapEx / OpEx for finance** — audit-ready software capitalization, inferred from activity, no manual timesheets.

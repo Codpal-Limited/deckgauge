@@ -6,7 +6,7 @@
  * localhost-only deployment and wrong on a public one: any site could call the
  * API cross-origin and read the response.
  *
- * Browsers really do call this API cross-origin — `apps/web/next.config.ts`
+ * Browsers really do call this API cross-origin — `apps/web/next.config.mjs`
  * defines no rewrites, so `NEXT_PUBLIC_API_URL` points the browser straight at
  * the API — so CORS cannot simply be disabled. Hosted deployments set
  * `CORS_ALLOWED_ORIGINS` to an explicit list.

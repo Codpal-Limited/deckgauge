@@ -8,11 +8,12 @@ import { ActiveStatusPicker } from './ActiveStatusPicker';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TimesheetStatusesPage({
-  searchParams,
-}: {
-  searchParams: { tree?: string };
-}) {
+export default async function TimesheetStatusesPage(
+  props: {
+    searchParams: Promise<{ tree?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const trees = await listOrgTrees();
   const selectedTree = trees.find((t) => t.id === searchParams.tree) ?? trees[0] ?? null;
 

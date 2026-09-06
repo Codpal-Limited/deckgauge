@@ -17,10 +17,8 @@ interface AdvisorAskBody {
   pageContext?: AdvisorPageContextDto;
 }
 
-export async function POST(
-  req: Request,
-  { params }: { params: { boardId: string } },
-): Promise<Response> {
+export async function POST(req: Request, props: { params: Promise<{ boardId: string }> }): Promise<Response> {
+  const params = await props.params;
   const { boardId } = params;
   const { question, widgetType, history, pageContext } = (await req.json()) as AdvisorAskBody;
 

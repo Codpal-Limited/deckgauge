@@ -100,9 +100,15 @@ export function EmployeeDetailDrawer({
   useEffect(() => {
     let cancelled = false;
     setActivity(EMPTY_ACTIVITY);
-    getEmployeeActivity(employee.id).then((a) => {
-      if (!cancelled) setActivity(a);
-    });
+    getEmployeeActivity(employee.id)
+      .then((a) => {
+        if (!cancelled) setActivity(a);
+      })
+      // Without this a rejected action left `activity` at EMPTY_ACTIVITY and
+      // reported nothing at all — the tab simply said "No commits."
+      .catch((err) => {
+        console.error('[org-activity] could not load activity for', employee.id, err);
+      });
     return () => {
       cancelled = true;
     };

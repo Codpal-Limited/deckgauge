@@ -1,6 +1,7 @@
 {
   "name": "@deckgauge/shared",
   "version": "0.0.1",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "//type": "ESM, like every other Node-executed package here. As CJS this barrel reached apps/api and apps/worker (both type: module) through Node's CJS-ESM interop, where cjs-module-lexer has to recover the named exports from tsx's transpiled output. Node 20 manages it; Node 24 recovers NONE of the 487, collapsing the namespace to `default` + `module.exports`, so every `import { X } from '@deckgauge/shared'` fails at instantiation — 108 of them across the two apps. The images pin node:20-slim, which is the only reason staging boots. Guarded by apps/api/src/timesheet/shared-esm-exports.test.ts.",
   "type": "module",
@@ -22,7 +23,7 @@
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^25.6.0",
-    "vitest": "^4.1.4"
+    "@types/node": "^24.10.1",
+    "vitest": "^4.1.11"
   }
 }

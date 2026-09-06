@@ -34,6 +34,46 @@ for var in "${PINNED[@]}"; do
   fi
 done
 
+# ---------------------------------------------------------------------------
+# The other half of the same failure, for variables that legitimately KEEP their
+# override.
+#
+# REDIS_URL cannot join PINNED: a deployment with an authenticated Redis has to
+# supply the credential, and Compose cannot assemble one conditionally. So the
+# override stays — and the danger moves to what .env.example ships, because
+# `cp .env.example .env` is the documented first step of every install and that
+# file's value is then injected straight into the containers.
+#
+# THE SET IS DERIVED, NOT LISTED. An earlier version of this check named
+# REDIS_URL by hand, which would have missed the next variable of the same
+# shape — and there are already two more (API_URL, KEYCLOAK_INTERNAL_URL). The
+# rule instead reads docker-compose.yml: any `KEY: "${VAR:-default}"` whose
+# DEFAULT addresses a compose SERVICE NAME is, by construction, consumed inside
+# a container. If .env.example then gives that VAR a loopback value, the two
+# disagree about where the container should connect, and the container loses.
+#
+# A localhost value does not fail loudly. BullMQ retries a connection that never
+# succeeds, so queues go quiet and syncs never start — which reads as "the sync
+# is stuck", not as a config fault. That is exactly what shipping
+# `redis://localhost:6379` here did.
+offenders="$(python3 "$SCRIPT_DIR/lib/container-consumed-env.py")" || {
+  echo "✗ could not evaluate container-consumed variables" >&2
+  fail=1
+}
+
+# `mapfile` is bash 4+; macOS ships 3.2, so read the lines portably.
+if [[ -n "$offenders" ]]; then
+  while IFS=$'\t' read -r var value; do
+    [[ -z "$var" ]] && continue
+    echo "✗ ${var} in .env.example points at the HOST (${value}), but docker-compose.yml" >&2
+    echo "  passes it into a container, where localhost is that container. Use the" >&2
+    echo "  compose service name — the default beside it already does." >&2
+    fail=1
+  done <<< "$offenders"
+else
+  echo "✓ no container-consumed variable in .env.example points at localhost"
+fi
+
 if (( fail )); then
   cat >&2 <<'MSG'
 

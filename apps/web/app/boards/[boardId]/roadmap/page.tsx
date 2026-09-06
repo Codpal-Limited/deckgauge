@@ -8,11 +8,13 @@ import {
 export const dynamic = 'force-dynamic';
 
 interface RoadmapPageProps {
-  params: { boardId: string };
-  searchParams: { viewId?: string };
+  params: Promise<{ boardId: string }>;
+  searchParams: Promise<{ viewId?: string }>;
 }
 
-export default async function RoadmapPage({ params, searchParams }: RoadmapPageProps) {
+export default async function RoadmapPage(props: RoadmapPageProps) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { boardId } = params;
 
   const [role, initial, columns] = await Promise.all([

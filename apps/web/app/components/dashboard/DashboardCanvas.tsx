@@ -135,6 +135,9 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
             { data: r.data, error: r.error },
           ])
         );
+        // Stamp BEFORE setBatch, deliberately: the ref pair may only ever read
+        // "identity at least as new as the entries", which degrades to a
+        // spurious refetch. The reverse order can serve another board's data.
         batchIdentityRef.current = identity;
         setBatch({ status: 'ready', entries });
       })

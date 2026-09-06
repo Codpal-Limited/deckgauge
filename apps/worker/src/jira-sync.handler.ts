@@ -1,8 +1,14 @@
 import type { PrismaClient } from '@deckgauge/db';
+import { EXCLUDE_DEMO_INSTANCE } from '@deckgauge/db';
 import type { JiraPort, JiraConfig } from '@deckgauge/shared';
 import type { ChClientFactory } from './jira-dual-writer.js';
 import { jiraSyncProcessor } from './jira-sync.processor.js';
 import { resolveSyncJobScope } from './sync-job-scope.js';
+import {
+  createSyncPermission,
+  filterSyncableInstances,
+  type SyncPermission,
+} from './sync-permission.js';
 
 export interface SyncJobData {
   trigger?: string;
@@ -45,6 +51,12 @@ export async function handleSyncJob(
    * job iterates can belong to different tenants.
    */
   chClientFor?: ChClientFactory,
+  /**
+   * Whether each instance's organization may sync at all. Optional, and absent
+   * means allow — the Community behaviour, and the default every existing test
+   * relies on.
+   */
+  syncPermission: SyncPermission = createSyncPermission(null),
 ): Promise<SyncJobResult[]> {
   const trigger = jobData.trigger || 'scheduled';
   const scopedInstanceId = jobData.instanceId;
@@ -63,25 +75,31 @@ export async function handleSyncJob(
   // loop below (`continue`), which meant an instance-scoped job still SELECTed every
   // tenant's row — and these rows carry the plaintext access token. Discarding a
   // credential after reading it is not scoping it.
-  //
-  // `undefined`, not `{}`, for the no-filter case: Prisma's generated overload for
-  // this model accepts `{ where } | undefined`, and `{}` widens the union past it
-  // (TS2345).
   const instanceWhere = {
+    ...EXCLUDE_DEMO_INSTANCE,
     ...(scope.organizationId ? { organizationId: scope.organizationId } : {}),
     ...(scopedInstanceId ? { id: scopedInstanceId } : {}),
   };
-  const instances = await db.jiraInstance.findMany(
-    Object.keys(instanceWhere).length > 0 ? { where: instanceWhere } : undefined,
-  );
+  const instances = await db.jiraInstance.findMany({ where: instanceWhere });
   if (instances.length === 0) {
     console.log('No Jira instances configured — skipping sync');
     return [{ instance: 'none', skipped: true }];
   }
 
-  const results: SyncJobResult[] = [];
+  // BEFORE the loop, which is the point of it. Inside the loop the decision would
+  // come after this instance's credential had already been used and its board rows
+  // already written — the ClickHouse ingest gate's exact shortcoming, which is why
+  // "data syncing is paused" was untrue. Here a restricted organization's providers
+  // are never called at all.
+  const { syncable, skipped } = await filterSyncableInstances(instances, syncPermission);
+  const results: SyncJobResult[] = skipped.map((instance) => {
+    console.log(
+      `[Jira sync] skipping instance ${instance.id}: organization ${instance.organizationId} may not sync`,
+    );
+    return { instance: instance.id, skipped: true, trigger, status: 'billing_paused' };
+  });
 
-  for (const instance of instances) {
+  for (const instance of syncable) {
     // If scoped to a specific instance, skip all others
     if (scopedInstanceId && instance.id !== scopedInstanceId) continue;
 

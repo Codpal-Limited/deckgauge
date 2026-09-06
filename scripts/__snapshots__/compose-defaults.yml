@@ -59,8 +59,7 @@ services:
         source: __PROJECT_ROOT__/.license-keys
         target: /app/.license-keys
         read_only: true
-        bind:
-          create_host_path: true
+        bind: {}
   clickhouse:
     container_name: vp-cockpit-clickhouse
     deploy:
@@ -80,7 +79,7 @@ services:
       interval: 10s
       retries: 12
       start_period: 20s
-    image: clickhouse/clickhouse-server:24.8-alpine
+    image: clickhouse/clickhouse-server:25.8-alpine
     networks:
       default: null
     ports:
@@ -102,14 +101,12 @@ services:
         source: __PROJECT_ROOT__/clickhouse/config
         target: /etc/clickhouse-server/config.d
         read_only: true
-        bind:
-          create_host_path: true
+        bind: {}
       - type: bind
         source: __PROJECT_ROOT__/clickhouse/schemas
         target: /docker-entrypoint-initdb.d
         read_only: true
-        bind:
-          create_host_path: true
+        bind: {}
   keycloak:
     command:
       - /opt/keycloak/bin/kc.sh
@@ -128,20 +125,29 @@ services:
       - /opt/keycloak/configure-microsoft-idp.sh
     environment:
       JAVA_OPTS_APPEND: -Xms128m -Xmx384m
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_DB: postgres
       KC_DB_PASSWORD: keycloak
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
-      KC_HOSTNAME: localhost
-      KC_HOSTNAME_PORT: "8080"
+      KC_HOSTNAME: http://localhost:8080
       KC_HOSTNAME_STRICT: "false"
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
       KEYCLOAK_PUBLIC_ORIGIN: ""
       MICROSOFT_CLIENT_ID: ""
       MICROSOFT_CLIENT_SECRET: ""
       MICROSOFT_TENANT_ID: ""
-    image: quay.io/keycloak/keycloak:24.0
+      SMTP_AUTH: ""
+      SMTP_FROM: no-reply@deckgauge.com
+      SMTP_FROM_DISPLAY_NAME: Deckgauge
+      SMTP_HOST: mailpit
+      SMTP_PASSWORD: ""
+      SMTP_PORT: "1025"
+      SMTP_REPLY_TO: ""
+      SMTP_SSL: "false"
+      SMTP_STARTTLS: "false"
+      SMTP_USER: ""
+    image: quay.io/keycloak/keycloak:26.7
     networks:
       default: null
     ports:
@@ -155,20 +161,17 @@ services:
         source: __PROJECT_ROOT__/keycloak/realm-export.json
         target: /opt/keycloak/realm-src/realm.json
         read_only: true
-        bind:
-          create_host_path: true
+        bind: {}
       - type: bind
         source: __PROJECT_ROOT__/keycloak/configure-microsoft-idp.sh
         target: /opt/keycloak/configure-microsoft-idp.sh
         read_only: true
-        bind:
-          create_host_path: true
+        bind: {}
       - type: bind
         source: __PROJECT_ROOT__/keycloak/themes
         target: /opt/keycloak/themes
         read_only: true
-        bind:
-          create_host_path: true
+        bind: {}
   keycloak-db:
     container_name: vp-cockpit-keycloak-db
     deploy:
@@ -196,6 +199,25 @@ services:
         source: keycloak_db_data
         target: /var/lib/postgresql/data
         volume: {}
+  mailpit:
+    container_name: vp-cockpit-mailpit
+    deploy:
+      resources:
+        limits:
+          memory: "134217728"
+    environment:
+      MP_MAX_MESSAGES: "500"
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    image: axllent/mailpit:v1.21
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8025
+        published: "8025"
+        protocol: tcp
+    restart: unless-stopped
   postgres:
     command:
       - postgres
@@ -238,31 +260,27 @@ services:
         volume: {}
   redis:
     command:
-      - redis-server
-      - --save
-      - "60"
-      - "1"
-      - --maxmemory
-      - 384mb
-      - --maxmemory-policy
-      - noeviction
-      - --loglevel
-      - warning
+      - sh
+      - -c
+      - exec redis-server --save 60 1 --maxmemory 384mb --maxmemory-policy noeviction
+        --loglevel warning $${REDIS_PASSWORD:+--requirepass "$$REDIS_PASSWORD"}
     container_name: vp-cockpit-redis
     deploy:
       resources:
         limits:
           memory: "536870912"
+    environment:
+      REDIS_PASSWORD: ""
     healthcheck:
       test:
-        - CMD
-        - redis-cli
-        - ping
+        - CMD-SHELL
+        - redis-cli $${REDIS_PASSWORD:+--no-auth-warning -a "$$REDIS_PASSWORD"} ping
+          | grep -q PONG
       timeout: 5s
       interval: 5s
       retries: 6
       start_period: 5s
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     networks:
       default: null
     ports:
@@ -362,8 +380,7 @@ services:
         source: __PROJECT_ROOT__/.license-keys
         target: /app/.license-keys
         read_only: true
-        bind:
-          create_host_path: true
+        bind: {}
 networks:
   default:
     name: __PROJECT_NAME___default

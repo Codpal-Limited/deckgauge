@@ -1,4 +1,4 @@
-import { PrismaClient } from '@deckgauge/db';
+import { PrismaClient, EXCLUDE_DEMO_REPO_SYNC } from '@deckgauge/db';
 import { shouldSync, STATUS_COLORS } from '@deckgauge/shared';
 import { createSyncAutomationRunner } from './sync-automations.js';
 
@@ -111,8 +111,13 @@ export class GitHubPromoteService {
     // anything for an out-of-connection row, and the unfiltered walk also ran a
     // status-cache read, an exclusion read and a project read against every other
     // tenant's boards on every sync.
+    // `EXCLUDE_DEMO_REPO_SYNC` here is defense in depth, not the primary guard:
+    // `options.instanceId` is already resolved from the (guarded) instance loop
+    // in `github-sync.handler.ts`, so a demo instance's id should never reach
+    // here. Added anyway so this enumeration can never regress independently —
+    // see `apps/worker/src/__isolation__/demo-instance-exclusion.test.ts`.
     const repoSyncs = await this.prisma.gitHubRepoSync.findMany({
-      where: { githubInstanceId: options.instanceId },
+      where: { githubInstanceId: options.instanceId, ...EXCLUDE_DEMO_REPO_SYNC },
       include: { boardSources: true },
     });
 

@@ -1,6 +1,7 @@
 {
   "name": "@deckgauge/ui",
   "version": "0.0.1",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -16,26 +17,26 @@
     "react": ">=18"
   },
   "devDependencies": {
-    "@testing-library/react": "^15.0.0",
+    "@testing-library/react": "^16.3.3",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",
     "@deckgauge/shared": "workspace:*",
-    "jsdom": "^24.0.0",
+    "jsdom": "^30.0.1",
     "react-dom": "^18.3.1",
     "tsup": "^8.0.0",
     "typescript": "^5.4.5",
-    "vitest": "^1.5.0"
+    "vitest": "^4.1.11"
   },
   "dependencies": {
-    "@tiptap/core": "^3.22.4",
-    "@tiptap/extension-color": "^3.22.4",
-    "@tiptap/extension-image": "^3.22.4",
-    "@tiptap/extension-mention": "^3.22.4",
-    "@tiptap/extension-text-style": "^3.22.4",
-    "@tiptap/extension-underline": "^3.22.4",
-    "@tiptap/pm": "^3.22.4",
-    "@tiptap/react": "^3.22.4",
-    "@tiptap/starter-kit": "^3.22.4",
-    "@tiptap/suggestion": "^3.22.4"
+    "@tiptap/core": "^3.31.3",
+    "@tiptap/extension-color": "^3.31.3",
+    "@tiptap/extension-image": "^3.31.3",
+    "@tiptap/extension-mention": "^3.31.3",
+    "@tiptap/extension-text-style": "^3.31.3",
+    "@tiptap/extension-underline": "^3.31.3",
+    "@tiptap/pm": "^3.31.3",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
+    "@tiptap/suggestion": "^3.31.3"
   }
 }

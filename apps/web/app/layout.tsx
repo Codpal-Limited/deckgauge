@@ -14,11 +14,11 @@ export const metadata: Metadata = {
   description: "Open-source development intelligence — see how your software really gets built",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // The layout has no ?boardId (search params aren't available here), so the sidebar
   // highlights the last-viewed board from the cookie; the board page keeps that cookie
   // current on every navigation via setLastBoardCookie.
-  const activeBoardId = cookies().get(LAST_BOARD_COOKIE)?.value ?? null;
+  const activeBoardId = (await cookies()).get(LAST_BOARD_COOKIE)?.value ?? null;
 
   return (
     <html lang="en" suppressHydrationWarning>
