@@ -109,6 +109,21 @@ FROM runner-${EDITION} AS runner
 COPY apps/api/ apps/api/
 COPY config/ config/
 
+# Where uploaded comment images are stored, stated by the IMAGE rather than
+# derived from WORKDIR below.
+#
+# It was derived before — `join(process.cwd(), "uploads")` in server.ts — which
+# with the WORKDIR on the next line resolved to `/app/apps/api/uploads`, inside
+# the container's ephemeral writable layer. docker-compose.yml mounts the
+# persistent `uploads_data` volume at `/app/uploads`, so nothing ever wrote to
+# it, and every image was destroyed by the next container recreate. Six were
+# lost before anyone noticed, because uploads kept returning 200 and only broke
+# on a later deploy.
+#
+# This value and the compose mount target must agree; that they still do is
+# asserted by apps/api/src/__isolation__/uploads-persistence.test.ts.
+ENV UPLOADS_DIR=/app/uploads
+
 WORKDIR /app/apps/api
 EXPOSE 3001
 CMD ["npx", "tsx", "src/index.ts"]

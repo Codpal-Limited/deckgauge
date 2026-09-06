@@ -81,7 +81,7 @@ export function BoardView({ board, groups, columns, boardId, jiraLinks, hasGitHu
 
   const [layout, setLayout] = useState<ColumnLayout>(initialLayout);
   const [showColumnManager, setShowColumnManager] = useState(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pendingSave = useRef<ColumnLayout | null>(null);
 
   const searchRef = useRef<SearchBarHandle>(null);
@@ -216,7 +216,10 @@ export function BoardView({ board, groups, columns, boardId, jiraLinks, hasGitHu
                     columns={columns}
                     hidden={layout.hidden}
                     hasIntegration={
-                      (hasAnyJiraLink(jiraLinks) || hasGitHubIntegration || hasAdoIntegration)
+                      // Both integration flags are optional props, so the ||
+                      // chain is `boolean | undefined`. Coerced, not widened:
+                      // an absent flag was already falsy here.
+                      !!(hasAnyJiraLink(jiraLinks) || hasGitHubIntegration || hasAdoIntegration)
                     }
                     onToggle={toggleColumn}
                     onAddColumn={() => setShowColumnManager(true)}

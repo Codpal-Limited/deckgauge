@@ -96,7 +96,11 @@ export function moveProject(
   tree: GroupTree,
   projectId: string,
   targetGroupId: string,
-  order: number,
+  // `number | null`, matching the field it is assigned straight into:
+  // ProjectWithFields.order is nullable, and per the note on
+  // reorderItemInTree below most projects carry a NULL order until first
+  // dragged. Both call sites pass `project.order` and so could always be null.
+  order: number | null,
 ): GroupTree {
   let moving: ProjectWithFields | null = null;
   const stripped = tree.map((g) => {

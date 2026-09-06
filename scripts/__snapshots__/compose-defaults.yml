@@ -6,7 +6,7 @@ services:
       dockerfile: apps/api/Dockerfile
       args:
         EDITION: community
-    container_name: vp-cockpit-api
+    container_name: deckgauge-api
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -30,8 +30,8 @@ services:
       DECKGAUGE_LICENSE_FILE: ""
       DECKGAUGE_MULTI_ORG: "false"
       JIRA_CONFIG_PATH: /app/config/jira.yaml
-      KEYCLOAK_ISSUER: http://localhost:8080/realms/vp-cockpit
-      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/vp-cockpit/protocol/openid-connect/certs
+      KEYCLOAK_ISSUER: http://localhost:8080/realms/deckgauge
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/deckgauge/protocol/openid-connect/certs
       NODE_OPTIONS: --max-old-space-size=1280
       REDIS_URL: redis://redis:6379
     healthcheck:
@@ -61,7 +61,7 @@ services:
         read_only: true
         bind: {}
   clickhouse:
-    container_name: vp-cockpit-clickhouse
+    container_name: deckgauge-clickhouse
     deploy:
       resources:
         limits:
@@ -112,7 +112,7 @@ services:
       - /opt/keycloak/bin/kc.sh
       - start-dev
       - --import-realm
-    container_name: vp-cockpit-keycloak
+    container_name: deckgauge-keycloak
     depends_on:
       keycloak-db:
         condition: service_healthy
@@ -173,7 +173,7 @@ services:
         read_only: true
         bind: {}
   keycloak-db:
-    container_name: vp-cockpit-keycloak-db
+    container_name: deckgauge-keycloak-db
     deploy:
       resources:
         limits:
@@ -200,7 +200,7 @@ services:
         target: /var/lib/postgresql/data
         volume: {}
   mailpit:
-    container_name: vp-cockpit-mailpit
+    container_name: deckgauge-mailpit
     deploy:
       resources:
         limits:
@@ -227,7 +227,7 @@ services:
       - effective_cache_size=256MB
       - -c
       - max_connections=30
-    container_name: vp-cockpit-postgres
+    container_name: deckgauge-postgres
     deploy:
       resources:
         limits:
@@ -264,7 +264,7 @@ services:
       - -c
       - exec redis-server --save 60 1 --maxmemory 384mb --maxmemory-policy noeviction
         --loglevel warning $${REDIS_PASSWORD:+--requirepass "$$REDIS_PASSWORD"}
-    container_name: vp-cockpit-redis
+    container_name: deckgauge-redis
     deploy:
       resources:
         limits:
@@ -298,7 +298,7 @@ services:
     build:
       context: __PROJECT_ROOT__
       dockerfile: apps/web/Dockerfile
-    container_name: vp-cockpit-web
+    container_name: deckgauge-web
     depends_on:
       api:
         condition: service_started
@@ -310,15 +310,15 @@ services:
     environment:
       API_URL: http://api:3001
       AUTH_TRUST_HOST: "true"
-      KEYCLOAK_CLIENT_ID: vp-cockpit-web
-      KEYCLOAK_CLIENT_SECRET: vp-cockpit-secret
-      KEYCLOAK_INTERNAL_URL: http://keycloak:8080/realms/vp-cockpit
-      KEYCLOAK_ISSUER: http://localhost:8080/realms/vp-cockpit
+      KEYCLOAK_CLIENT_ID: deckgauge-web
+      KEYCLOAK_CLIENT_SECRET: deckgauge-secret
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080/realms/deckgauge
+      KEYCLOAK_ISSUER: http://localhost:8080/realms/deckgauge
       MICROSOFT_CLIENT_ID: ""
       MICROSOFT_CLIENT_SECRET: ""
       MICROSOFT_TENANT_ID: ""
       NEXT_PUBLIC_API_URL: http://localhost:3001
-      NEXTAUTH_SECRET: vp-cockpit-nextauth-secret
+      NEXTAUTH_SECRET: deckgauge-nextauth-secret
       NEXTAUTH_URL: http://localhost:3000
       NODE_OPTIONS: --max-old-space-size=1280
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
@@ -336,7 +336,7 @@ services:
       dockerfile: apps/worker/Dockerfile
       args:
         EDITION: community
-    container_name: vp-cockpit-worker
+    container_name: deckgauge-worker
     depends_on:
       clickhouse:
         condition: service_healthy

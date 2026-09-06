@@ -3,10 +3,11 @@
 #
 # Backs up:
 #   1. Postgres (pg_dump — transactionally consistent, no downtime)
-#   2. ClickHouse (table-by-table export via HTTP — consistent reads with FINAL)
+#   2. ClickHouse (table-by-table export via HTTP — FINAL where the engine
+#      supports it, which is not every engine; see scripts/lib/ch-export.sh)
 #   3. Uploads volume (file attachments)
 #
-# Output: ./backups/vp-cockpit-backup-YYYYMMDD-HHMMSS.tar.gz
+# Output: ./backups/deckgauge-backup-YYYYMMDD-HHMMSS.tar.gz
 #
 # Usage:
 #   ./scripts/backup.sh                        # timestamped backup in ./backups/
@@ -15,7 +16,7 @@
 #   ./scripts/backup.sh --stack next           # target a second, parallel stack
 #
 # `--stack main` (the default) assumes the compose project is named
-# `vp-cockpit` — docker-compose.yml declares no project `name:`, so the project
+# `deckgauge` — docker-compose.yml declares no project `name:`, so the project
 # is really named after the directory you cloned into. If yours differs, set
 # COMPOSE_PROJECT_NAME and UPLOADS_VOLUME to match, or the script will look for
 # containers and a volume that don't exist. `--stack next` targets a second
@@ -56,23 +57,23 @@ done
 # (e.g. CH_PORT=xxxx ./scripts/backup.sh) still take precedence.
 case "$STACK" in
   main)
-    : "${COMPOSE_PROJECT_NAME:=vp-cockpit}"
+    : "${COMPOSE_PROJECT_NAME:=deckgauge}"
     # CH_PORT is a HOST port, so it follows CLICKHOUSE_HTTP_PORT out of .env
     # when this stack has been moved off the defaults. `--stack next` keeps its
     # literal: that overlay hardcodes 8124 and reads no .env.
     : "${CH_PORT:=${CLICKHOUSE_HTTP_PORT}}"
-    : "${PG_CONTAINER:=vp-cockpit-postgres}"
-    : "${KC_DB_CONTAINER:=vp-cockpit-keycloak-db}"
-    : "${API_CONTAINER:=vp-cockpit-api}"
-    : "${UPLOADS_VOLUME:=vp-cockpit_uploads_data}"
+    : "${PG_CONTAINER:=deckgauge-postgres}"
+    : "${KC_DB_CONTAINER:=deckgauge-keycloak-db}"
+    : "${API_CONTAINER:=deckgauge-api}"
+    : "${UPLOADS_VOLUME:=deckgauge_uploads_data}"
     ;;
   next)
-    : "${COMPOSE_PROJECT_NAME:=vp-cockpit-next}"
+    : "${COMPOSE_PROJECT_NAME:=deckgauge-next}"
     : "${CH_PORT:=8124}"
-    : "${PG_CONTAINER:=vp-cockpit-next-postgres}"
-    : "${KC_DB_CONTAINER:=vp-cockpit-next-keycloak-db}"
-    : "${API_CONTAINER:=vp-cockpit-next-api}"
-    : "${UPLOADS_VOLUME:=vp-cockpit-next_uploads_data}"
+    : "${PG_CONTAINER:=deckgauge-next-postgres}"
+    : "${KC_DB_CONTAINER:=deckgauge-next-keycloak-db}"
+    : "${API_CONTAINER:=deckgauge-next-api}"
+    : "${UPLOADS_VOLUME:=deckgauge-next_uploads_data}"
     ;;
   *)
     echo "Unknown --stack: $STACK (expected: main, next)" >&2
@@ -96,7 +97,7 @@ CH_PASS="${CLICKHOUSE_PASSWORD:-cockpit}"
 CH_HOST="127.0.0.1"
 CH_DB="cockpit"
 
-BACKUP_NAME="vp-cockpit-backup-${TAG}"
+BACKUP_NAME="deckgauge-backup-${TAG}"
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
@@ -112,20 +113,18 @@ log_info() { echo -e "${YELLOW}·${NC} $1"; }
 log_fail() { echo -e "${RED}✗${NC} $1" >&2; }
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
-ch_export_table() {
-  local table="$1"
-  local dest="$2"
-  # FINAL forces deduplication in ReplacingMergeTree before export
-  curl -sf --max-time 300 \
-    "http://${CH_USER}:${CH_PASS}@${CH_HOST}:${CH_PORT}/" \
-    --data "SELECT * FROM ${CH_DB}.${table} FINAL FORMAT Native" \
-    | gzip > "${dest}"
-  local rows
-  rows=$(curl -sf --max-time 30 \
-    "http://${CH_USER}:${CH_PASS}@${CH_HOST}:${CH_PORT}/" \
-    --data "SELECT count() FROM ${CH_DB}.${table} FINAL")
-  echo "$rows"
-}
+# `ch_export_table` lives in a library so that a real ClickHouse can be pointed at
+# it — see packages/db/src/backup/ch-export.int.test.ts. It asks the server which
+# engines accept FINAL instead of assuming all of them do, and it RETURNS NON-ZERO
+# when an export fails, which the previous inline version could not: called as
+# `rows=$(ch_export_table …)`, its failures were lost twice over — errexit does
+# not fire inside the substituted subshell, and the function ended in
+# `echo "$rows"`, so the substitution's status was the echo's. (An assignment DOES
+# propagate that status; the plausible rule is the wrong one. The library header
+# has the measurements.) It sets CH_EXPORT_ROWS rather than printing the count, so
+# that call site cannot come back.
+# shellcheck source=lib/ch-export.sh
+source "$PROJECT_ROOT/scripts/lib/ch-export.sh"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Preflight: verify services are running
@@ -192,10 +191,27 @@ mkdir -p "$WORK_DIR/clickhouse"
 # included deliberately: restoring the ledger keeps a restored database from
 # re-applying schema files it already has.
 CH_TABLE_QUERY="SELECT name FROM system.tables WHERE database='${CH_DB}' AND engine LIKE '%MergeTree%' ORDER BY name FORMAT TSV"
+# Captured and status-checked BEFORE the loop, rather than piped into it as
+# `done < <(curl …)`. Process substitution discards the producer's exit status —
+# `while … done < <(printf "a\nb\n"; exit 18)` leaves `$?` at 0 even under
+# `set -euo pipefail` — and curl exits 18 on exactly the failure that matters
+# here: ClickHouse answers HTTP 200 and then cuts the body short when a read
+# fails mid-stream. That yields a SHORT table list, which the `-eq 0` guard below
+# does not catch and the MANIFEST then records as if it were the whole schema —
+# an archive quietly missing tables, internally consistent about it. This became
+# load-bearing when the per-table `exists` pre-check was removed, since the loop
+# now trusts this list.
+# The body is LABELLED and the exit code named, because on the truncation case
+# above the body is partial DATA — a couple of table names — and unlabelled data
+# in the slot where a reader expects a reason is its own small trap.
+CH_TABLE_LIST="$(ch_post "$CH_TABLE_QUERY")" || {
+  log_fail "Could not enumerate ClickHouse tables in '${CH_DB}' — curl exit $?; server said: ${CH_TABLE_LIST:-<no response body>}"
+  exit 1
+}
 CH_TABLES=()
 while IFS= read -r line; do
   [ -n "$line" ] && CH_TABLES+=("$line")
-done < <(curl -sf --max-time 30 "http://${CH_USER}:${CH_PASS}@${CH_HOST}:${CH_PORT}/" --data "$CH_TABLE_QUERY")
+done <<< "$CH_TABLE_LIST"
 
 # Fail loudly. A backup that silently captures zero tables is worse than one that
 # refuses to run, because it looks like success until the day it is needed.
@@ -207,18 +223,18 @@ log_info "  ${#CH_TABLES[@]} ClickHouse tables to export (enumerated from the se
 
 TOTAL_CH_ROWS=0
 for table in "${CH_TABLES[@]}"; do
-  # Check if table exists before trying to export
-  exists=$(curl -sf --max-time 10 \
-    "http://${CH_USER}:${CH_PASS}@${CH_HOST}:${CH_PORT}/" \
-    --data "SELECT count() FROM system.tables WHERE database='${CH_DB}' AND name='${table}'" \
-    2>/dev/null || echo "0")
-  if [ "$exists" = "0" ]; then
-    log_info "  skipping $table (table does not exist yet)"
-    continue
+  # No "does this table exist?" pre-check any more. CH_TABLES was just enumerated
+  # from system.tables on this same server, so the check could only ever fire on a
+  # table dropped mid-backup — and it was written as `… || echo "0"`, which turned
+  # ANY failed request into `skipping $table (table does not exist yet)`. That is
+  # the same shape as the bug this file is being repaired for: a failure wearing
+  # the clothes of a benign skip. A table that cannot be read now stops the backup.
+  if ! ch_export_table "$table" "$WORK_DIR/clickhouse/${table}.native.gz"; then
+    log_fail "ClickHouse export failed for '${table}' — refusing to write an incomplete backup."
+    exit 1
   fi
-  rows=$(ch_export_table "$table" "$WORK_DIR/clickhouse/${table}.native.gz")
-  TOTAL_CH_ROWS=$((TOTAL_CH_ROWS + rows))
-  log_info "  $table: $rows rows"
+  TOTAL_CH_ROWS=$((TOTAL_CH_ROWS + CH_EXPORT_ROWS))
+  log_info "  $table: $CH_EXPORT_ROWS rows"
 done
 
 CH_SIZE=$(du -sh "$WORK_DIR/clickhouse" | cut -f1)

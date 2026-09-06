@@ -358,12 +358,18 @@ export async function writeDemoToPostgres(
             jiraKey: project.jiraKey,
             jiraProjectKey: project.jiraProjectKey,
             jiraType: project.jiraType,
+            costClassification: project.costClassification,
             startDate: project.startDate,
             endDate: project.endDate,
             dueDate: project.dueDate,
           },
           update: {
             status: project.status,
+            // Kept in step with the ClickHouse mirror the CapEx/OpEx report
+            // actually reads. Postgres is the source of truth a user edits,
+            // so a re-seed that refreshed only the mirror would leave the two
+            // disagreeing the moment anyone opened the item.
+            costClassification: project.costClassification,
             groupId: project.groupId,
             name: project.name,
             // These are anchored to `dataset.now` in generate.ts and DO move

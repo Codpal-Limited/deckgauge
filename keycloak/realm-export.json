@@ -1,5 +1,5 @@
 {
-  "realm": "vp-cockpit",
+  "realm": "deckgauge",
   "displayName": "Deckgauge",
   "enabled": true,
   "registrationAllowed": true,
@@ -19,13 +19,13 @@
     "user": "__SMTP_USER__",
     "password": "__SMTP_PASSWORD__"
   },
-  "loginTheme": "vp-cockpit",
+  "loginTheme": "deckgauge",
   "clients": [
     {
-      "clientId": "vp-cockpit-web",
+      "clientId": "deckgauge-web",
       "enabled": true,
       "publicClient": false,
-      "secret": "vp-cockpit-secret",
+      "secret": "deckgauge-secret",
       "redirectUris": [
         "http://localhost:3000/*",
         "http://localhost:3010/*",

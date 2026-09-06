@@ -25,7 +25,7 @@
     "@types/node": "^24.10.1",
     "@types/ws": "^8",
     "tsx": "^4.15.7",
-    "typescript": "^5.4.0",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.11"
   }
 }

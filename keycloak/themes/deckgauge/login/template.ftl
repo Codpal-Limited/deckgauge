@@ -1,4 +1,4 @@
-<#-- keycloak/themes/vp-cockpit/login/template.ftl -->
+<#-- keycloak/themes/deckgauge/login/template.ftl -->
 <#macro registrationLayout bodyClass="" displayInfo=false displayMessage=true displayRequiredFields=false>
 <!DOCTYPE html>
 <html lang="en">
@@ -13,7 +13,7 @@
     </#list>
   </#if>
 </head>
-<body class="vp-body ${bodyClass}" data-theme="vp-cockpit">
+<body class="vp-body ${bodyClass}" data-theme="deckgauge">
   <main class="vp-shell">
     <section class="vp-card">
       <header class="vp-header">

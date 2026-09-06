@@ -1,7 +1,11 @@
 import fp from 'fastify-plugin';
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
-import { verifyKeycloakJwt, type KeycloakTokenClaims } from './keycloak-jwt.js';
+import {
+  verifyKeycloakJwt,
+  IdentityProviderUnavailableError,
+  type KeycloakTokenClaims,
+} from './keycloak-jwt.js';
 import { linkBoardOwnersToUser } from './link-board-owners.js';
 import { notifyOrgMemberInvited } from '../notifications/triggers/org-member-invited.js';
 import { UserService } from '../users/user.service.js';
@@ -311,6 +315,37 @@ export function buildKeycloakAuthPlugin(
           }
         }
       } catch (err) {
+        // An unreachable key set is NOT a bad token, and must not be reported as
+        // one. Falling through to the branch below would drop `request.user`,
+        // the policy layer would answer 401, and the UI would render a signed-in
+        // person as signed-out — which is exactly how a cold JWKS cache after a
+        // deploy turned into "staging is broken, the board is empty".
+        //
+        // 503 + Retry-After instead: the caller is told the dependency is down
+        // and that retrying is worthwhile, and nothing downstream mistakes an
+        // outage for a credential problem.
+        if (err instanceof IdentityProviderUnavailableError) {
+          // A public route never needed the caller identified, so an unreachable
+          // key set must not take it down along with everything else. Without
+          // this, a caller who merely happens to be holding a bearer token gets
+          // 503 from an endpoint that does not read `request.user` at all —
+          // `/organization/public-summary` is exactly that shape.
+          if (request.routeOptions.config?.policy?.kind === 'public') {
+            request.log.warn(
+              { err: err.message },
+              'Keycloak key set unreachable — serving a public route unauthenticated',
+            );
+            return;
+          }
+          request.log.error(
+            { err: err.message },
+            'Keycloak key set unreachable — refusing the request rather than treating it as unauthenticated',
+          );
+          return reply
+            .code(503)
+            .header('Retry-After', '5')
+            .send({ error: 'IDENTITY_PROVIDER_UNAVAILABLE' });
+        }
         // Token invalid/expired — continue without req.user. Write routes that
         // require authentication enforce it themselves and reject with 401.
         request.log.warn(

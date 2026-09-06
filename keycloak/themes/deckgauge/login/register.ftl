@@ -1,4 +1,4 @@
-<#-- keycloak/themes/vp-cockpit/login/register.ftl -->
+<#-- keycloak/themes/deckgauge/login/register.ftl -->
 <#import "template.ftl" as layout>
 <@layout.registrationLayout displayMessage=!messagesPerField.existsError('firstName','lastName','email','username','password','password-confirm'); section>
   <#if section = "form">

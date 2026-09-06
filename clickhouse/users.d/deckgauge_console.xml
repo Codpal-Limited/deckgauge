@@ -8,13 +8,13 @@
     </readonly_profile>
   </profiles>
   <users>
-    <vp_cockpit_console>
+    <deckgauge_console>
       <password_sha256_hex>5bd6aa4db2e7679e0e612c730faa2684b2985954704203b23a29cf31bb4f502e</password_sha256_hex>
       <networks>
         <ip>::/0</ip>
       </networks>
       <profile>readonly_profile</profile>
       <quota>default</quota>
-    </vp_cockpit_console>
+    </deckgauge_console>
   </users>
 </clickhouse>

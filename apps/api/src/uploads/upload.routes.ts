@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { createReadStream } from 'node:fs';
+import { access, constants } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { UploadService } from './upload.service.js';
 import { board, viaEntity, viaBranch, fromQuery, fromParam } from '../auth/policy.js';
@@ -104,6 +105,26 @@ export async function uploadRoutes(
       }
 
       const filePath = join(service.dir, upload.filename);
+
+      // A row with no file behind it is not a server fault, and answering 500
+      // with an ENOENT stack said it was. That is how the uploads-directory bug
+      // presented for weeks: the api wrote images into the container's ephemeral
+      // layer, a deploy destroyed them, and every one of the six surviving rows
+      // then answered 500 — indistinguishable, from the outside, from an api
+      // that had simply fallen over. 404 states the true condition (this file is
+      // gone), and the log line below is where the severity lives, because the
+      // client sees an ordinary missing resource while the operator sees data
+      // loss naming the exact path that was expected.
+      try {
+        await access(filePath, constants.R_OK);
+      } catch {
+        req.log.error(
+          { uploadId: upload.id, filePath },
+          'upload row has no readable file on disk',
+        );
+        return reply.status(404).send({ error: 'Not found' });
+      }
+
       reply.header('Content-Type', upload.mimeType);
       return reply.send(createReadStream(filePath));
     },

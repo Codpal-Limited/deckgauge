@@ -51,7 +51,7 @@
 
 ## Auth / operator token (remaining live-proof gate)
 
-- `/mcp` needs `request.user`, set only from a **valid Keycloak JWT** (`keycloak-auth.plugin.ts:24-37`). Realm = `vp-cockpit`. The realm export seeds **no user and no direct-grant client**, so a token can't be minted by a simple password grant out of the box.
+- `/mcp` needs `request.user`, set only from a **valid Keycloak JWT** (`keycloak-auth.plugin.ts:24-37`). Realm = `deckgauge`. The realm export seeds **no user and no direct-grant client**, so a token can't be minted by a simple password grant out of the box.
 - **To mint a local token** (build-time manual smoke): use the Keycloak admin API (`admin/admin` at `:8080`) to create a test user + enable direct-access-grants on a client (or reuse the web app's login to copy a Bearer token from the browser session). Then the bridge passes it via the `mcp-remote --header` above. Keep this zero-friction: the bridge reads `DECKGAUGE_TOKEN` from env; the CLI docs the one-time token step. (This matches the Phase-1 doc's "external clients need a browser-obtained token" note.)
 - The `BoardAccess` check still applies: the token's user must have ≥ VIEWER on the board the tool call targets.
 

@@ -19,6 +19,76 @@ function chTime(date: Date): string {
   return date.toISOString().slice(0, 19).replace('T', ' ');
 }
 
+/**
+ * Sprint length. Two weeks over `HISTORY_DAYS` gives 13 sprints per board, plus
+ * a 14th one-day bucket where 183 = 13x14 + 1 leaves a remainder — comfortably
+ * above the Velocity widget's 8-sprint default window, and `stddevPop` over
+ * fewer than two sprints is 0, which draws a confidence band of zero width.
+ */
+const SPRINT_DAYS = 14;
+
+/**
+ * Width of the zero-padded sprint number. Two digits covers the 14 sprints
+ * `HISTORY_DAYS` yields.
+ *
+ * The padding is LOAD-BEARING, not cosmetic. Both consumers order by
+ * `sprint_name` as a STRING and then take the top N:
+ * `velocity-with-confidence.ts` does `ORDER BY sprint_name DESC LIMIT
+ * {sprints}` (8 by default on the demo dashboard) and
+ * `iteration-planning-accuracy.ts` the same with 6. Unpadded, byte-wise DESC
+ * over `Sprint 1 .. Sprint 14` runs 9, 8, 7, 6, 5, 4, 3, 2, 14, 13, ... — so
+ * the top 8 is sprints 2-9, the OLDEST eight, and the active sprint never
+ * appears at all. That is a worse failure than the empty widget this seeding
+ * fixes, because a chart of the wrong four months looks entirely correct.
+ * Padded, lexicographic order and numeric order coincide.
+ *
+ * Derived from the window rather than pinned at 2, so the invariant survives a
+ * change to `HISTORY_DAYS` or `SPRINT_DAYS`. The property test asserts that
+ * string order equals sprint order, but it can only see the sprint counts the
+ * current window actually produces — it would not catch a width that became
+ * too narrow at 100+ sprints.
+ */
+const SPRINT_PAD = String(Math.floor(HISTORY_DAYS / SPRINT_DAYS) + 1).length;
+
+/**
+ * Which sprint a date falls in, numbered forward from the start of the history
+ * window so sprint 1 is the oldest and the number rises with time the way a
+ * real board's does.
+ *
+ * Purely a function of the date — it draws nothing from the PRNG, which is why
+ * adding sprints left every other generated field byte-identical.
+ */
+function sprintIndexFor(date: Date, now: Date): number {
+  const windowStart = now.getTime() - HISTORY_DAYS * DAY_MS;
+  // Dates are clamped into the window by their callers, but floor() on a
+  // negative delta would still yield sprint 0 or below; keep the floor at 1.
+  return Math.max(1, Math.floor((date.getTime() - windowStart) / (SPRINT_DAYS * DAY_MS)) + 1);
+}
+
+/**
+ * The sprint an issue created at `created` belongs to, for `board`.
+ *
+ * `latestIndex` is the board's highest sprint that actually has issues, and it
+ * is the one marked `active`; every earlier one is `closed`. Deriving "active"
+ * that way rather than from the sprint CONTAINING `now` is what makes it
+ * seed-independent — at DEFAULT_SEED no project on the Platform board happened
+ * to start inside the final two-week box, so that board had no active sprint at
+ * all while the Mobile board had one.
+ */
+function sprintFor(
+  created: Date,
+  board: { key: string; name: string },
+  now: Date,
+  latestIndex: number,
+): { id: string; name: string; state: 'active' | 'closed' } {
+  const index = sprintIndexFor(created, now);
+  return {
+    id: `${board.key}-S${String(index).padStart(SPRINT_PAD, '0')}`,
+    name: `${board.name} Sprint ${String(index).padStart(SPRINT_PAD, '0')}`,
+    state: index === latestIndex ? 'active' : 'closed',
+  };
+}
+
 export interface DemoProject {
   id: string;
   name: string;
@@ -32,6 +102,8 @@ export interface DemoProject {
   jiraKey: string;
   jiraProjectKey: string;
   jiraType: string;
+  /** CAPEX / OPEX, or null for the deliberate Unclassified slice. */
+  costClassification: 'CAPEX' | 'OPEX' | null;
   startDate: Date;
   endDate: Date;
   dueDate: Date;
@@ -88,6 +160,7 @@ export interface DemoClickHouse {
   githubCommits: Record<string, unknown>[];
   githubReviews: Record<string, unknown>[];
   githubDeployments: Record<string, unknown>[];
+  boardItemClassification: Record<string, unknown>[];
 }
 
 export interface DemoDataset {
@@ -100,6 +173,61 @@ export interface DemoDataset {
 const OWNER_COLORS = ['#5B8DEF', '#27AE60', '#F2994A', '#BB6BD9', '#EB5757', '#2D9CDB'];
 const ISSUE_TYPES = ['Story', 'Task', 'Bug'];
 const PROJECTS_PER_BOARD = 120;
+
+/**
+ * Every Nth project on a board is an Epic. `initiative-risk-radar.ts` selects
+ * `issue_type = 'Epic' AND due_date IS NOT NULL`, and its only other leg reads
+ * `cockpit.github_milestones`, which the seeder does not write — so with
+ * Story/Task/Bug alone that widget had nothing to draw on a demo install.
+ *
+ * 12 gives ten epics per 120-project board: enough for the radar to be
+ * inhabited, few enough that the board still reads as ordinary delivery work
+ * rather than a wall of epics.
+ *
+ * It is not free elsewhere, and the trade is deliberate.
+ * `investment-allocation.ts` groups by the raw canonical `type`, so the demo's
+ * investment mix now carries an ~8% 'Epic' slice alongside Story/Task/Bug.
+ * That is what a real board with epics looks like; the alternative is a widget
+ * that renders nothing at all.
+ */
+const EPIC_EVERY = 12;
+
+/**
+ * `drawn` is evaluated by the caller BEFORE this returns, which is the point:
+ * the PRNG draw happens unconditionally and in its original position, so
+ * turning some projects into epics changes the chosen TYPE without shifting
+ * the stream underneath every id and field that follows.
+ */
+function epicOr(drawn: string, index: number): string {
+  return index % EPIC_EVERY === 0 ? 'Epic' : drawn;
+}
+
+/**
+ * Leave every Nth project unclassified. The CapEx/OpEx report has three
+ * buckets and renders hours for each, so a demo where Unclassified is empty
+ * never shows that bucket working — just as one where it holds EVERYTHING
+ * (which is what shipped) shows nothing else working.
+ */
+const UNCLASSIFIED_EVERY = 17;
+
+/**
+ * CapEx / OpEx for a demo project.
+ *
+ * Bugs are maintenance of existing software and classify OPEX; feature work
+ * (Epic / Story / Task) is new development and classifies CAPEX. That is the
+ * ordinary reading of the accounting rule the timesheet report implements, and
+ * it means the demo's split follows from data already generated rather than
+ * from a second random draw — so this costs the PRNG stream nothing.
+ *
+ * Returns null for the Unclassified slice. Resolution walks to the nearest
+ * classified ancestor (`packages/shared/src/timesheet/classification.ts`), and
+ * demo issues have no parents, so each project's own value is what the report
+ * uses.
+ */
+function classificationFor(jiraType: string, index: number): 'CAPEX' | 'OPEX' | null {
+  if (index % UNCLASSIFIED_EVERY === 0) return null;
+  return jiraType === 'Bug' ? 'OPEX' : 'CAPEX';
+}
 
 const PROJECT_TOPICS = [
   'Rate-limit the public API', 'Retire the legacy auth shim', 'Cache board queries',
@@ -202,7 +330,14 @@ export function generateDemoDataset(now: Date, seed: number): DemoDataset {
       );
       const endDate = new Date(startDate.getTime() + intBetween(rand, 3, 30) * DAY_MS);
 
-      projects.push({
+      // Built as a variable and classified AFTER, rather than hoisting the
+      // `jiraType` draw above the literal. `name` draws from PROJECT_TOPICS
+      // before `jiraType` draws from ISSUE_TYPES, and `fieldValues` draws
+      // twice after it, so pulling the type draw out to a `const` above the
+      // literal would REORDER the stream and move every id and date in the
+      // dataset. Assigning the derived field afterwards keeps the draw
+      // sequence exactly as it was.
+      const project: DemoProject = {
         id: demoId(`project:${jiraKey}`),
         name: `${pick(rand, PROJECT_TOPICS)} (${jiraKey})`,
         owner: owner.name,
@@ -214,7 +349,10 @@ export function generateDemoDataset(now: Date, seed: number): DemoDataset {
         order: n * 1000,
         jiraKey,
         jiraProjectKey: catalogBoard.jiraProjectKey,
-        jiraType: pick(rand, ISSUE_TYPES),
+        jiraType: epicOr(pick(rand, ISSUE_TYPES), n),
+        // Derived from `jiraType` immediately below, once the draw above has
+        // settled. Not a second draw.
+        costClassification: null,
         startDate,
         endDate,
         dueDate: endDate,
@@ -224,7 +362,9 @@ export function generateDemoDataset(now: Date, seed: number): DemoDataset {
           { columnId: columns[0]!.id, value: pick(rand, ['Core', 'Growth', 'Infra']) },
           { columnId: columns[1]!.id, value: String(pick(rand, [1, 2, 3, 5, 8])) },
         ],
-      });
+      };
+      project.costClassification = classificationFor(project.jiraType, n);
+      projects.push(project);
     }
 
     return {
@@ -285,6 +425,7 @@ function generateClickHouse(
   const out: DemoClickHouse = {
     jiraIssues: [], jiraTransitions: [], jiraWorklogs: [],
     githubPullRequests: [], githubCommits: [], githubReviews: [], githubDeployments: [],
+    boardItemClassification: [],
   };
 
   // The catalog's handles (`rmensah`), not the local part of the email
@@ -295,6 +436,15 @@ function generateClickHouse(
   let deploymentId = 0;
 
   for (const board of boards) {
+    // Computed across the whole board before any issue is emitted, so the
+    // board's newest sprint is the active one no matter which project supplies
+    // it. `startDate` is already fixed and clamped into the window by the
+    // caller, so this is a pure read. `0` for a board with no projects keeps
+    // `Math.max(...[])` from yielding -Infinity; no issue is emitted either
+    // way, so the value is never observed.
+    const latestSprintIndex = board.projects.length
+      ? Math.max(...board.projects.map((p) => sprintIndexFor(p.startDate, now)))
+      : 0;
     for (const project of board.projects) {
       const key = project.jiraKey;
       const created = project.startDate;
@@ -316,6 +466,35 @@ function generateClickHouse(
       // STATUS_FLOW.length - 1 (= 4) or intBetween(rand, 1, 3) (in [1, 3]),
       // so finalStep is always in [1, 4] — a valid STATUS_FLOW index.
       const finalStep = project.status === 'DONE' ? STATUS_FLOW.length - 1 : intBetween(rand, 1, 3);
+
+      // Sprints are DERIVED from the issue's creation date, not drawn — so
+      // the PRNG stream, and therefore every id and every other field, does
+      // not move. They are also the only source of sprint data in the
+      // product: `velocity-with-confidence.ts` and
+      // `iteration-planning-accuracy.ts` aggregate `sprint_name` off the
+      // ISSUES union, and there is no sprints table anywhere. Leaving these
+      // three columns null kept the Velocity widget — one of the four default
+      // demo widgets — on its 'No sprints synced yet' empty state forever.
+      const sprint = sprintFor(created, board, now, latestSprintIndex);
+
+      // The CapEx/OpEx report reads classifications from ClickHouse, not from
+      // Postgres: `apps/api/src/timesheet/timesheet-fetch.ts` queries
+      // `cockpit.board_item_classification`, which in production is written by
+      // `apps/api/src/projects/classification-mirror.ts` whenever a project's
+      // `costClassification` changes. Seeding only the Postgres column would
+      // therefore have left the report reading $0 exactly as before, so the
+      // seeder writes the mirror too. Shape matches `buildClassificationRow`:
+      // it skips a project with no classification, hence the null check.
+      if (project.costClassification) {
+        out.boardItemClassification.push({
+          issue_key: key,
+          provider: 'jira',
+          classification: project.costClassification,
+          board_id: board.id,
+          project_id: project.id,
+          synced_at: chTime(now),
+        });
+      }
 
       out.jiraIssues.push({
         id: `${key}`,
@@ -341,9 +520,9 @@ function generateClickHouse(
         story_points: pick(rand, [1, 2, 3, 5, 8]),
         original_estimate_s: null,
         time_spent_s: null,
-        sprint_id: null,
-        sprint_name: null,
-        sprint_state: null,
+        sprint_id: sprint.id,
+        sprint_name: sprint.name,
+        sprint_state: sprint.state,
         created_at: chTime(created),
         updated_at: chTime(resolved ?? now),
         resolved_at: resolved ? chTime(resolved) : null,
@@ -449,7 +628,16 @@ function generateClickHouse(
           instance_id: demoId('github-instance:demo'),
           title: `${key} ${project.name}`,
           body: '',
-          state: isMerged ? 'closed' : 'open',
+          // DERIVED, mirroring `deriveState` in
+          // `packages/shared/src/github-pr-adapter.ts` — 'merged' whenever
+          // `merged_at` is set, not GitHub's raw open/closed. The entire PR
+          // half of the dashboards filters on `state = 'merged'` (DORA lead
+          // time and change-failure, the cycle-time scatter and trend,
+          // review-quality index and trend, PR-size distribution, ticket
+          // coverage, AI-assisted share, merge frequency, both
+          // period-comparison sides), so seeding 'closed' emptied all of them
+          // on a fresh install while every row count still looked correct.
+          state: isMerged ? 'merged' : 'open',
           is_draft: 0,
           base_branch: 'main',
           head_branch: headBranch,

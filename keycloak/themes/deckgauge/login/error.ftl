@@ -1,4 +1,4 @@
-<#-- keycloak/themes/vp-cockpit/login/error.ftl -->
+<#-- keycloak/themes/deckgauge/login/error.ftl -->
 <#import "template.ftl" as layout>
 <@layout.registrationLayout displayMessage=false; section>
   <#if section = "form">

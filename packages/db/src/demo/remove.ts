@@ -148,16 +148,25 @@ export async function removeDemoFromClickHouse(
 ): Promise<number> {
   const projectKeys = dataset.boards.map((b) => b.jiraProjectKey);
   const repos = dataset.boards.map((b) => b.repoFullName);
+  const boardIds = dataset.boards.map((b) => b.id);
   let removed = 0;
 
   for (const table of DEMO_CH_REMOVE_TABLES) {
-    const isJira = table.startsWith('jira_');
+    // Three shapes, not two. The `jira_` / else split was exhaustive while
+    // every demo table carried either `project_key` or `repo_full_name`;
+    // `board_item_classification` carries NEITHER — it is keyed by
+    // `(organization_id, provider, issue_key)` and scoped by `board_id` — so
+    // it fell into the github branch and made `--remove` fail with
+    // `UNKNOWN_IDENTIFIER: repo_full_name`. A table added to
+    // DEMO_CH_REMOVE_TABLES needs a predicate that its own columns support.
     const predicate =
       'organization_id = {org:String} AND ' +
-      (isJira
-        ? 'project_key IN ({keys:Array(String)})'
-        : 'repo_full_name IN ({repos:Array(String)})');
-    const query_params = { org: organizationId, keys: projectKeys, repos };
+      (table === 'board_item_classification'
+        ? 'board_id IN ({boards:Array(String)})'
+        : table.startsWith('jira_')
+          ? 'project_key IN ({keys:Array(String)})'
+          : 'repo_full_name IN ({repos:Array(String)})');
+    const query_params = { org: organizationId, keys: projectKeys, repos, boards: boardIds };
 
     // Counted BEFORE the delete, and with FINAL, so `--remove` can report what
     // it actually removed rather than asserting that it did. `ALTER TABLE …

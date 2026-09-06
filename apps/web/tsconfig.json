@@ -1,6 +1,18 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
+    // TS 6.0 defaults `types` to [] where it used to auto-include every package
+    // under node_modules/@types. Both entries below were implicit before and
+    // must now be requested by name:
+    //   node            — process/Buffer/__filename globals
+    //   vitest/globals  — describe/it/expect/vi, which this app's vitest config
+    //                     provides via `globals: true`
+    "types": ["node", "vitest/globals"],
+    // TS 6.0 turns this on by default, which rejects `import './globals.css'`
+    // because no declaration exists for it (Next 15.5 ships none, and the real
+    // build resolves CSS through webpack, not TypeScript). Kept off to preserve
+    // the 5.x behaviour rather than declare modules the bundler already handles.
+    "noUncheckedSideEffectImports": false,
     "target": "ES2017",
     "lib": [
       "dom",

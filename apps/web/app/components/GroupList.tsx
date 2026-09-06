@@ -45,7 +45,7 @@ import type {
   BoardStatus,
   ProjectStatus,
 } from '@deckgauge/shared';
-import { hasAnyJiraLink, type JiraSourceLinks } from '@deckgauge/shared';
+import { hasAnyJiraLink, ProjectStatusEnum, type JiraSourceLinks } from '@deckgauge/shared';
 import { resolveColumnWidth, buildBoardGridTemplate, canEditEntity } from '@deckgauge/shared';
 import type { GridColumnSpec } from '@deckgauge/shared';
 import {
@@ -326,7 +326,7 @@ export function GroupList({
   // Keyboard navigation context
   const { state: navState, dispatch: navDispatch, cellCount } = useKeyboardNavContext();
   const gPendingRef = useRef(false);
-  const gTimerRef = useRef<NodeJS.Timeout>();
+  const gTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const inFlightRef = useRef(0);
 
   const removeDeletedFromGroups = useCallback(
@@ -510,7 +510,10 @@ export function GroupList({
   // An integration must be connected for the Source column to have anything to
   // show; the user can then hide it via the Columns panel.
   const hasIntegration = (hasAnyJiraLink(jiraLinks) || hasGitHubIntegration || hasAdoIntegration);
-  const showSource = hasIntegration && visibleSystemFields.source !== false;
+  // `hasIntegration` is an optional prop, so coerce it here rather than at each
+  // of the four places showSource is consumed. Behaviour is unchanged — absent
+  // meant falsy already.
+  const showSource = !!hasIntegration && visibleSystemFields.source !== false;
   const showOwner = visibleSystemFields.owner !== false;
   // Assignee (the synced source person) is hidden by default; opt in via Columns.
   const showAssignee = visibleSystemFields.assignee === true;
@@ -1035,10 +1038,18 @@ export function GroupList({
         }
       }
     } else if (action === 'status' && value) {
+      // `value` arrives as a bare string because BulkActionBar's onAction is
+      // typed `(action: string, value?: string)`, which erases what it actually
+      // emits — its STATUS_OPTIONS is a ProjectStatus[]. Re-establish the union
+      // from the schema rather than asserting it. Unreachable in practice, so
+      // the guard costs nothing and removes the last unchecked widening.
+      const parsedStatus = ProjectStatusEnum.safeParse(value);
+      if (!parsedStatus.success) return;
+      const status = parsedStatus.data;
       await applyOptimistic(
-        (groups) => applyBulkPatch(groups, ids, { status: value }),
+        (groups) => applyBulkPatch(groups, ids, { status }),
         async () => {
-          for (const id of ids) await updateProject(id, { status: value }, boardId);
+          for (const id of ids) await updateProject(id, { status }, boardId);
         },
         `Couldn't update ${ids.length} item${ids.length === 1 ? '' : 's'}`
       );
@@ -1450,6 +1461,12 @@ export function GroupList({
                                         boardId,
                                         position: groups.length,
                                         color: group.color ?? '#6C6CFF',
+                                        // Group requires both timestamps. This is an
+                                        // optimistic placeholder under a temp id, so
+                                        // "now" is the honest value until the server's
+                                        // row replaces it on refresh.
+                                        createdAt: new Date(),
+                                        updatedAt: new Date(),
                                         projects: [],
                                       }),
                                     () => createGroup(boardId, `${group.name} (copy)`),
@@ -1665,6 +1682,10 @@ export function GroupList({
                       boardId,
                       position: groups.length,
                       color: '#6C6CFF',
+                      // See the duplicate-group placeholder above: Group requires
+                      // both timestamps, and this row does not exist server-side yet.
+                      createdAt: new Date(),
+                      updatedAt: new Date(),
                       projects: [],
                     }),
                   () => createGroup(boardId, 'New Group'),

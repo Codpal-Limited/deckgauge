@@ -17,6 +17,7 @@ export const DEMO_CH_TABLES = [
   'github_commits',
   'github_reviews',
   'github_deployments',
+  'board_item_classification',
 ] as const;
 
 /**
@@ -52,7 +53,11 @@ export const DEMO_CH_REMOVE_TABLES = [
  */
 export async function writeDemoToClickHouse(
   client: ClickHouseClient,
-  dataset: DemoDataset,
+  // `Pick`, not the whole `DemoDataset`: this reads `dataset.clickhouse` and
+  // nothing else, so demanding `now`/`boards`/`employees` forced callers that
+  // only have the ClickHouse half to fabricate the rest. The declared contract
+  // now matches what the body actually touches.
+  dataset: Pick<DemoDataset, 'clickhouse'>,
   organizationId: string,
 ): Promise<void> {
   const ch = dataset.clickhouse;
@@ -72,5 +77,11 @@ export async function writeDemoToClickHouse(
     'cockpit.github_deployments',
     organizationId,
     ch.githubDeployments,
+  );
+  await chInsertManyWith(
+    client,
+    'cockpit.board_item_classification',
+    organizationId,
+    ch.boardItemClassification,
   );
 }

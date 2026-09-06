@@ -10,12 +10,12 @@
 #   6. Restarts all services and runs health checks
 #
 # Usage:
-#   ./scripts/restore.sh ./backups/vp-cockpit-backup-20260603-120000.tar.gz
-#   ./scripts/restore.sh ./backups/vp-cockpit-backup-20260603-120000.tar.gz --skip-clickhouse
-#   ./scripts/restore.sh ./backups/vp-cockpit-backup-20260603-120000.tar.gz --skip-uploads
+#   ./scripts/restore.sh ./backups/deckgauge-backup-20260603-120000.tar.gz
+#   ./scripts/restore.sh ./backups/deckgauge-backup-20260603-120000.tar.gz --skip-clickhouse
+#   ./scripts/restore.sh ./backups/deckgauge-backup-20260603-120000.tar.gz --skip-uploads
 #
 # Like backup.sh, `--stack main` (the default) assumes the compose project is
-# named `vp-cockpit`; since docker-compose.yml declares no project `name:`, the
+# named `deckgauge`; since docker-compose.yml declares no project `name:`, the
 # real project name comes from the directory you cloned into. Set
 # COMPOSE_PROJECT_NAME and UPLOADS_VOLUME to match if yours differs — otherwise
 # compose will clash with the running containers and uploads will restore into
@@ -67,24 +67,24 @@ fi
 # ─── Stack configuration ────────────────────────────────────────────────────
 case "$STACK" in
   main)
-    : "${COMPOSE_PROJECT_NAME:=vp-cockpit}"
+    : "${COMPOSE_PROJECT_NAME:=deckgauge}"
     # CH_PORT is a HOST port, so it follows CLICKHOUSE_HTTP_PORT out of .env
     # when this stack has been moved off the defaults. `--stack next` keeps its
     # literal: that overlay hardcodes 8124 and reads no .env.
     : "${CH_PORT:=${CLICKHOUSE_HTTP_PORT}}"
-    : "${PG_CONTAINER:=vp-cockpit-postgres}"
-    : "${KC_DB_CONTAINER:=vp-cockpit-keycloak-db}"
-    : "${API_CONTAINER:=vp-cockpit-api}"
-    : "${UPLOADS_VOLUME:=vp-cockpit_uploads_data}"
+    : "${PG_CONTAINER:=deckgauge-postgres}"
+    : "${KC_DB_CONTAINER:=deckgauge-keycloak-db}"
+    : "${API_CONTAINER:=deckgauge-api}"
+    : "${UPLOADS_VOLUME:=deckgauge_uploads_data}"
     COMPOSE_FILES=(-f docker-compose.yml)
     ;;
   next)
-    : "${COMPOSE_PROJECT_NAME:=vp-cockpit-next}"
+    : "${COMPOSE_PROJECT_NAME:=deckgauge-next}"
     : "${CH_PORT:=8124}"
-    : "${PG_CONTAINER:=vp-cockpit-next-postgres}"
-    : "${KC_DB_CONTAINER:=vp-cockpit-next-keycloak-db}"
-    : "${API_CONTAINER:=vp-cockpit-next-api}"
-    : "${UPLOADS_VOLUME:=vp-cockpit-next_uploads_data}"
+    : "${PG_CONTAINER:=deckgauge-next-postgres}"
+    : "${KC_DB_CONTAINER:=deckgauge-next-keycloak-db}"
+    : "${API_CONTAINER:=deckgauge-next-api}"
+    : "${UPLOADS_VOLUME:=deckgauge-next_uploads_data}"
     # The overlay this preset needs is not part of every checkout. Fail with
     # the reason rather than letting `docker compose` report a missing file.
     if [ ! -f "$PROJECT_ROOT/docker-compose.phase3.yml" ]; then
@@ -144,11 +144,25 @@ ch_import_table() {
   # and tripped the "0 rows are present after import" abort at the end of this
   # function — after truncating the table.
   #
-  # In the 20260902 archive that is five tables (_ch_migrations,
-  # developer_identity_map, github_milestones, gitlab_issues, jira_worklogs), and
-  # because _ch_migrations sorts first the whole restore aborted on table one,
-  # having restored nothing. An empty export is a fact about the source, not a
-  # failure, and it must not be reported as one.
+  # In the 20260902 archive that is five tables, and because _ch_migrations sorts
+  # first the whole restore aborted on table one, having restored nothing. An
+  # empty export is a fact about the source, not a failure, and it must not be
+  # reported as one.
+  #
+  # FOUR of those five were genuinely empty (developer_identity_map,
+  # github_milestones, gitlab_issues, jira_worklogs). _ch_migrations was NOT: it
+  # held 25 rows, and its export had failed. backup.sh asked for `FINAL` on every
+  # table, which a plain MergeTree rejects (`Code: 181 ILLEGAL_FINAL`), and the
+  # failure was swallowed — so this branch read a broken export as an empty one
+  # and left the migration ledger unrestored, which is precisely what shipping the
+  # ledger is supposed to prevent. Fixed in scripts/lib/ch-export.sh, where an
+  # export that fails now stops the backup.
+  #
+  # The asymmetry survives on purpose: this side still cannot tell an empty table
+  # from a failed export, because a 0-byte member looks identical either way. The
+  # guarantee has to come from the backup never writing one, not from a guess
+  # here. Archives taken before that fix DO contain an empty ledger member, and
+  # restoring one leaves _ch_migrations empty.
   local bytes
   bytes=$(gunzip -c "$src" 2>/dev/null | wc -c | tr -d '[:space:]') || bytes=0
   if [ "${bytes:-0}" -eq 0 ]; then

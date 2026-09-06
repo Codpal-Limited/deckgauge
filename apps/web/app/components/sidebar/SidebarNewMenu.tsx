@@ -1,5 +1,7 @@
 'use client';
 
+import type { JSX } from 'react';
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 export interface NewMenuItem {

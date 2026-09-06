@@ -1,5 +1,7 @@
 'use client';
 
+import type { JSX } from 'react';
+
 import type { BenchmarkConfig, Tier } from '@deckgauge/shared';
 import { WIDGET_HELP } from './widgetHelp';
 import { widgetRegistry } from './widgetRegistry';

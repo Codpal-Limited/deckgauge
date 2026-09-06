@@ -34,7 +34,11 @@ export async function OrgGate({
   children: ReactNode;
   activeBoardId: string | null;
 }) {
-  const pathname = headers().get('x-pathname') ?? '/';
+  // `headers()` is async as of Next 15. Sync access still works there behind a
+  // deprecation warning, which is why this read has not been failing — but it
+  // is removed in Next 16, and `app/layout.tsx` and `app/page.tsx` already use
+  // the awaited form for `cookies()`.
+  const pathname = (await headers()).get('x-pathname') ?? '/';
   const state = await getBootstrapState();
 
   if (state.state === 'MEMBER') {

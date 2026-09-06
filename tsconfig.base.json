@@ -1,6 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
+    // TS 6.0 defaults `types` to []; @types/node's globals
+    // (process, Buffer, __filename) must now be requested explicitly.
+    "types": ["node"],
     "target": "ES2022",
     "lib": ["ES2022", "DOM"],
     "module": "NodeNext",

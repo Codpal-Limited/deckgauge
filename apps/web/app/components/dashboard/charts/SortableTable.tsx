@@ -21,7 +21,12 @@ interface Props<T> {
   onRowClick?: (row: T) => void;
 }
 
-export function SortableTable<T extends Record<string, unknown>>({
+// `object`, not `Record<string, unknown>`: T is only ever reached through
+// `keyof T` and `row[sortKey]`, which any object type supports. The Record
+// constraint additionally demanded a string index signature, which a plain
+// `interface Row { … }` does not have — so every caller's row type failed to
+// satisfy it (three widgets plus this component's own tests).
+export function SortableTable<T extends object>({
   rows, columns, defaultSortKey, defaultSortDir = 'desc', drillDownHref, onRowClick,
 }: Props<T>) {
   const [sortKey, setSortKey] = useState<keyof T>(defaultSortKey);

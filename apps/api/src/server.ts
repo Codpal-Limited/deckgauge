@@ -4,7 +4,6 @@ import { resolveCorsOrigin } from "./cors-origins.js";
 import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
 import { mkdirSync } from "node:fs";
-import { join } from "node:path";
 import { PrismaClient, chExecutorFromClient, clickhouse } from "@deckgauge/db";
 import { ClickhouseIntelligenceService } from "./intelligence/clickhouse-intelligence.service.js";
 import { buildChReadIdentity } from "./analytics/ch-read-client.js";
@@ -27,6 +26,7 @@ import { ownerRoutes } from "./owners/owner.routes.js";
 import { boardStatusRoutes } from "./board-statuses/board-status.routes.js";
 import { uploadRoutes } from "./uploads/upload.routes.js";
 import { UploadService } from "./uploads/upload.service.js";
+import { resolveUploadsDir } from "./uploads/uploads-dir.js";
 import { githubRoutes } from "./github/github.routes.js";
 import { azureDevOpsRoutes } from "./azure-devops/azure-devops.routes.js";
 import { adoProjectSyncRoutes } from "./project-syncs/ado-project-sync.routes.js";
@@ -89,7 +89,11 @@ import { loadEnterprise, COMMUNITY_STATUS } from "./enterprise-loader.js";
 import type { RouteHost } from "./enterprise-contract.js";
 
 export function buildServer(prisma: PrismaClient) {
-  const uploadsDir = join(process.cwd(), "uploads");
+  // Configured, never derived from the working directory: deriving it resolved
+  // to the api container's ephemeral layer and silently destroyed six comment
+  // images. See ./uploads/uploads-dir.ts and
+  // ./__isolation__/uploads-persistence.test.ts.
+  const uploadsDir = resolveUploadsDir();
   mkdirSync(uploadsDir, { recursive: true });
 
   const app = Fastify({ logger: true });

@@ -513,7 +513,7 @@ export function EmployeeBoardCanvas({ board, allEmployees, canSeeSalary, onChang
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
     () => board.columnConfig?.widths ?? {}
   );
-  const widthSaveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const widthSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pendingWidths = useRef<Record<string, number> | null>(null);
 
   const handleColumnResize = useCallback(

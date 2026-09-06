@@ -38,6 +38,11 @@ export interface RoadmapViewPayload {
     groupId: string | null;
     order: number | null;
     assigneeId: string | null;
+    // The API has always sent this (roadmap.service.ts sets `owner: ownerStr`,
+    // and its own RoadmapProjectPayload declares it); this hand-written copy of
+    // the payload shape just omitted it, so the type disagreed with the wire
+    // while RoadmapCanvas — which requires `owner` — received it fine.
+    owner: string;
     sizeLabel: string | null;
     sizeWeeks: number | null;
     startDate: string | null;

@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 
 /**
  * In-app notifications. IN-APP ONLY — email and push are out of scope
- * (VP-Cockpit-PRD.md:84, planning/REQUIREMENTS.md:41).
+ * (planning/REQUIREMENTS.md:41).
  */
 
 /**

@@ -214,7 +214,7 @@ run it against uses **your own existing Claude Code or Codex login**, exactly
 as if you'd started that agent yourself outside of Deckgauge.
 
 What the bridge *does* need, separately, is a Deckgauge **operator token** — a
-Keycloak JWT (realm `vp-cockpit`) so the agent's calls to `/mcp` can be
+Keycloak JWT (realm `deckgauge`) so the agent's calls to `/mcp` can be
 authenticated — but by default you never mint one by hand. **The Advisor
 panel supplies it automatically**: once you're signed in to Deckgauge in your
 browser, `useLocalBridge` sends your own NextAuth/Keycloak access token to the
@@ -232,7 +232,7 @@ below for how that role is resolved and why it is not a grant-row lookup.
 
 **Running the bridge with no browser at all** (a background service, CI, a
 headless box) needs `DECKGAUGE_TOKEN` set instead, since there's no browser
-session to supply one. Since the `vp-cockpit` realm seeds no direct-grant user
+session to supply one. Since the `deckgauge` realm seeds no direct-grant user
 out of the box, there isn't yet a one-command way to mint that token — get one
 by minting it directly against the Keycloak admin API (`:8080`): create a test
 user, enable direct-access grants on a client, then request a token for that

@@ -19,7 +19,7 @@ cd deckgauge
 cp .env.example .env
 docker compose up -d
 # create the database schema
-docker compose run --rm api sh -c "cd /app/packages/db && npx prisma db push --skip-generate"
+docker compose run --rm api sh -c "cd /app/packages/db && npx prisma db push"
 # create the ClickHouse analytics tables
 bash scripts/apply-clickhouse-schemas.sh
 ```
@@ -40,7 +40,7 @@ pnpm test
 
 `pnpm test` runs every workspace. Each one provisions its own Postgres database
 automatically the first time you run it — you only need the test containers up
-(`docker compose -p vp-cockpit-test -f docker-compose.test.yml up -d`).
+(`docker compose -p deckgauge-test -f docker-compose.test.yml up -d`).
 
 That command also runs **strict integration mode**: an integration suite that cannot
 run — because ClickHouse is unreachable, say — fails the gate with a named reason

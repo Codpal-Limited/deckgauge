@@ -12,7 +12,7 @@
  *    assertion "the reader cannot activate a role it was never granted" — the exact
  *    fact that six docblocks, a design memo and a compose comment had backwards.
  *    It skipped for days, because the test ClickHouse had loaded its config before
- *    `vp_cockpit_console.xml` existed, so its access-management probe failed and the
+ *    `deckgauge_console.xml` existed, so its access-management probe failed and the
  *    suite reported `↓ skipped`. In the meantime a defect shipped to `main` that
  *    broke analytics for every fresh install and for the whole OSS edition.
  *  - `apps/worker/src/__tests__/integration/*-dual-writer.int.test.ts` were gated on
@@ -85,7 +85,7 @@ export const STRICT_INTEGRATION_ENV = 'DECKGAUGE_TEST_STRICT_INTEGRATION';
 
 /** How to bring the disposable test stack up — named in several remedies. */
 export const TEST_STACK_UP_COMMAND =
-  'docker compose -p vp-cockpit-test -f docker-compose.test.yml up -d';
+  'docker compose -p deckgauge-test -f docker-compose.test.yml up -d';
 
 export type CapabilityName =
   | 'clickhouse'
@@ -151,7 +151,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityName, CapabilityDefinition>
       'tenant boundary in ClickHouse depends on',
     remedy:
       'recreate the test ClickHouse so its entrypoint reapplies ' +
-      'CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 — docker compose -p vp-cockpit-test ' +
+      'CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 — docker compose -p deckgauge-test ' +
       '-f docker-compose.test.yml up -d --force-recreate clickhouse',
   },
   'clickhouse-console-user': {
@@ -165,7 +165,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityName, CapabilityDefinition>
     remedy:
       "recreate the test ClickHouse from a checkout that has the console user's " +
       'users.d XML mounted — an auth failure here is that missing mount, not a ' +
-      'flake: docker compose -p vp-cockpit-test -f docker-compose.test.yml up -d ' +
+      'flake: docker compose -p deckgauge-test -f docker-compose.test.yml up -d ' +
       '--force-recreate clickhouse',
   },
   docker: {

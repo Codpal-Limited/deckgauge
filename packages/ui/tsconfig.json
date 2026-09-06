@@ -1,6 +1,14 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    // tsup 8.5.1 (the latest release) injects `baseUrl: compilerOptions.baseUrl || "."`
+    // into the tsconfig it hands the TypeScript API for the --dts pass
+    // (tsup/dist/rollup.js:6837). TS 6.0 reports baseUrl as deprecated (TS5101)
+    // and FAILS the dts build. Nothing in this repo sets baseUrl, so there is
+    // nothing here to migrate — this silences a deprecation owned by tsup.
+    // Revisit when tsup stops injecting it; TS 7.0 REMOVES baseUrl outright,
+    // so tsup must fix this before this package can move to 7.
+    "ignoreDeprecations": "6.0",
     "outDir": "dist",
     "rootDir": "src",
     "jsx": "react-jsx",

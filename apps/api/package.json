@@ -13,9 +13,10 @@
     "test:db:reset": "pnpm --filter @deckgauge/db test:db:reset",
     "lint": "eslint ."
   },
+  "//ai-sdk-pin": "ai and @ai-sdk/anthropic are pinned EXACTLY, not caret-ranged. `ai` 7.0.93 changes the tool-call loop enough to break AdvisorService.ask, AdvisorHelpService.ask and the advisor ask route's scoped-reader test — the loop resolves no text and no toolCalls, so the three suites fail with empty results rather than an error. Bisected: 7.0.48 passes all 31 cases, 7.0.93 fails 3 files. The previous range `^7.0.48` ALLOWED 7.0.93, which means main only worked because its lockfile happened to hold 7.0.48 — a fresh `pnpm install` resolving the range afresh would have broken the Advisor silently. The pin makes the working version explicit. Lifting it is a real migration against the new SDK behaviour, not a version bump.",
   "dependencies": {
-    "@ai-sdk/anthropic": "^4.0.27",
-    "@clickhouse/client": "^1.19.0",
+    "@ai-sdk/anthropic": "4.0.27",
+    "@clickhouse/client": "^1.23.1",
     "@deckgauge/automations": "workspace:*",
     "@deckgauge/db": "workspace:*",
     "@deckgauge/notifications": "workspace:*",
@@ -26,29 +27,29 @@
     "@fastify/sensible": "^6.0.5",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@octokit/rest": "^22.0.1",
-    "ai": "^7.0.48",
+    "ai": "7.0.48",
     "all-the-cities": "^3.1.0",
     "bullmq": "^5.4.2",
-    "countries-list": "^3.3.0",
+    "countries-list": "^3.4.1",
     "dotenv": "^16.4.5",
     "fastify": "^5.12.3",
     "fastify-plugin": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
-    "jwks-rsa": "^4.0.1",
+    "jwks-rsa": "^4.1.0",
     "minimatch": "10",
     "node-sql-parser": "^5.4.0",
     "ollama-ai-provider-v2": "^4.0.1",
     "papaparse": "^5.7.0",
     "read-excel-file": "^9.3.10",
     "undici": "^6.21.1",
-    "zod": "^4.3.6"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.10.1",
     "@types/papaparse": "^5.3.16",
     "tsx": "^4.15.7",
-    "typescript": "^5.4.0",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.11"
   }
 }

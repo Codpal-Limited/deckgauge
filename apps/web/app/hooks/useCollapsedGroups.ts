@@ -2,7 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from 'react';
 
-const STORAGE_PREFIX = 'vp-cockpit:collapsedGroups:';
+const STORAGE_PREFIX = 'deckgauge:collapsedGroups:';
 
 function storageKey(boardId: string): string {
   return `${STORAGE_PREFIX}${boardId}`;

@@ -19,7 +19,10 @@ import { TierLegend } from './TierLegend';
 // state — translate it into the simpler point shape the chart's callers expect.
 export function handleTrendLineClick(
   state:
-    | { activeLabel?: string; activePayload?: Array<{ value?: number; name?: string }> }
+    // `activeLabel` is recharts' ActiveLabel — `string | number`, not `string`.
+    // The runtime guard below already rejects the non-string case; only this
+    // declaration was narrower than what ComposedChart actually passes.
+    | { activeLabel?: string | number; activePayload?: Array<{ value?: number; name?: string }> }
     | null
     | undefined,
   onPointClick?: (point: { x: string; y?: number; seriesName?: string }) => void
@@ -89,7 +92,10 @@ export function TrendLineChart({
 }: Props) {
   const xValues = Array.from(new Set(series.flatMap((s) => s.points.map((p) => p.x)))).sort();
   const data = xValues.map((x, i) => {
-    const row: Record<string, string | number | undefined> = { x };
+    // `number[]` is in the union for `__band` below: a recharts range area takes
+    // a [lower, upper] tuple as the cell value, so a row genuinely holds arrays
+    // alongside the scalar series values.
+    const row: Record<string, string | number | number[] | undefined> = { x };
     for (const s of series) row[s.name] = s.points.find((p) => p.x === x)?.y;
     if (confidenceBand) {
       // Recharts range area: a [lower, upper] tuple draws the band directly, with
@@ -108,9 +114,7 @@ export function TrendLineChart({
         <ComposedChart
           data={data}
           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-          onClick={(state: { activeLabel?: string; activePayload?: Array<{ value?: number; name?: string }> }) =>
-            handleTrendLineClick(state, onPointClick)
-          }
+          onClick={(state) => handleTrendLineClick(state, onPointClick)}
           style={onPointClick ? { cursor: 'pointer' } : undefined}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />

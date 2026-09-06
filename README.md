@@ -78,7 +78,7 @@ cd deckgauge
 cp .env.example .env
 docker compose up -d
 # create the schema, then open http://localhost:3000
-docker compose run --rm api sh -c "cd /app/packages/db && npx prisma db push --skip-generate"
+docker compose run --rm api sh -c "cd /app/packages/db && npx prisma db push"
 ```
 
 Then open `http://localhost:3000`, sign in, and create your organization —
@@ -125,9 +125,60 @@ back. ClickHouse likewise upgrades its data directory in place. Both are
 routine and neither needs manual steps; the backup is what makes them
 reversible if something about your install is unusual.
 
-Your existing `.env` keeps working. The compose file passes only the variables
-it names, so keys that later releases stop using are ignored rather than
-breaking startup.
+Your existing `.env` keeps working across ordinary upgrades. The compose file
+passes only the variables it names, so keys that later releases stop using are
+ignored rather than breaking startup. (The one release that does need an `.env`
+edit is the `deckgauge` rename, immediately below.)
+
+#### One-time step when upgrading past the `deckgauge` rename
+
+Releases before this one shipped under the project's old internal name,
+`vp-cockpit`. Containers, the Compose project, the Keycloak realm and its web
+client have all moved to `deckgauge`. Fresh installs get the new names and need
+nothing. An **existing** install needs two things after `git pull`.
+
+**First, edit `.env`.** This matters more than it looks. `.env.example` *assigns*
+these keys rather than commenting them, and the documented setup is
+`cp .env.example .env` — so your `.env` almost certainly names the old realm, and
+compose interpolates it, meaning your stale value overrides the new default.
+Change the realm segment in these, wherever they appear:
+
+```diff
+- KEYCLOAK_ISSUER=http://localhost:8080/realms/vp-cockpit
++ KEYCLOAK_ISSUER=http://localhost:8080/realms/deckgauge
+- KEYCLOAK_CLIENT_ID=vp-cockpit-web
++ KEYCLOAK_CLIENT_ID=deckgauge-web
+- KEYCLOAK_JWKS_URI=http://keycloak:8080/realms/vp-cockpit/protocol/openid-connect/certs
++ KEYCLOAK_JWKS_URI=http://keycloak:8080/realms/deckgauge/protocol/openid-connect/certs
+```
+
+Leave `KEYCLOAK_CLIENT_SECRET` **exactly as it is** — the migration does not
+change the client secret, so whatever you have now stays correct.
+
+**Then migrate Keycloak**, which imports `keycloak/realm-export.json` only into
+an empty database and so never sees the rename on its own:
+
+```bash
+docker compose up -d                    # bring the stack up on the new names
+./scripts/rename-keycloak-realm.sh      # rename the realm, client and theme
+docker compose up -d --force-recreate api web
+```
+
+The script refuses to run until that `.env` edit is done, and names the exact
+lines if you skipped it. It is idempotent, reads the running Keycloak rather
+than guessing, and skips anything already migrated. If your clone directory is
+not named `deckgauge`, tell it which Compose project to use:
+`COMPOSE_PROJECT_NAME=<your-dir> ./scripts/rename-keycloak-realm.sh`.
+
+Everyone signs in once more afterwards — tokens issued by the old realm are no
+longer valid, and `NEXTAUTH_SECRET`'s default moved too, so existing session
+cookies stop decrypting.
+
+Two cosmetic leftovers are harmless and can be removed at your leisure: the
+old `vp-cockpit-*` containers (`docker rm`) and the old images
+(`docker image prune`). Backups already in `./backups/` keep their old
+filenames and stay restorable — `scripts/restore.sh` takes the path you give
+it and does not care what the archive is called.
 
 ---
 

@@ -25,7 +25,7 @@ const EMBEDDED_FIELD =
 export const SearchBar = forwardRef<SearchBarHandle, SearchBarProps>(
   function SearchBar({ onSearch, inputAriaLabel, variant = "standalone" }, ref) {
     const [value, setValue] = useState("");
-    const timerRef = useRef<NodeJS.Timeout>();
+    const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
     const inputRef = useRef<HTMLInputElement>(null);
 
     useImperativeHandle(ref, () => ({

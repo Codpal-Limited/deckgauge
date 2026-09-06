@@ -7,7 +7,7 @@ let client: ClickHouseClient | null = null;
  *
  * Reads `CLICKHOUSE_CONSOLE_URL` (or falls back to `CLICKHOUSE_URL` /
  * `INTEGRATION_CLICKHOUSE_URL`), with credentials from
- * `CLICKHOUSE_CONSOLE_USER` (defaults to `vp_cockpit_console`) and
+ * `CLICKHOUSE_CONSOLE_USER` (defaults to `deckgauge_console`) and
  * `CLICKHOUSE_CONSOLE_PASSWORD`.
  *
  * The `readonly=1` clickhouse_settings ensure that even if our SQL-layer
@@ -28,7 +28,7 @@ export function getConsoleClickhouse(): ClickHouseClient {
   }
   client = createClient({
     url,
-    username: process.env.CLICKHOUSE_CONSOLE_USER ?? 'vp_cockpit_console',
+    username: process.env.CLICKHOUSE_CONSOLE_USER ?? 'deckgauge_console',
     password: process.env.CLICKHOUSE_CONSOLE_PASSWORD ?? '',
     clickhouse_settings: {
       readonly: '1',

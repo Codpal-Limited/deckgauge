@@ -53,7 +53,7 @@
 #     NEXT_PUBLIC_API_URL, KEYCLOAK_ISSUER, DECKGAUGE_API_URL);
 #   - the port inside KC_HOSTNAME's URL, or Keycloak builds redirect URLs on
 #     the old port (this was KC_HOSTNAME_PORT before the 26 upgrade);
-#   - the vp-cockpit-web client's redirectUris/webOrigins in the RUNNING
+#   - the deckgauge-web client's redirectUris/webOrigins in the RUNNING
 #     Keycloak — realm-export.json is imported only into an empty Keycloak DB,
 #     so an existing stack needs kcadm, not a new KEYCLOAK_PUBLIC_ORIGIN;
 #   - the host-side scripts, which read these same keys through
@@ -62,7 +62,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-postgres
+    container_name: ${CONTAINER_PREFIX:-deckgauge}-postgres
     restart: unless-stopped
     deploy:
       resources:
@@ -93,7 +93,7 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:25.8-alpine
-    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-clickhouse
+    container_name: ${CONTAINER_PREFIX:-deckgauge}-clickhouse
     restart: unless-stopped
     deploy:
       resources:
@@ -130,7 +130,7 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-redis
+    container_name: ${CONTAINER_PREFIX:-deckgauge}-redis
     restart: unless-stopped
     deploy:
       resources:
@@ -187,7 +187,7 @@ services:
 
   keycloak-db:
     image: postgres:16-alpine
-    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-keycloak-db
+    container_name: ${CONTAINER_PREFIX:-deckgauge}-keycloak-db
     restart: unless-stopped
     deploy:
       resources:
@@ -208,7 +208,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.7
-    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-keycloak
+    container_name: ${CONTAINER_PREFIX:-deckgauge}-keycloak
     restart: unless-stopped
     deploy:
       resources:
@@ -252,7 +252,7 @@ services:
       KC_HOSTNAME_STRICT: "${KC_HOSTNAME_STRICT:-false}"
       # Hosted deployments set this to the public web origin (e.g.
       # https://app.deckgauge.com); the entrypoint substitutes it into the
-      # vp-cockpit-web client's __PUBLIC_ORIGIN__ placeholder. Empty resolves to
+      # deckgauge-web client's __PUBLIC_ORIGIN__ placeholder. Empty resolves to
       # http://localhost:3000, i.e. unchanged self-host behaviour.
       KEYCLOAK_PUBLIC_ORIGIN: ${KEYCLOAK_PUBLIC_ORIGIN:-}
       # Renamed in Keycloak 26: KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD became
@@ -309,7 +309,7 @@ services:
   # something a dev stack should offer. Only the inbox UI is published.
   mailpit:
     image: axllent/mailpit:v1.21
-    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-mailpit
+    container_name: ${CONTAINER_PREFIX:-deckgauge}-mailpit
     restart: unless-stopped
     deploy:
       resources:
@@ -330,7 +330,7 @@ services:
         # variable as the runtime edition below, so an image cannot be built as one
         # edition and run as the other — which would fall back to Community silently.
         EDITION: "${DECKGAUGE_EDITION:-community}"
-    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-api
+    container_name: ${CONTAINER_PREFIX:-deckgauge}-api
     restart: unless-stopped
     deploy:
       resources:
@@ -412,7 +412,7 @@ services:
       JIRA_CONFIG_PATH: "/app/config/jira.yaml"
       # Must equal the `iss` claim Keycloak stamps into tokens, which is driven
       # by the keycloak service's KC_HOSTNAME. Hosted deployments set both.
-      KEYCLOAK_ISSUER: "${KEYCLOAK_ISSUER:-http://localhost:8080/realms/vp-cockpit}"
+      KEYCLOAK_ISSUER: "${KEYCLOAK_ISSUER:-http://localhost:8080/realms/deckgauge}"
       # Server-side only — stays on the container network even when hosted.
       # NOT browser-facing: the api fetches this from inside its own container, so
       # it must use the compose service name and it takes no override. Deliberately
@@ -425,7 +425,7 @@ services:
       #
       # Restored twice now (c17af07b, then again here after 87baadc7 reverted it).
       # scripts/check-pinned-env.sh exists to stop a third time.
-      KEYCLOAK_JWKS_URI: "http://keycloak:8080/realms/vp-cockpit/protocol/openid-connect/certs"
+      KEYCLOAK_JWKS_URI: "http://keycloak:8080/realms/deckgauge/protocol/openid-connect/certs"
     volumes:
       - uploads_data:/app/uploads
       # A licence is deployment-specific data and must never be baked into an
@@ -455,7 +455,7 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-web
+    container_name: ${CONTAINER_PREFIX:-deckgauge}-web
     restart: unless-stopped
     deploy:
       resources:
@@ -478,12 +478,12 @@ services:
       NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:3001}"
       # BROWSER-FACING (OIDC redirects). Must match KC_HOSTNAME and the realm's
       # redirectUris — see KEYCLOAK_PUBLIC_ORIGIN.
-      KEYCLOAK_ISSUER: "${KEYCLOAK_ISSUER:-http://localhost:8080/realms/vp-cockpit}"
+      KEYCLOAK_ISSUER: "${KEYCLOAK_ISSUER:-http://localhost:8080/realms/deckgauge}"
       # Server-side token exchange — container network.
-      KEYCLOAK_INTERNAL_URL: "${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080/realms/vp-cockpit}"
-      KEYCLOAK_CLIENT_ID: "vp-cockpit-web"
-      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_CLIENT_SECRET:-vp-cockpit-secret}"
-      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-vp-cockpit-nextauth-secret}"
+      KEYCLOAK_INTERNAL_URL: "${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080/realms/deckgauge}"
+      KEYCLOAK_CLIENT_ID: "deckgauge-web"
+      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_CLIENT_SECRET:-deckgauge-secret}"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-deckgauge-nextauth-secret}"
       NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
       AUTH_TRUST_HOST: "true"
       # Microsoft Graph "Connect" OAuth (org-tree directory sync). Empty = the
@@ -504,7 +504,7 @@ services:
       dockerfile: apps/worker/Dockerfile
       args:
         EDITION: "${DECKGAUGE_EDITION:-community}"
-    container_name: ${CONTAINER_PREFIX:-vp-cockpit}-worker
+    container_name: ${CONTAINER_PREFIX:-deckgauge}-worker
     restart: unless-stopped
     deploy:
       resources:

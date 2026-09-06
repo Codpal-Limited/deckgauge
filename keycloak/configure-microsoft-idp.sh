@@ -66,7 +66,7 @@ fi
 # Substitute the hosted public origin into the web client's allowed origins.
 #
 # realm-export.json carries a __PUBLIC_ORIGIN__ placeholder in the
-# vp-cockpit-web client's redirectUris and webOrigins, mirroring how the
+# deckgauge-web client's redirectUris and webOrigins, mirroring how the
 # __MICROSOFT_* placeholders above already work. This is a plain sed
 # substitution rather than JSON surgery because jq is not in this image.
 #
@@ -75,7 +75,7 @@ fi
 # harmless duplicate. That avoids deleting array elements with sed, which is
 # where this kind of script usually breaks.
 if [ -n "${KEYCLOAK_PUBLIC_ORIGIN:-}" ]; then
-  echo "Adding public origin to vp-cockpit-web: ${KEYCLOAK_PUBLIC_ORIGIN}"
+  echo "Adding public origin to deckgauge-web: ${KEYCLOAK_PUBLIC_ORIGIN}"
   subst PUBLIC_ORIGIN "$KEYCLOAK_PUBLIC_ORIGIN"
 else
   subst PUBLIC_ORIGIN "http://localhost:3000"

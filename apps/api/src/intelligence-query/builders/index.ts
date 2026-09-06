@@ -9,6 +9,7 @@ export { resolvePeriod, resolveComparePeriods } from './period.js';
 // triggers registration, guaranteeing the registry is complete at startup.
 // The registry lives in its own file so builders don't depend on this side-
 // effect entry point — they import only from ./registry.js.
+import './commits-per-dev.js';
 import './merge-frequency-per-dev.js';
 import './ch-completion-trend.js';
 import './ch-velocity.js';

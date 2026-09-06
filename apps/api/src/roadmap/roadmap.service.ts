@@ -42,11 +42,36 @@ export class RoadmapService {
     this.configService = new RoadmapConfigService(prisma);
   }
 
-  async loadView(boardId: string, viewId: string): Promise<RoadmapViewPayload> {
-    const view = await this.prisma.boardView.findUnique({ where: { id: viewId } });
+  /**
+   * `viewId` is OPTIONAL, and that is the whole point.
+   *
+   * A direct visit, bookmark or shared link to `/boards/<id>/roadmap` carries
+   * no `viewId`. This used to take it as required and pass it straight to
+   * `findUnique`, so an absent one became `where: { id: undefined }` — which
+   * Prisma rejects, surfacing as a 500 and Next's "Application error: a
+   * server-side exception has occurred". The in-board Roadmap TAB supplies a
+   * viewId and always worked, which is what kept it hidden.
+   *
+   * With none supplied, fall back to the board's first roadmap view; a board
+   * with no roadmap view at all is a 404, not a 500.
+   */
+  async loadView(boardId: string, viewId?: string): Promise<RoadmapViewPayload> {
+    const view = viewId
+      ? await this.prisma.boardView.findUnique({ where: { id: viewId } })
+      : await this.prisma.boardView.findFirst({
+          where: { boardId, type: 'ROADMAP' },
+          // `position` defaults to 0 and nothing enforces uniqueness, so
+          // `createdAt` breaks a tie deterministically. `position asc` is the
+          // ordering `board-views.service.ts` already uses, so a deep link
+          // lands on the same view the tab strip shows first.
+          orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+        });
     if (!view || view.boardId !== boardId) throw new Error('VIEW_NOT_FOUND');
 
-    const config = await this.configService.getOrCreate(viewId);
+    // `view.id`, NOT the `viewId` parameter — which is undefined on exactly the
+    // deep-link path this method now supports, and would have reproduced the
+    // same `id: undefined` failure one line further down.
+    const config = await this.configService.getOrCreate(view.id);
 
     const groups = await this.prisma.group.findMany({
       where: { boardId },

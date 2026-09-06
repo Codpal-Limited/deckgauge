@@ -1,6 +1,6 @@
 'use client';
 
-import { BoardRow } from '@deckgauge/ui';
+import { BoardRow, type VisibleColumns } from '@deckgauge/ui';
 import { CostClassificationCell } from './CostClassificationCell';
 import type {
   Project,
@@ -54,20 +54,13 @@ export interface ProjectRowProps {
   durationCode?: string | null;
   onSystemFieldChange?: (field: 'startDate' | 'endDate' | 'dueDate' | 'durationCode', value: string) => void;
   onCostClassificationChange?: (value: 'CAPEX' | 'OPEX' | null) => void;
-  visibleColumns?: {
-    name?: boolean;
-    owner?: boolean;
-    assignee?: boolean;
-    status?: boolean;
-    description?: boolean;
-    updated?: boolean;
-    startDate?: boolean;
-    endDate?: boolean;
-    dueDate?: boolean;
-    duration?: boolean;
-    source?: boolean;
-    classification?: boolean;
-  };
+  // The real type from @deckgauge/ui, not a re-declaration. This was an inline
+  // copy that made every field optional, so it could not be forwarded to
+  // BoardRow, whose VisibleColumns requires name/owner/status/description/
+  // updated — the five BoardRow defaults when the prop is absent entirely.
+  // GroupList's `boardVisibleColumns`, the only thing that ever populates it,
+  // supplies all five.
+  visibleColumns?: VisibleColumns;
 }
 
 export function ProjectRow({
@@ -129,7 +122,16 @@ export function ProjectRow({
       description={project.description ?? undefined}
       updatedAt={project.updatedAt}
       jiraKey={project.jiraKey}
-      jiraProjectKey={project.jiraProjectKey}
+      // `jiraProjectKey` is deliberately NOT passed: it is not on the Project
+      // contract. The Prisma model has the column (schema.prisma:332), but
+      // `mapToProject` serialises through `ProjectSchema`, which does not
+      // declare it — and z.object() strips unknown keys, so the value never
+      // reaches the client. Passing `project.jiraProjectKey` was therefore
+      // always `undefined`, which makes `resolveJiraBrowseUrl` fall through to
+      // `links.fallback`; `links.byProjectKey` is consequently dead for board
+      // rows. Enabling the per-project mapping is a one-line addition to
+      // ProjectSchema, but it CHANGES which URL a row opens, so it is a product
+      // decision rather than part of a type cleanup.
       jiraLinks={jiraLinks}
       githubIssueId={project.githubIssueId}
       githubRepoFullName={project.githubRepoFullName}

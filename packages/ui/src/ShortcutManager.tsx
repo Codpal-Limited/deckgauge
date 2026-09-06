@@ -33,7 +33,7 @@ export function ShortcutManager({
   onGGroupJump,
 }: ShortcutManagerProps) {
   const gPendingRef = useRef(false);
-  const gTimerRef = useRef<NodeJS.Timeout>();
+  const gTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {

@@ -1,5 +1,7 @@
 'use client';
 
+import type { JSX } from 'react';
+
 import type { SidebarType } from '../../hooks/useSidebarUiState';
 import { DeckgaugeMark } from '../DeckgaugeMark';
 

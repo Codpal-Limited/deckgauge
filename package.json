@@ -16,6 +16,7 @@
     "//test-strict": "DECKGAUGE_TEST_STRICT_INTEGRATION=1 is what lets the gate tell a suite that PASSED from a suite that never ran: an unavailable integration capability becomes a NAMED FAILURE from each package's integration-coverage.test.ts instead of a silent skip. It is set HERE, on the script the merge gate runs, because a strict mode nobody runs is the defect restated. A single package (`pnpm --filter @deckgauge/api test`) stays lenient and skips with the same text. The variable is also declared in turbo.json's `test` task: turbo 2 runs strict env mode, so an undeclared variable neither reaches vitest nor enters the cache key \u2014 and a cached non-strict result replayed into a strict run is the same lie by another route.",
     "//test-concurrency": "--concurrency=1 is load-bearing twice over, not a performance knob. (1) packages/db and apps/api both write the `organizations` table in the SAME per-checkout database, and apps/api's two deployment-wide suites CLEAR that table to assert `exactly one exists` \u2014 the collision apps/api/src/test-support/exclusive-deployment.ts predicted would arrive the moment another package started creating organizations. In parallel they corrupt each other's fixtures. (2) nine packages' vitest workers at once starved this host's 5.9GB VM until Postgres was unreachable, which reads as catastrophic product breakage rather than as resource starvation.",
     "test": "DECKGAUGE_TEST_STRICT_INTEGRATION=1 turbo run test --concurrency=1",
+    "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "check:compose": "bash scripts/check-bind-host.sh && bash scripts/check-compose-defaults.sh && bash scripts/check-pinned-env.sh",
     "backup": "bash scripts/backup.sh",
@@ -29,12 +30,12 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.10.1",
-    "eslint": "^9.0.0",
-    "eslint-config-prettier": "^9.0.0",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
     "nock": "^14.0.12",
     "prettier": "^3.0.0",
     "turbo": "^2.10.12",
-    "typescript": "^5.4.0",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.69.0",
     "vitest": "^4.1.11"
   },
@@ -42,19 +43,9 @@
     "neverBuiltDependencies": [
       "@prisma/engines"
     ],
-    "//overrides": "Transitive-only advisories, pinned forward to their patched release. Every entry here is a SAME-MAJOR bump of a package no workspace depends on directly \u2014 they arrive through eslint, typescript-eslint, vitest, next and prisma, none of which had shipped a release picking up the fix. The alternative was a breaking eslint 9\u219210 major to move one grandchild, which is a worse trade. Scoped `name@major` keys are deliberate where two majors coexist in the tree (brace-expansion 1.x via eslint's minimatch@3, 5.x via typescript-eslint's minimatch@10; fast-uri 2.x via fastify, 3.x via ajv@8): a blanket override would force one consumer across a major boundary. Re-check each entry when its parent is next upgraded \u2014 an override that the dependency has caught up with is dead weight that silently pins a version.",
+    "//overrides": "ONLY three remain, and each was verified to still be load-bearing by REMOVING it and re-auditing — an override whose upstream has caught up is dead weight that silently pins a version. postcss@8 (4 advisories return without it, via vite's tree), dompurify@3 (4, via monaco-editor) and uuid@11 (1, via bullmq). Ten others were retired here: js-yaml and brace-expansion@1/@5 became unnecessary at eslint 10, and fast-uri@2/@3, nanoid@3, form-data@4, browserslist@4, fflate@0.8 and ws@8 had already been overtaken by their parents (fastify 5, vitest 4, and direct bumps to ws and postcss). Removing all thirteen moves the audit from 4 high / 6 moderate / 2 low to 6 / 11 / 4; removing the ten changes nothing. Re-check the same way whenever a parent is upgraded.",
     "overrides": {
-      "js-yaml": "^4.3.2",
-      "brace-expansion@1": "^1.1.18",
-      "brace-expansion@5": "^5.0.9",
-      "fast-uri@2": "^2.4.6",
-      "fast-uri@3": "^3.1.7",
-      "nanoid@3": "^3.3.18",
-      "form-data@4": "^4.0.6",
-      "browserslist@4": "^4.28.9",
       "uuid@11": "^11.1.1",
-      "fflate@0.8": "^0.8.3",
-      "ws@8": "^8.21.3",
       "postcss@8": "^8.5.12",
       "dompurify@3": "^3.4.14"
     }

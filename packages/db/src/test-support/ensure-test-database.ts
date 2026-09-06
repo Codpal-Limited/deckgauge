@@ -108,7 +108,7 @@ function isUnreachable(err: unknown): boolean {
 function unreachable(url: string): Error {
   return new Error(
     `Cannot reach the test Postgres at ${new URL(url).host}. Start the test stack:\n\n` +
-      '  docker compose -p vp-cockpit-test -f docker-compose.test.yml up -d\n',
+      '  docker compose -p deckgauge-test -f docker-compose.test.yml up -d\n',
   );
 }
 

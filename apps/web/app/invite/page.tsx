@@ -16,7 +16,11 @@ import { getPublicSummary } from '../actions/organization';
 export default async function InvitePage({
   searchParams: _searchParams,
 }: {
-  searchParams: { org?: string };
+  // Next 15 hands pages a Promise here. Every other page in this app already
+  // declares it that way; this one was missed, and Next's generated route types
+  // (.next/types/app/invite/page.ts) rejected the page against PageProps. Left
+  // un-awaited because, per the note above, the value is deliberately unused.
+  searchParams: Promise<{ org?: string }>;
 }) {
   const org = await getPublicSummary();
 

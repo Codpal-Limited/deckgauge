@@ -75,8 +75,6 @@ export function RoadmapBar(props: RoadmapBarProps) {
   return (
     <div
       ref={setNodeRef}
-      role="button"
-      tabIndex={0}
       aria-label={ariaLabel}
       title={`${title} · ${fmt(startDate)} – ${fmt(endDate)}${isUnsized ? ' · unsized' : ''}`}
       data-unsized={isUnsized}
@@ -86,6 +84,12 @@ export function RoadmapBar(props: RoadmapBarProps) {
       // constraint (set in DndContext) prevents a plain click from activating.
       {...attributes}
       {...listeners}
+      // After the spreads on purpose: dnd-kit's `attributes` also carries
+      // role/tabIndex, so declaring them above meant the spread silently
+      // overwrote them (same values, so behaviour is unchanged — but React 19's
+      // stricter JSX checking reports the shadowing as TS2783).
+      role="button"
+      tabIndex={0}
       onClick={() => !editing && props.onOpen(id)}
       style={{
         position: 'absolute',

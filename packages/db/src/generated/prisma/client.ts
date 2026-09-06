@@ -413,7 +413,7 @@ export type AdvisorChangeSet = Prisma.AdvisorChangeSetModel
 /**
  * Model Notification
  * In-app notification. IN-APP ONLY — email and push are out of scope
- * (VP-Cockpit-PRD.md:84, planning/REQUIREMENTS.md:41).
+ * (planning/REQUIREMENTS.md:41).
  * 
  * Holds REFERENCES ONLY: no board name, no comment excerpt, no project title.
  * A notification names an entity the recipient can lose access to, so what they

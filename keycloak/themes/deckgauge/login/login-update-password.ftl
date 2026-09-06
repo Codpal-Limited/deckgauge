@@ -1,4 +1,4 @@
-<#-- keycloak/themes/vp-cockpit/login/login-update-password.ftl -->
+<#-- keycloak/themes/deckgauge/login/login-update-password.ftl -->
 <#-- Step 2 of the reset flow, reached from the emailed link. Also the page a
      user lands on when an admin attaches the UPDATE_PASSWORD required action,
      which is the no-SMTP fallback path — so this template matters even in a

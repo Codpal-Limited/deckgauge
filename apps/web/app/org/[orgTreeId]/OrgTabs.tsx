@@ -111,7 +111,15 @@ export function OrgTabs({
   const newBoard = async () => {
     const name = window.prompt('New board name?');
     if (!name) return;
-    const created = await createEmployeeBoard(tree.id, { name, scopeEmployeeId: null });
+    // `isPersonal` is stated rather than omitted because CreateEmployeeBoardInput
+    // is `z.infer` — the schema's OUTPUT type, in which `.optional().default(false)`
+    // has already been applied and the field is therefore required. `false` is
+    // exactly what omitting it parsed to: an ordinary shared board.
+    const created = await createEmployeeBoard(tree.id, {
+      name,
+      scopeEmployeeId: null,
+      isPersonal: false,
+    });
     if (created) {
       router.refresh();
       setActiveBoardId(created.id);

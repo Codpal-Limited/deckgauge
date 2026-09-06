@@ -9,20 +9,33 @@ interface TimelineEvent {
   ref: string;
 }
 
+// `/intelligence/...`, not `/insights/...` — the same defect the sibling
+// developers page carried, and for the same reason: nothing in the API serves
+// `/insights/*`. `intelligence.routes.ts` registers with no prefix and serves
+// `/intelligence/tickets/:key`, so every request here 404'd on route-not-found
+// and this page has never worked either.
+//
+// As on that page, correcting the path changes what a 404 MEANS: the request
+// now reaches a real handler whose only 404 is `resolveScope` failing to find
+// the board inside the caller's organization. So the board-not-found message
+// below is accurate — what was wrong with it was that it replaced the entire
+// page, navigation included.
+type Outcome = 'ok' | 'not-found' | 'failed';
+
 async function fetchTimeline(
   boardId: string,
   key: string,
-): Promise<{ events: TimelineEvent[]; notFound: boolean }> {
+): Promise<{ events: TimelineEvent[]; outcome: Outcome }> {
   try {
     const resp = await authFetch(
-      `/insights/tickets/${encodeURIComponent(key)}?boardId=${encodeURIComponent(boardId)}`,
+      `/intelligence/tickets/${encodeURIComponent(key)}?boardId=${encodeURIComponent(boardId)}`,
       { cache: 'no-store' },
     );
-    if (resp.status === 404) return { events: [], notFound: true };
-    if (!resp.ok) return { events: [], notFound: false };
-    return { events: (await resp.json()) as TimelineEvent[], notFound: false };
+    if (resp.status === 404) return { events: [], outcome: 'not-found' };
+    if (!resp.ok) return { events: [], outcome: 'failed' };
+    return { events: (await resp.json()) as TimelineEvent[], outcome: 'ok' };
   } catch {
-    return { events: [], notFound: false };
+    return { events: [], outcome: 'failed' };
   }
 }
 
@@ -40,12 +53,20 @@ export default async function BoardTicketTimelinePage({
   params: Promise<{ boardId: string; key: string }>;
 }) {
   const { boardId, key } = await params;
-  const { events, notFound } = await fetchTimeline(boardId, key);
+  const { events, outcome } = await fetchTimeline(boardId, key);
 
-  if (notFound) {
+  if (outcome === 'not-found') {
     return (
       <main className="mx-auto max-w-4xl px-6 py-10">
-        <h1 className="text-2xl font-semibold text-slate-900">Board not found</h1>
+        <header className="mb-6">
+          <a href="/" className="text-xs text-indigo-600 hover:underline">
+            ← Back to boards
+          </a>
+          <h1 className="mt-2 text-2xl font-semibold text-slate-900">Board not found</h1>
+        </header>
+        <div className="rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          This board does not exist, or it belongs to another organization.
+        </div>
       </main>
     );
   }
@@ -64,7 +85,12 @@ export default async function BoardTicketTimelinePage({
           Unified timeline scoped to this board&apos;s connected sources.
         </p>
       </header>
-      {events.length === 0 ? (
+      {outcome === 'failed' ? (
+        <div className="rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Couldn&apos;t load the timeline for <code className="font-mono">{key}</code> just now.
+          Try again, or check that this board&apos;s sources have synced.
+        </div>
+      ) : events.length === 0 ? (
         <div className="rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           No activity for <code className="font-mono">{key}</code> in this board&apos;s sources.
           If no sources are connected, add them in{' '}

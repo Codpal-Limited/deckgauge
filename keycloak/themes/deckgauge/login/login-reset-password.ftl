@@ -1,4 +1,4 @@
-<#-- keycloak/themes/vp-cockpit/login/login-reset-password.ftl -->
+<#-- keycloak/themes/deckgauge/login/login-reset-password.ftl -->
 <#-- Step 1 of the reset flow: ask where to send the link. Without this file the
      page inherits the stock keycloak template, whose markup uses kc-* classes
      that this theme's stylesheet does not define — so it renders unstyled
