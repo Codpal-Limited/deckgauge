@@ -39,3 +39,5 @@ import './ai-adoption.js';
 import './investment-allocation.js';
 import './dora-metrics.js';
 import './period-comparison.js';
+import './focus-task-measures.js';
+import './focus-coverage.js';

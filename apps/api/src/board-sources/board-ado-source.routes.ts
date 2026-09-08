@@ -8,6 +8,14 @@ import {
 import { BoardAdoSourceService } from './board-ado-source.service.js';
 import { PreviewCountService, PreviewSourceNotFoundError } from './preview-count.service.js';
 import {
+  AdoSourceRepositoriesService,
+  AdoSourceRepositoriesNotFoundError,
+} from './ado-source-repositories.service.js';
+import {
+  BoardAdoAreaPathsService,
+  BoardAdoAreaPathsNotFoundError,
+} from './board-ado-area-paths.service.js';
+import {
   SourceStatusesService,
   SourceStatusesNotFoundError,
 } from './source-statuses.service.js';
@@ -55,6 +63,10 @@ export function boardAdoSourceRoutes(deps: {
     new PreviewCountService({ prisma: deps.prisma, clickhouse: req.chRead ?? ch });
   const statusesSvcFor = (req: FastifyRequest) =>
     new SourceStatusesService({ prisma: deps.prisma, clickhouse: req.chRead ?? ch });
+  const repositoriesSvcFor = (req: FastifyRequest) =>
+    new AdoSourceRepositoriesService({ prisma: deps.prisma, clickhouse: req.chRead ?? ch });
+  const areaPathsSvcFor = (req: FastifyRequest) =>
+    new BoardAdoAreaPathsService({ prisma: deps.prisma, clickhouse: req.chRead ?? ch });
   const issueTypesSvc = new SourceIssueTypesService({
     prisma: deps.prisma,
     cache: deps.typeCache ?? defaultTypeCache,
@@ -156,6 +168,57 @@ export function boardAdoSourceRoutes(deps: {
           return await previewSvcFor(req).countAdoWorkItems(params.data.id);
         } catch (err) {
           if (err instanceof PreviewSourceNotFoundError) {
+            return reply.code(404).send({ error: err.message });
+          }
+          throw err;
+        }
+      },
+    );
+
+    app.get<{ Params: { boardId: string; id: string } }>(
+      '/boards/:boardId/sources/ado/:id/repositories',
+      { config: { policy: DISCOVERY_POLICY } },
+      async (req, reply) => {
+        const params = z
+          .object({ boardId: z.string().uuid(), id: z.string().uuid() })
+          .safeParse(req.params);
+        if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
+        try {
+          return await repositoriesSvcFor(req).list(
+            params.data.boardId,
+            params.data.id,
+            requireOrganizationId(req),
+          );
+        } catch (err) {
+          if (err instanceof AdoSourceRepositoriesNotFoundError) {
+            return reply.code(404).send({ error: err.message });
+          }
+          throw err;
+        }
+      },
+    );
+
+    // The `intelligenceAreaPaths` (Task 9) counterpart to /repositories above —
+    // same DISCOVERY_POLICY, same tenant-scoped resolve-then-query shape, and
+    // the same 404-not-403 story: a sourceId from another board or organization
+    // reports not-found rather than leaking area-path names.
+    app.get<{ Params: { boardId: string; id: string } }>(
+      '/boards/:boardId/sources/ado/:id/area-paths',
+      { config: { policy: DISCOVERY_POLICY } },
+      async (req, reply) => {
+        const params = z
+          .object({ boardId: z.string().uuid(), id: z.string().uuid() })
+          .safeParse(req.params);
+        if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
+        try {
+          const areaPaths = await areaPathsSvcFor(req).list(
+            params.data.boardId,
+            params.data.id,
+            requireOrganizationId(req),
+          );
+          return { areaPaths };
+        } catch (err) {
+          if (err instanceof BoardAdoAreaPathsNotFoundError) {
             return reply.code(404).send({ error: err.message });
           }
           throw err;

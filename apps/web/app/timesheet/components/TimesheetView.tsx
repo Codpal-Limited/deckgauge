@@ -2,12 +2,18 @@
 
 import { useState } from 'react';
 import type { TimesheetGridResponse, IntervalsResponse } from '@deckgauge/shared';
-import { fetchTimesheetGridForTree, fetchIntervals } from '../../actions/timesheet';
+import {
+  fetchTimesheetGridForTree,
+  fetchIntervals,
+  fetchTicketActivity,
+  type TicketActivityResult,
+} from '../../actions/timesheet';
 import { resolveWindow, formatPeriodLabel } from '../lib/timesheet-ui';
 import { TimesheetGrid } from './TimesheetGrid';
 import { buildGridCsv } from '../lib/grid-csv';
 import { PeriodNavigator } from './PeriodNavigator';
 import { SegmentedControl } from './SegmentedControl';
+import { TicketDetailDrawer } from './TicketDetailDrawer';
 
 function downloadCsv(filename: string, contents: string): void {
   // Prepend a UTF-8 BOM so Excel decodes the file as UTF-8 rather than a legacy
@@ -20,6 +26,15 @@ function downloadCsv(filename: string, contents: string): void {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+interface DrawerState {
+  issueKey: string;
+  employeeId: string;
+  /** The grid cell's own attributed seconds — see TicketDetailDrawer. */
+  countedSeconds: number;
+  data: IntervalsResponse | null;
+  activity: TicketActivityResult | null;
 }
 
 type View = 'week' | 'month' | 'year';
@@ -75,7 +90,7 @@ export function TimesheetView({
   const [mode, setMode] = useState<Mode>('normalized');
   const [data, setData] = useState<TimesheetGridResponse | null>(initialData);
   const [loading, setLoading] = useState(false);
-  const [drawer, setDrawer] = useState<IntervalsResponse | null>(null);
+  const [drawer, setDrawer] = useState<DrawerState | null>(null);
   // Set on a 403 from either the initial SSR fetch or a reload (Prev/Next,
   // granularity, time-basis, or tree-picker change) — every path that can
   // replace `data` must also be able to set this, or a mid-session role/
@@ -103,10 +118,24 @@ export function TimesheetView({
     setLoading(false);
   }
 
-  async function onTaskClick(issueKey: string, employeeId: string) {
+  async function onTaskClick(issueKey: string, employeeId: string, countedSeconds: number) {
     const w = resolveWindow(anchor, view);
-    const res = await fetchIntervals({ orgTreeId, issueKey, employeeId, from: w.from, to: w.to });
-    setDrawer(res);
+    // Open on the click, not on the response: the two fetches below take a
+    // round trip each and the old panel simply did nothing visible until they
+    // landed. `countedSeconds` comes from the grid cell, so the headline figure
+    // is correct in the very first frame.
+    setDrawer({ issueKey, employeeId, countedSeconds, data: null, activity: null });
+    const [data, activity] = await Promise.all([
+      fetchIntervals({ orgTreeId, issueKey, employeeId, from: w.from, to: w.to }),
+      fetchTicketActivity(issueKey),
+    ]);
+    // A second click while the first was in flight must win, or the panel fills
+    // with the previous ticket's detail under the new ticket's header.
+    setDrawer((cur) =>
+      cur && cur.issueKey === issueKey && cur.employeeId === employeeId
+        ? { ...cur, data, activity }
+        : cur,
+    );
   }
 
   return (
@@ -210,37 +239,13 @@ export function TimesheetView({
       </div>
 
       {drawer && (
-        <aside className="fixed right-0 top-14 z-50 flex h-[calc(100%-3.5rem)] w-96 flex-col border-l border-slate-200 bg-white shadow-dropdown animate-slide-in-right">
-          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-            <h2 className="font-semibold text-slate-800">{drawer.issueKey}</h2>
-            <button
-              type="button"
-              aria-label="close drawer"
-              onClick={() => setDrawer(null)}
-              className="btn-ghost px-2 py-1"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="flex-1 overflow-auto p-4">
-            {drawer.intervals.length === 0 ? (
-              <p className="text-sm text-slate-400">No in-progress intervals in this window.</p>
-            ) : (
-              <ul className="flex flex-col gap-1.5 text-sm">
-                {drawer.intervals.map((iv, i) => (
-                  <li key={i} className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-                    <span className="font-medium text-slate-700">{iv.status}</span>{' '}
-                    <span className="text-slate-500">
-                      {new Date(iv.startMs).toISOString().slice(0, 16).replace('T', ' ')} →{' '}
-                      {new Date(iv.endMs).toISOString().slice(0, 16).replace('T', ' ')}
-                    </span>{' '}
-                    <span className="text-slate-400">({iv.provider})</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </aside>
+        <TicketDetailDrawer
+          data={drawer.data}
+          countedSeconds={drawer.countedSeconds}
+          activity={drawer.activity}
+          loading={drawer.data === null}
+          onClose={() => setDrawer(null)}
+        />
       )}
     </div>
   );

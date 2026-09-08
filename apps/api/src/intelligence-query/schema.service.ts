@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@deckgauge/db';
+import type { ChReadClient } from '../analytics/ch-read-scope.js';
 import type { IntelligenceSchema } from '@deckgauge/shared';
 import { resolveScope } from './scope/resolve-scope.js';
 import { listTablesForSourceTypes, type SourceType } from './scope/catalog.js';
@@ -361,9 +362,22 @@ export async function buildSchemaPayload(
   prisma: PrismaClient,
   boardId: string,
   /** Caller's organization; `null` is the membership-less break-glass identity. */
-  organizationId: string | null
+  organizationId: string | null,
+  /**
+   * A GETTER for the console ClickHouse client `resolveScope` needs to expand
+   * ADO area-path prefixes.
+   *
+   * This payload reads only the four identifier lists, so it has no use for the
+   * narrowing maps — but `resolveScope` is the console's ONE scope resolver and
+   * its client is required rather than optional, which is what stops a caller
+   * silently resolving a scope with a scoping dimension missing. Lazy so that
+   * this route — which has no use for the maps and is the hotter of the two —
+   * constructs no client at all on a board with no area paths configured, which
+   * is 24 of the 25 ADO sources in this install.
+   */
+  getCh: () => ChReadClient
 ): Promise<IntelligenceSchema> {
-  const scope = await resolveScope(prisma, boardId, organizationId);
+  const scope = await resolveScope(prisma, boardId, organizationId, getCh);
   const sourceTypes: SourceType[] = [];
   if (scope.github.length > 0) sourceTypes.push('github');
   if (scope.jira.length > 0) sourceTypes.push('jira');

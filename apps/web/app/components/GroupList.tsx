@@ -53,10 +53,13 @@ import {
   reorderGroups,
   createProject,
   updateProject,
-  patchProject,
   deleteProject,
   deleteProjects,
+  duplicateProjects,
+  patchProjects,
+  // Single-row: the item-detail panel edits one project, never a selection.
   updateFieldValue,
+  updateFieldValues,
   updateGroup,
   deleteGroup,
   createGroup,
@@ -450,22 +453,26 @@ export function GroupList({
 
   // Apply an inline field edit to the whole selection when the edited row is
   // part of a multi-row selection; otherwise apply it to just that row.
-  // Mirrors handleBulkAction('status'): optimistic bulk patch + a client-side
-  // per-id server loop (no bulk-update endpoint — see the design doc).
+  //
+  // `serverPatch` takes the WHOLE id list, not one id, and that is the point.
+  // This used to loop a per-row server action, and every server action that
+  // revalidates makes the browser refetch the board (~13 API calls) — so an
+  // 18-row CAPEX classification became ~234 requests, tripped the API's
+  // 300/min rate limiter, and the board came back empty. The single-row case
+  // takes the same path with a one-element list; there is only one code path.
+  // See planning/STATE.md 2026-09-08.
   const applyToSelection = useCallback(
     (
       editedId: string,
       mutate: (groups: GroupTree, ids: string[]) => GroupTree,
-      serverPatch: (id: string) => Promise<void>,
+      serverPatch: (ids: string[]) => Promise<unknown>,
       errorMessage: string
     ) => {
       const ids = resolveBulkTargets(editedId, selectedItems);
       if (ids.length === 0) return;
       applyOptimistic(
         (groups) => mutate(groups, ids),
-        async () => {
-          for (const id of ids) await serverPatch(id);
-        },
+        () => serverPatch(ids),
         errorMessage,
         editedId
       );
@@ -1012,7 +1019,12 @@ export function GroupList({
   );
 
   const handleBulkAction = async (action: string, value?: string) => {
-    const ids = Array.from(selectedItems);
+    // Temp ids are dropped for the same reason `resolveBulkTargets` drops them:
+    // an optimistic row has no server id yet. The bulk endpoints made this
+    // sharper — the policy layer resolves EVERY id and denies the batch if one
+    // does not resolve, so a single just-duplicated row in the selection now
+    // 403s the whole action rather than failing its own request partway.
+    const ids = Array.from(selectedItems).filter((id) => !isTempId(id));
     if (ids.length === 0) return;
 
     if (action === 'delete') {
@@ -1048,9 +1060,7 @@ export function GroupList({
       const status = parsedStatus.data;
       await applyOptimistic(
         (groups) => applyBulkPatch(groups, ids, { status }),
-        async () => {
-          for (const id of ids) await updateProject(id, { status }, boardId);
-        },
+        () => patchProjects(ids, { status }, boardId),
         `Couldn't update ${ids.length} item${ids.length === 1 ? '' : 's'}`
       );
     } else if (action === 'move' && value) {
@@ -1098,20 +1108,17 @@ export function GroupList({
           }
           return next;
         },
-        async () => {
-          for (const src of sources) {
-            await createProject(
-              {
-                name: `Copy of ${src.name}`,
-                owner: src.owner,
-                status: src.status,
-                groupId: src.groupId ?? undefined,
-                boardId: src.boardId ?? undefined,
-              },
-              boardId
-            );
-          }
-        },
+        () =>
+          duplicateProjects(
+            sources.map((src) => ({
+              name: `Copy of ${src.name}`,
+              owner: src.owner,
+              status: src.status,
+              groupId: src.groupId ?? undefined,
+              boardId: src.boardId ?? undefined,
+            })),
+            boardId
+          ),
         `Couldn't duplicate ${sources.length} item${sources.length === 1 ? '' : 's'}`
       );
     }
@@ -1161,7 +1168,7 @@ export function GroupList({
               applyToSelection(
                 project.id,
                 (groups, ids) => applyBulkFieldValue(groups, ids, colId, value),
-                (id) => updateFieldValue(id, colId, value, boardId),
+                (ids) => updateFieldValues(ids, colId, value, boardId),
                 "Couldn't update field"
               ),
       jiraLinks,
@@ -1186,7 +1193,7 @@ export function GroupList({
               applyToSelection(
                 project.id,
                 (groups, ids) => applyBulkPatch(groups, ids, { status }),
-                (id) => updateProject(id, { status }, boardId),
+                (ids) => patchProjects(ids, { status }, boardId),
                 "Couldn't update status"
               ),
       onStatusIdChange:
@@ -1196,7 +1203,7 @@ export function GroupList({
               applyToSelection(
                 project.id,
                 (groups, ids) => applyBulkPatch(groups, ids, { statusId }),
-                (id) => updateProject(id, { statusId }, boardId),
+                (ids) => patchProjects(ids, { statusId }, boardId),
                 "Couldn't update status"
               ),
       onOwnerChange:
@@ -1217,7 +1224,7 @@ export function GroupList({
                       new Set([...(project.overriddenFields ?? []), 'owner'])
                     ),
                   }),
-                (id) => updateProject(id, { owner: trimmed }, boardId),
+                (ids) => patchProjects(ids, { owner: trimmed }, boardId),
                 "Couldn't update owner"
               );
             },
@@ -1229,7 +1236,7 @@ export function GroupList({
               applyToSelection(
                 project.id,
                 (groups, ids) => applyBulkPatch(groups, ids, { ownerId }),
-                (id) => updateProject(id, { ownerId }, boardId),
+                (ids) => patchProjects(ids, { ownerId }, boardId),
                 "Couldn't update owner"
               ),
       onDuplicate:
@@ -1321,7 +1328,7 @@ export function GroupList({
                     ),
                   });
                 },
-                (id) => updateProject(id, { [field]: v }, boardId),
+                (ids) => patchProjects(ids, { [field]: v }, boardId),
                 `Couldn't save ${field}`
               );
             },
@@ -1332,7 +1339,7 @@ export function GroupList({
               applyToSelection(
                 project.id,
                 (groups, ids) => applyBulkPatch(groups, ids, { costClassification: value }),
-                (id) => patchProject(id, { costClassification: value }, boardId),
+                (ids) => patchProjects(ids, { costClassification: value }, boardId),
                 "Couldn't update CapEx/OpEx"
               ),
       isFocused: navState.focusedRowId === project.id,

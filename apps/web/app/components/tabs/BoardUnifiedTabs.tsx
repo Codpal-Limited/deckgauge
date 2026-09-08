@@ -6,7 +6,7 @@ import { createView, updateView, deleteView } from '../../actions/views';
 
 interface BoardView {
   id: string;
-  type: 'BOARD' | 'DASHBOARD' | 'ROADMAP';
+  type: 'BOARD' | 'DASHBOARD' | 'ROADMAP' | 'FOCUS';
   name: string;
   position: number;
 }
@@ -21,6 +21,20 @@ interface Props {
   onViewChange: (viewId: string) => void;
   canEdit: boolean;
   onSettingsClick?: () => void;
+  /**
+   * Task 13 (intelligence-query mitigation): the SQL console behind this tab
+   * is gated on the API at `ADMIN` (instance-wide `ctx.isAdmin`) pending a
+   * ClickHouse row-policy fix — its rewrite-and-assert scoping has produced
+   * three privilege-escalation bypasses, the last one (ARRAY JOIN clause text
+   * re-spliced unexamined) still open. `isOrganizationAdmin(...)` is the
+   * closest existing signal this app has to that flag (an org ADMIN's
+   * `request.membership.role === 'ADMIN'` is one of the three sources
+   * `keycloak-auth.plugin.ts` unions into `ctx.isAdmin`); it does not cover
+   * the other two instance-level break-glass sources, so this is presentation
+   * only, same as every other `isOrganizationAdmin` gate in this app — the API
+   * enforces the real boundary regardless of what this tab shows.
+   */
+  isAdmin: boolean;
 }
 
 function TableIcon({ className }: { className?: string }) {
@@ -66,9 +80,18 @@ function RoadmapIcon({ className }: { className?: string }) {
   );
 }
 
+function FocusIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path d="M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm0 2.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9ZM10 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
+    </svg>
+  );
+}
+
 function iconFor(type: BoardView['type']) {
   if (type === 'DASHBOARD') return ChartIcon;
   if (type === 'ROADMAP') return RoadmapIcon;
+  if (type === 'FOCUS') return FocusIcon;
   return TableIcon;
 }
 
@@ -87,6 +110,7 @@ export function BoardUnifiedTabs({
   onViewChange,
   canEdit,
   onSettingsClick,
+  isAdmin,
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -281,15 +305,17 @@ export function BoardUnifiedTabs({
           <SourcesIcon className={`w-3.5 h-3.5 ${activeSection === 'sources' ? 'text-indigo-500' : 'text-slate-400'}`} />
           <span>Sources</span>
         </Link>
-        <Link
-          href={`/boards/${boardId}/intelligence`}
-          role="tab"
-          aria-selected={activeSection === 'intelligence'}
-          className={`${TAB_BASE} ${activeSection === 'intelligence' ? TAB_ACTIVE : TAB_INACTIVE}`}
-        >
-          <IntelligenceIcon className={`w-3.5 h-3.5 ${activeSection === 'intelligence' ? 'text-indigo-500' : 'text-slate-400'}`} />
-          <span>Intelligence</span>
-        </Link>
+        {isAdmin && (
+          <Link
+            href={`/boards/${boardId}/intelligence`}
+            role="tab"
+            aria-selected={activeSection === 'intelligence'}
+            className={`${TAB_BASE} ${activeSection === 'intelligence' ? TAB_ACTIVE : TAB_INACTIVE}`}
+          >
+            <IntelligenceIcon className={`w-3.5 h-3.5 ${activeSection === 'intelligence' ? 'text-indigo-500' : 'text-slate-400'}`} />
+            <span>Intelligence</span>
+          </Link>
+        )}
       </div>
 
       {onSettingsClick && (

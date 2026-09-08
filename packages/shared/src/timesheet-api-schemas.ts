@@ -148,10 +148,74 @@ export const IntervalDtoSchema = z.object({
   startMs: z.number(),
   endMs: z.number(),
 });
+
+/** One status the issue sat in. `counted` mirrors the grid engine's predicate. */
+export const TimelineSegmentDtoSchema = z.object({
+  status: z.string(),
+  category: z.string().nullable(),
+  startMs: z.number(),
+  endMs: z.number(),
+  counted: z.boolean(),
+});
+export type TimelineSegmentDto = z.infer<typeof TimelineSegmentDtoSchema>;
+
+/**
+ * Per-status rollup. `wallMs` is ELAPSED time in the status, never hours
+ * attributed to the engineer — see the note on `StatusDuration` in
+ * `timesheet/issue-timeline.ts` for why the two must stay separate.
+ */
+export const StatusDurationDtoSchema = z.object({
+  status: z.string(),
+  wallMs: z.number(),
+  visits: z.number(),
+  counted: z.boolean(),
+});
+export type StatusDurationDto = z.infer<typeof StatusDurationDtoSchema>;
+
+export const IssueEpicDtoSchema = z.object({
+  key: z.string(),
+  title: z.string().nullable(),
+  url: z.string().nullable(),
+});
+export type IssueEpicDto = z.infer<typeof IssueEpicDtoSchema>;
+
+/**
+ * Drill-down detail for one issue on one engineer's row.
+ *
+ * Everything past `intervals` is ADDITIVE — the first three fields keep the
+ * exact shape and meaning they had before the drawer was rebuilt, so a client
+ * reading only those is unaffected.
+ *
+ * Note what is NOT here: hours attributed to the engineer. That number comes
+ * out of the grid engine (normalized across concurrent tickets, then daily
+ * capped) and the caller already holds it for the cell it clicked; recomputing
+ * it here would risk two answers to one question. `inProgressMs` below is
+ * elapsed counted-status time, which is a different and honestly-labelled
+ * quantity.
+ */
 export const IntervalsResponseSchema = z.object({
   issueKey: z.string(),
   employeeId: z.string(),
   intervals: z.array(IntervalDtoSchema),
+  provider: ProviderSchema.nullable(),
+  title: z.string().nullable(),
+  /** Deep link into Jira/ADO; null when the source's base URL is unknown. */
+  url: z.string().nullable(),
+  issueType: z.string().nullable(),
+  reporter: z.string().nullable(),
+  assignee: z.string().nullable(),
+  priority: z.string().nullable(),
+  storyPoints: z.number().nullable(),
+  sprint: z.string().nullable(),
+  epic: IssueEpicDtoSchema.nullable(),
+  openedAtMs: z.number().nullable(),
+  resolvedAtMs: z.number().nullable(),
+  currentStatus: z.string().nullable(),
+  /** Elapsed ms in statuses that counted, across the whole issue history. */
+  inProgressMs: z.number(),
+  /** Full status history, chronological, spanning the issue's whole life. */
+  timeline: z.array(TimelineSegmentDtoSchema),
+  byStatus: z.array(StatusDurationDtoSchema),
 });
 export type IntervalsResponse = z.infer<typeof IntervalsResponseSchema>;
 

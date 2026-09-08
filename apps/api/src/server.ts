@@ -57,6 +57,8 @@ import { notificationPreferenceRoutes } from "./notifications/notification-prefe
 import { boardViewRoutes } from "./widgets/board-views.routes.js";
 import { dashboardWidgetRoutes } from "./widgets/dashboard-widgets.routes.js";
 import { widgetDataRoutes } from "./widgets/widget-data.routes.js";
+import { focusConfigRoutes } from "./focus/focus-config.routes.js";
+import { WidgetCache } from "./widgets/widget-cache.js";
 import { presetsRoutes } from "./widgets/presets.routes.js";
 import { intelligenceQueryRoutes } from "./intelligence-query/routes.js";
 import { advisorRoutes } from "./advisor/advisor.routes.js";
@@ -274,7 +276,12 @@ export function buildServer(prisma: PrismaClient) {
     protectedApp.register(boardGitLabSourceRoutes({ prisma, clickhouse }));
     protectedApp.register(boardViewRoutes, { prisma });
     protectedApp.register(dashboardWidgetRoutes, { prisma });
-    protectedApp.register(widgetDataRoutes, { prisma, singleUser });
+    // One instance across both plugins: saving a Focus stage map evicts this
+    // board's cached widget payloads, without which the funnel keeps its old
+    // numbers for the rest of the 60s TTL and the save reads as a no-op.
+    const widgetCache = new WidgetCache(60_000);
+    protectedApp.register(widgetDataRoutes, { prisma, singleUser, cache: widgetCache });
+    protectedApp.register(focusConfigRoutes({ prisma, clickhouse, cache: widgetCache }));
     protectedApp.register(presetsRoutes, { prisma });
     protectedApp.register(intelligenceQueryRoutes, { prisma });
     protectedApp.register(advisorRoutes({ prisma, clickhouse }));

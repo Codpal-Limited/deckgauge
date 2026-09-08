@@ -7,12 +7,19 @@ import { fetchViews } from '../../actions/views';
 
 interface View {
   id: string;
-  type: 'BOARD' | 'DASHBOARD' | 'ROADMAP';
+  type: 'BOARD' | 'DASHBOARD' | 'ROADMAP' | 'FOCUS';
   name: string;
   position: number;
 }
 
-export function BoardUnifiedTabsHost({ boardId }: { boardId: string }) {
+export function BoardUnifiedTabsHost({
+  boardId,
+  isAdmin,
+}: {
+  boardId: string;
+  /** Forwarded to `BoardUnifiedTabs` — see its `isAdmin` prop doc for why. */
+  isAdmin: boolean;
+}) {
   const pathname = usePathname() ?? '';
   const router = useRouter();
   const [views, setViews] = useState<View[]>([]);
@@ -44,6 +51,7 @@ export function BoardUnifiedTabsHost({ boardId }: { boardId: string }) {
         onViewChange={onViewChange}
         canEdit={false}
         onSettingsClick={() => setSettingsOpen((v) => !v)}
+        isAdmin={isAdmin}
       />
       <BoardSettingsDrawer
         boardId={boardId}

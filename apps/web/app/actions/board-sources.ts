@@ -300,6 +300,8 @@ import {
   BoardGitHubSourcePatchSchema,
   BoardAdoSourcePatchSchema,
   BoardGitLabSourcePatchSchema,
+  type AdoSourceRepositoriesResponseDto,
+  type AdoAreaPathsResponseDto,
 } from '@deckgauge/shared';
 
 export type BoardJiraSourcePatch = _z.infer<typeof BoardJiraSourcePatchSchema>;
@@ -425,6 +427,81 @@ export async function fetchSourceAdoWorkItemTypes(
   );
   if (res.status === 404) return { types: [] };
   if (!res.ok) throw new Error(`source ado work-item-types failed: ${res.status}`);
+  return res.json();
+}
+
+// Repositories a board's ADO source can choose from for its engineering-
+// intelligence scope, with each repo's PR count for the picker (Task 12/13).
+// This is the *board-source*-level list — do not confuse with
+// `listAdoProjectSyncs`'s `syncRepos`, which is the shared project sync's
+// ingest scope.
+export async function fetchAdoSourceRepositories(
+  boardId: string,
+  sourceId: string,
+): Promise<AdoSourceRepositoriesResponseDto> {
+  const res = await authFetch(
+    `/boards/${boardId}/sources/ado/${sourceId}/repositories`,
+    { method: 'GET' },
+  );
+  if (res.status === 404) return { repos: [], otherBoardNames: [] };
+  if (!res.ok) throw new Error(`fetch ado source repositories failed: ${res.status}`);
+  return res.json();
+}
+
+// Persists the board's engineering-intelligence repository scope. Deliberately
+// narrow (only `intelligenceRepos`) rather than routing callers through the
+// general `patchBoardAdoSource`, so the repository-scope picker cannot
+// accidentally clobber the board source's other fields — and cannot be
+// confused with `updateAdoProjectSync` (connections.ts), which patches the
+// shared project sync's `syncRepos` ingest scope instead.
+export async function saveAdoIntelligenceRepos(
+  boardId: string,
+  sourceId: string,
+  intelligenceRepos: string[],
+) {
+  const res = await authFetch(`/boards/${boardId}/sources/ado/${sourceId}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ intelligenceRepos }),
+  });
+  if (!res.ok) throw new Error(`save ado intelligence repos failed: ${res.status}`);
+  return res.json();
+}
+
+// Area paths a board's ADO source can choose from for its engineering-
+// intelligence scope, with each area path's work-item count for the picker
+// (Task 9). The `intelligenceAreaPaths` counterpart to
+// `fetchAdoSourceRepositories` — `intelligenceRepos` cannot narrow work items,
+// since `ado_work_items` has no repository column.
+export async function fetchAdoSourceAreaPaths(
+  boardId: string,
+  sourceId: string,
+): Promise<AdoAreaPathsResponseDto> {
+  const res = await authFetch(
+    `/boards/${boardId}/sources/ado/${sourceId}/area-paths`,
+    { method: 'GET' },
+  );
+  if (res.status === 404) return { areaPaths: [] };
+  if (!res.ok) throw new Error(`fetch ado source area paths failed: ${res.status}`);
+  return res.json();
+}
+
+// Persists the board's engineering-intelligence area-path scope. Deliberately
+// narrow (only `intelligenceAreaPaths`) rather than routing callers through the
+// general `patchBoardAdoSource`, for the same reason `saveAdoIntelligenceRepos`
+// is: a patch that omits the field must leave the existing selection
+// untouched, and a broad action makes that easy to get wrong.
+export async function saveAdoIntelligenceAreaPaths(
+  boardId: string,
+  sourceId: string,
+  intelligenceAreaPaths: string[],
+) {
+  const res = await authFetch(`/boards/${boardId}/sources/ado/${sourceId}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ intelligenceAreaPaths }),
+  });
+  if (!res.ok) throw new Error(`save ado intelligence area paths failed: ${res.status}`);
   return res.json();
 }
 

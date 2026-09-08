@@ -228,6 +228,8 @@ export type BoardWhereInput = {
   calendarEvents?: Prisma.BoardCalendarEventListRelationFilter
   comparisonMemberships?: Prisma.ComparisonMemberListRelationFilter
   notificationSettings?: Prisma.BoardNotificationSettingListRelationFilter
+  focusConfig?: Prisma.XOR<Prisma.FocusConfigNullableScalarRelationFilter, Prisma.FocusConfigWhereInput> | null
+  focusEpics?: Prisma.FocusEpicListRelationFilter
   calendarSource?: Prisma.XOR<Prisma.BoardCalendarSourceNullableScalarRelationFilter, Prisma.BoardCalendarSourceWhereInput> | null
   advisorSessions?: Prisma.AdvisorSessionListRelationFilter
   advisorChangeSets?: Prisma.AdvisorChangeSetListRelationFilter
@@ -263,6 +265,8 @@ export type BoardOrderByWithRelationInput = {
   calendarEvents?: Prisma.BoardCalendarEventOrderByRelationAggregateInput
   comparisonMemberships?: Prisma.ComparisonMemberOrderByRelationAggregateInput
   notificationSettings?: Prisma.BoardNotificationSettingOrderByRelationAggregateInput
+  focusConfig?: Prisma.FocusConfigOrderByWithRelationInput
+  focusEpics?: Prisma.FocusEpicOrderByRelationAggregateInput
   calendarSource?: Prisma.BoardCalendarSourceOrderByWithRelationInput
   advisorSessions?: Prisma.AdvisorSessionOrderByRelationAggregateInput
   advisorChangeSets?: Prisma.AdvisorChangeSetOrderByRelationAggregateInput
@@ -301,6 +305,8 @@ export type BoardWhereUniqueInput = Prisma.AtLeast<{
   calendarEvents?: Prisma.BoardCalendarEventListRelationFilter
   comparisonMemberships?: Prisma.ComparisonMemberListRelationFilter
   notificationSettings?: Prisma.BoardNotificationSettingListRelationFilter
+  focusConfig?: Prisma.XOR<Prisma.FocusConfigNullableScalarRelationFilter, Prisma.FocusConfigWhereInput> | null
+  focusEpics?: Prisma.FocusEpicListRelationFilter
   calendarSource?: Prisma.XOR<Prisma.BoardCalendarSourceNullableScalarRelationFilter, Prisma.BoardCalendarSourceWhereInput> | null
   advisorSessions?: Prisma.AdvisorSessionListRelationFilter
   advisorChangeSets?: Prisma.AdvisorChangeSetListRelationFilter
@@ -367,6 +373,8 @@ export type BoardCreateInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -402,6 +410,8 @@ export type BoardUncheckedCreateInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -435,6 +445,8 @@ export type BoardUpdateInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -470,6 +482,8 @@ export type BoardUncheckedUpdateInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -932,6 +946,34 @@ export type BoardUpdateOneRequiredWithoutNotificationSettingsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.BoardUpdateToOneWithWhereWithoutNotificationSettingsInput, Prisma.BoardUpdateWithoutNotificationSettingsInput>, Prisma.BoardUncheckedUpdateWithoutNotificationSettingsInput>
 }
 
+export type BoardCreateNestedOneWithoutFocusConfigInput = {
+  create?: Prisma.XOR<Prisma.BoardCreateWithoutFocusConfigInput, Prisma.BoardUncheckedCreateWithoutFocusConfigInput>
+  connectOrCreate?: Prisma.BoardCreateOrConnectWithoutFocusConfigInput
+  connect?: Prisma.BoardWhereUniqueInput
+}
+
+export type BoardUpdateOneRequiredWithoutFocusConfigNestedInput = {
+  create?: Prisma.XOR<Prisma.BoardCreateWithoutFocusConfigInput, Prisma.BoardUncheckedCreateWithoutFocusConfigInput>
+  connectOrCreate?: Prisma.BoardCreateOrConnectWithoutFocusConfigInput
+  upsert?: Prisma.BoardUpsertWithoutFocusConfigInput
+  connect?: Prisma.BoardWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.BoardUpdateToOneWithWhereWithoutFocusConfigInput, Prisma.BoardUpdateWithoutFocusConfigInput>, Prisma.BoardUncheckedUpdateWithoutFocusConfigInput>
+}
+
+export type BoardCreateNestedOneWithoutFocusEpicsInput = {
+  create?: Prisma.XOR<Prisma.BoardCreateWithoutFocusEpicsInput, Prisma.BoardUncheckedCreateWithoutFocusEpicsInput>
+  connectOrCreate?: Prisma.BoardCreateOrConnectWithoutFocusEpicsInput
+  connect?: Prisma.BoardWhereUniqueInput
+}
+
+export type BoardUpdateOneRequiredWithoutFocusEpicsNestedInput = {
+  create?: Prisma.XOR<Prisma.BoardCreateWithoutFocusEpicsInput, Prisma.BoardUncheckedCreateWithoutFocusEpicsInput>
+  connectOrCreate?: Prisma.BoardCreateOrConnectWithoutFocusEpicsInput
+  upsert?: Prisma.BoardUpsertWithoutFocusEpicsInput
+  connect?: Prisma.BoardWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.BoardUpdateToOneWithWhereWithoutFocusEpicsInput, Prisma.BoardUpdateWithoutFocusEpicsInput>, Prisma.BoardUncheckedUpdateWithoutFocusEpicsInput>
+}
+
 export type BoardCreateWithoutOrganizationInput = {
   id?: string
   name: string
@@ -960,6 +1002,8 @@ export type BoardCreateWithoutOrganizationInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -993,6 +1037,8 @@ export type BoardUncheckedCreateWithoutOrganizationInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -1067,6 +1113,8 @@ export type BoardCreateWithoutCalendarEventsInput = {
   roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -1101,6 +1149,8 @@ export type BoardUncheckedCreateWithoutCalendarEventsInput = {
   roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -1149,6 +1199,8 @@ export type BoardUpdateWithoutCalendarEventsInput = {
   roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -1183,6 +1235,8 @@ export type BoardUncheckedUpdateWithoutCalendarEventsInput = {
   roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -1215,6 +1269,8 @@ export type BoardCreateWithoutOwnersInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -1249,6 +1305,8 @@ export type BoardUncheckedCreateWithoutOwnersInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -1297,6 +1355,8 @@ export type BoardUpdateWithoutOwnersInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -1331,6 +1391,8 @@ export type BoardUncheckedUpdateWithoutOwnersInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -1363,6 +1425,8 @@ export type BoardCreateWithoutStatusesInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -1397,6 +1461,8 @@ export type BoardUncheckedCreateWithoutStatusesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -1445,6 +1511,8 @@ export type BoardUpdateWithoutStatusesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -1479,6 +1547,8 @@ export type BoardUncheckedUpdateWithoutStatusesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -1511,6 +1581,8 @@ export type BoardCreateWithoutSyncExclusionsInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -1545,6 +1617,8 @@ export type BoardUncheckedCreateWithoutSyncExclusionsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -1593,6 +1667,8 @@ export type BoardUpdateWithoutSyncExclusionsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -1627,6 +1703,8 @@ export type BoardUncheckedUpdateWithoutSyncExclusionsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -1659,6 +1737,8 @@ export type BoardCreateWithoutGroupsInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -1693,6 +1773,8 @@ export type BoardUncheckedCreateWithoutGroupsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -1741,6 +1823,8 @@ export type BoardUpdateWithoutGroupsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -1775,6 +1859,8 @@ export type BoardUncheckedUpdateWithoutGroupsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -1807,6 +1893,8 @@ export type BoardCreateWithoutProjectsInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -1841,6 +1929,8 @@ export type BoardUncheckedCreateWithoutProjectsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -1889,6 +1979,8 @@ export type BoardUpdateWithoutProjectsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -1923,6 +2015,8 @@ export type BoardUncheckedUpdateWithoutProjectsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -1955,6 +2049,8 @@ export type BoardCreateWithoutColumnsInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -1989,6 +2085,8 @@ export type BoardUncheckedCreateWithoutColumnsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -2037,6 +2135,8 @@ export type BoardUpdateWithoutColumnsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -2071,6 +2171,8 @@ export type BoardUncheckedUpdateWithoutColumnsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -2103,6 +2205,8 @@ export type BoardCreateWithoutAutomationsInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -2137,6 +2241,8 @@ export type BoardUncheckedCreateWithoutAutomationsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -2185,6 +2291,8 @@ export type BoardUpdateWithoutAutomationsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -2219,6 +2327,8 @@ export type BoardUncheckedUpdateWithoutAutomationsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -2251,6 +2361,8 @@ export type BoardCreateWithoutAccessEntriesInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -2285,6 +2397,8 @@ export type BoardUncheckedCreateWithoutAccessEntriesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -2333,6 +2447,8 @@ export type BoardUpdateWithoutAccessEntriesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -2367,6 +2483,8 @@ export type BoardUncheckedUpdateWithoutAccessEntriesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -2399,6 +2517,8 @@ export type BoardCreateWithoutViewsInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -2433,6 +2553,8 @@ export type BoardUncheckedCreateWithoutViewsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -2481,6 +2603,8 @@ export type BoardUpdateWithoutViewsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -2515,6 +2639,8 @@ export type BoardUncheckedUpdateWithoutViewsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -2547,6 +2673,8 @@ export type BoardCreateWithoutComparisonMembershipsInput = {
   roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionCreateNestedManyWithoutBoardInput
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -2581,6 +2709,8 @@ export type BoardUncheckedCreateWithoutComparisonMembershipsInput = {
   roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUncheckedCreateNestedManyWithoutBoardInput
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -2629,6 +2759,8 @@ export type BoardUpdateWithoutComparisonMembershipsInput = {
   roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUpdateManyWithoutBoardNestedInput
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -2663,6 +2795,8 @@ export type BoardUncheckedUpdateWithoutComparisonMembershipsInput = {
   roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUncheckedUpdateManyWithoutBoardNestedInput
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -2695,6 +2829,8 @@ export type BoardCreateWithoutBoardJiraSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -2729,6 +2865,8 @@ export type BoardUncheckedCreateWithoutBoardJiraSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -2777,6 +2915,8 @@ export type BoardUpdateWithoutBoardJiraSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -2811,6 +2951,8 @@ export type BoardUncheckedUpdateWithoutBoardJiraSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -2843,6 +2985,8 @@ export type BoardCreateWithoutBoardGithubSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -2877,6 +3021,8 @@ export type BoardUncheckedCreateWithoutBoardGithubSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -2925,6 +3071,8 @@ export type BoardUpdateWithoutBoardGithubSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -2959,6 +3107,8 @@ export type BoardUncheckedUpdateWithoutBoardGithubSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -2991,6 +3141,8 @@ export type BoardCreateWithoutBoardAdoSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -3025,6 +3177,8 @@ export type BoardUncheckedCreateWithoutBoardAdoSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -3073,6 +3227,8 @@ export type BoardUpdateWithoutBoardAdoSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -3107,6 +3263,8 @@ export type BoardUncheckedUpdateWithoutBoardAdoSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -3139,6 +3297,8 @@ export type BoardCreateWithoutBoardGitlabSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -3173,6 +3333,8 @@ export type BoardUncheckedCreateWithoutBoardGitlabSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -3221,6 +3383,8 @@ export type BoardUpdateWithoutBoardGitlabSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -3255,6 +3419,8 @@ export type BoardUncheckedUpdateWithoutBoardGitlabSourcesInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -3287,6 +3453,8 @@ export type BoardCreateWithoutUserPrefsInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -3321,6 +3489,8 @@ export type BoardUncheckedCreateWithoutUserPrefsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -3369,6 +3539,8 @@ export type BoardUpdateWithoutUserPrefsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -3403,6 +3575,8 @@ export type BoardUncheckedUpdateWithoutUserPrefsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -3436,6 +3610,8 @@ export type BoardCreateWithoutCalendarSourceInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
   organization: Prisma.OrganizationCreateNestedOneWithoutBoardsInput
@@ -3470,6 +3646,8 @@ export type BoardUncheckedCreateWithoutCalendarSourceInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
 }
@@ -3518,6 +3696,8 @@ export type BoardUpdateWithoutCalendarSourceInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutBoardsNestedInput
@@ -3552,6 +3732,8 @@ export type BoardUncheckedUpdateWithoutCalendarSourceInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
 }
@@ -3583,6 +3765,8 @@ export type BoardCreateWithoutRoadmapSubscriptionsInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -3617,6 +3801,8 @@ export type BoardUncheckedCreateWithoutRoadmapSubscriptionsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -3665,6 +3851,8 @@ export type BoardUpdateWithoutRoadmapSubscriptionsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -3699,6 +3887,8 @@ export type BoardUncheckedUpdateWithoutRoadmapSubscriptionsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -3732,6 +3922,8 @@ export type BoardCreateWithoutAdvisorSessionsInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
   organization: Prisma.OrganizationCreateNestedOneWithoutBoardsInput
@@ -3766,6 +3958,8 @@ export type BoardUncheckedCreateWithoutAdvisorSessionsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
 }
@@ -3814,6 +4008,8 @@ export type BoardUpdateWithoutAdvisorSessionsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutBoardsNestedInput
@@ -3848,6 +4044,8 @@ export type BoardUncheckedUpdateWithoutAdvisorSessionsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
 }
@@ -3880,6 +4078,8 @@ export type BoardCreateWithoutAdvisorChangeSetsInput = {
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   organization: Prisma.OrganizationCreateNestedOneWithoutBoardsInput
@@ -3914,6 +4114,8 @@ export type BoardUncheckedCreateWithoutAdvisorChangeSetsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
 }
@@ -3962,6 +4164,8 @@ export type BoardUpdateWithoutAdvisorChangeSetsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutBoardsNestedInput
@@ -3996,6 +4200,8 @@ export type BoardUncheckedUpdateWithoutAdvisorChangeSetsInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
 }
@@ -4027,6 +4233,8 @@ export type BoardCreateWithoutNotificationSettingsInput = {
   roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionCreateNestedManyWithoutBoardInput
   calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
@@ -4061,6 +4269,8 @@ export type BoardUncheckedCreateWithoutNotificationSettingsInput = {
   roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUncheckedCreateNestedManyWithoutBoardInput
   calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
@@ -4109,6 +4319,8 @@ export type BoardUpdateWithoutNotificationSettingsInput = {
   roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUpdateManyWithoutBoardNestedInput
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -4143,6 +4355,320 @@ export type BoardUncheckedUpdateWithoutNotificationSettingsInput = {
   roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUncheckedUpdateManyWithoutBoardNestedInput
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
+  calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
+  advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
+}
+
+export type BoardCreateWithoutFocusConfigInput = {
+  id?: string
+  name: string
+  description?: string | null
+  kind?: string
+  ticketKeyPrefixes?: Prisma.BoardCreateticketKeyPrefixesInput | string[]
+  hiddenSystemFields?: Prisma.BoardCreatehiddenSystemFieldsInput | string[]
+  columnLayout?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  groups?: Prisma.GroupCreateNestedManyWithoutBoardInput
+  projects?: Prisma.ProjectCreateNestedManyWithoutBoardInput
+  columns?: Prisma.BoardColumnCreateNestedManyWithoutBoardInput
+  automations?: Prisma.AutomationRuleCreateNestedManyWithoutBoardInput
+  boardJiraSources?: Prisma.BoardJiraSourceCreateNestedManyWithoutBoardInput
+  boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
+  boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
+  statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
+  accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
+  views?: Prisma.BoardViewCreateNestedManyWithoutBoardInput
+  userPrefs?: Prisma.UserBoardPrefCreateNestedManyWithoutBoardInput
+  syncExclusions?: Prisma.BoardSyncExclusionCreateNestedManyWithoutBoardInput
+  roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionCreateNestedManyWithoutBoardInput
+  calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
+  comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
+  notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
+  calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
+  advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
+  organization: Prisma.OrganizationCreateNestedOneWithoutBoardsInput
+}
+
+export type BoardUncheckedCreateWithoutFocusConfigInput = {
+  id?: string
+  name: string
+  description?: string | null
+  kind?: string
+  ticketKeyPrefixes?: Prisma.BoardCreateticketKeyPrefixesInput | string[]
+  hiddenSystemFields?: Prisma.BoardCreatehiddenSystemFieldsInput | string[]
+  columnLayout?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  organizationId: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  groups?: Prisma.GroupUncheckedCreateNestedManyWithoutBoardInput
+  projects?: Prisma.ProjectUncheckedCreateNestedManyWithoutBoardInput
+  columns?: Prisma.BoardColumnUncheckedCreateNestedManyWithoutBoardInput
+  automations?: Prisma.AutomationRuleUncheckedCreateNestedManyWithoutBoardInput
+  boardJiraSources?: Prisma.BoardJiraSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
+  statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
+  accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
+  views?: Prisma.BoardViewUncheckedCreateNestedManyWithoutBoardInput
+  userPrefs?: Prisma.UserBoardPrefUncheckedCreateNestedManyWithoutBoardInput
+  syncExclusions?: Prisma.BoardSyncExclusionUncheckedCreateNestedManyWithoutBoardInput
+  roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUncheckedCreateNestedManyWithoutBoardInput
+  calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
+  comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
+  notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
+  calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
+  advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
+}
+
+export type BoardCreateOrConnectWithoutFocusConfigInput = {
+  where: Prisma.BoardWhereUniqueInput
+  create: Prisma.XOR<Prisma.BoardCreateWithoutFocusConfigInput, Prisma.BoardUncheckedCreateWithoutFocusConfigInput>
+}
+
+export type BoardUpsertWithoutFocusConfigInput = {
+  update: Prisma.XOR<Prisma.BoardUpdateWithoutFocusConfigInput, Prisma.BoardUncheckedUpdateWithoutFocusConfigInput>
+  create: Prisma.XOR<Prisma.BoardCreateWithoutFocusConfigInput, Prisma.BoardUncheckedCreateWithoutFocusConfigInput>
+  where?: Prisma.BoardWhereInput
+}
+
+export type BoardUpdateToOneWithWhereWithoutFocusConfigInput = {
+  where?: Prisma.BoardWhereInput
+  data: Prisma.XOR<Prisma.BoardUpdateWithoutFocusConfigInput, Prisma.BoardUncheckedUpdateWithoutFocusConfigInput>
+}
+
+export type BoardUpdateWithoutFocusConfigInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.StringFieldUpdateOperationsInput | string
+  ticketKeyPrefixes?: Prisma.BoardUpdateticketKeyPrefixesInput | string[]
+  hiddenSystemFields?: Prisma.BoardUpdatehiddenSystemFieldsInput | string[]
+  columnLayout?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  groups?: Prisma.GroupUpdateManyWithoutBoardNestedInput
+  projects?: Prisma.ProjectUpdateManyWithoutBoardNestedInput
+  columns?: Prisma.BoardColumnUpdateManyWithoutBoardNestedInput
+  automations?: Prisma.AutomationRuleUpdateManyWithoutBoardNestedInput
+  boardJiraSources?: Prisma.BoardJiraSourceUpdateManyWithoutBoardNestedInput
+  boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
+  boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
+  statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
+  accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
+  views?: Prisma.BoardViewUpdateManyWithoutBoardNestedInput
+  userPrefs?: Prisma.UserBoardPrefUpdateManyWithoutBoardNestedInput
+  syncExclusions?: Prisma.BoardSyncExclusionUpdateManyWithoutBoardNestedInput
+  roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUpdateManyWithoutBoardNestedInput
+  calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
+  comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
+  notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
+  calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
+  advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutBoardsNestedInput
+}
+
+export type BoardUncheckedUpdateWithoutFocusConfigInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.StringFieldUpdateOperationsInput | string
+  ticketKeyPrefixes?: Prisma.BoardUpdateticketKeyPrefixesInput | string[]
+  hiddenSystemFields?: Prisma.BoardUpdatehiddenSystemFieldsInput | string[]
+  columnLayout?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  groups?: Prisma.GroupUncheckedUpdateManyWithoutBoardNestedInput
+  projects?: Prisma.ProjectUncheckedUpdateManyWithoutBoardNestedInput
+  columns?: Prisma.BoardColumnUncheckedUpdateManyWithoutBoardNestedInput
+  automations?: Prisma.AutomationRuleUncheckedUpdateManyWithoutBoardNestedInput
+  boardJiraSources?: Prisma.BoardJiraSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
+  statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
+  accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
+  views?: Prisma.BoardViewUncheckedUpdateManyWithoutBoardNestedInput
+  userPrefs?: Prisma.UserBoardPrefUncheckedUpdateManyWithoutBoardNestedInput
+  syncExclusions?: Prisma.BoardSyncExclusionUncheckedUpdateManyWithoutBoardNestedInput
+  roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUncheckedUpdateManyWithoutBoardNestedInput
+  calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
+  comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
+  notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
+  calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
+  advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
+}
+
+export type BoardCreateWithoutFocusEpicsInput = {
+  id?: string
+  name: string
+  description?: string | null
+  kind?: string
+  ticketKeyPrefixes?: Prisma.BoardCreateticketKeyPrefixesInput | string[]
+  hiddenSystemFields?: Prisma.BoardCreatehiddenSystemFieldsInput | string[]
+  columnLayout?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  groups?: Prisma.GroupCreateNestedManyWithoutBoardInput
+  projects?: Prisma.ProjectCreateNestedManyWithoutBoardInput
+  columns?: Prisma.BoardColumnCreateNestedManyWithoutBoardInput
+  automations?: Prisma.AutomationRuleCreateNestedManyWithoutBoardInput
+  boardJiraSources?: Prisma.BoardJiraSourceCreateNestedManyWithoutBoardInput
+  boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
+  boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
+  statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
+  accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
+  views?: Prisma.BoardViewCreateNestedManyWithoutBoardInput
+  userPrefs?: Prisma.UserBoardPrefCreateNestedManyWithoutBoardInput
+  syncExclusions?: Prisma.BoardSyncExclusionCreateNestedManyWithoutBoardInput
+  roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionCreateNestedManyWithoutBoardInput
+  calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
+  comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
+  notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
+  advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
+  organization: Prisma.OrganizationCreateNestedOneWithoutBoardsInput
+}
+
+export type BoardUncheckedCreateWithoutFocusEpicsInput = {
+  id?: string
+  name: string
+  description?: string | null
+  kind?: string
+  ticketKeyPrefixes?: Prisma.BoardCreateticketKeyPrefixesInput | string[]
+  hiddenSystemFields?: Prisma.BoardCreatehiddenSystemFieldsInput | string[]
+  columnLayout?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  organizationId: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  groups?: Prisma.GroupUncheckedCreateNestedManyWithoutBoardInput
+  projects?: Prisma.ProjectUncheckedCreateNestedManyWithoutBoardInput
+  columns?: Prisma.BoardColumnUncheckedCreateNestedManyWithoutBoardInput
+  automations?: Prisma.AutomationRuleUncheckedCreateNestedManyWithoutBoardInput
+  boardJiraSources?: Prisma.BoardJiraSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
+  statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
+  accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
+  views?: Prisma.BoardViewUncheckedCreateNestedManyWithoutBoardInput
+  userPrefs?: Prisma.UserBoardPrefUncheckedCreateNestedManyWithoutBoardInput
+  syncExclusions?: Prisma.BoardSyncExclusionUncheckedCreateNestedManyWithoutBoardInput
+  roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUncheckedCreateNestedManyWithoutBoardInput
+  calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
+  comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
+  notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
+  advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
+}
+
+export type BoardCreateOrConnectWithoutFocusEpicsInput = {
+  where: Prisma.BoardWhereUniqueInput
+  create: Prisma.XOR<Prisma.BoardCreateWithoutFocusEpicsInput, Prisma.BoardUncheckedCreateWithoutFocusEpicsInput>
+}
+
+export type BoardUpsertWithoutFocusEpicsInput = {
+  update: Prisma.XOR<Prisma.BoardUpdateWithoutFocusEpicsInput, Prisma.BoardUncheckedUpdateWithoutFocusEpicsInput>
+  create: Prisma.XOR<Prisma.BoardCreateWithoutFocusEpicsInput, Prisma.BoardUncheckedCreateWithoutFocusEpicsInput>
+  where?: Prisma.BoardWhereInput
+}
+
+export type BoardUpdateToOneWithWhereWithoutFocusEpicsInput = {
+  where?: Prisma.BoardWhereInput
+  data: Prisma.XOR<Prisma.BoardUpdateWithoutFocusEpicsInput, Prisma.BoardUncheckedUpdateWithoutFocusEpicsInput>
+}
+
+export type BoardUpdateWithoutFocusEpicsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.StringFieldUpdateOperationsInput | string
+  ticketKeyPrefixes?: Prisma.BoardUpdateticketKeyPrefixesInput | string[]
+  hiddenSystemFields?: Prisma.BoardUpdatehiddenSystemFieldsInput | string[]
+  columnLayout?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  groups?: Prisma.GroupUpdateManyWithoutBoardNestedInput
+  projects?: Prisma.ProjectUpdateManyWithoutBoardNestedInput
+  columns?: Prisma.BoardColumnUpdateManyWithoutBoardNestedInput
+  automations?: Prisma.AutomationRuleUpdateManyWithoutBoardNestedInput
+  boardJiraSources?: Prisma.BoardJiraSourceUpdateManyWithoutBoardNestedInput
+  boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
+  boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
+  statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
+  accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
+  views?: Prisma.BoardViewUpdateManyWithoutBoardNestedInput
+  userPrefs?: Prisma.UserBoardPrefUpdateManyWithoutBoardNestedInput
+  syncExclusions?: Prisma.BoardSyncExclusionUpdateManyWithoutBoardNestedInput
+  roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUpdateManyWithoutBoardNestedInput
+  calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
+  comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
+  notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
+  advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutBoardsNestedInput
+}
+
+export type BoardUncheckedUpdateWithoutFocusEpicsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.StringFieldUpdateOperationsInput | string
+  ticketKeyPrefixes?: Prisma.BoardUpdateticketKeyPrefixesInput | string[]
+  hiddenSystemFields?: Prisma.BoardUpdatehiddenSystemFieldsInput | string[]
+  columnLayout?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  groups?: Prisma.GroupUncheckedUpdateManyWithoutBoardNestedInput
+  projects?: Prisma.ProjectUncheckedUpdateManyWithoutBoardNestedInput
+  columns?: Prisma.BoardColumnUncheckedUpdateManyWithoutBoardNestedInput
+  automations?: Prisma.AutomationRuleUncheckedUpdateManyWithoutBoardNestedInput
+  boardJiraSources?: Prisma.BoardJiraSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
+  statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
+  accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
+  views?: Prisma.BoardViewUncheckedUpdateManyWithoutBoardNestedInput
+  userPrefs?: Prisma.UserBoardPrefUncheckedUpdateManyWithoutBoardNestedInput
+  syncExclusions?: Prisma.BoardSyncExclusionUncheckedUpdateManyWithoutBoardNestedInput
+  roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUncheckedUpdateManyWithoutBoardNestedInput
+  calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
+  comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
+  notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -4188,6 +4714,8 @@ export type BoardUpdateWithoutOrganizationInput = {
   calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
@@ -4221,6 +4749,8 @@ export type BoardUncheckedUpdateWithoutOrganizationInput = {
   calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
   comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
   notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
   calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
   advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
   advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
@@ -4262,6 +4792,7 @@ export type BoardCountOutputType = {
   calendarEvents: number
   comparisonMemberships: number
   notificationSettings: number
+  focusEpics: number
   advisorSessions: number
   advisorChangeSets: number
 }
@@ -4285,6 +4816,7 @@ export type BoardCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.
   calendarEvents?: boolean | BoardCountOutputTypeCountCalendarEventsArgs
   comparisonMemberships?: boolean | BoardCountOutputTypeCountComparisonMembershipsArgs
   notificationSettings?: boolean | BoardCountOutputTypeCountNotificationSettingsArgs
+  focusEpics?: boolean | BoardCountOutputTypeCountFocusEpicsArgs
   advisorSessions?: boolean | BoardCountOutputTypeCountAdvisorSessionsArgs
   advisorChangeSets?: boolean | BoardCountOutputTypeCountAdvisorChangeSetsArgs
 }
@@ -4428,6 +4960,13 @@ export type BoardCountOutputTypeCountNotificationSettingsArgs<ExtArgs extends ru
 /**
  * BoardCountOutputType without action
  */
+export type BoardCountOutputTypeCountFocusEpicsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.FocusEpicWhereInput
+}
+
+/**
+ * BoardCountOutputType without action
+ */
 export type BoardCountOutputTypeCountAdvisorSessionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.AdvisorSessionWhereInput
 }
@@ -4469,6 +5008,8 @@ export type BoardSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   calendarEvents?: boolean | Prisma.Board$calendarEventsArgs<ExtArgs>
   comparisonMemberships?: boolean | Prisma.Board$comparisonMembershipsArgs<ExtArgs>
   notificationSettings?: boolean | Prisma.Board$notificationSettingsArgs<ExtArgs>
+  focusConfig?: boolean | Prisma.Board$focusConfigArgs<ExtArgs>
+  focusEpics?: boolean | Prisma.Board$focusEpicsArgs<ExtArgs>
   calendarSource?: boolean | Prisma.Board$calendarSourceArgs<ExtArgs>
   advisorSessions?: boolean | Prisma.Board$advisorSessionsArgs<ExtArgs>
   advisorChangeSets?: boolean | Prisma.Board$advisorChangeSetsArgs<ExtArgs>
@@ -4537,6 +5078,8 @@ export type BoardInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   calendarEvents?: boolean | Prisma.Board$calendarEventsArgs<ExtArgs>
   comparisonMemberships?: boolean | Prisma.Board$comparisonMembershipsArgs<ExtArgs>
   notificationSettings?: boolean | Prisma.Board$notificationSettingsArgs<ExtArgs>
+  focusConfig?: boolean | Prisma.Board$focusConfigArgs<ExtArgs>
+  focusEpics?: boolean | Prisma.Board$focusEpicsArgs<ExtArgs>
   calendarSource?: boolean | Prisma.Board$calendarSourceArgs<ExtArgs>
   advisorSessions?: boolean | Prisma.Board$advisorSessionsArgs<ExtArgs>
   advisorChangeSets?: boolean | Prisma.Board$advisorChangeSetsArgs<ExtArgs>
@@ -4571,6 +5114,8 @@ export type $BoardPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     calendarEvents: Prisma.$BoardCalendarEventPayload<ExtArgs>[]
     comparisonMemberships: Prisma.$ComparisonMemberPayload<ExtArgs>[]
     notificationSettings: Prisma.$BoardNotificationSettingPayload<ExtArgs>[]
+    focusConfig: Prisma.$FocusConfigPayload<ExtArgs> | null
+    focusEpics: Prisma.$FocusEpicPayload<ExtArgs>[]
     calendarSource: Prisma.$BoardCalendarSourcePayload<ExtArgs> | null
     advisorSessions: Prisma.$AdvisorSessionPayload<ExtArgs>[]
     advisorChangeSets: Prisma.$AdvisorChangeSetPayload<ExtArgs>[]
@@ -4999,6 +5544,8 @@ export interface Prisma__BoardClient<T, Null = never, ExtArgs extends runtime.Ty
   calendarEvents<T extends Prisma.Board$calendarEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$calendarEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardCalendarEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   comparisonMemberships<T extends Prisma.Board$comparisonMembershipsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$comparisonMembershipsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ComparisonMemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   notificationSettings<T extends Prisma.Board$notificationSettingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$notificationSettingsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardNotificationSettingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  focusConfig<T extends Prisma.Board$focusConfigArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$focusConfigArgs<ExtArgs>>): Prisma.Prisma__FocusConfigClient<runtime.Types.Result.GetResult<Prisma.$FocusConfigPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  focusEpics<T extends Prisma.Board$focusEpicsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$focusEpicsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FocusEpicPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   calendarSource<T extends Prisma.Board$calendarSourceArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$calendarSourceArgs<ExtArgs>>): Prisma.Prisma__BoardCalendarSourceClient<runtime.Types.Result.GetResult<Prisma.$BoardCalendarSourcePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   advisorSessions<T extends Prisma.Board$advisorSessionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$advisorSessionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AdvisorSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   advisorChangeSets<T extends Prisma.Board$advisorChangeSetsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$advisorChangeSetsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AdvisorChangeSetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -5872,6 +6419,49 @@ export type Board$notificationSettingsArgs<ExtArgs extends runtime.Types.Extensi
   take?: number
   skip?: number
   distinct?: Prisma.BoardNotificationSettingScalarFieldEnum | Prisma.BoardNotificationSettingScalarFieldEnum[]
+}
+
+/**
+ * Board.focusConfig
+ */
+export type Board$focusConfigArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FocusConfig
+   */
+  select?: Prisma.FocusConfigSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FocusConfig
+   */
+  omit?: Prisma.FocusConfigOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FocusConfigInclude<ExtArgs> | null
+  where?: Prisma.FocusConfigWhereInput
+}
+
+/**
+ * Board.focusEpics
+ */
+export type Board$focusEpicsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FocusEpic
+   */
+  select?: Prisma.FocusEpicSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FocusEpic
+   */
+  omit?: Prisma.FocusEpicOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FocusEpicInclude<ExtArgs> | null
+  where?: Prisma.FocusEpicWhereInput
+  orderBy?: Prisma.FocusEpicOrderByWithRelationInput | Prisma.FocusEpicOrderByWithRelationInput[]
+  cursor?: Prisma.FocusEpicWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.FocusEpicScalarFieldEnum | Prisma.FocusEpicScalarFieldEnum[]
 }
 
 /**

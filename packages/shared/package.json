@@ -6,16 +6,20 @@
   "//type": "ESM, like every other Node-executed package here. As CJS this barrel reached apps/api and apps/worker (both type: module) through Node's CJS-ESM interop, where cjs-module-lexer has to recover the named exports from tsx's transpiled output. Node 20 manages it; Node 24 recovers NONE of the 487, collapsing the namespace to `default` + `module.exports`, so every `import { X } from '@deckgauge/shared'` fails at instantiation — 108 of them across the two apps. The images pin node:20-slim, which is the only reason staging boots. Guarded by apps/api/src/timesheet/shared-esm-exports.test.ts.",
   "type": "module",
   "main": "./src/index.ts",
+  "//exports-focus": "`./focus/fingerprint.js` is a SERVER-ONLY subpath: it imports node:crypto, and apps/web pulls the root barrel '.' into client components. It is kept in its own module (not beside normaliseTitle, which merge-task-sets needs and which IS on the barrel) so nothing reachable from the barrel drags node:crypto into the web build. Guarded by packages/shared/src/focus/server-only-boundary.test.ts.",
   "exports": {
     ".": "./src/index.ts",
     "./jira-config": "./src/jira-config.ts",
-    "./azure-devops-config": "./src/azure-devops-config.ts"
+    "./azure-devops-config": "./src/azure-devops-config.ts",
+    "./focus/fingerprint.js": "./src/focus/fingerprint.ts",
+    "./focus": "./src/focus/index.ts"
   },
   "scripts": {
     "build": "tsc --build --force",
     "test": "vitest run --passWithNoTests",
     "test:integration": "vitest run src/__tests__/jira-cloud-adapter.integration.test.ts",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.typecheck.json"
   },
   "dependencies": {
     "js-yaml": "^4.1.1",

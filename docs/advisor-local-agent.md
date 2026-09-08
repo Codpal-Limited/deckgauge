@@ -297,8 +297,56 @@ local agent drive Deckgauge questions actually exposes:
    token as a command-line argument (`--header 'Authorization: Bearer …'`),
    readable by any other user on the host via `ps`. That mattered a lot on the
    browser-auth path, where the token is your **live session JWT** —
-   authenticating as you against the *whole* API, for the realm's
-   `"access.token.lifespan": "86400"` (24h), not just `/mcp`.
+   authenticating as you against the *whole* API, not just `/mcp`.
+
+   The size of that exposure is the token's own lifetime, and it used to be a
+   day: the `deckgauge-web` CLIENT pinned `"access.token.lifespan": "86400"`
+   (24h), overriding the realm. That override is gone — the client now inherits
+   the realm's ~5 minutes (see `planning/STATE.md`, 2026-09-07) — which narrows
+   the window sharply but does not close it, and does nothing for the `stdio`
+   path described below.
+
+   **How a rotation reaches a live agent.** With the 5-minute token, NextAuth
+   mints a new one every few minutes while the panel is open, and
+   `useLocalBridge` re-sends `authenticate` on each change — it must, because
+   the agent carries the token on every `/mcp` call. Two things keep that from
+   disturbing the session:
+
+   - **It is applied lazily**, just before the next `ask()`, so a panel left
+     open costs nothing and a turn already streaming is never interrupted.
+     Several rotations during a quiet spell collapse into one.
+   - **It is applied in place** when the agent advertises the `loadSession`
+     capability: `session/load` restores the conversation AND connects to the
+     `mcpServers` the request carries, so the credential swaps while the
+     conversation survives.
+
+   Both adapters this package pins advertise `loadSession: true` — grepped from
+   the installed builds of `@agentclientprotocol/claude-agent-acp` 0.49.0 and
+   `@agentclientprotocol/codex-acp` 1.1.9, so treat it as true of these pinned
+   versions rather than as a guarantee about either agent.
+
+   **"In place" means the adapter SUBPROCESS survives, not that nothing is
+   rebuilt.** On the pinned Claude adapter a session is fingerprinted as
+   `JSON.stringify({ cwd, mcpServers })`, and the token lives inside
+   `mcpServers` — so a rotation always changes the fingerprint, and the adapter
+   always tears its session down and recreates it with `resume:`. The
+   conversation survives because of that `resume:`, and two things follow that
+   are easy to get wrong:
+
+   - The recreated session comes back in the ADAPTER'S default mode, so the
+     bridge re-asserts `CLIENT_DECIDES_MODE_ID` after every reload. Without
+     that, the agent would approve its own tool calls from the first rotation
+     onward and the destructive-tool deny policy would never be consulted again.
+   - A prompt sent while the reload is in flight would land on a session
+     mid-teardown, so the bridge serialises the two: an `ask` joins an in-flight
+     swap instead of racing it.
+
+   An agent WITHOUT it still needs a replacement session, and there the
+   conversation is lost — but only on the first question after a rotation, never
+   mid-answer. That fallback is the DEFAULT in the bridge's own test fakes, so it
+   stays exercised rather than rotting. If you are debugging an advisor session
+   that has forgotten its context, check whether your agent advertises
+   `loadSession`.
 
    Agents that advertise the http MCP transport (Claude Code's adapter does)
    now hold the `/mcp` connection themselves, with the token as a real request

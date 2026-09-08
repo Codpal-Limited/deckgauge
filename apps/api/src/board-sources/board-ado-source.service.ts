@@ -51,6 +51,13 @@ export class BoardAdoSourceService {
       defaultSyncedFields?: string[];
       syncWorkItemsToBoard?: boolean;
       useForIntelligence?: boolean;
+      // Repository names to include in engineering-intelligence analytics for
+      // this board's ADO source. Optional so an attach that omits it still
+      // gets `BoardAdoSourceCreateSchema`'s `[]` default rather than failing.
+      intelligenceRepos?: string[];
+      // Area paths to include in engineering-intelligence analytics for this
+      // board's ADO source. Optional for the same reason as intelligenceRepos.
+      intelligenceAreaPaths?: string[];
     },
   ) {
     const sync = await this.prisma.azureDevOpsProjectSync.findFirst({
@@ -75,6 +82,15 @@ export class BoardAdoSourceService {
       defaultSyncedFields: string[];
       syncWorkItemsToBoard: boolean;
       useForIntelligence: boolean;
+      // Repository names to include in engineering-intelligence analytics for
+      // this board's ADO source. `BoardAdoSourcePatchSchema` makes this field
+      // optional (not merely defaulted) so a patch that omits it is passed
+      // through here as an absent key, and `Partial<...>`'s spread into
+      // `data` below leaves any existing selection on the row untouched.
+      intelligenceRepos: string[];
+      // Area paths to include in engineering-intelligence analytics for this
+      // board's ADO source. Same optional/pass-through rule as intelligenceRepos.
+      intelligenceAreaPaths: string[];
     }>,
   ) {
     return this.prisma.boardAdoSource.update({ where: { id }, data: patch });

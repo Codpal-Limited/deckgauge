@@ -28,6 +28,14 @@ export interface PresetWidget {
 export interface Preset {
   presetKey: string;
   viewName: string;
+  /**
+   * The view type the preset creates. Defaults to DASHBOARD, which is what
+   * every preset was before a second one existed.
+   *
+   * This is not cosmetic: a preset whose widgets only render on a FOCUS view
+   * would seed them onto a DASHBOARD and draw nothing, with no error anywhere.
+   */
+  viewType?: 'DASHBOARD' | 'FOCUS';
   widgets: PresetWidget[];
 }
 
@@ -74,21 +82,59 @@ export const ENGINEERING_INTELLIGENCE_PRESET_V1: Preset = {
   ],
 };
 
+
+// Team Focus. A separate preset rather than more rows on the Engineering
+// Intelligence view, because it answers a different question — where a team's
+// attention went and how much of it shipped — and mixing the two would put
+// PR-cycle charts next to a classification ledger.
+//
+//   row 0  : the four headline figures
+//   row 2  : attention split beside the delivery funnel
+//   row 7  : the focus map, full width
+//   row 13 : person by person
+//   row 18 : board coverage beside classification provenance
+//   row 23 : the ledger, then the generated caveats
+export const TEAM_FOCUS_PRESET_V1: Preset = {
+  presetKey: 'team-focus-v1',
+  viewName: 'Team Focus',
+  viewType: 'FOCUS',
+  widgets: [
+    { type: 'FOCUS_ROADMAP_SHARE',   title: 'Roadmap Focus',        layout: { x: 0, y: 0,  w: 3,  h: 2 }, config: { days: 90 } },
+    { type: 'FOCUS_SHIPPED_RATIO',   title: 'Landed in Production', layout: { x: 3, y: 0,  w: 3,  h: 2 }, config: { days: 90 } },
+    { type: 'FOCUS_NEVER_MOVED',     title: 'Never Moved',          layout: { x: 6, y: 0,  w: 3,  h: 2 }, config: { days: 90 } },
+    { type: 'FOCUS_EPIC_COVERAGE',   title: 'Roadmap Epics Touched', layout: { x: 9, y: 0,  w: 3,  h: 2 }, config: { days: 90 } },
+    { type: 'FOCUS_ATTENTION_SPLIT', title: 'Where the Attention Went', layout: { x: 0, y: 2,  w: 7,  h: 5 }, config: { days: 90 } },
+    { type: 'FOCUS_DELIVERY_FUNNEL', title: 'Where the Work Ended Up',  layout: { x: 7, y: 2,  w: 5,  h: 5 }, config: { days: 90 } },
+    { type: 'FOCUS_MAP',             title: 'Focus Map',            layout: { x: 0, y: 7,  w: 12, h: 6 }, config: { days: 90 } },
+    { type: 'FOCUS_SCORECARD',       title: 'Person by Person',     layout: { x: 0, y: 13, w: 12, h: 5 }, config: { days: 90 } },
+    { type: 'FOCUS_BOARD_COVERAGE',  title: 'Board Elements Worked On', layout: { x: 0, y: 18, w: 7,  h: 5 }, config: { days: 90 } },
+    { type: 'FOCUS_PROVENANCE',      title: 'How Work Was Classified',  layout: { x: 7, y: 18, w: 5,  h: 5 }, config: { days: 90 } },
+    { type: 'FOCUS_LEDGER',          title: 'Every Task, and Why',  layout: { x: 0, y: 23, w: 12, h: 7 }, config: { days: 90 } },
+    { type: 'FOCUS_CAVEATS',         title: 'Method & Caveats',     layout: { x: 0, y: 30, w: 12, h: 5 }, config: { days: 90 } },
+  ],
+};
+
 // Static safety net: the preset must reference every widget type the catalogue
 // promised. Catches an editor adding a NEW_WIDGET_TYPES entry but forgetting
 // to wire it into the auto-seeded view.
 const _NEW_WIDGET_TYPES_COVERAGE_GUARD: void = (() => {
-  const presetTypes = new Set(ENGINEERING_INTELLIGENCE_PRESET_V1.widgets.map((w) => w.type));
+  // Across ALL presets, not one. A widget type belongs to exactly one preset,
+  // and the guard's purpose is that no catalogued type is left unreachable —
+  // not that every preset carries every type.
+  const presetTypes = new Set(
+    [ENGINEERING_INTELLIGENCE_PRESET_V1, TEAM_FOCUS_PRESET_V1].flatMap((p) =>
+      p.widgets.map((w) => w.type)
+    )
+  );
   const missing = NEW_WIDGET_TYPES.filter((t) => !presetTypes.has(t));
   if (missing.length > 0) {
-    throw new Error(
-      `ENGINEERING_INTELLIGENCE_PRESET_V1 is missing widgets: ${missing.join(', ')}`
-    );
+    throw new Error(`No preset seeds widget types: ${missing.join(', ')}`);
   }
 })();
 
 const PRESETS_BY_KEY: Record<string, Preset> = {
   [ENGINEERING_INTELLIGENCE_PRESET_V1.presetKey]: ENGINEERING_INTELLIGENCE_PRESET_V1,
+  [TEAM_FOCUS_PRESET_V1.presetKey]: TEAM_FOCUS_PRESET_V1,
 };
 
 export class PresetService {
@@ -126,7 +172,7 @@ export class PresetService {
       const view = await tx.boardView.create({
         data: {
           boardId,
-          type: 'DASHBOARD',
+          type: preset.viewType ?? 'DASHBOARD',
           name: preset.viewName,
           presetKey: preset.presetKey,
         },

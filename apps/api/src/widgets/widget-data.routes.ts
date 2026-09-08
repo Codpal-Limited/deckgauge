@@ -74,6 +74,18 @@ const WIDGET_METHOD_MAP: Partial<Record<string, keyof WidgetDataService>> = {
   // P6 — multi-board comparison widgets. The `:boardId` route slot carries the
   // Comparison id; each method fans an existing single-board method out
   // over the comparison's board set (comparison_members).
+  FOCUS_ROADMAP_SHARE: 'getFocusRoadmapShare',
+  FOCUS_SHIPPED_RATIO: 'getFocusShippedRatio',
+  FOCUS_NEVER_MOVED: 'getFocusNeverMoved',
+  FOCUS_EPIC_COVERAGE: 'getFocusEpicCoverage',
+  FOCUS_ATTENTION_SPLIT: 'getFocusAttentionSplit',
+  FOCUS_DELIVERY_FUNNEL: 'getFocusDeliveryFunnel',
+  FOCUS_MAP: 'getFocusMap',
+  FOCUS_SCORECARD: 'getFocusScorecard',
+  FOCUS_BOARD_COVERAGE: 'getFocusBoardCoverage',
+  FOCUS_PROVENANCE: 'getFocusProvenance',
+  FOCUS_LEDGER: 'getFocusLedger',
+  FOCUS_CAVEATS: 'getFocusCaveats',
   COMPARE_REVIEW_QUALITY: 'getCompareReviewQuality',
   COMPARE_FLOW: 'getCompareFlow',
   COMPARE_DELIVERY: 'getCompareDelivery',
@@ -148,9 +160,19 @@ export async function widgetDataRoutes(
     prisma,
     clickhouse: ch,
     singleUser = false,
-  }: { prisma: PrismaClient; clickhouse?: ClickHouseClient; singleUser?: boolean }
+    // Injectable so `server.ts` can hand the SAME instance to the focus
+    // stage-map route, which evicts a board's entries after a save. Defaults to
+    // a fresh cache per registration — a module-level singleton would make this
+    // plugin stateful across registrations, and did: a cached entry from one
+    // test case served the next one in the same file.
+    cache = new WidgetCache(60_000),
+  }: {
+    prisma: PrismaClient;
+    clickhouse?: ClickHouseClient;
+    singleUser?: boolean;
+    cache?: WidgetCache;
+  }
 ) {
-  const cache = new WidgetCache(60_000);
 
   // Fail fast: surface any persisted widgetType the API no longer knows about
   // (e.g. orphaned by a rename). Throws during plugin init, aborting server startup.

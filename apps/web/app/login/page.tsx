@@ -2,10 +2,12 @@
 
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
+import { SESSION_EXPIRED_REASON } from '../utils/session-expired-redirect';
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') ?? '/';
+  const sessionExpired = searchParams.get('reason') === SESSION_EXPIRED_REASON;
 
   return (
     <div className="min-h-screen flex flex-col bg-surface-0">
@@ -32,6 +34,15 @@ export default function LoginPage() {
 
           <h1 className="text-lg font-semibold text-slate-800">Sign in to Deckgauge</h1>
           <p className="mt-1 text-sm text-slate-500">Manage your engineering portfolio</p>
+
+          {sessionExpired && (
+            <p
+              role="status"
+              className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+            >
+              Your session expired. Sign in again to pick up where you left off.
+            </p>
+          )}
 
           <div className="mt-6 space-y-3">
             <button

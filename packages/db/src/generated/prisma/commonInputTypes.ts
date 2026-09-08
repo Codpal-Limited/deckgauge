@@ -647,6 +647,40 @@ export type EnumNotificationKindWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedEnumNotificationKindFilter<$PrismaModel>
 }
 
+export type EnumFocusClassFilter<$PrismaModel = never> = {
+  equals?: $Enums.FocusClass | Prisma.EnumFocusClassFieldRefInput<$PrismaModel>
+  in?: $Enums.FocusClass[] | Prisma.ListEnumFocusClassFieldRefInput<$PrismaModel>
+  notIn?: $Enums.FocusClass[] | Prisma.ListEnumFocusClassFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumFocusClassFilter<$PrismaModel> | $Enums.FocusClass
+}
+
+export type EnumFocusVerdictSourceFilter<$PrismaModel = never> = {
+  equals?: $Enums.FocusVerdictSource | Prisma.EnumFocusVerdictSourceFieldRefInput<$PrismaModel>
+  in?: $Enums.FocusVerdictSource[] | Prisma.ListEnumFocusVerdictSourceFieldRefInput<$PrismaModel>
+  notIn?: $Enums.FocusVerdictSource[] | Prisma.ListEnumFocusVerdictSourceFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumFocusVerdictSourceFilter<$PrismaModel> | $Enums.FocusVerdictSource
+}
+
+export type EnumFocusClassWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.FocusClass | Prisma.EnumFocusClassFieldRefInput<$PrismaModel>
+  in?: $Enums.FocusClass[] | Prisma.ListEnumFocusClassFieldRefInput<$PrismaModel>
+  notIn?: $Enums.FocusClass[] | Prisma.ListEnumFocusClassFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumFocusClassWithAggregatesFilter<$PrismaModel> | $Enums.FocusClass
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumFocusClassFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumFocusClassFilter<$PrismaModel>
+}
+
+export type EnumFocusVerdictSourceWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.FocusVerdictSource | Prisma.EnumFocusVerdictSourceFieldRefInput<$PrismaModel>
+  in?: $Enums.FocusVerdictSource[] | Prisma.ListEnumFocusVerdictSourceFieldRefInput<$PrismaModel>
+  notIn?: $Enums.FocusVerdictSource[] | Prisma.ListEnumFocusVerdictSourceFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumFocusVerdictSourceWithAggregatesFilter<$PrismaModel> | $Enums.FocusVerdictSource
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumFocusVerdictSourceFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumFocusVerdictSourceFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -1215,6 +1249,40 @@ export type NestedEnumNotificationKindWithAggregatesFilter<$PrismaModel = never>
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumNotificationKindFilter<$PrismaModel>
   _max?: Prisma.NestedEnumNotificationKindFilter<$PrismaModel>
+}
+
+export type NestedEnumFocusClassFilter<$PrismaModel = never> = {
+  equals?: $Enums.FocusClass | Prisma.EnumFocusClassFieldRefInput<$PrismaModel>
+  in?: $Enums.FocusClass[] | Prisma.ListEnumFocusClassFieldRefInput<$PrismaModel>
+  notIn?: $Enums.FocusClass[] | Prisma.ListEnumFocusClassFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumFocusClassFilter<$PrismaModel> | $Enums.FocusClass
+}
+
+export type NestedEnumFocusVerdictSourceFilter<$PrismaModel = never> = {
+  equals?: $Enums.FocusVerdictSource | Prisma.EnumFocusVerdictSourceFieldRefInput<$PrismaModel>
+  in?: $Enums.FocusVerdictSource[] | Prisma.ListEnumFocusVerdictSourceFieldRefInput<$PrismaModel>
+  notIn?: $Enums.FocusVerdictSource[] | Prisma.ListEnumFocusVerdictSourceFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumFocusVerdictSourceFilter<$PrismaModel> | $Enums.FocusVerdictSource
+}
+
+export type NestedEnumFocusClassWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.FocusClass | Prisma.EnumFocusClassFieldRefInput<$PrismaModel>
+  in?: $Enums.FocusClass[] | Prisma.ListEnumFocusClassFieldRefInput<$PrismaModel>
+  notIn?: $Enums.FocusClass[] | Prisma.ListEnumFocusClassFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumFocusClassWithAggregatesFilter<$PrismaModel> | $Enums.FocusClass
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumFocusClassFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumFocusClassFilter<$PrismaModel>
+}
+
+export type NestedEnumFocusVerdictSourceWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.FocusVerdictSource | Prisma.EnumFocusVerdictSourceFieldRefInput<$PrismaModel>
+  in?: $Enums.FocusVerdictSource[] | Prisma.ListEnumFocusVerdictSourceFieldRefInput<$PrismaModel>
+  notIn?: $Enums.FocusVerdictSource[] | Prisma.ListEnumFocusVerdictSourceFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumFocusVerdictSourceWithAggregatesFilter<$PrismaModel> | $Enums.FocusVerdictSource
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumFocusVerdictSourceFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumFocusVerdictSourceFilter<$PrismaModel>
 }
 
 

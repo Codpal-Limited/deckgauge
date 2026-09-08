@@ -12,6 +12,12 @@ import { WidgetEmptyState } from './WidgetEmptyState';
 interface Props {
   boardId: string;
   config: Record<string, unknown>;
+  // Task 13 fix round 1: the drill-through below opens the intelligence SQL
+  // console, which the API gates at ADMIN. Undefined/false withholds
+  // `onRowClick` entirely (not just a no-op) so SortableTable also drops the
+  // pointer cursor and hover highlight — a non-admin sees no affordance, not
+  // a dead click.
+  isAdmin?: boolean;
 }
 
 interface Row {
@@ -34,7 +40,7 @@ const TIER_TEXT: Record<Tier, string> = {
   low: 'text-rose-700',
 };
 
-export default function MergeFrequencyPerDevWidget({ boardId, config }: Props) {
+export default function MergeFrequencyPerDevWidget({ boardId, config, isAdmin }: Props) {
   const merged = useWidgetConfigWithBoardPeriod(config);
   const router = useRouter();
   const search = useSearchParams();
@@ -46,17 +52,20 @@ export default function MergeFrequencyPerDevWidget({ boardId, config }: Props) {
     <SortableTable<Row>
       rows={data.rows}
       defaultSortKey="prs_merged"
-      onRowClick={(r) =>
-        openIntelligenceConsole(
-          router,
-          boardId,
-          {
-            widgetType: 'MERGE_FREQUENCY_PER_DEV',
-            config: merged,
-            filter: { dimension: 'author', value: r.author },
-          },
-          search?.toString() ?? ''
-        )
+      onRowClick={
+        isAdmin
+          ? (r) =>
+              openIntelligenceConsole(
+                router,
+                boardId,
+                {
+                  widgetType: 'MERGE_FREQUENCY_PER_DEV',
+                  config: merged,
+                  filter: { dimension: 'author', value: r.author },
+                },
+                search?.toString() ?? ''
+              )
+          : undefined
       }
       columns={[
         { key: 'author', label: 'Developer', sortable: true },

@@ -6,6 +6,17 @@ import { resolvePeriod } from './period.js';
 
 const DEFAULT_WEEKS = 12;
 
+// The point identity a reader needs to act on an outlier: `repo #number` is what
+// the provider itself displays and what a search box accepts, where the union's
+// `id` is an internal identifier nobody can look up. `subtitle` carries the PR
+// title so the tooltip can say which change the dot is, not just which number.
+//
+// `href` is still a placeholder. A real one needs the provider's WEB host, which
+// ClickHouse does not hold — only the connection's API baseUrl in Postgres does
+// (and per instance_id, since a board can span two GitHub instances). Building
+// it belongs in the service layer, where Prisma is in scope; until then this
+// widget's dot click drills by author and never reads href.
+
 export function buildPrCycleTimeScatterSql({ config, scope }: BuilderInputs): BuiltSql | null {
   const prs = pullRequestsUnion(scope);
   if (prs.sql === null) return null;
@@ -19,7 +30,8 @@ export function buildPrCycleTimeScatterSql({ config, scope }: BuilderInputs): Bu
       SELECT
         toString(toDate(merged_at))           AS x,
         cycle_time_hours                      AS y,
-        id                                    AS label,
+        concat(repo, ' #', toString(number))  AS label,
+        title                                 AS subtitle,
         concat('#', toString(id))             AS href,
         author                                AS author
       FROM prs

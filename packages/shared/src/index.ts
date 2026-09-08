@@ -92,7 +92,12 @@ export {
   JiraAuthError,
 } from "./jira-cloud-adapter.js";
 
-export { stripJqlOrderBy, buildFilteredKeyJql } from "./jira-jql.js";
+export {
+  stripJqlOrderBy,
+  buildFilteredKeyJql,
+  hasActiveJqlFilter,
+  JQL_FILTER_MATCHES_NOTHING_KEY,
+} from "./jira-jql.js";
 
 export {
   JiraConfigSchema,
@@ -121,12 +126,14 @@ export {
   FieldValueSchema,
   UpsertFieldValueInputSchema,
   UpsertFieldValuesInputSchema,
+  BulkUpsertFieldValuesInputSchema,
   type ColumnType,
   type BoardColumn,
   type CreateColumnInput,
   type UpdateColumnInput,
   type FieldValue,
   type UpsertFieldValueInput,
+  type BulkUpsertFieldValuesInput,
 } from "./column-schemas.js";
 
 export {
@@ -510,10 +517,18 @@ export {
   AdoProjectSyncSchema,
   BoardAdoSourceCreateSchema,
   BoardAdoSourcePatchSchema,
+  AdoSourceRepositorySchema,
+  AdoSourceRepositoriesResponseSchema,
+  AdoAreaPathSchema,
+  AdoAreaPathsResponseSchema,
   GitLabProjectSyncSchema,
   BoardGitLabSourceCreateSchema,
   BoardGitLabSourcePatchSchema,
   type JiraProjectSyncDto,
+  type AdoSourceRepositoryDto,
+  type AdoSourceRepositoriesResponseDto,
+  type AdoAreaPathDto,
+  type AdoAreaPathsResponseDto,
 } from './connections-schemas.js';
 
 export {
@@ -721,6 +736,8 @@ export {
   DONE_STATUS_NAMES,
   resolveEpicKey,
   buildEpicBreakdown,
+  buildIssueTimeline,
+  summarizeByStatus,
   NON_IN_PROGRESS_STATUSES,
 } from './timesheet/index.js';
 export type {
@@ -742,6 +759,9 @@ export type {
   EpicBreakdownInput,
   EpicEmployeeSeconds,
   RetiredProjectMap,
+  TimelineSegment,
+  StatusDuration,
+  BuildIssueTimelineInput,
 } from './timesheet/index.js';
 
 // Timesheet API schemas (Phase 2b-ii) — request/response validation.
@@ -765,6 +785,9 @@ export {
   EpicEmployeeRowSchema,
   EpicBreakdownResponseSchema,
   IntervalDtoSchema,
+  TimelineSegmentDtoSchema,
+  StatusDurationDtoSchema,
+  IssueEpicDtoSchema,
   IntervalsResponseSchema,
   StatusRuleDtoSchema,
   PutStatusRulesSchema,
@@ -786,6 +809,9 @@ export type {
   EpicEmployeeRow,
   EpicBreakdownResponse,
   IntervalsResponse,
+  TimelineSegmentDto,
+  StatusDurationDto,
+  IssueEpicDto,
   StatusRuleDto,
   PutStatusRules,
   OrgTreeTimesheetConfigDto,
@@ -1103,3 +1129,11 @@ export {
   unsupportedReasonFor,
   extractJiraFieldValue,
 } from "./jira-field-extract.js";
+
+// Focus view. Re-exports ./focus/index.js, which deliberately EXCLUDES
+// ./focus/fingerprint.js — that module imports node:crypto, and apps/web pulls
+// this barrel into client components. Server code imports the fingerprint
+// helper from the "@deckgauge/shared/focus/fingerprint.js" subpath instead.
+// (`normalise-title.js` IS on the barrel and is safe: it is pure, which is
+// exactly why the fingerprint was split out of it.)
+export * from "./focus/index.js";

@@ -185,6 +185,11 @@ export type JiraProjectSync = Prisma.JiraProjectSyncModel
  */
 export type BoardJiraSource = Prisma.BoardJiraSourceModel
 /**
+ * Model BoardJiraSourceKey
+ * 
+ */
+export type BoardJiraSourceKey = Prisma.BoardJiraSourceKeyModel
+/**
  * Model GitHubRepoSync
  * 
  */
@@ -411,3 +416,36 @@ export type NotificationPreference = Prisma.NotificationPreferenceModel
  * absent means ALL.
  */
 export type BoardNotificationSetting = Prisma.BoardNotificationSettingModel
+/**
+ * Model FocusVerdict
+ * One classification of one task, and the evidence for it.
+ * 
+ * Keyed by CONTENT, not by id. `fingerprint` is a hash of the task's normalised
+ * title + description, so a human override survives the Jira/ADO de-duplication
+ * (roughly half the tasks in a window exist in both systems under different
+ * ids), an id change, and the next window. An id-keyed verdict silently loses
+ * the override on exactly the tasks people most want to contest.
+ * 
+ * Org-scoped rather than board-scoped for the same reason: a task that moves
+ * between boards keeps the judgement someone already made about it.
+ * 
+ * Doubles as the model cache — an unchanged task is never re-classified, which
+ * is what bounds LLM spend to genuinely new work.
+ */
+export type FocusVerdict = Prisma.FocusVerdictModel
+/**
+ * Model FocusConfig
+ * Per-board tuning for the Focus view. Every field has a working default in
+ * `@deckgauge/shared`, so a board with no row here still renders — the view is
+ * zero-configuration on first open, and this row only ever refines it.
+ */
+export type FocusConfig = Prisma.FocusConfigModel
+/**
+ * Model FocusEpic
+ * One epic in a board's curated roadmap set — the DENOMINATOR for coverage.
+ * 
+ * Curated rather than queried live, for two reasons: a live query lets a team
+ * improve its coverage number by not linking epics, and every stray epic anyone
+ * creates dilutes the denominator. Seeded from the source, then confirmed.
+ */
+export type FocusEpic = Prisma.FocusEpicModel

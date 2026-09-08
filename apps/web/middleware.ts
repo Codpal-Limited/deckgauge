@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import type { NextAuthRequest } from 'next-auth';
 import { auth } from '@/auth';
 import { isAuthorized } from './lib/is-authorized';
+import { SESSION_EXPIRED_REASON } from './app/utils/session-expired-redirect';
 
 /**
  * Reachable without an account.
@@ -50,6 +51,15 @@ export function handleRequest(req: NextAuthRequest) {
   if (!isPublic(pathname) && !isAuthorized(req.auth)) {
     const url = new URL('/login', req.url);
     url.searchParams.set('callbackUrl', `${pathname}${search}`);
+    // Only when a session EXISTS and its refresh failed. This is the most
+    // common way a signed-in person lands on /login, and without the reason the
+    // bounce is unexplained — the same "something silently wrong" the board
+    // page's 401 redirect exists to remove. Deliberately not set when there is
+    // no session at all: "your session expired" is a lie to a first-time
+    // visitor, and a scary one.
+    if (req.auth?.error === 'RefreshAccessTokenError') {
+      url.searchParams.set('reason', SESSION_EXPIRED_REASON);
+    }
     return NextResponse.redirect(url);
   }
 

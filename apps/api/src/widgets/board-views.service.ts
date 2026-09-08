@@ -3,8 +3,8 @@ import { z } from 'zod';
 
 export const CreateBoardViewSchema = z.object({
   // Comparisons are no longer board views — they are a standalone entity
-  // (see comparison.routes). Boards create only BOARD and DASHBOARD views.
-  type: z.enum(['BOARD', 'DASHBOARD']),
+  // (see comparison.routes). Boards create BOARD, DASHBOARD and FOCUS views.
+  type: z.enum(['BOARD', 'DASHBOARD', 'FOCUS']),
   name: z.string().min(1).max(100),
 });
 

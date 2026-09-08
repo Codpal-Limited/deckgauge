@@ -21,7 +21,8 @@
     "ch:reprovision-organizations": "tsx src/scripts/ch-reprovision-organizations.ts",
     "test:db:reset": "tsx src/scripts/reset-test-database.ts",
     "test": "vitest run --passWithNoTests",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.typecheck.json"
   },
   "dependencies": {
     "@clickhouse/client": "^1.23.1",

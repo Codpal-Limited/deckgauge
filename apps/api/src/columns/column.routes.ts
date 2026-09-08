@@ -5,8 +5,9 @@ import {
   CreateColumnInputSchema,
   UpdateColumnInputSchema,
   UpsertFieldValuesInputSchema,
+  BulkUpsertFieldValuesInputSchema,
 } from "@deckgauge/shared";
-import { board, viaEntity, fromParam } from "../auth/policy.js";
+import { board, viaEntity, fromParam, fromBodyFieldArray } from "../auth/policy.js";
 
 export async function columnRoutes(
   app: FastifyInstance,
@@ -79,6 +80,38 @@ export async function columnRoutes(
       const values = await service.upsertFieldValues(req.params.id, parsed.data);
       if (!values) return reply.status(404).send({ error: "Project not found" });
       return reply.send(values);
+    },
+  );
+
+  // POST /projects/bulk-fields  { ids, values } → { updated, missing }
+  //
+  // The bulk sibling of the route above: editing a custom-column cell while
+  // several rows are selected writes the value to the whole selection. The
+  // board did that with one server action per row, and every one of those
+  // revalidated the board — see the same note on POST /projects/bulk-update
+  // and planning/STATE.md 2026-09-08.
+  //
+  // A stale id denies the whole batch with a 403 before this handler runs, in
+  // multi-user mode — see the long note on POST /projects/bulk-update for why,
+  // and for when the counting below is actually reached.
+  app.post(
+    "/projects/bulk-fields",
+    { config: { policy: board("EDITOR", viaEntity("project", fromBodyFieldArray("ids"))) } },
+    async (req, reply) => {
+      const parsed = BulkUpsertFieldValuesInputSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.flatten() });
+      }
+      let updated = 0;
+      let missing = 0;
+      // Sequential for the same reason as bulk-update: each id is its own
+      // read-then-write over shared board state.
+      for (const id of parsed.data.ids) {
+        const values = await service.upsertFieldValues(id, parsed.data.values);
+        if (values) updated += 1;
+        else missing += 1;
+      }
+      return reply.send({ updated, missing });
     },
   );
 }

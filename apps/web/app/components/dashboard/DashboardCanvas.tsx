@@ -29,6 +29,13 @@ interface DashboardCanvasProps {
   boardId: string;
   viewId: string;
   canEdit: boolean;
+  /**
+   * Task 13 fix round 1: forwarded to every widget so a non-admin does not
+   * see the intelligence-console drill-through affordance (row/point click)
+   * on a widget that has one. Same `isOrganizationAdmin` signal threaded
+   * through `BoardPageContent` — see that component's `isAdmin` prop doc.
+   */
+  isAdmin: boolean;
 }
 
 // Column counts per breakpoint. Only `lg` matches the 12-column geometry a
@@ -37,7 +44,7 @@ const BREAKPOINTS = { lg: 1200, md: 996, sm: 768 } as const;
 const COLS = { lg: 12, md: 8, sm: 4 } as const;
 const DESKTOP_BREAKPOINT = 'lg';
 
-export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardCanvasProps) {
+export default function DashboardCanvas({ boardId, viewId, canEdit, isAdmin }: DashboardCanvasProps) {
   const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
   const [showPicker, setShowPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -340,7 +347,12 @@ export default function DashboardCanvas({ boardId, viewId, canEdit }: DashboardC
                 onRemoved={() => handleRemoved(widget.id)}
               >
                 {WidgetComponent ? (
-                  <WidgetComponent boardId={boardId} config={widget.config} />
+                  <WidgetComponent
+                    boardId={boardId}
+                    config={widget.config}
+                    canEdit={canEdit}
+                    isAdmin={isAdmin}
+                  />
                 ) : (
                   <p className="text-sm text-slate-400">Unknown widget type</p>
                 )}

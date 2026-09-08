@@ -35,6 +35,39 @@ enum CostClassification {
   @@map("cost_classification")
 }
 
+/// What a Focus-view task is doing for the business. A/B/C rather than words so
+/// a relabelling in `FocusConfig.classLabels` never invalidates a stored verdict
+/// or a rule that produced one.
+///
+/// Domain class `D` (non-roadmap, unspecified) is DELIBERATELY absent. It is
+/// produced only by the OPEX branch of `resolveVerdict`, which carries source
+/// `CAPEX`, and CAPEX verdicts are never persisted — the cache is keyed on a
+/// hash of the task's words, so a fact about the BOARD would replay onto any
+/// task with the same title. `toStoredClass` in `focus-data.service.ts` is the
+/// exhaustive switch that keeps it out of this enum.
+enum FocusClass {
+  A            @map("a")
+  B            @map("b")
+  C            @map("c")
+  /// No classifier produced a verdict — most often because no advisor LLM is
+  /// configured. Deliberately NOT a default: a task with no verdict must read as
+  /// unclassified, never as internal-technical.
+  UNCLASSIFIED @map("unclassified")
+
+  @@map("focus_class")
+}
+
+/// Which classifier produced a verdict. Ordered by the precedence the resolver
+/// applies: HUMAN beats CAPEX beats RULE beats MODEL.
+enum FocusVerdictSource {
+  HUMAN @map("human")
+  CAPEX @map("capex")
+  RULE  @map("rule")
+  MODEL @map("model")
+
+  @@map("focus_verdict_source")
+}
+
 enum SyncRunStatus {
   PENDING   @map("pending")
   COMPLETED @map("completed")
@@ -133,6 +166,7 @@ model Organization {
   retiredJiraProjects  RetiredJiraProject[]
   prJiraLinks          PrJiraLink[]
   developerProfiles    DeveloperProfile[]
+  focusVerdicts        FocusVerdict[]
   syncRuns             SyncRun[]
   notifications        Notification[]
   notificationPreferences NotificationPreference[]
@@ -205,6 +239,8 @@ model Board {
   calendarEvents        BoardCalendarEvent[]
   comparisonMemberships ComparisonMember[]
   notificationSettings  BoardNotificationSetting[]
+  focusConfig           FocusConfig?
+  focusEpics            FocusEpic[]
   calendarSource        BoardCalendarSource?
   advisorSessions       AdvisorSession[]
   advisorChangeSets     AdvisorChangeSet[]
@@ -679,6 +715,10 @@ enum BoardViewType {
   DASHBOARD  @map("dashboard")
   ROADMAP    @map("roadmap")
   COMPARISON @map("comparison")
+  /// Team Focus. Rendered by the same dashboard canvas and widget registry as
+  /// DASHBOARD — it is a distinct type because its widget set, its preset and
+  /// its scope requirements differ, not because it needs a new layout engine.
+  FOCUS      @map("focus")
 
   @@map("board_view_type")
 }
@@ -1030,11 +1070,24 @@ model BoardJiraSource {
   board           Board           @relation(fields: [boardId], references: [id], onDelete: Cascade)
   jiraProjectSync JiraProjectSync @relation(fields: [jiraProjectSyncId], references: [id], onDelete: Cascade)
   targetGroup     Group?          @relation(fields: [targetGroupId], references: [id], onDelete: SetNull)
+  filteredKeys    BoardJiraSourceKey[]
 
   @@unique([boardId, jiraProjectSyncId])
   @@index([boardId])
   @@index([jiraProjectSyncId])
   @@map("board_jira_sources")
+}
+
+model BoardJiraSourceKey {
+  boardJiraSourceId String   @map("board_jira_source_id")
+  issueKey          String   @map("issue_key")
+  resolvedAt        DateTime @default(now()) @map("resolved_at")
+
+  boardJiraSource BoardJiraSource @relation(fields: [boardJiraSourceId], references: [id], onDelete: Cascade)
+
+  @@id([boardJiraSourceId, issueKey])
+  @@index([boardJiraSourceId])
+  @@map("board_jira_source_keys")
 }
 
 // ── GitHub ────────────────────────────────────────────────────────────────────
@@ -1238,13 +1291,15 @@ model BoardAdoSource {
   azureDevOpsProjectSyncId String  @map("azure_devops_project_sync_id")
   targetGroupId            String? @map("target_group_id")
 
-  syncWorkItemsToBoard Boolean  @default(true) @map("sync_work_items_to_board")
-  useForIntelligence   Boolean  @default(true) @map("use_for_intelligence")
-  allowedWorkItemTypes String[] @default([]) @map("allowed_work_item_types")
-  wiqlFilter           String?  @map("wiql_filter")
-  fieldMappings        Json     @default("{}") @map("field_mappings")
-  statusMapping        Json     @default("{}") @map("status_mapping")
-  defaultSyncedFields  String[] @default(["name", "status", "owner"]) @map("default_synced_fields")
+  syncWorkItemsToBoard  Boolean  @default(true) @map("sync_work_items_to_board")
+  useForIntelligence    Boolean  @default(true) @map("use_for_intelligence")
+  intelligenceRepos     String[] @default([]) @map("intelligence_repos")
+  intelligenceAreaPaths String[] @default([]) @map("intelligence_area_paths")
+  allowedWorkItemTypes  String[] @default([]) @map("allowed_work_item_types")
+  wiqlFilter            String?  @map("wiql_filter")
+  fieldMappings         Json     @default("{}") @map("field_mappings")
+  statusMapping         Json     @default("{}") @map("status_mapping")
+  defaultSyncedFields   String[] @default(["name", "status", "owner"]) @map("default_synced_fields")
 
   lastPromotedAt DateTime? @map("last_promoted_at")
   createdAt      DateTime  @default(now()) @map("created_at")
@@ -2107,4 +2162,104 @@ model BoardNotificationSetting {
   @@unique([userId, boardId])
   @@index([boardId])
   @@map("board_notification_settings")
+}
+
+/// One classification of one task, and the evidence for it.
+///
+/// Keyed by CONTENT, not by id. `fingerprint` is a hash of the task's normalised
+/// title + description, so a human override survives the Jira/ADO de-duplication
+/// (roughly half the tasks in a window exist in both systems under different
+/// ids), an id change, and the next window. An id-keyed verdict silently loses
+/// the override on exactly the tasks people most want to contest.
+///
+/// Org-scoped rather than board-scoped for the same reason: a task that moves
+/// between boards keeps the judgement someone already made about it.
+///
+/// Doubles as the model cache — an unchanged task is never re-classified, which
+/// is what bounds LLM spend to genuinely new work.
+model FocusVerdict {
+  id             String             @id @default(uuid())
+  organizationId String             @map("organization_id")
+  fingerprint    String             @db.VarChar(64)
+  class          FocusClass
+  /// The roadmap epic this task advances, when the classifier could attribute
+  /// one. Nullable because most tasks advance no epic — and because the source's
+  /// own epic field is too sparse to compute coverage from (12 of 105 on the
+  /// reference window), which is why the classifier emits this at all.
+  epicKey        String?            @map("epic_key") @db.VarChar(64)
+  /// One line, printed in the ledger so the call can be challenged.
+  reason         String             @db.VarChar(400)
+  source         FocusVerdictSource
+  ruleId         String?            @map("rule_id")
+  model          String?            @db.VarChar(128)
+  promptVersion  String?            @map("prompt_version") @db.VarChar(32)
+  decidedBy      String?            @map("decided_by")
+  decidedAt      DateTime           @default(now()) @map("decided_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, fingerprint])
+  @@index([organizationId, source])
+  @@map("focus_verdicts")
+}
+
+/// Per-board tuning for the Focus view. Every field has a working default in
+/// `@deckgauge/shared`, so a board with no row here still renders — the view is
+/// zero-configuration on first open, and this row only ever refines it.
+model FocusConfig {
+  id      String @id @default(uuid())
+  boardId String @unique @map("board_id")
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  /// `{ A: "Roadmap", B: "Defect / operational", C: "Internal technical" }`.
+  /// Labels only — the A/B/C keys are what rules and verdicts store.
+  classLabels   Json @default("{}") @map("class_labels")
+  /// Which source states count as "being worked" for attention days.
+  workingStates Json @default("{}") @map("working_states")
+  /// Source state -> delivery stage. Editable because the merged boundary is
+  /// genuinely arguable for QA and client-review states, which are 14 of the 38
+  /// waiting-to-ship tasks on the reference window.
+  stageMap      Json @default("{}") @map("stage_map")
+
+  /// A bulk migration stamps every imported ticket with the migration date and
+  /// writes a burst of changelog entries at the same instants. Changelog entries
+  /// at or before this instant are import artifacts, not work, and are ignored
+  /// when deciding whether a task moved. Null means no migration to correct for.
+  migrationCutoff DateTime? @map("migration_cutoff")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("focus_configs")
+}
+
+/// One epic in a board's curated roadmap set — the DENOMINATOR for coverage.
+///
+/// Curated rather than queried live, for two reasons: a live query lets a team
+/// improve its coverage number by not linking epics, and every stray epic anyone
+/// creates dilutes the denominator. Seeded from the source, then confirmed.
+model FocusEpic {
+  id      String @id @default(uuid())
+  boardId String @map("board_id")
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  /// The key as the source knows it, e.g. `RDRR-4`.
+  sourceKey String  @map("source_key") @db.VarChar(64)
+  title     String  @db.VarChar(400)
+  /// Groups epics that report as their own programme rather than as part of the
+  /// roadmap headline. Null for an ordinary roadmap epic.
+  programme String? @db.VarChar(128)
+  position  Int     @default(0)
+  /// Kept rather than deleted, so a removed epic does not silently change a
+  /// denominator that someone has already quoted.
+  active    Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([boardId, sourceKey])
+  @@index([boardId, active])
+  @@map("focus_epics")
 }

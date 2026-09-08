@@ -36,9 +36,7 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "protocol": "openid-connect",
-      "attributes": {
-        "access.token.lifespan": "86400"
-      }
+      "attributes": {}
     }
   ],
   "roles": {

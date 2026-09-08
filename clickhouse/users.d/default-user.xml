@@ -1,5 +1,5 @@
 <clickhouse>
-  <!-- Docs: <https://clickhouse.com/docs/en/operations/settings/settings_users/> -->
+  <!-- Docs: <https://clickhouse.com/docs/operations/settings/settings_users/> -->
   <users>
     <!-- Remove default user -->
     <default remove="remove">

@@ -70,6 +70,17 @@ export function hydrateAdo(row: Record<string, unknown>): SourceShape {
     lastSyncedAt: r.azureDevOpsProjectSync?.lastSyncedAt ?? r.lastSyncedAt ?? null,
     syncWorkItemsToBoard: r.syncWorkItemsToBoard ?? true,
     useForIntelligence: r.useForIntelligence ?? true,
+    // Board-source-level: which repositories THIS board's engineering-intelligence
+    // widgets show. Deliberately separate from `connection.syncRepos` below, which
+    // is the shared project sync's ingest scope — do not merge the two. Defaults to
+    // [] for a row predating the migration (or a fixture that omits it), where []
+    // means "all repositories".
+    intelligenceRepos: r.intelligenceRepos ?? [],
+    // Board-source-level: which area paths THIS board's engineering-intelligence
+    // widgets show — the `intelligenceRepos` counterpart for work items (a
+    // repository restriction cannot narrow `ado_work_items`, which has no
+    // repository column). Defaults to [] the same way, meaning "all area paths".
+    intelligenceAreaPaths: r.intelligenceAreaPaths ?? [],
     connection: {
       syncPrs: r.azureDevOpsProjectSync?.syncPrs ?? false,
       syncCommits: r.azureDevOpsProjectSync?.syncCommits ?? false,

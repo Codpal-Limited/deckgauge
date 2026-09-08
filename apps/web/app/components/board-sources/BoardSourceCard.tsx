@@ -66,6 +66,15 @@ export type SourceShape =
       azureDevOpsProjectSyncId: string;
       syncWorkItemsToBoard: boolean;
       useForIntelligence: boolean;
+      // Board-level engineering-intelligence repository scope (Task 12/13).
+      // Distinct from `connection.syncRepos`, which is the shared project
+      // sync's ingest scope — see hydrate.ts's hydrateAdo for the rationale.
+      intelligenceRepos: string[];
+      // Board-level engineering-intelligence area-path scope (Task 9) — the
+      // `intelligenceRepos` counterpart for work items: a repository
+      // restriction cannot narrow `ado_work_items`, which has no repository
+      // column.
+      intelligenceAreaPaths: string[];
       zoneValue: AdoZoneValue;
       connection: ConnectionState;
     })
@@ -220,6 +229,24 @@ export function BoardSourceCard({
   // ADO only: editable draft of the shared project sync's code-sync scope.
   const [draftConnection, setDraftConnection] = useState<ConnectionState>(
     source.provider === 'ado' ? source.connection : { syncPrs: false, syncCommits: false }
+  );
+  // ADO only: the board-level engineering-intelligence repository scope
+  // (Task 13). Owned HERE rather than inside CodeIntelZone/IntelligenceRepoPicker
+  // because that zone only renders while the card is expanded
+  // (`{expanded && ...}` below) — internal state there would re-seed from
+  // `source.intelligenceRepos` (stale server props, since saves here don't
+  // revalidate) every time the card collapses and re-expands, reverting a
+  // selection the user already saved. Living on BoardSourceCard, which stays
+  // mounted across collapse/expand, this survives that toggle.
+  const [draftIntelligenceRepos, setDraftIntelligenceRepos] = useState<string[]>(
+    source.provider === 'ado' ? source.intelligenceRepos : []
+  );
+  // ADO only: the board-level engineering-intelligence area-path scope
+  // (Task 9). Same reasoning as `draftIntelligenceRepos` above — living here
+  // rather than inside CodeIntelZone/the area-path picker so the selection
+  // survives the zone's own unmount/remount across card collapse/expand.
+  const [draftIntelligenceAreaPaths, setDraftIntelligenceAreaPaths] = useState<string[]>(
+    source.provider === 'ado' ? source.intelligenceAreaPaths : []
   );
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<SavePhase>('idle');
@@ -422,6 +449,12 @@ export function BoardSourceCard({
                 editableConnection
                 lastSyncedAt={source.lastSyncedAt}
                 manageHref="/connections"
+                boardId={boardId}
+                sourceId={source.id}
+                intelligenceRepos={draftIntelligenceRepos}
+                onIntelligenceReposChange={setDraftIntelligenceRepos}
+                intelligenceAreaPaths={draftIntelligenceAreaPaths}
+                onIntelligenceAreaPathsChange={setDraftIntelligenceAreaPaths}
               />
             </>
           )}

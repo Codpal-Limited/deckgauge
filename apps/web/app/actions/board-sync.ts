@@ -56,6 +56,10 @@ export async function triggerBoardSync(boardId: string): Promise<TriggerResult> 
 }
 
 export async function fetchBoardSyncStatus(boardId: string): Promise<BoardSyncStatus | null> {
+  // The no-boards board view renders with `boardId=""` and `SyncControls` polls
+  // anyway, which is where `GET /boards//sync/status` came from. A request with
+  // no board id cannot answer anything.
+  if (!boardId) return null;
   try {
     const res = await authFetch(`/boards/${boardId}/sync/status`, { cache: 'no-store' });
     if (!res.ok) return null;
@@ -135,6 +139,8 @@ export async function restoreBoardSyncExclusions(
 export async function fetchBoardSourceHealth(
   boardId: string,
 ): Promise<BoardSourceHealthResult | null> {
+  // Same reason as `fetchBoardSyncStatus` — see there.
+  if (!boardId) return null;
   try {
     const res = await authFetch(`/boards/${boardId}/sync/health`, { cache: 'no-store' });
     if (!res.ok) return null;

@@ -25,6 +25,22 @@ export const NEW_WIDGET_TYPES = [
   'INVESTMENT_ALLOCATION',
   'DORA_METRICS',
   'PERIOD_COMPARISON',
+  // ── Team Focus ────────────────────────────────────────────────────────────
+  // Rendered on a FOCUS view. They read the SAME ClickHouse task rows and
+  // differ only in which slice they present, because the thing that separates
+  // them — a task's class — lives in Postgres and cannot be grouped by in SQL.
+  'FOCUS_ROADMAP_SHARE',
+  'FOCUS_SHIPPED_RATIO',
+  'FOCUS_NEVER_MOVED',
+  'FOCUS_EPIC_COVERAGE',
+  'FOCUS_ATTENTION_SPLIT',
+  'FOCUS_DELIVERY_FUNNEL',
+  'FOCUS_MAP',
+  'FOCUS_SCORECARD',
+  'FOCUS_BOARD_COVERAGE',
+  'FOCUS_PROVENANCE',
+  'FOCUS_LEDGER',
+  'FOCUS_CAVEATS',
 ] as const;
 export type NewWidgetType = (typeof NEW_WIDGET_TYPES)[number];
 
@@ -54,6 +70,7 @@ export const WIDGET_CATEGORIES = [
   'planning',
   'correlation',
   'ai',
+  'focus',
   // P6 — multi-board comparison widgets render only on a standalone Comparison.
   'comparison',
 ] as const;
@@ -107,6 +124,23 @@ export const WIDGET_SCOPE_REQUIREMENTS: Record<NewWidgetType, WidgetSourceKind[]
   // plus issue throughput/time-to-restore — any code or issue source makes it
   // partially usable; unsupported metrics render "—" in both periods.
   PERIOD_COMPARISON: ['github', 'gitlab', 'ado', 'jira'],
+
+  // Focus widgets read tracked work items, so they require an ISSUE source and
+  // deliberately do not accept github/gitlab: this view reports where a team's
+  // tracked work went, and mixing in a different unit of work would corrupt
+  // every denominator on the page.
+  FOCUS_ROADMAP_SHARE: ['jira', 'ado'],
+  FOCUS_SHIPPED_RATIO: ['jira', 'ado'],
+  FOCUS_NEVER_MOVED: ['jira', 'ado'],
+  FOCUS_EPIC_COVERAGE: ['jira', 'ado'],
+  FOCUS_ATTENTION_SPLIT: ['jira', 'ado'],
+  FOCUS_DELIVERY_FUNNEL: ['jira', 'ado'],
+  FOCUS_MAP: ['jira', 'ado'],
+  FOCUS_SCORECARD: ['jira', 'ado'],
+  FOCUS_BOARD_COVERAGE: ['jira', 'ado'],
+  FOCUS_PROVENANCE: ['jira', 'ado'],
+  FOCUS_LEDGER: ['jira', 'ado'],
+  FOCUS_CAVEATS: ['jira', 'ado'],
 };
 
 export interface WidgetScopeFlags {

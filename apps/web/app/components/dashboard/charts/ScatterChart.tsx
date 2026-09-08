@@ -10,19 +10,15 @@ import {
   CartesianGrid,
   Cell,
 } from 'recharts';
-import { CHART_TOOLTIP } from './chartTheme';
 import type { BenchmarkConfig, Tier } from '@deckgauge/shared';
 import { BenchmarkBands } from './BenchmarkBands';
+import { ScatterPointTooltip, type ScatterPoint } from './ScatterPointTooltip';
 import { TierLegend } from './TierLegend';
 
-interface Point {
-  x: string;
-  y: number;
-  label: string;
-  href: string;
-  tier: Tier;
-  author?: string;
-}
+// The point shape lives with the tooltip that reads all of it — the chart only
+// needs x, y and tier, but the tooltip is what makes the other fields worth
+// carrying.
+type Point = ScatterPoint;
 
 interface Props {
   points: Point[];
@@ -94,7 +90,7 @@ export function ScatterChart({
           />
           <ZAxis range={[40, 40]} />
           {benchmarks ? <BenchmarkBands config={benchmarks} yMax={yMax} /> : null}
-          <Tooltip {...CHART_TOOLTIP} cursor={{ strokeDasharray: '3 3' }} />
+          <Tooltip content={<ScatterPointTooltip />} cursor={{ strokeDasharray: '3 3' }} />
           <Scatter
             data={points}
             onClick={(d: { payload?: Point }) =>

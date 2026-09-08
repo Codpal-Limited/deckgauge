@@ -32,20 +32,33 @@
       // DECKGAUGE_TEST_STRICT_INTEGRATION=1 on the root script would be a silent no-op.
       "env": ["DECKGAUGE_TEST_STRICT_INTEGRATION"]
     },
-    // `apps/web` is the only package with this task, and it exists because
-    // nothing else typechecks that app. `next build` is NOT a substitute, and
-    // this was verified by probe rather than assumed: with
-    // `typescript.ignoreBuildErrors` removed, `next build` fails on a type error
-    // in a SOURCE file (good) but passes with one in a `.test.tsx` (it does not
-    // check test files at all). Most of the 85 errors this task was introduced to
-    // clear were in test files, so the build check alone would have gated nothing.
-    // `tsc --noEmit` over the app's own tsconfig — whose `include` covers
-    // `**/*.ts(x)` — is what actually sees them.
+    // EVERY workspace has this task. It began as `apps/web`-only, because that
+    // app was typechecked by nothing — `typescript.ignoreBuildErrors` was set, no
+    // script ran `tsc`, and it carried 85 type errors while lint/build/test were
+    // green. `next build` is NOT a substitute there, and this was verified by
+    // probe rather than assumed: with `ignoreBuildErrors` removed it fails on a
+    // type error in a SOURCE file (good) but PASSES with one in a `.test.tsx` —
+    // Next does not check test files at all, and most of the 85 were in test
+    // files. `tsc --noEmit` over the app's own tsconfig is what sees them.
     //
-    // `dependsOn: ["build"]` is this package's OWN build, not `^build`: the
-    // tsconfig includes `.next/types/**/*.ts`, which `next build` generates. Delete
-    // a route and typecheck without rebuilding and you get TS2307s from stale
-    // generated types for a page that no longer exists.
+    // The same hole existed in every other package by three different
+    // mechanisms (a tsconfig `exclude`, a `tsup` build that walks only
+    // `src/index.ts`, and an `include` that never reached `packages/db/__tests__/`),
+    // hiding 1,220 errors. Each package now runs `tsc -p tsconfig.typecheck.json`
+    // — its own tsconfig minus that `exclude`, emitting nothing. See CLAUDE.md
+    // § `pnpm typecheck`.
+    //
+    // `dependsOn: ["build"]` is each package's OWN build, not `^build`, and the
+    // reason differs by package — both reasons are real, so do not "simplify"
+    // this to one of them:
+    //   - `apps/web`: its tsconfig includes `.next/types/**/*.ts`, which
+    //     `next build` generates. Typecheck against a stale `.next` and you get
+    //     TS2307 for a page that no longer exists (observed after deleting a route).
+    //   - everywhere else: the probe sets `composite: false`, so it does NOT
+    //     follow project references — it resolves `@deckgauge/db` and
+    //     `@deckgauge/shared` through their built `.d.ts` in `dist/`. Turbo's
+    //     `build` task is itself `dependsOn: ["^build"]`, so depending on this
+    //     package's build transitively guarantees those exist.
     "typecheck": {
       "dependsOn": ["build"]
     },

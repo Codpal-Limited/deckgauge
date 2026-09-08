@@ -1,9 +1,10 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import {
   ProjectService,
   CreateProjectInputSchema,
   UpdateProjectInputSchema,
   ReorderInputSchema,
+  type UpdateProjectInput,
 } from "./project.service.js";
 import { AutomationService } from "../automations/automation.service.js";
 import { notifyItemChanged } from '../notifications/triggers/item-changed.js';
@@ -27,6 +28,25 @@ const MoveToBoardSchema = z.object({ targetGroupId: z.string().uuid() });
 
 const BulkDeleteSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(10000),
+});
+
+// Bulk update applies ONE patch to a batch of ids. The cap is lower than
+// bulk-delete's because the work is not comparable: a delete is a single
+// `deleteMany` per chunk, whereas each id here is a read-modify-write plus
+// override bookkeeping, an audit row, automation evaluation and a
+// notification — the same work `PATCH /projects/:id` does, just without the
+// HTTP round trip. 1000 keeps one request bounded; the client chunks past it.
+//
+// It is a LATENCY ceiling as much as a size one. A full request resolves 1000
+// `project.findUnique` in the policy layer (`Promise.all`, unbounded — that is
+// where the connection-pool exposure sits, not in the handler) and then runs
+// 1000 sequential read-modify-writes, which is tens of seconds of wall clock
+// against Node's 300s headers timeout.
+const BULK_UPDATE_MAX_IDS = 1000;
+
+const BulkUpdateSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(BULK_UPDATE_MAX_IDS),
+  data: UpdateProjectInputSchema,
 });
 
 // Optional server-side filtering/sorting for the board project list.
@@ -145,6 +165,76 @@ export async function projectRoutes(
     },
   );
 
+  // One row's update, with the automation and notification side effects that
+  // must follow it. Extracted so `PATCH /projects/:id` and the bulk route below
+  // cannot drift: a bulk status change has to fire the same automations and
+  // bells as the same change made one row at a time, and the only way to
+  // guarantee that is for both to run this.
+  //
+  // Returns null when the row is gone — the caller decides whether that is a
+  // 404 (single) or one skipped id (bulk).
+  async function applyUpdate(
+    req: FastifyRequest,
+    id: string,
+    data: UpdateProjectInput,
+  ) {
+    // Current state, for automation trigger evaluation.
+    const before = await service.getById(id);
+    if (!before) return null;
+
+    const project = await service.update(id, data, req.user?.id);
+    if (!project) return null;
+
+    // Evaluate automation triggers if the project has a board.
+    // Pass both enum status and statusId so custom board-status changes also fire.
+    if (project.boardId) {
+      try {
+        await automationService.evaluateTriggers(
+          project.boardId,
+          project.id,
+          {
+            status: project.status,
+            previousStatus: before.status,
+            statusId: project.statusId,
+            previousStatusId: before.statusId,
+          },
+          // A `notify` action needs to know who to credit and which tenant to
+          // file under. Absent on the sync paths, which is what keeps a bulk
+          // import from firing every rule at everybody.
+          {
+            actorId: req.user?.id ?? null,
+            organizationId: req.membership?.organizationId ?? null,
+          },
+        );
+      } catch (err) {
+        app.log.error(err, 'Automation trigger evaluation failed');
+      }
+    }
+
+    // Notifications last: the update is already committed, the automation may
+    // have changed the row again, and neither must be blocked by a bell.
+    if (project.boardId) {
+      await notifyItemChanged(prisma, req, {
+        projectId: project.id,
+        boardId: project.boardId,
+        before: {
+          owner: before.owner,
+          ownerId: before.ownerId,
+          status: before.status,
+          dueDate: before.dueDate,
+        },
+        after: {
+          owner: project.owner,
+          ownerId: project.ownerId,
+          status: project.status,
+          dueDate: project.dueDate,
+        },
+      });
+    }
+
+    return project;
+  }
+
   // PATCH /projects/:id — see GET /projects/:id.
   app.patch<{ Params: { id: string } }>(
     "/projects/:id",
@@ -155,59 +245,8 @@ export async function projectRoutes(
         return reply.status(400).send({ error: parsed.error.flatten() });
       }
 
-      // Get current state for automation trigger evaluation
-      const before = await service.getById(req.params.id);
-      if (!before) return reply.status(404).send({ error: "Not found" });
-
-      const project = await service.update(req.params.id, parsed.data, req.user?.id);
+      const project = await applyUpdate(req, req.params.id, parsed.data);
       if (!project) return reply.status(404).send({ error: "Not found" });
-
-      // Evaluate automation triggers if the project has a board.
-      // Pass both enum status and statusId so custom board-status changes also fire.
-      if (project.boardId) {
-        try {
-          await automationService.evaluateTriggers(
-            project.boardId,
-            project.id,
-            {
-              status: project.status,
-              previousStatus: before.status,
-              statusId: project.statusId,
-              previousStatusId: before.statusId,
-            },
-            // A `notify` action needs to know who to credit and which tenant to
-            // file under. Absent on the sync paths, which is what keeps a bulk
-            // import from firing every rule at everybody.
-            {
-              actorId: req.user?.id ?? null,
-              organizationId: req.membership?.organizationId ?? null,
-            },
-          );
-        } catch (err) {
-          app.log.error(err, 'Automation trigger evaluation failed');
-        }
-      }
-
-      // Notifications last: the update is already committed, the automation may
-      // have changed the row again, and neither must be blocked by a bell.
-      if (project.boardId) {
-        await notifyItemChanged(prisma, req, {
-          projectId: project.id,
-          boardId: project.boardId,
-          before: {
-            owner: before.owner,
-            ownerId: before.ownerId,
-            status: before.status,
-            dueDate: before.dueDate,
-          },
-          after: {
-            owner: project.owner,
-            ownerId: project.ownerId,
-            status: project.status,
-            dueDate: project.dueDate,
-          },
-        });
-      }
 
       return reply.send(project);
     },
@@ -239,6 +278,57 @@ export async function projectRoutes(
       }
       const deleted = await service.deleteMany(parsed.data.ids, req.user?.id);
       return reply.send({ deleted });
+    },
+  );
+
+  // POST /projects/bulk-update  { ids: string[], data } → { updated, missing }
+  //
+  // Replaces the board's client-side loop, which issued one server action per
+  // selected row. That mattered far beyond the extra HTTP: every server action
+  // that revalidates makes the browser refetch the whole board (~13 API calls),
+  // so classifying 18 rows as CAPEX produced ~234 requests in a few seconds,
+  // tripped the 300/min rate limiter, and left the board rendering "No groups
+  // yet" — a throttled read, indistinguishable from an empty board. See
+  // planning/STATE.md 2026-09-08.
+  //
+  // Same per-id EDITOR check as bulk-delete: `fromBodyFieldArray` resolves
+  // EVERY id's board and a batch spanning several boards must pass on every one
+  // of them.
+  //
+  // What that means for a STALE id, because the intuitive answer is wrong.
+  // `resolveBoardId` cannot distinguish "row is gone" from "you may not have
+  // it" — both return undefined (auth/policy.ts:562) — so in multi-user mode a
+  // single deleted id DENIES THE WHOLE BATCH with a 403 in `preHandler`, before
+  // this handler runs. The counting below is therefore not the general case:
+  // it is what happens in single-user mode, where `evaluatePolicy` short-
+  // circuits to ALLOW (auth/policy.ts:1128) and every id reaches the loop, plus
+  // the narrow race between the preHandler check and the loop itself.
+  //
+  // The loop still counts rather than throwing, because a batch that is half
+  // applied should report what it did — but do not read that as "a stale id is
+  // harmless". Making it harmless would mean teaching the policy layer to
+  // separate unresolvable from unauthorized, which is a change to
+  // `resolveBoardIds` and not this route's to make.
+  app.post(
+    "/projects/bulk-update",
+    { config: { policy: board("EDITOR", viaEntity("project", fromBodyFieldArray("ids"))) } },
+    async (req, reply) => {
+      const parsed = BulkUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.flatten() });
+      }
+      let updated = 0;
+      let missing = 0;
+      // Sequential by design. These rows share a board, and `service.update`
+      // reads the row before writing it; running them concurrently would race
+      // on the override bookkeeping and flood the connection pool for no
+      // wall-clock win worth the risk.
+      for (const id of parsed.data.ids) {
+        const project = await applyUpdate(req, id, parsed.data.data);
+        if (project) updated += 1;
+        else missing += 1;
+      }
+      return reply.send({ updated, missing });
     },
   );
 

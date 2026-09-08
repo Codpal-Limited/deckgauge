@@ -6,6 +6,7 @@ import {
   fetchIssueMeta,
   type ChQueryClient,
 } from './timesheet-fetch.js';
+import { fetchIssueDetail, fetchIssueTimeline } from './issue-detail-fetch.js';
 import type { TimesheetDeps } from './timesheet.service.js';
 import { OrgTreeTimesheetConfigService } from '../org-trees/org-tree-timesheet-config.service.js';
 
@@ -81,5 +82,11 @@ export function buildTimesheetDeps(
     fetchClassificationMap: (organizationId: string) =>
       fetchClassificationMap(readerFor(organizationId)),
     loadIssueMeta: (organizationId: string) => fetchIssueMeta(readerFor(organizationId)),
+    // Scoped through the same per-organization reader as every other
+    // ClickHouse dep, so the row policies apply to the drawer too.
+    fetchIssueTimeline: (organizationId: string, issueKey: string) =>
+      fetchIssueTimeline(readerFor(organizationId), issueKey),
+    fetchIssueDetail: (organizationId: string, issueKey: string) =>
+      fetchIssueDetail(readerFor(organizationId), issueKey),
   };
 }

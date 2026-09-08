@@ -3,6 +3,7 @@ import { registerBuilder } from './registry.js';
 import type { BuilderInputs, BuiltSql } from './types.js';
 import { chNormalizedStatusExpr, formatDateTime, resolveWeeks } from '../../widgets/widget-helpers.js';
 import { resolvePeriod } from './period.js';
+import { jiraScopeFilter, adoScopeFilter } from '../../widgets/unions.js';
 
 const DEFAULT_WEEKS = 12;
 const DEFAULT_MAX_AGE_DAYS = 90;
@@ -44,7 +45,7 @@ export function buildFlowThroughputCycleSql({ config, scope }: BuilderInputs): B
           issue_key                                         AS issue_key,
           min(transitioned_at)                              AS done_at
         FROM cockpit.jira_transitions
-        WHERE project_key IN {jiraKeys:Array(String)}
+        WHERE ${jiraScopeFilter(scope, params, { keyColumn: 'issue_key' })}
           AND ${chNormalizedStatusExpr('to_status')} IN {doneStatuses:Array(String)}
           AND transitioned_at >= {from:DateTime}
           AND transitioned_at <  {to:DateTime}
@@ -52,8 +53,8 @@ export function buildFlowThroughputCycleSql({ config, scope }: BuilderInputs): B
       ) AS jt
       INNER JOIN cockpit.jira_issues AS i FINAL
         ON i.key = jt.issue_key
+      WHERE ${jiraScopeFilter(scope, params, { alias: 'i' })}
     `);
-    params.jiraKeys = scope.jiraProjectKeys;
     params.doneStatuses = [...DONE_STATUS_NAMES];
   }
 
@@ -63,12 +64,11 @@ export function buildFlowThroughputCycleSql({ config, scope }: BuilderInputs): B
         created_at                                          AS created_at,
         closed_at                                            AS done_at
       FROM cockpit.ado_work_items FINAL
-      WHERE project IN {adoProjects:Array(String)}
+      WHERE ${adoScopeFilter(scope, params, { areaPathColumn: 'area_path' })}
         AND closed_at IS NOT NULL
         AND closed_at >= {from:DateTime}
         AND closed_at <  {to:DateTime}
     `);
-    params.adoProjects = scope.adoProjects;
   }
 
   const sql = `

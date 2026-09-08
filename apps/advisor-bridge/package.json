@@ -12,7 +12,8 @@
     "start": "node dist/cli.js",
     "dev": "tsx src/cli.ts",
     "test": "vitest run --passWithNoTests",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.typecheck.json"
   },
   "dependencies": {
     "@agentclientprotocol/claude-agent-acp": "0.49.0",

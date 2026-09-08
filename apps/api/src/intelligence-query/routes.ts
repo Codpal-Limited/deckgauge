@@ -10,8 +10,46 @@ import { interpolateChParams } from './sql-params.js';
 import { executeUserSql, ConsoleError } from './scope/execute.js';
 import { resolveScope } from './scope/resolve-scope.js';
 import { getConsoleClickhouse } from './scope/console-clickhouse.js';
-import { board } from '../auth/policy.js';
+import { ADMIN } from '../auth/policy.js';
 
+/**
+ * Task 13 — every route below is gated on `ADMIN`, not a board role, and this
+ * is a MITIGATION, not a fix.
+ *
+ * The console enforces board scope by rewriting user SQL and asserting over
+ * an AST, and that approach has produced THREE distinct privilege-escalation
+ * bypasses in one review session:
+ *
+ *   1. a value-blind disjunction recogniser plus an unparenthesised user
+ *      `WHERE` (introduced and fixed within this branch);
+ *   2. non-`FROM` subqueries invisible to `collectTableRefs` (pre-existing,
+ *      fixed in this branch);
+ *   3. `ARRAY JOIN` clause text excised before parsing and re-spliced
+ *      verbatim afterwards — pre-existing and OPEN. Verified on a board with
+ *      ZERO Jira scope: `SELECT * FROM github_pull_requests ARRAY JOIN
+ *      (SELECT groupArray(key) FROM jira_issues) AS leaked_keys` returns
+ *      every Jira key in the cluster, because `collectTableRefs` never sees
+ *      the `ARRAY JOIN` clause at all.
+ *
+ * Each fix revealed a new place for a table reference to hide — the
+ * `systematic-debugging` pattern for "this is an architecture problem, not
+ * three bugs." The real fix already exists in this repo and is not wired up
+ * here: `packages/db/src/ch-row-policies.ts` (+ `ch-read-scope.ts`) implement
+ * per-organization ClickHouse row policies. The console runs as the
+ * `deckgauge_console` ClickHouse user with no policy attached; once that
+ * identity carries per-board row policies, the DATABASE enforces scope and no
+ * SQL a user writes can exceed what the identity may read — the whole bypass
+ * class stops mattering. That is its own slice, with its own spec and staging
+ * verification.
+ *
+ * Until it lands, these routes require `ADMIN` — `ctx.isAdmin`, the
+ * instance-wide admin flag — rather than any board role. Do NOT lower this
+ * back to `board('VIEWER')` (or any board role, including OWNER) as a
+ * usability fix: see the "Task 13" describe block in routes.test.ts, which
+ * asserts a board VIEWER and a board OWNER who is not an instance admin both
+ * get 403, and exists specifically to fail if this is reverted before the
+ * row-policy work lands.
+ */
 export async function intelligenceQueryRoutes(
   app: FastifyInstance,
   { prisma, getCh }: { prisma: PrismaClient; getCh?: () => ClickHouseClient }
@@ -23,12 +61,15 @@ export async function intelligenceQueryRoutes(
   // { tables: [], scope: { repos: [], ... } }.
   app.get<{ Params: { boardId: string } }>(
     '/boards/:boardId/intelligence/schema',
-    { config: { policy: board('VIEWER') } },
+    { config: { policy: ADMIN } },
     async (req, reply) => {
       const payload = await buildSchemaPayload(
         prisma,
         req.params.boardId,
         req.membership?.organizationId ?? null,
+        // The getter, not a client: this route never reads the narrowing maps,
+        // so on a board with no ADO area paths no ClickHouse client is built.
+        resolveCh,
       );
       return reply.code(200).send(payload);
     }
@@ -50,7 +91,7 @@ export async function intelligenceQueryRoutes(
     Querystring: { widget?: string; config?: string; filter?: string };
   }>(
     '/boards/:boardId/intelligence/sql',
-    { config: { policy: board('VIEWER') } },
+    { config: { policy: ADMIN } },
     async (req, reply) => {
       const { widget, config: cfgB64, filter } = req.query;
 
@@ -134,7 +175,7 @@ export async function intelligenceQueryRoutes(
 
   app.post<{ Params: { boardId: string } }>(
     '/boards/:boardId/intelligence/execute',
-    { config: { policy: board('VIEWER') } },
+    { config: { policy: ADMIN } },
     async (req, reply) => {
       const { boardId } = req.params;
 
@@ -144,7 +185,12 @@ export async function intelligenceQueryRoutes(
       }
       const { sql } = parsed.data;
 
-      const scope = await resolveScope(prisma, boardId, req.membership?.organizationId ?? null);
+      const scope = await resolveScope(
+        prisma,
+        boardId,
+        req.membership?.organizationId ?? null,
+        resolveCh,
+      );
 
       try {
         const result = await executeUserSql(sql, scope, resolveCh());

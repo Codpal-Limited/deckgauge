@@ -26,7 +26,6 @@ export const ALLOWED_IMAGE_MIME_TYPES = [
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 declare module '@tiptap/core' {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface Commands<ReturnType> {
     imageUpload: {
       uploadImages: (files: File[]) => ReturnType;

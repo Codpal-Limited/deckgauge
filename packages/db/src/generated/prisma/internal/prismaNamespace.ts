@@ -428,6 +428,7 @@ export const ModelName = {
   GitLabInstance: 'GitLabInstance',
   JiraProjectSync: 'JiraProjectSync',
   BoardJiraSource: 'BoardJiraSource',
+  BoardJiraSourceKey: 'BoardJiraSourceKey',
   GitHubRepoSync: 'GitHubRepoSync',
   PrJiraLink: 'PrJiraLink',
   BoardGitHubSource: 'BoardGitHubSource',
@@ -467,7 +468,10 @@ export const ModelName = {
   AdvisorChangeSet: 'AdvisorChangeSet',
   Notification: 'Notification',
   NotificationPreference: 'NotificationPreference',
-  BoardNotificationSetting: 'BoardNotificationSetting'
+  BoardNotificationSetting: 'BoardNotificationSetting',
+  FocusVerdict: 'FocusVerdict',
+  FocusConfig: 'FocusConfig',
+  FocusEpic: 'FocusEpic'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -483,7 +487,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "organization" | "orgMembership" | "board" | "boardCalendarEvent" | "boardOwner" | "boardStatus" | "boardSyncExclusion" | "group" | "project" | "projectComment" | "boardColumn" | "projectFieldValue" | "automationRule" | "jiraInstance" | "syncRun" | "upload" | "gitHubInstance" | "azureDevOpsInstance" | "user" | "developerProfile" | "boardAccess" | "boardView" | "comparison" | "comparisonAccess" | "comparisonMember" | "roadmapConfig" | "dashboardWidget" | "projectStatusChange" | "gitLabInstance" | "jiraProjectSync" | "boardJiraSource" | "gitHubRepoSync" | "prJiraLink" | "boardGitHubSource" | "azureDevOpsProjectSync" | "adoRepoSyncState" | "boardAdoSource" | "gitLabProjectSync" | "boardGitLabSource" | "boardFolder" | "userBoardPref" | "orgTree" | "orgTreeAccess" | "orgEmployee" | "orgTreeSource" | "boardCalendarSource" | "orgEmployeeAlias" | "orgEmployeeComment" | "employeeBoard" | "employeeBoardAccess" | "employeeGroup" | "employeeBoardMember" | "employeeColumn" | "employeeFieldValue" | "roadmap" | "roadmapAccess" | "roadmapBoardSubscription" | "roadmapGroup" | "roadmapView" | "roadmapGanttConfig" | "userRoadmapPref" | "timesheetStatusRule" | "orgTreeTimesheetConfig" | "retiredJiraProject" | "advisorConfig" | "advisorSession" | "advisorMessage" | "advisorChangeSet" | "notification" | "notificationPreference" | "boardNotificationSetting"
+    modelProps: "organization" | "orgMembership" | "board" | "boardCalendarEvent" | "boardOwner" | "boardStatus" | "boardSyncExclusion" | "group" | "project" | "projectComment" | "boardColumn" | "projectFieldValue" | "automationRule" | "jiraInstance" | "syncRun" | "upload" | "gitHubInstance" | "azureDevOpsInstance" | "user" | "developerProfile" | "boardAccess" | "boardView" | "comparison" | "comparisonAccess" | "comparisonMember" | "roadmapConfig" | "dashboardWidget" | "projectStatusChange" | "gitLabInstance" | "jiraProjectSync" | "boardJiraSource" | "boardJiraSourceKey" | "gitHubRepoSync" | "prJiraLink" | "boardGitHubSource" | "azureDevOpsProjectSync" | "adoRepoSyncState" | "boardAdoSource" | "gitLabProjectSync" | "boardGitLabSource" | "boardFolder" | "userBoardPref" | "orgTree" | "orgTreeAccess" | "orgEmployee" | "orgTreeSource" | "boardCalendarSource" | "orgEmployeeAlias" | "orgEmployeeComment" | "employeeBoard" | "employeeBoardAccess" | "employeeGroup" | "employeeBoardMember" | "employeeColumn" | "employeeFieldValue" | "roadmap" | "roadmapAccess" | "roadmapBoardSubscription" | "roadmapGroup" | "roadmapView" | "roadmapGanttConfig" | "userRoadmapPref" | "timesheetStatusRule" | "orgTreeTimesheetConfig" | "retiredJiraProject" | "advisorConfig" | "advisorSession" | "advisorMessage" | "advisorChangeSet" | "notification" | "notificationPreference" | "boardNotificationSetting" | "focusVerdict" | "focusConfig" | "focusEpic"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2778,6 +2782,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.BoardJiraSourceCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.BoardJiraSourceCountAggregateOutputType> | number
+        }
+      }
+    }
+    BoardJiraSourceKey: {
+      payload: Prisma.$BoardJiraSourceKeyPayload<ExtArgs>
+      fields: Prisma.BoardJiraSourceKeyFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BoardJiraSourceKeyFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardJiraSourceKeyPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BoardJiraSourceKeyFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardJiraSourceKeyPayload>
+        }
+        findFirst: {
+          args: Prisma.BoardJiraSourceKeyFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardJiraSourceKeyPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BoardJiraSourceKeyFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardJiraSourceKeyPayload>
+        }
+        findMany: {
+          args: Prisma.BoardJiraSourceKeyFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardJiraSourceKeyPayload>[]
+        }
+        create: {
+          args: Prisma.BoardJiraSourceKeyCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardJiraSourceKeyPayload>
+        }
+        createMany: {
+          args: Prisma.BoardJiraSourceKeyCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BoardJiraSourceKeyCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardJiraSourceKeyPayload>[]
+        }
+        delete: {
+          args: Prisma.BoardJiraSourceKeyDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardJiraSourceKeyPayload>
+        }
+        update: {
+          args: Prisma.BoardJiraSourceKeyUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardJiraSourceKeyPayload>
+        }
+        deleteMany: {
+          args: Prisma.BoardJiraSourceKeyDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BoardJiraSourceKeyUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BoardJiraSourceKeyUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardJiraSourceKeyPayload>[]
+        }
+        upsert: {
+          args: Prisma.BoardJiraSourceKeyUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardJiraSourceKeyPayload>
+        }
+        aggregate: {
+          args: Prisma.BoardJiraSourceKeyAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBoardJiraSourceKey>
+        }
+        groupBy: {
+          args: Prisma.BoardJiraSourceKeyGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BoardJiraSourceKeyGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BoardJiraSourceKeyCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BoardJiraSourceKeyCountAggregateOutputType> | number
         }
       }
     }
@@ -5741,6 +5819,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    FocusVerdict: {
+      payload: Prisma.$FocusVerdictPayload<ExtArgs>
+      fields: Prisma.FocusVerdictFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.FocusVerdictFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusVerdictPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.FocusVerdictFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusVerdictPayload>
+        }
+        findFirst: {
+          args: Prisma.FocusVerdictFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusVerdictPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.FocusVerdictFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusVerdictPayload>
+        }
+        findMany: {
+          args: Prisma.FocusVerdictFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusVerdictPayload>[]
+        }
+        create: {
+          args: Prisma.FocusVerdictCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusVerdictPayload>
+        }
+        createMany: {
+          args: Prisma.FocusVerdictCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.FocusVerdictCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusVerdictPayload>[]
+        }
+        delete: {
+          args: Prisma.FocusVerdictDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusVerdictPayload>
+        }
+        update: {
+          args: Prisma.FocusVerdictUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusVerdictPayload>
+        }
+        deleteMany: {
+          args: Prisma.FocusVerdictDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.FocusVerdictUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.FocusVerdictUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusVerdictPayload>[]
+        }
+        upsert: {
+          args: Prisma.FocusVerdictUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusVerdictPayload>
+        }
+        aggregate: {
+          args: Prisma.FocusVerdictAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateFocusVerdict>
+        }
+        groupBy: {
+          args: Prisma.FocusVerdictGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FocusVerdictGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.FocusVerdictCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FocusVerdictCountAggregateOutputType> | number
+        }
+      }
+    }
+    FocusConfig: {
+      payload: Prisma.$FocusConfigPayload<ExtArgs>
+      fields: Prisma.FocusConfigFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.FocusConfigFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusConfigPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.FocusConfigFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusConfigPayload>
+        }
+        findFirst: {
+          args: Prisma.FocusConfigFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusConfigPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.FocusConfigFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusConfigPayload>
+        }
+        findMany: {
+          args: Prisma.FocusConfigFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusConfigPayload>[]
+        }
+        create: {
+          args: Prisma.FocusConfigCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusConfigPayload>
+        }
+        createMany: {
+          args: Prisma.FocusConfigCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.FocusConfigCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusConfigPayload>[]
+        }
+        delete: {
+          args: Prisma.FocusConfigDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusConfigPayload>
+        }
+        update: {
+          args: Prisma.FocusConfigUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusConfigPayload>
+        }
+        deleteMany: {
+          args: Prisma.FocusConfigDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.FocusConfigUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.FocusConfigUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusConfigPayload>[]
+        }
+        upsert: {
+          args: Prisma.FocusConfigUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusConfigPayload>
+        }
+        aggregate: {
+          args: Prisma.FocusConfigAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateFocusConfig>
+        }
+        groupBy: {
+          args: Prisma.FocusConfigGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FocusConfigGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.FocusConfigCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FocusConfigCountAggregateOutputType> | number
+        }
+      }
+    }
+    FocusEpic: {
+      payload: Prisma.$FocusEpicPayload<ExtArgs>
+      fields: Prisma.FocusEpicFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.FocusEpicFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusEpicPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.FocusEpicFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusEpicPayload>
+        }
+        findFirst: {
+          args: Prisma.FocusEpicFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusEpicPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.FocusEpicFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusEpicPayload>
+        }
+        findMany: {
+          args: Prisma.FocusEpicFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusEpicPayload>[]
+        }
+        create: {
+          args: Prisma.FocusEpicCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusEpicPayload>
+        }
+        createMany: {
+          args: Prisma.FocusEpicCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.FocusEpicCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusEpicPayload>[]
+        }
+        delete: {
+          args: Prisma.FocusEpicDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusEpicPayload>
+        }
+        update: {
+          args: Prisma.FocusEpicUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusEpicPayload>
+        }
+        deleteMany: {
+          args: Prisma.FocusEpicDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.FocusEpicUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.FocusEpicUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusEpicPayload>[]
+        }
+        upsert: {
+          args: Prisma.FocusEpicUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FocusEpicPayload>
+        }
+        aggregate: {
+          args: Prisma.FocusEpicAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateFocusEpic>
+        }
+        groupBy: {
+          args: Prisma.FocusEpicGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FocusEpicGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.FocusEpicCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FocusEpicCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -6257,6 +6557,15 @@ export const BoardJiraSourceScalarFieldEnum = {
 export type BoardJiraSourceScalarFieldEnum = (typeof BoardJiraSourceScalarFieldEnum)[keyof typeof BoardJiraSourceScalarFieldEnum]
 
 
+export const BoardJiraSourceKeyScalarFieldEnum = {
+  boardJiraSourceId: 'boardJiraSourceId',
+  issueKey: 'issueKey',
+  resolvedAt: 'resolvedAt'
+} as const
+
+export type BoardJiraSourceKeyScalarFieldEnum = (typeof BoardJiraSourceKeyScalarFieldEnum)[keyof typeof BoardJiraSourceKeyScalarFieldEnum]
+
+
 export const GitHubRepoSyncScalarFieldEnum = {
   id: 'id',
   githubInstanceId: 'githubInstanceId',
@@ -6364,6 +6673,8 @@ export const BoardAdoSourceScalarFieldEnum = {
   targetGroupId: 'targetGroupId',
   syncWorkItemsToBoard: 'syncWorkItemsToBoard',
   useForIntelligence: 'useForIntelligence',
+  intelligenceRepos: 'intelligenceRepos',
+  intelligenceAreaPaths: 'intelligenceAreaPaths',
   allowedWorkItemTypes: 'allowedWorkItemTypes',
   wiqlFilter: 'wiqlFilter',
   fieldMappings: 'fieldMappings',
@@ -6877,6 +7188,55 @@ export const BoardNotificationSettingScalarFieldEnum = {
 export type BoardNotificationSettingScalarFieldEnum = (typeof BoardNotificationSettingScalarFieldEnum)[keyof typeof BoardNotificationSettingScalarFieldEnum]
 
 
+export const FocusVerdictScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  fingerprint: 'fingerprint',
+  class: 'class',
+  epicKey: 'epicKey',
+  reason: 'reason',
+  source: 'source',
+  ruleId: 'ruleId',
+  model: 'model',
+  promptVersion: 'promptVersion',
+  decidedBy: 'decidedBy',
+  decidedAt: 'decidedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FocusVerdictScalarFieldEnum = (typeof FocusVerdictScalarFieldEnum)[keyof typeof FocusVerdictScalarFieldEnum]
+
+
+export const FocusConfigScalarFieldEnum = {
+  id: 'id',
+  boardId: 'boardId',
+  classLabels: 'classLabels',
+  workingStates: 'workingStates',
+  stageMap: 'stageMap',
+  migrationCutoff: 'migrationCutoff',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FocusConfigScalarFieldEnum = (typeof FocusConfigScalarFieldEnum)[keyof typeof FocusConfigScalarFieldEnum]
+
+
+export const FocusEpicScalarFieldEnum = {
+  id: 'id',
+  boardId: 'boardId',
+  sourceKey: 'sourceKey',
+  title: 'title',
+  programme: 'programme',
+  position: 'position',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FocusEpicScalarFieldEnum = (typeof FocusEpicScalarFieldEnum)[keyof typeof FocusEpicScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -7245,6 +7605,34 @@ export type EnumNotificationKindFieldRefInput<$PrismaModel> = FieldRefInputType<
 export type ListEnumNotificationKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NotificationKind[]'>
     
 
+
+/**
+ * Reference to a field of type 'FocusClass'
+ */
+export type EnumFocusClassFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FocusClass'>
+    
+
+
+/**
+ * Reference to a field of type 'FocusClass[]'
+ */
+export type ListEnumFocusClassFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FocusClass[]'>
+    
+
+
+/**
+ * Reference to a field of type 'FocusVerdictSource'
+ */
+export type EnumFocusVerdictSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FocusVerdictSource'>
+    
+
+
+/**
+ * Reference to a field of type 'FocusVerdictSource[]'
+ */
+export type ListEnumFocusVerdictSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FocusVerdictSource[]'>
+    
+
 /**
  * Batch Payload for updateMany & deleteMany & createMany
  */
@@ -7427,6 +7815,7 @@ export type GlobalOmitConfig = {
   gitLabInstance?: Prisma.GitLabInstanceOmit
   jiraProjectSync?: Prisma.JiraProjectSyncOmit
   boardJiraSource?: Prisma.BoardJiraSourceOmit
+  boardJiraSourceKey?: Prisma.BoardJiraSourceKeyOmit
   gitHubRepoSync?: Prisma.GitHubRepoSyncOmit
   prJiraLink?: Prisma.PrJiraLinkOmit
   boardGitHubSource?: Prisma.BoardGitHubSourceOmit
@@ -7467,6 +7856,9 @@ export type GlobalOmitConfig = {
   notification?: Prisma.NotificationOmit
   notificationPreference?: Prisma.NotificationPreferenceOmit
   boardNotificationSetting?: Prisma.BoardNotificationSettingOmit
+  focusVerdict?: Prisma.FocusVerdictOmit
+  focusConfig?: Prisma.FocusConfigOmit
+  focusEpic?: Prisma.FocusEpicOmit
 }
 
 /* Types for Logging */

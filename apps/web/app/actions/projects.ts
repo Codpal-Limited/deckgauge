@@ -94,6 +94,129 @@ export async function patchProject(
   invalidate(boardId);
 }
 
+// Every bulk edit on the board goes through one of the three actions below,
+// and the reason is the CALL COUNT, not the payload size. A server action that
+// revalidates makes the browser refetch the whole board — ~13 API calls — so
+// looping one action per selected row multiplies the selection by thirteen.
+// Classifying 18 rows as CAPEX issued ~234 requests in a few seconds, tripped
+// the API's 300/min rate limiter, and the board rendered "No groups yet": a
+// throttled read that looks exactly like an empty board. See planning/STATE.md
+// 2026-09-08.
+//
+// So each of these makes its requests and invalidates exactly ONCE, however
+// many rows are selected.
+//
+// INVALIDATE_ON_FAILURE: and it invalidates from a `finally`, which is load-
+// bearing rather than tidy. None of these loops is transactional — the server
+// commits row by row — so a throw on row 5 of 18 leaves rows 1-4 written. The
+// caller (`applyOptimistic` in GroupList) responds to a rejection by rolling the
+// WHOLE selection back on screen, so without an invalidation on the failure path
+// the board would keep showing four rows that disagree with the database until
+// an unrelated mutation or a hard reload. The per-row loop these replaced
+// invalidated after every successful row and did not have this hole.
+
+// Matches BULK_UPDATE_MAX_IDS in apps/api/src/projects/project.routes.ts. Both
+// bulk endpoints do per-id read-modify-write work, so a request stays bounded
+// and a larger selection becomes a handful of requests instead of thousands.
+const BULK_CHUNK_SIZE = 1000;
+
+export interface BulkResult {
+  updated: number;
+  /** Ids the server no longer has — a row deleted in another tab, typically. */
+  missing: number;
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/** Apply one patch to a whole selection. The bulk form of `patchProject`. */
+export async function patchProjects(
+  ids: string[],
+  data: Partial<ProjectFormData>,
+  boardId?: string,
+): Promise<BulkResult> {
+  if (ids.length === 0) return { updated: 0, missing: 0 };
+  const total: BulkResult = { updated: 0, missing: 0 };
+  // `finally`, not a trailing call: see INVALIDATE_ON_FAILURE above.
+  try {
+    for (const batch of chunk(ids, BULK_CHUNK_SIZE)) {
+      const res = await apiRequest("/projects/bulk-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: batch, data }),
+      });
+      const result = (await res.json()) as BulkResult;
+      total.updated += result.updated;
+      total.missing += result.missing;
+    }
+  } finally {
+    invalidate(boardId);
+  }
+  return total;
+}
+
+/**
+ * Set one custom-column value across a whole selection. The bulk form of
+ * `updateFieldValue`.
+ */
+export async function updateFieldValues(
+  ids: string[],
+  columnId: string,
+  value: string,
+  boardId?: string,
+): Promise<BulkResult> {
+  if (ids.length === 0) return { updated: 0, missing: 0 };
+  const total: BulkResult = { updated: 0, missing: 0 };
+  // `finally`, not a trailing call: see INVALIDATE_ON_FAILURE above.
+  try {
+    for (const batch of chunk(ids, BULK_CHUNK_SIZE)) {
+      const res = await apiRequest("/projects/bulk-fields", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: batch, values: [{ columnId, value }] }),
+      });
+      const result = (await res.json()) as BulkResult;
+      total.updated += result.updated;
+      total.missing += result.missing;
+    }
+  } finally {
+    invalidate(boardId);
+  }
+  return total;
+}
+
+/**
+ * Create a batch of projects — the bulk-action bar's "Duplicate".
+ *
+ * There is no bulk-create endpoint: POST /projects fires `item_created`
+ * automations and resolves board defaults per row, so the loop stays. It runs
+ * SERVER-side, which is the whole point — N API calls from here, rather than N
+ * server actions each dragging a board refetch behind it. Duplicate is the
+ * coldest of the three paths and the worst offender before this, because
+ * `createProject` is structural and revalidated the `/` route every time.
+ */
+export async function duplicateProjects(
+  sources: ProjectFormData[],
+  boardId?: string,
+): Promise<void> {
+  if (sources.length === 0) return;
+  // `finally`, not a trailing call: see INVALIDATE_ON_FAILURE above.
+  try {
+    for (const data of sources) {
+      await apiRequest("/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    }
+  } finally {
+    invalidate(boardId ?? sources[0].boardId, { revalidateRoute: true });
+  }
+}
+
 export async function deleteProject(
   id: string,
   boardId?: string,

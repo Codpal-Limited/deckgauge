@@ -3,6 +3,26 @@ import { intBetween, mulberry32, pick } from './random.js';
 import { CATALOG_BOARDS, CATALOG_PEOPLE, CATALOG_STATUSES } from './catalog.js';
 
 /** Fixed so two installs on the same day produce identical data. */
+
+/**
+ * A deterministic, sparse epic link for a demo issue.
+ *
+ * Keyed off the issue key so a re-seed produces the same links — a demo whose
+ * roadmap coverage moves between runs is worse than one with none. Epics do not
+ * link to themselves, and a board with no epics yields none.
+ */
+function epicKeyFor(
+  issueKey: string,
+  issueType: string,
+  boardEpicKeys: string[],
+): string | null {
+  if (issueType === 'Epic' || boardEpicKeys.length === 0) return null;
+  let hash = 0;
+  for (const ch of issueKey) hash = (hash * 31 + ch.charCodeAt(0)) % 100_000;
+  if (hash % 5 !== 0) return null;
+  return boardEpicKeys[hash % boardEpicKeys.length]!;
+}
+
 export const DEFAULT_SEED = 20260905;
 
 /** How far back the demo's history reaches. Six months. */
@@ -445,6 +465,12 @@ function generateClickHouse(
     const latestSprintIndex = board.projects.length
       ? Math.max(...board.projects.map((p) => sprintIndexFor(p.startDate, now)))
       : 0;
+    // Real epic keys on this board: `jiraTypeFor` makes every EPIC_EVERY-th
+    // project an Epic, so these exist already and nothing has to be invented.
+    const boardEpicKeys = board.projects
+      .filter((p) => p.jiraType === 'Epic')
+      .map((p) => p.jiraKey);
+
     for (const project of board.projects) {
       const key = project.jiraKey;
       const created = project.startDate;
@@ -503,7 +529,15 @@ function generateClickHouse(
         project_name: board.name,
         issue_type: project.jiraType,
         parent_key: null,
-        epic_key: null,
+        // Sparse and deterministic: roughly one non-Epic issue in five carries a
+        // link, to an epic that actually exists on this board. Sparse because
+        // that is what real data looks like — on the reference window only 12 of
+        // 105 tasks had one, which is why roadmap coverage cannot be computed
+        // from this field alone. Seeding it at all is what stops
+        // `epic_key`-reading widgets rendering an all-null column on a demo
+        // install, which is the blind spot builders-populated.int.test.ts
+        // exists to catch.
+        epic_key: epicKeyFor(key, project.jiraType, boardEpicKeys),
         epic_summary: null,
         summary: project.name,
         description: '',

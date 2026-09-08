@@ -54,6 +54,17 @@ export type UpsertFieldValueInput = z.infer<typeof UpsertFieldValueInputSchema>;
 
 export const UpsertFieldValuesInputSchema = z.array(UpsertFieldValueInputSchema).min(1);
 
+// The bulk form: the same field values applied to a batch of projects, which is
+// what a custom-column edit over a multi-row selection is. The id cap matches
+// BULK_UPDATE_MAX_IDS in apps/api/src/projects/project.routes.ts for the same
+// reason — each id is its own read-then-write, so a request has to stay
+// bounded; the client chunks past it.
+export const BulkUpsertFieldValuesInputSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(1000),
+  values: UpsertFieldValuesInputSchema,
+});
+export type BulkUpsertFieldValuesInput = z.infer<typeof BulkUpsertFieldValuesInputSchema>;
+
 export const BoardSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1),

@@ -19,6 +19,7 @@ import {
   type PeriodMetricKey,
 } from '@deckgauge/shared';
 import { getWidgetBoardScope } from './widget-board-scope.js';
+import { getFocusSnapshot, EMPTY_SNAPSHOT_REASON } from '../focus/focus-data.service.js';
 import {
   castRows,
   buildTrendWeekBuckets,
@@ -133,7 +134,10 @@ export interface PrCycleTimeScatterResult {
   points: Array<{
     x: string;
     y: number;
+    /** `repo #number` — the identity the provider displays, not the internal id. */
     label: string;
+    /** PR title. Absent rather than empty when the provider has none. */
+    subtitle?: string;
     href: string;
     tier: Tier;
     author?: string;
@@ -880,9 +884,11 @@ export class WidgetDataService {
   }
 
   // PR cycle-time scatter: one dot per merged PR over the window, capped at
-  // 500 so the chart stays readable. Each point carries an `href` for
-  // click-through; tier is derived from the same LEAD_TIME_FOR_CHANGES
-  // benchmark used by the trend widget, so the colour story matches.
+  // 500 so the chart stays readable. Each point carries the label/subtitle the
+  // tooltip identifies the outlier with; tier is derived from the same
+  // LEAD_TIME_FOR_CHANGES benchmark used by the trend widget, so the colour
+  // story matches. `href` is still the builder's placeholder — see the note
+  // there for what a real one needs.
   async getPrCycleTimeScatter(
     boardId: string,
     config: { weeks?: number } | Record<string, unknown>
@@ -900,6 +906,7 @@ export class WidgetDataService {
       x: string;
       y: number | string;
       label: string;
+      subtitle?: string | null;
       href: string;
       author?: string | null;
     }>(await result.json());
@@ -907,8 +914,14 @@ export class WidgetDataService {
     return {
       points: rows.map((r) => {
         const y = Number(r.y);
+        // `title` is a non-nullable String in every PR table, so a PR without one
+        // arrives as '' rather than null. Both collapse to undefined so the
+        // tooltip omits the line instead of rendering a blank one — the same
+        // treatment author already gets.
         const author = typeof r.author === 'string' && r.author.length > 0 ? r.author : undefined;
-        return { x: r.x, y, label: r.label, href: r.href, tier: tierFor(y, cfg), author };
+        const subtitle =
+          typeof r.subtitle === 'string' && r.subtitle.length > 0 ? r.subtitle : undefined;
+        return { x: r.x, y, label: r.label, subtitle, href: r.href, tier: tierFor(y, cfg), author };
       }),
     };
   }
@@ -2176,5 +2189,180 @@ export class WidgetDataService {
         delivered: countMetricComparability(entries),
       },
     };
+  }
+
+  // ── Team Focus ──────────────────────────────────────────────────────────────
+  // Twelve widget types, one snapshot. Each method slices the same assembled
+  // result rather than re-querying, because they are all views of one question
+  // and must never disagree with each other on the page.
+  //
+  // `emptyReason` rather than zeros when the board has no issue source: a zero
+  // here reads as a team that delivered nothing, which is the single failure
+  // mode this view is built to avoid.
+
+  /**
+   * Per-instance memo of the assembled snapshot.
+   *
+   * The comment above used to claim the twelve methods shared one assembly.
+   * They did not — each called through, so a page load ran twelve full
+   * assemblies (~36 ClickHouse queries, 24 Prisma queries) AND, because
+   * `resolvePeriod` resolves against `Date.now()` on every call, twelve
+   * slightly different windows. Widgets on one page disagreeing about their own
+   * window is the failure the shared-snapshot claim was meant to prevent.
+   *
+   * Scope, stated precisely because the previous comment overclaimed: a
+   * WidgetDataService is constructed per HTTP REQUEST, and each widget issues
+   * its own request. So this collapses the repeated assemblies WITHIN one
+   * request — it does not make twelve widgets share one snapshot across a page
+   * load. The existing 60s WidgetCache in widget-data.routes.ts is what
+   * currently spares the other eleven; on a cold cache they still assemble
+   * separately, and can still resolve marginally different windows.
+   */
+  private readonly focusSnapshotCache = new Map<
+    string,
+    Promise<Awaited<ReturnType<typeof getFocusSnapshot>>>
+  >();
+
+  private async focusSnapshot(boardId: string, config: Record<string, unknown>) {
+    const key = `${boardId}|${JSON.stringify(config)}`;
+    const cached = this.focusSnapshotCache.get(key);
+    if (cached) return cached;
+
+    const pending = getFocusSnapshot(
+      { prisma: this.prisma, clickhouse: this.clickhouse, organizationId: this.organizationId },
+      boardId,
+      config
+    );
+    this.focusSnapshotCache.set(key, pending);
+    return pending;
+  }
+
+  async getFocusRoadmapShare(boardId: string, config: Record<string, unknown>) {
+    const s = await this.focusSnapshot(boardId, config);
+    if (!s) return { emptyReason: EMPTY_SNAPSHOT_REASON };
+    return {
+      taskCount: s.tasks.length,
+      sourcesLastSyncedAt: s.sourcesLastSyncedAt,
+      shares: s.attentionShares,
+      days: s.attentionDays,
+      parkedDays: s.parkedDays,
+      // Carried onto the tile itself, not left to the caveats widget thirty grid
+      // rows below. With no advisor model configured the residue is the whole
+      // story: a red 0% with no mention of it is the confident wrong answer the
+      // design forbids.
+      unclassified: s.tasks.filter((t) => t.cls === 'UNCLASSIFIED').length,
+      total: s.tasks.length,
+    };
+  }
+
+  async getFocusShippedRatio(boardId: string, config: Record<string, unknown>) {
+    const s = await this.focusSnapshot(boardId, config);
+    if (!s) return { emptyReason: EMPTY_SNAPSHOT_REASON };
+    // Counts FEATURES, not issues: work on a sub-task is work on the epic above
+    // it, so a feature whose children shipped shipped once rather than five
+    // times. One of exactly two Focus widgets at this grain — the other four
+    // stay per-issue, each for its own reason, and `focus-denominators.test.ts`
+    // pins both halves.
+    const total = s.featureTaskCount;
+    return {
+      // Every ISSUE read, not every feature counted. Feeds FocusNoData's "has
+      // this board ever synced" reasoning, which is about rows.
+      taskCount: s.tasks.length,
+      sourcesLastSyncedAt: s.sourcesLastSyncedAt,
+      total,
+      inProduction: s.featureCounts.IN_PRODUCTION,
+      unshipped: s.featureCounts.WAITING_TO_SHIP,
+      pct: total ? Math.round((s.featureCounts.IN_PRODUCTION / total) * 100) : 0,
+    };
+  }
+
+  async getFocusNeverMoved(boardId: string, config: Record<string, unknown>) {
+    const s = await this.focusSnapshot(boardId, config);
+    if (!s) return { emptyReason: EMPTY_SNAPSHOT_REASON };
+    return {
+      taskCount: s.tasks.length,
+      sourcesLastSyncedAt: s.sourcesLastSyncedAt, neverMoved: s.neverMoved, total: s.tasks.length };
+  }
+
+  async getFocusEpicCoverage(boardId: string, config: Record<string, unknown>) {
+    const s = await this.focusSnapshot(boardId, config);
+    if (!s) return { emptyReason: EMPTY_SNAPSHOT_REASON };
+    return {
+      taskCount: s.tasks.length,
+      sourcesLastSyncedAt: s.sourcesLastSyncedAt, epics: s.epics, touched: s.epics.filter((e) => e.touched).length };
+  }
+
+  async getFocusAttentionSplit(boardId: string, config: Record<string, unknown>) {
+    const s = await this.focusSnapshot(boardId, config);
+    if (!s) return { emptyReason: EMPTY_SNAPSHOT_REASON };
+    return {
+      taskCount: s.tasks.length,
+      sourcesLastSyncedAt: s.sourcesLastSyncedAt, people: s.people, totals: s.attentionDays, shares: s.attentionShares };
+  }
+
+  async getFocusDeliveryFunnel(boardId: string, config: Record<string, unknown>) {
+    const s = await this.focusSnapshot(boardId, config);
+    if (!s) return { emptyReason: EMPTY_SNAPSHOT_REASON };
+    return {
+      taskCount: s.tasks.length,
+      sourcesLastSyncedAt: s.sourcesLastSyncedAt,
+      counts: s.featureCounts,
+      // See getFocusShippedRatio: this widget's population is FEATURES that are
+      // work. "Where the Work Ended Up" asks about the thing delivered, and a
+      // sub-task is not a thing delivered — its epic is.
+      total: s.featureTaskCount,
+      featuresCancelledNeverWorked: s.featuresCancelledNeverWorked,
+      wastedDaysAbandonedFeatures: s.wastedDaysAbandonedFeatures,
+      wastedDaysInsideLiveFeatures: s.wastedDaysInsideLiveFeatures,
+      unmappedStates: s.unmappedStates,
+    };
+  }
+
+  async getFocusMap(boardId: string, config: Record<string, unknown>) {
+    const s = await this.focusSnapshot(boardId, config);
+    if (!s) return { emptyReason: EMPTY_SNAPSHOT_REASON };
+    return {
+      taskCount: s.tasks.length,
+      sourcesLastSyncedAt: s.sourcesLastSyncedAt, tasks: s.tasks, people: s.people, epics: s.epics };
+  }
+
+  async getFocusScorecard(boardId: string, config: Record<string, unknown>) {
+    const s = await this.focusSnapshot(boardId, config);
+    if (!s) return { emptyReason: EMPTY_SNAPSHOT_REASON };
+    return {
+      taskCount: s.tasks.length,
+      sourcesLastSyncedAt: s.sourcesLastSyncedAt, people: s.people };
+  }
+
+  async getFocusBoardCoverage(boardId: string, config: Record<string, unknown>) {
+    const s = await this.focusSnapshot(boardId, config);
+    if (!s) return { emptyReason: EMPTY_SNAPSHOT_REASON };
+    return {
+      taskCount: s.tasks.length,
+      sourcesLastSyncedAt: s.sourcesLastSyncedAt, epics: s.epics, offBoardTasks: s.offBoardTasks, total: s.tasks.length };
+  }
+
+  async getFocusProvenance(boardId: string, config: Record<string, unknown>) {
+    const s = await this.focusSnapshot(boardId, config);
+    if (!s) return { emptyReason: EMPTY_SNAPSHOT_REASON };
+    return {
+      taskCount: s.tasks.length,
+      sourcesLastSyncedAt: s.sourcesLastSyncedAt, provenance: s.provenance, total: s.tasks.length };
+  }
+
+  async getFocusLedger(boardId: string, config: Record<string, unknown>) {
+    const s = await this.focusSnapshot(boardId, config);
+    if (!s) return { emptyReason: EMPTY_SNAPSHOT_REASON };
+    return {
+      taskCount: s.tasks.length,
+      sourcesLastSyncedAt: s.sourcesLastSyncedAt, tasks: s.tasks };
+  }
+
+  async getFocusCaveats(boardId: string, config: Record<string, unknown>) {
+    const s = await this.focusSnapshot(boardId, config);
+    if (!s) return { emptyReason: EMPTY_SNAPSHOT_REASON };
+    return {
+      taskCount: s.tasks.length,
+      sourcesLastSyncedAt: s.sourcesLastSyncedAt, caveats: s.caveats };
   }
 }

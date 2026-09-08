@@ -12,7 +12,12 @@ export interface TableRef {
 
 /**
  * Walk a parsed SQL AST and return every base-table reference found,
- * including those inside subqueries, CTEs, and UNION branches.
+ * including those inside `FROM` subqueries, CTEs, UNION branches, and every
+ * OTHER subquery position node-sql-parser can produce — the SELECT-list,
+ * `WHERE` (`IN`, `EXISTS`, `NOT EXISTS`), `HAVING`, `ORDER BY`, `GROUP BY`,
+ * `JOIN ... ON`, `LIMIT`, and nested subqueries within any of those. Each
+ * such subquery gets its own `enclosingSelect`, so the rewriter injects a
+ * scope predicate into ITS OWN `WHERE`, not the outer query's.
  *
  * CTE alias references in outer SELECTs are skipped — they are not base
  * tables and do not need scope injection.
@@ -26,7 +31,38 @@ export function collectTableRefs(ast: AST | AST[]): TableRef[] {
 
   const refs: TableRef[] = [];
   walkSelect(ast, new Set<string>(), refs);
-  return refs;
+  return dedupeRefs(refs);
+}
+
+/**
+ * Dedupe accumulated refs on the triple (tableName, alias, enclosingSelect
+ * identity) — object identity for `enclosingSelect`, not deep equality.
+ *
+ * This is what makes the generic deep scan in `walkSelect` safe to
+ * over-reach: a `FROM` subquery is reached once by the explicit `from`
+ * handling and again by the generic scan (since `from` is not skipped, to
+ * reach `JOIN ON` subqueries nested inside it), and this collapses the two
+ * back into one ref rather than double-injecting the same predicate.
+ */
+function dedupeRefs(refs: TableRef[]): TableRef[] {
+  const identities = new WeakMap<object, number>();
+  let nextId = 0;
+  const seen = new Set<string>();
+  const out: TableRef[] = [];
+
+  for (const ref of refs) {
+    const selectObj = ref.enclosingSelect as object;
+    let id = identities.get(selectObj);
+    if (id === undefined) {
+      id = nextId++;
+      identities.set(selectObj, id);
+    }
+    const key = `${id} ${ref.tableName} ${ref.alias ?? ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(ref);
+  }
+  return out;
 }
 
 // ─── Internal types ───────────────────────────────────────────────────────────
@@ -124,6 +160,33 @@ function walkSelect(node: unknown, cteAliases: Set<string>, refs: TableRef[]): v
     }
   }
 
+  // ── Deep-scan every OTHER position for nested SELECTs ─────────────────────
+  // node-sql-parser puts a subquery wherever an expression can go: the
+  // SELECT-list, WHERE (IN / EXISTS / NOT EXISTS), HAVING, ORDER BY,
+  // GROUP BY, a JOIN's ON clause (nested inside `from`, so `from` is NOT
+  // skipped here even though it was already walked above), and LIMIT — and
+  // it nests arbitrarily deep inside function calls and CASE expressions
+  // (`columns.[0].expr.args.[0].cond.right.ast`). No hand-written list of
+  // sub-paths survives that, so this scans every property generically.
+  //
+  // `with` and `_next` are skipped: both are already walked explicitly,
+  // above, each with a DIFFERENT alias scope (`with` bodies get
+  // `localCteAliases`; `_next` gets the inherited `cteAliases`, because
+  // UNION branches share the outer CTE scope). Reaching them again here
+  // would walk them with the wrong scope.
+  //
+  // Reaching a `from` subquery twice (once above, once here) is harmless:
+  // `collectTableRefs` dedupes the accumulated refs by
+  // (tableName, alias, enclosingSelect identity).
+  for (const [key, value] of Object.entries(n)) {
+    if (key === 'with' || key === '_next') continue;
+    const nested: SelectNode[] = [];
+    scanForNestedSelects(value, 0, nested);
+    for (const sel of nested) {
+      walkSelect(sel, localCteAliases, refs);
+    }
+  }
+
   // ── Walk UNION branch (_next) ─────────────────────────────────────────────
   // node-sql-parser represents UNION / UNION ALL as a linked list via `_next`.
   // Each `_next` node is a full SELECT; use the same inherited aliases (not
@@ -131,6 +194,58 @@ function walkSelect(node: unknown, cteAliases: Set<string>, refs: TableRef[]): v
   if (n['_next'] !== undefined && n['_next'] !== null) {
     walkSelect(n['_next'], cteAliases, refs);
   }
+}
+
+/**
+ * Recursively scan an arbitrary AST fragment for nested SELECT nodes,
+ * accepting both wrapper shapes node-sql-parser uses: a node that IS itself
+ * `{ type: 'select' }`, and a node with an `ast` property holding one
+ * (`limit.value.[0]` is the bare form; every other measured position is the
+ * `.ast` form).
+ *
+ * Stops descending the moment it finds a nested SELECT — that subtree
+ * belongs to `walkSelect`, including its OWN `with` / `from` / `_next` — so
+ * a select nested inside a select found here is picked up when `walkSelect`
+ * runs on it, not by this scan going deeper.
+ *
+ * Depth-capped so a pathological (or adversarially deep) AST cannot spin.
+ */
+const MAX_SCAN_DEPTH = 60;
+
+function scanForNestedSelects(node: unknown, depth: number, found: SelectNode[]): void {
+  if (depth > MAX_SCAN_DEPTH) return;
+  if (node === null || typeof node !== 'object') return;
+
+  if (Array.isArray(node)) {
+    for (const item of node) scanForNestedSelects(item, depth + 1, found);
+    return;
+  }
+
+  const select = unwrapSelectNode(node);
+  if (select) {
+    found.push(select);
+    return;
+  }
+
+  for (const value of Object.values(node as Record<string, unknown>)) {
+    scanForNestedSelects(value, depth + 1, found);
+  }
+}
+
+/**
+ * Unwrap a node to the SELECT it holds, accepting either the bare form
+ * (`node` itself is `{ type: 'select' }`) or the wrapped form
+ * (`node.ast` is `{ type: 'select' }`). Returns null for neither.
+ */
+function unwrapSelectNode(node: object): SelectNode | null {
+  const n = node as SelectNode;
+  if (n['type'] === 'select') return n;
+
+  const inner = n['ast'];
+  if (inner !== null && typeof inner === 'object' && (inner as SelectNode)['type'] === 'select') {
+    return inner as SelectNode;
+  }
+  return null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

@@ -225,6 +225,7 @@ export type BoardJiraSourceWhereInput = {
   board?: Prisma.XOR<Prisma.BoardScalarRelationFilter, Prisma.BoardWhereInput>
   jiraProjectSync?: Prisma.XOR<Prisma.JiraProjectSyncScalarRelationFilter, Prisma.JiraProjectSyncWhereInput>
   targetGroup?: Prisma.XOR<Prisma.GroupNullableScalarRelationFilter, Prisma.GroupWhereInput> | null
+  filteredKeys?: Prisma.BoardJiraSourceKeyListRelationFilter
 }
 
 export type BoardJiraSourceOrderByWithRelationInput = {
@@ -243,6 +244,7 @@ export type BoardJiraSourceOrderByWithRelationInput = {
   board?: Prisma.BoardOrderByWithRelationInput
   jiraProjectSync?: Prisma.JiraProjectSyncOrderByWithRelationInput
   targetGroup?: Prisma.GroupOrderByWithRelationInput
+  filteredKeys?: Prisma.BoardJiraSourceKeyOrderByRelationAggregateInput
 }
 
 export type BoardJiraSourceWhereUniqueInput = Prisma.AtLeast<{
@@ -265,6 +267,7 @@ export type BoardJiraSourceWhereUniqueInput = Prisma.AtLeast<{
   board?: Prisma.XOR<Prisma.BoardScalarRelationFilter, Prisma.BoardWhereInput>
   jiraProjectSync?: Prisma.XOR<Prisma.JiraProjectSyncScalarRelationFilter, Prisma.JiraProjectSyncWhereInput>
   targetGroup?: Prisma.XOR<Prisma.GroupNullableScalarRelationFilter, Prisma.GroupWhereInput> | null
+  filteredKeys?: Prisma.BoardJiraSourceKeyListRelationFilter
 }, "id" | "boardId_jiraProjectSyncId">
 
 export type BoardJiraSourceOrderByWithAggregationInput = {
@@ -316,6 +319,7 @@ export type BoardJiraSourceCreateInput = {
   board: Prisma.BoardCreateNestedOneWithoutBoardJiraSourcesInput
   jiraProjectSync: Prisma.JiraProjectSyncCreateNestedOneWithoutBoardSourcesInput
   targetGroup?: Prisma.GroupCreateNestedOneWithoutBoardJiraSourcesInput
+  filteredKeys?: Prisma.BoardJiraSourceKeyCreateNestedManyWithoutBoardJiraSourceInput
 }
 
 export type BoardJiraSourceUncheckedCreateInput = {
@@ -331,6 +335,7 @@ export type BoardJiraSourceUncheckedCreateInput = {
   lastPromotedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  filteredKeys?: Prisma.BoardJiraSourceKeyUncheckedCreateNestedManyWithoutBoardJiraSourceInput
 }
 
 export type BoardJiraSourceUpdateInput = {
@@ -346,6 +351,7 @@ export type BoardJiraSourceUpdateInput = {
   board?: Prisma.BoardUpdateOneRequiredWithoutBoardJiraSourcesNestedInput
   jiraProjectSync?: Prisma.JiraProjectSyncUpdateOneRequiredWithoutBoardSourcesNestedInput
   targetGroup?: Prisma.GroupUpdateOneWithoutBoardJiraSourcesNestedInput
+  filteredKeys?: Prisma.BoardJiraSourceKeyUpdateManyWithoutBoardJiraSourceNestedInput
 }
 
 export type BoardJiraSourceUncheckedUpdateInput = {
@@ -361,6 +367,7 @@ export type BoardJiraSourceUncheckedUpdateInput = {
   lastPromotedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  filteredKeys?: Prisma.BoardJiraSourceKeyUncheckedUpdateManyWithoutBoardJiraSourceNestedInput
 }
 
 export type BoardJiraSourceCreateManyInput = {
@@ -455,6 +462,11 @@ export type BoardJiraSourceMinOrderByAggregateInput = {
   lastPromotedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type BoardJiraSourceScalarRelationFilter = {
+  is?: Prisma.BoardJiraSourceWhereInput
+  isNot?: Prisma.BoardJiraSourceWhereInput
 }
 
 export type BoardJiraSourceCreateNestedManyWithoutBoardInput = {
@@ -592,6 +604,20 @@ export type BoardJiraSourceUpdateallowedIssueTypesInput = {
   push?: string | string[]
 }
 
+export type BoardJiraSourceCreateNestedOneWithoutFilteredKeysInput = {
+  create?: Prisma.XOR<Prisma.BoardJiraSourceCreateWithoutFilteredKeysInput, Prisma.BoardJiraSourceUncheckedCreateWithoutFilteredKeysInput>
+  connectOrCreate?: Prisma.BoardJiraSourceCreateOrConnectWithoutFilteredKeysInput
+  connect?: Prisma.BoardJiraSourceWhereUniqueInput
+}
+
+export type BoardJiraSourceUpdateOneRequiredWithoutFilteredKeysNestedInput = {
+  create?: Prisma.XOR<Prisma.BoardJiraSourceCreateWithoutFilteredKeysInput, Prisma.BoardJiraSourceUncheckedCreateWithoutFilteredKeysInput>
+  connectOrCreate?: Prisma.BoardJiraSourceCreateOrConnectWithoutFilteredKeysInput
+  upsert?: Prisma.BoardJiraSourceUpsertWithoutFilteredKeysInput
+  connect?: Prisma.BoardJiraSourceWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.BoardJiraSourceUpdateToOneWithWhereWithoutFilteredKeysInput, Prisma.BoardJiraSourceUpdateWithoutFilteredKeysInput>, Prisma.BoardJiraSourceUncheckedUpdateWithoutFilteredKeysInput>
+}
+
 export type BoardJiraSourceCreateWithoutBoardInput = {
   id?: string
   allowedIssueTypes?: Prisma.BoardJiraSourceCreateallowedIssueTypesInput | string[]
@@ -604,6 +630,7 @@ export type BoardJiraSourceCreateWithoutBoardInput = {
   updatedAt?: Date | string
   jiraProjectSync: Prisma.JiraProjectSyncCreateNestedOneWithoutBoardSourcesInput
   targetGroup?: Prisma.GroupCreateNestedOneWithoutBoardJiraSourcesInput
+  filteredKeys?: Prisma.BoardJiraSourceKeyCreateNestedManyWithoutBoardJiraSourceInput
 }
 
 export type BoardJiraSourceUncheckedCreateWithoutBoardInput = {
@@ -618,6 +645,7 @@ export type BoardJiraSourceUncheckedCreateWithoutBoardInput = {
   lastPromotedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  filteredKeys?: Prisma.BoardJiraSourceKeyUncheckedCreateNestedManyWithoutBoardJiraSourceInput
 }
 
 export type BoardJiraSourceCreateOrConnectWithoutBoardInput = {
@@ -676,6 +704,7 @@ export type BoardJiraSourceCreateWithoutTargetGroupInput = {
   updatedAt?: Date | string
   board: Prisma.BoardCreateNestedOneWithoutBoardJiraSourcesInput
   jiraProjectSync: Prisma.JiraProjectSyncCreateNestedOneWithoutBoardSourcesInput
+  filteredKeys?: Prisma.BoardJiraSourceKeyCreateNestedManyWithoutBoardJiraSourceInput
 }
 
 export type BoardJiraSourceUncheckedCreateWithoutTargetGroupInput = {
@@ -690,6 +719,7 @@ export type BoardJiraSourceUncheckedCreateWithoutTargetGroupInput = {
   lastPromotedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  filteredKeys?: Prisma.BoardJiraSourceKeyUncheckedCreateNestedManyWithoutBoardJiraSourceInput
 }
 
 export type BoardJiraSourceCreateOrConnectWithoutTargetGroupInput = {
@@ -730,6 +760,7 @@ export type BoardJiraSourceCreateWithoutJiraProjectSyncInput = {
   updatedAt?: Date | string
   board: Prisma.BoardCreateNestedOneWithoutBoardJiraSourcesInput
   targetGroup?: Prisma.GroupCreateNestedOneWithoutBoardJiraSourcesInput
+  filteredKeys?: Prisma.BoardJiraSourceKeyCreateNestedManyWithoutBoardJiraSourceInput
 }
 
 export type BoardJiraSourceUncheckedCreateWithoutJiraProjectSyncInput = {
@@ -744,6 +775,7 @@ export type BoardJiraSourceUncheckedCreateWithoutJiraProjectSyncInput = {
   lastPromotedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  filteredKeys?: Prisma.BoardJiraSourceKeyUncheckedCreateNestedManyWithoutBoardJiraSourceInput
 }
 
 export type BoardJiraSourceCreateOrConnectWithoutJiraProjectSyncInput = {
@@ -772,6 +804,82 @@ export type BoardJiraSourceUpdateManyWithWhereWithoutJiraProjectSyncInput = {
   data: Prisma.XOR<Prisma.BoardJiraSourceUpdateManyMutationInput, Prisma.BoardJiraSourceUncheckedUpdateManyWithoutJiraProjectSyncInput>
 }
 
+export type BoardJiraSourceCreateWithoutFilteredKeysInput = {
+  id?: string
+  allowedIssueTypes?: Prisma.BoardJiraSourceCreateallowedIssueTypesInput | string[]
+  jqlFilter?: string | null
+  fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  defaultSyncedFields?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  statusMapping?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastPromotedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  board: Prisma.BoardCreateNestedOneWithoutBoardJiraSourcesInput
+  jiraProjectSync: Prisma.JiraProjectSyncCreateNestedOneWithoutBoardSourcesInput
+  targetGroup?: Prisma.GroupCreateNestedOneWithoutBoardJiraSourcesInput
+}
+
+export type BoardJiraSourceUncheckedCreateWithoutFilteredKeysInput = {
+  id?: string
+  boardId: string
+  jiraProjectSyncId: string
+  targetGroupId?: string | null
+  allowedIssueTypes?: Prisma.BoardJiraSourceCreateallowedIssueTypesInput | string[]
+  jqlFilter?: string | null
+  fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  defaultSyncedFields?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  statusMapping?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastPromotedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type BoardJiraSourceCreateOrConnectWithoutFilteredKeysInput = {
+  where: Prisma.BoardJiraSourceWhereUniqueInput
+  create: Prisma.XOR<Prisma.BoardJiraSourceCreateWithoutFilteredKeysInput, Prisma.BoardJiraSourceUncheckedCreateWithoutFilteredKeysInput>
+}
+
+export type BoardJiraSourceUpsertWithoutFilteredKeysInput = {
+  update: Prisma.XOR<Prisma.BoardJiraSourceUpdateWithoutFilteredKeysInput, Prisma.BoardJiraSourceUncheckedUpdateWithoutFilteredKeysInput>
+  create: Prisma.XOR<Prisma.BoardJiraSourceCreateWithoutFilteredKeysInput, Prisma.BoardJiraSourceUncheckedCreateWithoutFilteredKeysInput>
+  where?: Prisma.BoardJiraSourceWhereInput
+}
+
+export type BoardJiraSourceUpdateToOneWithWhereWithoutFilteredKeysInput = {
+  where?: Prisma.BoardJiraSourceWhereInput
+  data: Prisma.XOR<Prisma.BoardJiraSourceUpdateWithoutFilteredKeysInput, Prisma.BoardJiraSourceUncheckedUpdateWithoutFilteredKeysInput>
+}
+
+export type BoardJiraSourceUpdateWithoutFilteredKeysInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  allowedIssueTypes?: Prisma.BoardJiraSourceUpdateallowedIssueTypesInput | string[]
+  jqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  defaultSyncedFields?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  statusMapping?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastPromotedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  board?: Prisma.BoardUpdateOneRequiredWithoutBoardJiraSourcesNestedInput
+  jiraProjectSync?: Prisma.JiraProjectSyncUpdateOneRequiredWithoutBoardSourcesNestedInput
+  targetGroup?: Prisma.GroupUpdateOneWithoutBoardJiraSourcesNestedInput
+}
+
+export type BoardJiraSourceUncheckedUpdateWithoutFilteredKeysInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  boardId?: Prisma.StringFieldUpdateOperationsInput | string
+  jiraProjectSyncId?: Prisma.StringFieldUpdateOperationsInput | string
+  targetGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allowedIssueTypes?: Prisma.BoardJiraSourceUpdateallowedIssueTypesInput | string[]
+  jqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  defaultSyncedFields?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  statusMapping?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastPromotedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
 export type BoardJiraSourceCreateManyBoardInput = {
   id?: string
   jiraProjectSyncId: string
@@ -798,6 +906,7 @@ export type BoardJiraSourceUpdateWithoutBoardInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   jiraProjectSync?: Prisma.JiraProjectSyncUpdateOneRequiredWithoutBoardSourcesNestedInput
   targetGroup?: Prisma.GroupUpdateOneWithoutBoardJiraSourcesNestedInput
+  filteredKeys?: Prisma.BoardJiraSourceKeyUpdateManyWithoutBoardJiraSourceNestedInput
 }
 
 export type BoardJiraSourceUncheckedUpdateWithoutBoardInput = {
@@ -812,6 +921,7 @@ export type BoardJiraSourceUncheckedUpdateWithoutBoardInput = {
   lastPromotedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  filteredKeys?: Prisma.BoardJiraSourceKeyUncheckedUpdateManyWithoutBoardJiraSourceNestedInput
 }
 
 export type BoardJiraSourceUncheckedUpdateManyWithoutBoardInput = {
@@ -854,6 +964,7 @@ export type BoardJiraSourceUpdateWithoutTargetGroupInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   board?: Prisma.BoardUpdateOneRequiredWithoutBoardJiraSourcesNestedInput
   jiraProjectSync?: Prisma.JiraProjectSyncUpdateOneRequiredWithoutBoardSourcesNestedInput
+  filteredKeys?: Prisma.BoardJiraSourceKeyUpdateManyWithoutBoardJiraSourceNestedInput
 }
 
 export type BoardJiraSourceUncheckedUpdateWithoutTargetGroupInput = {
@@ -868,6 +979,7 @@ export type BoardJiraSourceUncheckedUpdateWithoutTargetGroupInput = {
   lastPromotedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  filteredKeys?: Prisma.BoardJiraSourceKeyUncheckedUpdateManyWithoutBoardJiraSourceNestedInput
 }
 
 export type BoardJiraSourceUncheckedUpdateManyWithoutTargetGroupInput = {
@@ -910,6 +1022,7 @@ export type BoardJiraSourceUpdateWithoutJiraProjectSyncInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   board?: Prisma.BoardUpdateOneRequiredWithoutBoardJiraSourcesNestedInput
   targetGroup?: Prisma.GroupUpdateOneWithoutBoardJiraSourcesNestedInput
+  filteredKeys?: Prisma.BoardJiraSourceKeyUpdateManyWithoutBoardJiraSourceNestedInput
 }
 
 export type BoardJiraSourceUncheckedUpdateWithoutJiraProjectSyncInput = {
@@ -924,6 +1037,7 @@ export type BoardJiraSourceUncheckedUpdateWithoutJiraProjectSyncInput = {
   lastPromotedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  filteredKeys?: Prisma.BoardJiraSourceKeyUncheckedUpdateManyWithoutBoardJiraSourceNestedInput
 }
 
 export type BoardJiraSourceUncheckedUpdateManyWithoutJiraProjectSyncInput = {
@@ -940,6 +1054,35 @@ export type BoardJiraSourceUncheckedUpdateManyWithoutJiraProjectSyncInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+
+/**
+ * Count Type BoardJiraSourceCountOutputType
+ */
+
+export type BoardJiraSourceCountOutputType = {
+  filteredKeys: number
+}
+
+export type BoardJiraSourceCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  filteredKeys?: boolean | BoardJiraSourceCountOutputTypeCountFilteredKeysArgs
+}
+
+/**
+ * BoardJiraSourceCountOutputType without action
+ */
+export type BoardJiraSourceCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BoardJiraSourceCountOutputType
+   */
+  select?: Prisma.BoardJiraSourceCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * BoardJiraSourceCountOutputType without action
+ */
+export type BoardJiraSourceCountOutputTypeCountFilteredKeysArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.BoardJiraSourceKeyWhereInput
+}
 
 
 export type BoardJiraSourceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -958,6 +1101,8 @@ export type BoardJiraSourceSelect<ExtArgs extends runtime.Types.Extensions.Inter
   board?: boolean | Prisma.BoardDefaultArgs<ExtArgs>
   jiraProjectSync?: boolean | Prisma.JiraProjectSyncDefaultArgs<ExtArgs>
   targetGroup?: boolean | Prisma.BoardJiraSource$targetGroupArgs<ExtArgs>
+  filteredKeys?: boolean | Prisma.BoardJiraSource$filteredKeysArgs<ExtArgs>
+  _count?: boolean | Prisma.BoardJiraSourceCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["boardJiraSource"]>
 
 export type BoardJiraSourceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1016,6 +1161,8 @@ export type BoardJiraSourceInclude<ExtArgs extends runtime.Types.Extensions.Inte
   board?: boolean | Prisma.BoardDefaultArgs<ExtArgs>
   jiraProjectSync?: boolean | Prisma.JiraProjectSyncDefaultArgs<ExtArgs>
   targetGroup?: boolean | Prisma.BoardJiraSource$targetGroupArgs<ExtArgs>
+  filteredKeys?: boolean | Prisma.BoardJiraSource$filteredKeysArgs<ExtArgs>
+  _count?: boolean | Prisma.BoardJiraSourceCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type BoardJiraSourceIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   board?: boolean | Prisma.BoardDefaultArgs<ExtArgs>
@@ -1034,6 +1181,7 @@ export type $BoardJiraSourcePayload<ExtArgs extends runtime.Types.Extensions.Int
     board: Prisma.$BoardPayload<ExtArgs>
     jiraProjectSync: Prisma.$JiraProjectSyncPayload<ExtArgs>
     targetGroup: Prisma.$GroupPayload<ExtArgs> | null
+    filteredKeys: Prisma.$BoardJiraSourceKeyPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1445,6 +1593,7 @@ export interface Prisma__BoardJiraSourceClient<T, Null = never, ExtArgs extends 
   board<T extends Prisma.BoardDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.BoardDefaultArgs<ExtArgs>>): Prisma.Prisma__BoardClient<runtime.Types.Result.GetResult<Prisma.$BoardPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   jiraProjectSync<T extends Prisma.JiraProjectSyncDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.JiraProjectSyncDefaultArgs<ExtArgs>>): Prisma.Prisma__JiraProjectSyncClient<runtime.Types.Result.GetResult<Prisma.$JiraProjectSyncPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   targetGroup<T extends Prisma.BoardJiraSource$targetGroupArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.BoardJiraSource$targetGroupArgs<ExtArgs>>): Prisma.Prisma__GroupClient<runtime.Types.Result.GetResult<Prisma.$GroupPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  filteredKeys<T extends Prisma.BoardJiraSource$filteredKeysArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.BoardJiraSource$filteredKeysArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardJiraSourceKeyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1903,6 +2052,30 @@ export type BoardJiraSource$targetGroupArgs<ExtArgs extends runtime.Types.Extens
    */
   include?: Prisma.GroupInclude<ExtArgs> | null
   where?: Prisma.GroupWhereInput
+}
+
+/**
+ * BoardJiraSource.filteredKeys
+ */
+export type BoardJiraSource$filteredKeysArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BoardJiraSourceKey
+   */
+  select?: Prisma.BoardJiraSourceKeySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BoardJiraSourceKey
+   */
+  omit?: Prisma.BoardJiraSourceKeyOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BoardJiraSourceKeyInclude<ExtArgs> | null
+  where?: Prisma.BoardJiraSourceKeyWhereInput
+  orderBy?: Prisma.BoardJiraSourceKeyOrderByWithRelationInput | Prisma.BoardJiraSourceKeyOrderByWithRelationInput[]
+  cursor?: Prisma.BoardJiraSourceKeyWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.BoardJiraSourceKeyScalarFieldEnum | Prisma.BoardJiraSourceKeyScalarFieldEnum[]
 }
 
 /**

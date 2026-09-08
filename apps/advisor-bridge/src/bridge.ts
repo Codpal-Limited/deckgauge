@@ -12,6 +12,12 @@ export interface AcpClientLike {
   start(agent: AcpAgent, buildMcpServer: BuildMcpServer): Promise<void>;
   ask(question: string, handlers: AskHandlers): Promise<void>;
   stop(): Promise<void>;
+  /** Can a rotated token be installed on this live session? See `AcpClient`. */
+  canReconnectMcp(): boolean;
+  /** Installs a rebuilt MCP config on the live session. See `AcpClient`. */
+  reconnectMcp(buildMcpServer: BuildMcpServer): Promise<void>;
+  /** Is a prompt turn streaming right now? */
+  isBusy(): boolean;
 }
 
 /**
@@ -97,6 +103,24 @@ export class AdvisorBridge {
    * must not install itself — see `authenticate()`.
    */
   private authGeneration = 0;
+  /**
+   * A rotated token that has passed preflight but has NOT yet been installed.
+   *
+   * Rotations are applied lazily — see `authenticate()` — so this is the queue
+   * of one, flushed by `ask()`.
+   */
+  private pendingToken: string | null = null;
+  /**
+   * The swap currently being applied, if any. `ask()` joins it rather than
+   * racing past it: the pending token is consumed before the swap is awaited,
+   * so without this a second `ask()` entering during that await would find
+   * nothing pending and prompt a session the agent is mid-way through
+   * recreating — and the history replay would arrive with a turn's handlers
+   * installed. `ws-server` dispatches `ask` fire-and-forget, so the panel not
+   * issuing overlapping asks is a UI invariant one layer away, not a guarantee
+   * this class can rely on.
+   */
+  private pendingSwap: Promise<string | null> | null = null;
 
   constructor(config: AdvisorBridgeConfig, deps: AdvisorBridgeDeps = {}) {
     this.config = config;
@@ -166,6 +190,36 @@ export class AdvisorBridge {
 
     await this.preflight({ mcpUrl: this.config.mcpUrl, token });
 
+    if (generation !== this.authGeneration) {
+      // Superseded while we were in preflight: do not install an older token
+      // over a newer one.
+      return;
+    }
+
+    // A session already exists, so this is a ROTATION: record it and return.
+    // Installing it here is what made the panel reset its agent on a timer.
+    if (this.client) {
+      this.pendingToken = token;
+      return;
+    }
+
+    await this.openSession(token);
+  }
+
+  /**
+   * Opens the first session for `token`, replacing any existing one.
+   *
+   * The new session is started BEFORE the old one is stopped, so a brief
+   * overlap beats a gap in which `ask()` would fail. Only reached for the
+   * initial handshake and for the fallback rotation path (an agent that cannot
+   * load sessions) — `flushPendingToken()` prefers an in-place swap.
+   */
+  private async openSession(token: string): Promise<boolean> {
+    if (!this.agent) {
+      throw new Error('AdvisorBridge: openSession() called before start() completed');
+    }
+    const generation = this.authGeneration;
+
     const nextClient = this.createClient();
     await nextClient.start(this.agent, ({ supportsHttp }) =>
       buildDeckgaugeMcpConfig({ mcpUrl: this.config.mcpUrl, token, supportsHttp })
@@ -173,9 +227,10 @@ export class AdvisorBridge {
 
     if (generation !== this.authGeneration) {
       // Superseded while we were starting: discard our own session rather than
-      // clobber the newer one.
+      // clobber the newer one. Reported so the caller does not treat this token
+      // as installed — it is not.
       await nextClient.stop();
-      return;
+      return false;
     }
 
     const previousClient = this.client;
@@ -184,6 +239,118 @@ export class AdvisorBridge {
 
     if (previousClient) {
       await previousClient.stop();
+    }
+    return true;
+  }
+
+  /**
+   * Installs a rotated token, if one is waiting, on the session `ask()` is
+   * about to use.
+   *
+   * Two reasons this runs here rather than in `authenticate()`:
+   *
+   * - **An idle panel costs nothing.** Tokens live ~5 minutes, so a panel left
+   *   open rotates every few minutes whether or not anyone is using it. Applying
+   *   each one immediately reset the agent on a timer.
+   * - **A turn is never interrupted.** Between asks there is no answer to lose.
+   *   A swap during one drops the output being streamed, which is the symptom a
+   *   user actually notices.
+   *
+   * Prefers `reconnectMcp()`, which re-points the LIVE session's MCP server at
+   * the new credential and keeps the conversation. Only an agent that cannot
+   * load sessions pays for a replacement.
+   *
+   * Returns an error message if the swap failed, so the caller can report it
+   * instead of asking on a credential known to be stale.
+   */
+  private async flushPendingToken(): Promise<string | null> {
+    // Join a swap already running rather than racing past it.
+    const inFlight = this.pendingSwap;
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const client = this.client;
+    if (this.pendingToken === null || !client) {
+      return null;
+    }
+    // A turn is streaming. Leave the rotation pending for the next ask.
+    if (client.isBusy()) {
+      return null;
+    }
+
+    const swap = this.performSwap();
+    this.pendingSwap = swap;
+    try {
+      return await swap;
+    } finally {
+      this.pendingSwap = null;
+    }
+  }
+
+  /**
+   * Applies the pending token, restoring it if it could not be installed.
+   *
+   * Restoring matters more than it looks: the token is consumed before the
+   * attempt, so a swap that failed and dropped it left every LATER ask running
+   * silently on the expired credential — board tools 401 and the panel answers
+   * with no board data behind it, the exact failure `authenticate()`'s docstring
+   * says must never happen. Only the first ask would have seen an error.
+   *
+   * The `pendingToken === null` guard is what keeps a rotation that landed
+   * DURING the attempt from being overwritten by the token that just failed.
+   */
+  private async performSwap(): Promise<string | null> {
+    const token = this.pendingToken;
+    const client = this.client;
+    if (token === null || !client) {
+      return null;
+    }
+    this.pendingToken = null;
+
+    try {
+      if (client.canReconnectMcp()) {
+        await client.reconnectMcp(({ supportsHttp }) =>
+          buildDeckgaugeMcpConfig({ mcpUrl: this.config.mcpUrl, token, supportsHttp })
+        );
+        this.authenticatedToken = token;
+      } else if (!(await this.openSession(token))) {
+        // Installed NOTHING: a concurrent `authenticate()` bumped the generation
+        // while the replacement session was starting, so `openSession` tore its
+        // own client down. The reachable trigger is an ordinary successful
+        // rotation landing during that spawn — a subprocess plus a full ACP
+        // handshake, seconds wide against a five-minute token — not only the
+        // rarer case where the concurrent call leaves no pending token because
+        // its preflight rejected.
+        //
+        // Reporting this as success is what the sibling `catch` below exists to
+        // prevent: `this.client` is still the ORIGINAL session on the ORIGINAL
+        // token, so `ask()` would answer from a credential two rotations stale —
+        // board tools 401 and a reply with no board data behind it, with no
+        // error shown. One failed ask, and the restored token makes the next one
+        // work.
+        this.restorePending(token, client);
+        return 'AdvisorBridge: the token rotation was superseded before it could be installed; try again.';
+      }
+      return null;
+    } catch (error: unknown) {
+      this.restorePending(token, client);
+      return error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  /**
+   * Puts an uninstalled token back so the next `ask()` retries it.
+   *
+   * Guarded twice. A newer rotation that landed during the attempt must win, so
+   * a token already pending is never overwritten. And the restore is skipped if
+   * the session it belonged to is no longer mounted — otherwise a `stop()` that
+   * cleared the queue mid-swap would leave a stale token behind for a LATER
+   * session to install backwards.
+   */
+  private restorePending(token: string, client: AcpClientLike): void {
+    if (this.pendingToken === null && this.client === client) {
+      this.pendingToken = token;
     }
   }
 
@@ -199,7 +366,20 @@ export class AdvisorBridge {
       handlers.onError('AdvisorBridge: ask() called before authenticate() completed');
       return;
     }
-    await this.client.ask(question, handlers);
+
+    const swapFailure = await this.flushPendingToken();
+    if (swapFailure !== null) {
+      handlers.onError(swapFailure);
+      return;
+    }
+
+    // Re-read: the fallback rotation path replaces `this.client`.
+    const client = this.client;
+    if (!client) {
+      handlers.onError('AdvisorBridge: ask() called before authenticate() completed');
+      return;
+    }
+    await client.ask(question, handlers);
   }
 
   /** Delegates to the client's `stop()`. Safe no-op if never authenticated. */
@@ -207,6 +387,8 @@ export class AdvisorBridge {
     const client = this.client;
     this.client = null;
     this.authenticatedToken = null;
+    this.pendingToken = null;
+    this.pendingSwap = null;
     if (client) {
       await client.stop();
     }

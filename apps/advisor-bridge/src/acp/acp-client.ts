@@ -20,6 +20,8 @@ import {
   type RequestPermissionRequest,
   type RequestPermissionResponse,
   type SessionNotification,
+  type LoadSessionRequest,
+  type LoadSessionResponse,
   type SetSessionModeRequest,
   type SetSessionModeResponse,
   type ToolKind,
@@ -66,6 +68,11 @@ export interface AcpAgentConnection {
    * `start()` only calls it when `session/new` came back with modes.
    */
   setSessionMode?(params: SetSessionModeRequest): Promise<SetSessionModeResponse>;
+  /**
+   * Optional: only agents advertising `agentCapabilities.loadSession`
+   * implement it. `reconnectMcp()` is the only caller.
+   */
+  loadSession?(params: LoadSessionRequest): Promise<LoadSessionResponse>;
 }
 
 /**
@@ -428,6 +435,16 @@ export class AcpClient {
   private connection: AcpAgentConnection | null = null;
   private sessionId: string | null = null;
   private currentHandlers: AskHandlers | null = null;
+  /**
+   * What `initialize` advertised, kept because `reconnectMcp()` has to rebuild
+   * the MCP config from the SAME capabilities `start()` used. Guessing them
+   * could hand an http-capable agent the `mcp-remote` stdio config, which puts
+   * the token back on a command line — the exposure `mcp-config.ts` avoids.
+   */
+  private capabilities: AgentMcpCapabilities | null = null;
+  private canLoadSession = false;
+  /** The cwd this session was opened with; `session/load` must reuse it. */
+  private sessionCwdUsed: string | null = null;
 
   constructor(deps: AcpClientDeps = {}) {
     this.resolveCommand = deps.resolveCommand ?? resolveAgentCommand;
@@ -457,6 +474,8 @@ export class AcpClient {
 
       const initialized = await connection.initialize({ protocolVersion: PROTOCOL_VERSION });
       const supportsHttp = initialized.agentCapabilities?.mcpCapabilities?.http === true;
+      this.capabilities = { supportsHttp };
+      this.canLoadSession = initialized.agentCapabilities?.loadSession === true;
       this.onInfo(
         supportsHttp
           ? 'MCP transport: http (the agent connects to /mcp directly; the token stays out of argv).'
@@ -464,8 +483,10 @@ export class AcpClient {
               'passed on that subprocess\'s command line, readable by other users on this host).'
       );
       const mcpServer = buildMcpServer({ supportsHttp });
+      const cwd = this.sessionCwd();
+      this.sessionCwdUsed = cwd;
       const session = await connection.newSession({
-        cwd: this.sessionCwd(),
+        cwd,
         mcpServers: [mcpServer],
       });
       this.sessionId = session.sessionId;
@@ -488,7 +509,7 @@ export class AcpClient {
    */
   private async applyClientDecidesMode(
     connection: AcpAgentConnection,
-    session: NewSessionResponse
+    session: { sessionId: string; modes?: NewSessionResponse['modes'] }
   ): Promise<void> {
     const modes = session.modes;
     if (!modes || !connection.setSessionMode) {
@@ -522,6 +543,74 @@ export class AcpClient {
   }
 
   /**
+   * Can a rotated token be installed on THIS session, instead of by starting a
+   * replacement one?
+   *
+   * True only when the agent advertised `loadSession` at initialize and a
+   * session is actually open. `session/load` is specified to restore the
+   * conversation history and connect to the `mcpServers` the request carries,
+   * which is exactly a credential swap; without it the only way to change the
+   * token is a new subprocess, and the conversation is lost with the old one.
+   */
+  canReconnectMcp(): boolean {
+    return this.canLoadSession && this.connection?.loadSession !== undefined && this.sessionId !== null;
+  }
+
+  /**
+   * Re-points this session's MCP server at a config built by `buildMcpServer`
+   * — the way a rotated token reaches a live agent without discarding its
+   * conversation.
+   *
+   * Throws rather than silently degrading when the agent cannot load sessions:
+   * a caller that believes a swap happened would leave the agent holding an
+   * expired token and every board tool would 401, which is the failure this
+   * whole path exists to prevent. Check `canReconnectMcp()` first.
+   */
+  async reconnectMcp(buildMcpServer: BuildMcpServer): Promise<void> {
+    const { connection, sessionId, capabilities, sessionCwdUsed } = this;
+    if (!connection?.loadSession || !this.canLoadSession) {
+      throw new Error(
+        'AcpClient: this agent does not support session/load, so its MCP server cannot be ' +
+          'reconnected in place'
+      );
+    }
+    if (!sessionId || !capabilities || sessionCwdUsed === null) {
+      throw new Error('AcpClient: reconnectMcp() called before start() completed');
+    }
+
+    const loaded = await connection.loadSession({
+      sessionId,
+      cwd: sessionCwdUsed,
+      mcpServers: [buildMcpServer(capabilities)],
+    });
+
+    // A reload is NOT guaranteed to preserve the session mode, so the
+    // client-decides mode has to be re-asserted exactly as `start()` asserts it.
+    // On the pinned Claude adapter it is guaranteed NOT to: its session
+    // fingerprint is `JSON.stringify({ cwd, mcpServers })` and the token lives
+    // inside `mcpServers`, so a rotation always changes it, always takes the
+    // teardown-and-recreate branch, and always comes back in the adapter's own
+    // default mode. Skipping this would mean the agent approves its own tool
+    // calls from the first rotation onward — `autoApprovePermission`, the only
+    // checkpoint against local file edits and shell execution, would never be
+    // consulted again.
+    await this.applyClientDecidesMode(connection, { sessionId, modes: loaded.modes });
+  }
+
+  /**
+   * Is a prompt turn streaming right now?
+   *
+   * `currentHandlers` is set for exactly the duration of `ask()`, so this is
+   * the same signal the notification handler uses. Callers rotate credentials
+   * only when it is false — a swap mid-turn would drop the answer being
+   * streamed, and `session/load`'s history replay would arrive while a turn's
+   * handlers were still installed.
+   */
+  isBusy(): boolean {
+    return this.currentHandlers !== null;
+  }
+
+  /**
    * Sends `question` as a `session/prompt` and streams the turn's output to
    * `handlers`. Never throws — transport/agent failures surface via
    * `handlers.onError` instead.
@@ -552,6 +641,9 @@ export class AcpClient {
     this.connection = null;
     this.sessionId = null;
     this.currentHandlers = null;
+    this.capabilities = null;
+    this.canLoadSession = false;
+    this.sessionCwdUsed = null;
     const proc = this.process;
     this.process = null;
     if (proc) {

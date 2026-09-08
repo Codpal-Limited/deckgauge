@@ -17,6 +17,21 @@ export class WidgetCache {
     this.store.set(key, { value, expiresAt: Date.now() + this.ttlMs });
   }
 
+  /**
+   * Drop every entry for one board.
+   *
+   * Exists because saving a Focus stage map otherwise changes nothing visible
+   * for up to the TTL: the bars keep their old numbers, and the honest reading
+   * of that is "the setting does not work". Matching on the `boardId:` PREFIX —
+   * separator included — is what keeps `board-1` from taking out `board-10`.
+   */
+  invalidateBoard(boardId: string): void {
+    const prefix = `${boardId}:`;
+    for (const key of this.store.keys()) {
+      if (key.startsWith(prefix)) this.store.delete(key);
+    }
+  }
+
   static makeKey(boardId: string, widgetType: string, config: Record<string, unknown>): string {
     return `${boardId}:${widgetType}:${JSON.stringify(config)}`;
   }

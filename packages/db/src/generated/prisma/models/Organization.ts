@@ -197,6 +197,7 @@ export type OrganizationWhereInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectListRelationFilter
   prJiraLinks?: Prisma.PrJiraLinkListRelationFilter
   developerProfiles?: Prisma.DeveloperProfileListRelationFilter
+  focusVerdicts?: Prisma.FocusVerdictListRelationFilter
   syncRuns?: Prisma.SyncRunListRelationFilter
   notifications?: Prisma.NotificationListRelationFilter
   notificationPreferences?: Prisma.NotificationPreferenceListRelationFilter
@@ -223,6 +224,7 @@ export type OrganizationOrderByWithRelationInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectOrderByRelationAggregateInput
   prJiraLinks?: Prisma.PrJiraLinkOrderByRelationAggregateInput
   developerProfiles?: Prisma.DeveloperProfileOrderByRelationAggregateInput
+  focusVerdicts?: Prisma.FocusVerdictOrderByRelationAggregateInput
   syncRuns?: Prisma.SyncRunOrderByRelationAggregateInput
   notifications?: Prisma.NotificationOrderByRelationAggregateInput
   notificationPreferences?: Prisma.NotificationPreferenceOrderByRelationAggregateInput
@@ -252,6 +254,7 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   retiredJiraProjects?: Prisma.RetiredJiraProjectListRelationFilter
   prJiraLinks?: Prisma.PrJiraLinkListRelationFilter
   developerProfiles?: Prisma.DeveloperProfileListRelationFilter
+  focusVerdicts?: Prisma.FocusVerdictListRelationFilter
   syncRuns?: Prisma.SyncRunListRelationFilter
   notifications?: Prisma.NotificationListRelationFilter
   notificationPreferences?: Prisma.NotificationPreferenceListRelationFilter
@@ -300,6 +303,7 @@ export type OrganizationCreateInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -326,6 +330,7 @@ export type OrganizationUncheckedCreateInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -352,6 +357,7 @@ export type OrganizationUpdateInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -378,6 +384,7 @@ export type OrganizationUncheckedUpdateInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -696,6 +703,20 @@ export type OrganizationUpdateOneRequiredWithoutNotificationPreferencesNestedInp
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutNotificationPreferencesInput, Prisma.OrganizationUpdateWithoutNotificationPreferencesInput>, Prisma.OrganizationUncheckedUpdateWithoutNotificationPreferencesInput>
 }
 
+export type OrganizationCreateNestedOneWithoutFocusVerdictsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutFocusVerdictsInput, Prisma.OrganizationUncheckedCreateWithoutFocusVerdictsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutFocusVerdictsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutFocusVerdictsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutFocusVerdictsInput, Prisma.OrganizationUncheckedCreateWithoutFocusVerdictsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutFocusVerdictsInput
+  upsert?: Prisma.OrganizationUpsertWithoutFocusVerdictsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutFocusVerdictsInput, Prisma.OrganizationUpdateWithoutFocusVerdictsInput>, Prisma.OrganizationUncheckedUpdateWithoutFocusVerdictsInput>
+}
+
 export type OrganizationCreateWithoutMembershipsInput = {
   id?: string
   name: string
@@ -716,6 +737,7 @@ export type OrganizationCreateWithoutMembershipsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -741,6 +763,7 @@ export type OrganizationUncheckedCreateWithoutMembershipsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -782,6 +805,7 @@ export type OrganizationUpdateWithoutMembershipsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -807,6 +831,7 @@ export type OrganizationUncheckedUpdateWithoutMembershipsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -832,6 +857,7 @@ export type OrganizationCreateWithoutBoardsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -857,6 +883,7 @@ export type OrganizationUncheckedCreateWithoutBoardsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -898,6 +925,7 @@ export type OrganizationUpdateWithoutBoardsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -923,6 +951,7 @@ export type OrganizationUncheckedUpdateWithoutBoardsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -948,6 +977,7 @@ export type OrganizationCreateWithoutJiraInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -973,6 +1003,7 @@ export type OrganizationUncheckedCreateWithoutJiraInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1014,6 +1045,7 @@ export type OrganizationUpdateWithoutJiraInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -1039,6 +1071,7 @@ export type OrganizationUncheckedUpdateWithoutJiraInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1065,6 +1098,7 @@ export type OrganizationCreateWithoutSyncRunsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
 }
@@ -1090,6 +1124,7 @@ export type OrganizationUncheckedCreateWithoutSyncRunsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
 }
@@ -1131,6 +1166,7 @@ export type OrganizationUpdateWithoutSyncRunsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
 }
@@ -1156,6 +1192,7 @@ export type OrganizationUncheckedUpdateWithoutSyncRunsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
 }
@@ -1180,6 +1217,7 @@ export type OrganizationCreateWithoutGithubInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -1205,6 +1243,7 @@ export type OrganizationUncheckedCreateWithoutGithubInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1246,6 +1285,7 @@ export type OrganizationUpdateWithoutGithubInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -1271,6 +1311,7 @@ export type OrganizationUncheckedUpdateWithoutGithubInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1296,6 +1337,7 @@ export type OrganizationCreateWithoutAzureDevOpsInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -1321,6 +1363,7 @@ export type OrganizationUncheckedCreateWithoutAzureDevOpsInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1362,6 +1405,7 @@ export type OrganizationUpdateWithoutAzureDevOpsInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -1387,6 +1431,7 @@ export type OrganizationUncheckedUpdateWithoutAzureDevOpsInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1412,6 +1457,7 @@ export type OrganizationCreateWithoutDeveloperProfilesInput = {
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -1437,6 +1483,7 @@ export type OrganizationUncheckedCreateWithoutDeveloperProfilesInput = {
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1478,6 +1525,7 @@ export type OrganizationUpdateWithoutDeveloperProfilesInput = {
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -1503,6 +1551,7 @@ export type OrganizationUncheckedUpdateWithoutDeveloperProfilesInput = {
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1528,6 +1577,7 @@ export type OrganizationCreateWithoutComparisonsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -1553,6 +1603,7 @@ export type OrganizationUncheckedCreateWithoutComparisonsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1594,6 +1645,7 @@ export type OrganizationUpdateWithoutComparisonsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -1619,6 +1671,7 @@ export type OrganizationUncheckedUpdateWithoutComparisonsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1644,6 +1697,7 @@ export type OrganizationCreateWithoutGitlabInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -1669,6 +1723,7 @@ export type OrganizationUncheckedCreateWithoutGitlabInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1710,6 +1765,7 @@ export type OrganizationUpdateWithoutGitlabInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -1735,6 +1791,7 @@ export type OrganizationUncheckedUpdateWithoutGitlabInstancesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1760,6 +1817,7 @@ export type OrganizationCreateWithoutPrJiraLinksInput = {
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -1785,6 +1843,7 @@ export type OrganizationUncheckedCreateWithoutPrJiraLinksInput = {
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1826,6 +1885,7 @@ export type OrganizationUpdateWithoutPrJiraLinksInput = {
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -1851,6 +1911,7 @@ export type OrganizationUncheckedUpdateWithoutPrJiraLinksInput = {
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1876,6 +1937,7 @@ export type OrganizationCreateWithoutBoardFoldersInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -1901,6 +1963,7 @@ export type OrganizationUncheckedCreateWithoutBoardFoldersInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1942,6 +2005,7 @@ export type OrganizationUpdateWithoutBoardFoldersInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -1967,6 +2031,7 @@ export type OrganizationUncheckedUpdateWithoutBoardFoldersInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1992,6 +2057,7 @@ export type OrganizationCreateWithoutOrgTreesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -2017,6 +2083,7 @@ export type OrganizationUncheckedCreateWithoutOrgTreesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2058,6 +2125,7 @@ export type OrganizationUpdateWithoutOrgTreesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -2083,6 +2151,7 @@ export type OrganizationUncheckedUpdateWithoutOrgTreesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2108,6 +2177,7 @@ export type OrganizationCreateWithoutRoadmapsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -2133,6 +2203,7 @@ export type OrganizationUncheckedCreateWithoutRoadmapsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2174,6 +2245,7 @@ export type OrganizationUpdateWithoutRoadmapsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -2199,6 +2271,7 @@ export type OrganizationUncheckedUpdateWithoutRoadmapsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2224,6 +2297,7 @@ export type OrganizationCreateWithoutTimesheetStatusRulesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -2249,6 +2323,7 @@ export type OrganizationUncheckedCreateWithoutTimesheetStatusRulesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2290,6 +2365,7 @@ export type OrganizationUpdateWithoutTimesheetStatusRulesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -2315,6 +2391,7 @@ export type OrganizationUncheckedUpdateWithoutTimesheetStatusRulesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2340,6 +2417,7 @@ export type OrganizationCreateWithoutRetiredJiraProjectsInput = {
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -2365,6 +2443,7 @@ export type OrganizationUncheckedCreateWithoutRetiredJiraProjectsInput = {
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2406,6 +2485,7 @@ export type OrganizationUpdateWithoutRetiredJiraProjectsInput = {
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -2431,6 +2511,7 @@ export type OrganizationUncheckedUpdateWithoutRetiredJiraProjectsInput = {
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2456,6 +2537,7 @@ export type OrganizationCreateWithoutAdvisorConfigInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
@@ -2481,6 +2563,7 @@ export type OrganizationUncheckedCreateWithoutAdvisorConfigInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2522,6 +2605,7 @@ export type OrganizationUpdateWithoutAdvisorConfigInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
@@ -2547,6 +2631,7 @@ export type OrganizationUncheckedUpdateWithoutAdvisorConfigInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2573,6 +2658,7 @@ export type OrganizationCreateWithoutNotificationsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
 }
@@ -2598,6 +2684,7 @@ export type OrganizationUncheckedCreateWithoutNotificationsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
 }
@@ -2639,6 +2726,7 @@ export type OrganizationUpdateWithoutNotificationsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
 }
@@ -2664,6 +2752,7 @@ export type OrganizationUncheckedUpdateWithoutNotificationsInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
 }
@@ -2689,6 +2778,7 @@ export type OrganizationCreateWithoutNotificationPreferencesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
 }
@@ -2714,6 +2804,7 @@ export type OrganizationUncheckedCreateWithoutNotificationPreferencesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
 }
@@ -2755,6 +2846,7 @@ export type OrganizationUpdateWithoutNotificationPreferencesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
 }
@@ -2780,8 +2872,129 @@ export type OrganizationUncheckedUpdateWithoutNotificationPreferencesInput = {
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutFocusVerdictsInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  memberships?: Prisma.OrgMembershipCreateNestedManyWithoutOrganizationInput
+  boards?: Prisma.BoardCreateNestedManyWithoutOrganizationInput
+  roadmaps?: Prisma.RoadmapCreateNestedManyWithoutOrganizationInput
+  orgTrees?: Prisma.OrgTreeCreateNestedManyWithoutOrganizationInput
+  comparisons?: Prisma.ComparisonCreateNestedManyWithoutOrganizationInput
+  boardFolders?: Prisma.BoardFolderCreateNestedManyWithoutOrganizationInput
+  jiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOrganizationInput
+  githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
+  azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
+  gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
+  timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
+  retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
+  prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
+  developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
+  notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
+  notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutFocusVerdictsInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  memberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutOrganizationInput
+  boards?: Prisma.BoardUncheckedCreateNestedManyWithoutOrganizationInput
+  roadmaps?: Prisma.RoadmapUncheckedCreateNestedManyWithoutOrganizationInput
+  orgTrees?: Prisma.OrgTreeUncheckedCreateNestedManyWithoutOrganizationInput
+  comparisons?: Prisma.ComparisonUncheckedCreateNestedManyWithoutOrganizationInput
+  boardFolders?: Prisma.BoardFolderUncheckedCreateNestedManyWithoutOrganizationInput
+  jiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
+  timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
+  retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
+  prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
+  developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
+  notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutFocusVerdictsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutFocusVerdictsInput, Prisma.OrganizationUncheckedCreateWithoutFocusVerdictsInput>
+}
+
+export type OrganizationUpsertWithoutFocusVerdictsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutFocusVerdictsInput, Prisma.OrganizationUncheckedUpdateWithoutFocusVerdictsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutFocusVerdictsInput, Prisma.OrganizationUncheckedCreateWithoutFocusVerdictsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutFocusVerdictsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutFocusVerdictsInput, Prisma.OrganizationUncheckedUpdateWithoutFocusVerdictsInput>
+}
+
+export type OrganizationUpdateWithoutFocusVerdictsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.OrgMembershipUpdateManyWithoutOrganizationNestedInput
+  boards?: Prisma.BoardUpdateManyWithoutOrganizationNestedInput
+  roadmaps?: Prisma.RoadmapUpdateManyWithoutOrganizationNestedInput
+  orgTrees?: Prisma.OrgTreeUpdateManyWithoutOrganizationNestedInput
+  comparisons?: Prisma.ComparisonUpdateManyWithoutOrganizationNestedInput
+  boardFolders?: Prisma.BoardFolderUpdateManyWithoutOrganizationNestedInput
+  jiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOrganizationNestedInput
+  githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
+  azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
+  gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
+  timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
+  retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
+  prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
+  developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
+  notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
+  notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutFocusVerdictsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutOrganizationNestedInput
+  boards?: Prisma.BoardUncheckedUpdateManyWithoutOrganizationNestedInput
+  roadmaps?: Prisma.RoadmapUncheckedUpdateManyWithoutOrganizationNestedInput
+  orgTrees?: Prisma.OrgTreeUncheckedUpdateManyWithoutOrganizationNestedInput
+  comparisons?: Prisma.ComparisonUncheckedUpdateManyWithoutOrganizationNestedInput
+  boardFolders?: Prisma.BoardFolderUncheckedUpdateManyWithoutOrganizationNestedInput
+  jiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
+  timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
+  retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
+  prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
+  developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
+  notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
+  notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 
@@ -2804,6 +3017,7 @@ export type OrganizationCountOutputType = {
   retiredJiraProjects: number
   prJiraLinks: number
   developerProfiles: number
+  focusVerdicts: number
   syncRuns: number
   notifications: number
   notificationPreferences: number
@@ -2824,6 +3038,7 @@ export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Exte
   retiredJiraProjects?: boolean | OrganizationCountOutputTypeCountRetiredJiraProjectsArgs
   prJiraLinks?: boolean | OrganizationCountOutputTypeCountPrJiraLinksArgs
   developerProfiles?: boolean | OrganizationCountOutputTypeCountDeveloperProfilesArgs
+  focusVerdicts?: boolean | OrganizationCountOutputTypeCountFocusVerdictsArgs
   syncRuns?: boolean | OrganizationCountOutputTypeCountSyncRunsArgs
   notifications?: boolean | OrganizationCountOutputTypeCountNotificationsArgs
   notificationPreferences?: boolean | OrganizationCountOutputTypeCountNotificationPreferencesArgs
@@ -2940,6 +3155,13 @@ export type OrganizationCountOutputTypeCountDeveloperProfilesArgs<ExtArgs extend
 /**
  * OrganizationCountOutputType without action
  */
+export type OrganizationCountOutputTypeCountFocusVerdictsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.FocusVerdictWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
 export type OrganizationCountOutputTypeCountSyncRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.SyncRunWhereInput
 }
@@ -2980,6 +3202,7 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   retiredJiraProjects?: boolean | Prisma.Organization$retiredJiraProjectsArgs<ExtArgs>
   prJiraLinks?: boolean | Prisma.Organization$prJiraLinksArgs<ExtArgs>
   developerProfiles?: boolean | Prisma.Organization$developerProfilesArgs<ExtArgs>
+  focusVerdicts?: boolean | Prisma.Organization$focusVerdictsArgs<ExtArgs>
   syncRuns?: boolean | Prisma.Organization$syncRunsArgs<ExtArgs>
   notifications?: boolean | Prisma.Organization$notificationsArgs<ExtArgs>
   notificationPreferences?: boolean | Prisma.Organization$notificationPreferencesArgs<ExtArgs>
@@ -3027,6 +3250,7 @@ export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.Interna
   retiredJiraProjects?: boolean | Prisma.Organization$retiredJiraProjectsArgs<ExtArgs>
   prJiraLinks?: boolean | Prisma.Organization$prJiraLinksArgs<ExtArgs>
   developerProfiles?: boolean | Prisma.Organization$developerProfilesArgs<ExtArgs>
+  focusVerdicts?: boolean | Prisma.Organization$focusVerdictsArgs<ExtArgs>
   syncRuns?: boolean | Prisma.Organization$syncRunsArgs<ExtArgs>
   notifications?: boolean | Prisma.Organization$notificationsArgs<ExtArgs>
   notificationPreferences?: boolean | Prisma.Organization$notificationPreferencesArgs<ExtArgs>
@@ -3053,6 +3277,7 @@ export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     retiredJiraProjects: Prisma.$RetiredJiraProjectPayload<ExtArgs>[]
     prJiraLinks: Prisma.$PrJiraLinkPayload<ExtArgs>[]
     developerProfiles: Prisma.$DeveloperProfilePayload<ExtArgs>[]
+    focusVerdicts: Prisma.$FocusVerdictPayload<ExtArgs>[]
     syncRuns: Prisma.$SyncRunPayload<ExtArgs>[]
     notifications: Prisma.$NotificationPayload<ExtArgs>[]
     notificationPreferences: Prisma.$NotificationPreferencePayload<ExtArgs>[]
@@ -3472,6 +3697,7 @@ export interface Prisma__OrganizationClient<T, Null = never, ExtArgs extends run
   retiredJiraProjects<T extends Prisma.Organization$retiredJiraProjectsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$retiredJiraProjectsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RetiredJiraProjectPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   prJiraLinks<T extends Prisma.Organization$prJiraLinksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$prJiraLinksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PrJiraLinkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   developerProfiles<T extends Prisma.Organization$developerProfilesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$developerProfilesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DeveloperProfilePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  focusVerdicts<T extends Prisma.Organization$focusVerdictsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$focusVerdictsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FocusVerdictPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   syncRuns<T extends Prisma.Organization$syncRunsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$syncRunsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SyncRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   notifications<T extends Prisma.Organization$notificationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$notificationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$NotificationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   notificationPreferences<T extends Prisma.Organization$notificationPreferencesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$notificationPreferencesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$NotificationPreferencePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -4254,6 +4480,30 @@ export type Organization$developerProfilesArgs<ExtArgs extends runtime.Types.Ext
   take?: number
   skip?: number
   distinct?: Prisma.DeveloperProfileScalarFieldEnum | Prisma.DeveloperProfileScalarFieldEnum[]
+}
+
+/**
+ * Organization.focusVerdicts
+ */
+export type Organization$focusVerdictsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FocusVerdict
+   */
+  select?: Prisma.FocusVerdictSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FocusVerdict
+   */
+  omit?: Prisma.FocusVerdictOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FocusVerdictInclude<ExtArgs> | null
+  where?: Prisma.FocusVerdictWhereInput
+  orderBy?: Prisma.FocusVerdictOrderByWithRelationInput | Prisma.FocusVerdictOrderByWithRelationInput[]
+  cursor?: Prisma.FocusVerdictWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.FocusVerdictScalarFieldEnum | Prisma.FocusVerdictScalarFieldEnum[]
 }
 
 /**

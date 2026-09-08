@@ -2,6 +2,7 @@ import { registerBuilder } from './registry.js';
 import type { BuilderInputs, BuiltSql } from './types.js';
 import { formatDateTime, resolveWeeks } from '../../widgets/widget-helpers.js';
 import { resolvePeriod } from './period.js';
+import { adoScopeFilter } from '../../widgets/unions.js';
 
 const DEFAULT_WEEKS = 12;
 
@@ -57,7 +58,6 @@ export function buildReviewQualityTrendSql({ config, scope }: BuilderInputs): Bu
   }
 
   if (hasAdo) {
-    params.adoProjects = scope.adoProjects;
     legs.push(`
       SELECT
         pr.created_at                                                  AS created_at,
@@ -67,14 +67,14 @@ export function buildReviewQualityTrendSql({ config, scope }: BuilderInputs): Bu
         coalesce(rv.has_comment, 0)                                    AS has_comment
       FROM cockpit.ado_pull_requests AS pr FINAL
       LEFT JOIN (
-        SELECT project, pull_request_id,
+        SELECT org_url, project, pull_request_id,
           max(reviewer_login != pr_author_login AND vote >= 5)         AS has_approval,
           max(reviewer_login != pr_author_login AND comment_count > 0) AS has_comment
         FROM cockpit.ado_reviews FINAL
-        WHERE project IN {adoProjects:Array(String)}
-        GROUP BY project, pull_request_id
-      ) AS rv ON rv.project = pr.project AND rv.pull_request_id = pr.pr_id
-      WHERE pr.project IN {adoProjects:Array(String)}
+        WHERE ${adoScopeFilter(scope, params, { repoColumn: 'repo_name' })}
+        GROUP BY org_url, project, pull_request_id
+      ) AS rv ON rv.org_url = pr.org_url AND rv.project = pr.project AND rv.pull_request_id = pr.pr_id
+      WHERE ${adoScopeFilter(scope, params, { repoColumn: 'repo_name', alias: 'pr' })}
         AND pr.status = 'completed'
         AND pr.created_at >= {from:DateTime} AND pr.created_at < {to:DateTime}`);
   }

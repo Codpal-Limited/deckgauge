@@ -1,6 +1,7 @@
 import NextAuth from 'next-auth';
 import Keycloak from 'next-auth/providers/keycloak';
 import { isAuthorized } from './lib/is-authorized';
+import { needsRefresh } from './lib/token-refresh';
 
 // Server-side calls use the Docker-internal URL when available (container→container);
 // falls back to KEYCLOAK_ISSUER for local dev where localhost:8080 is directly reachable.
@@ -80,10 +81,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           expiresAt: account.expires_at,
         };
       }
-      if (
-        typeof token.expiresAt === 'number' &&
-        Date.now() / 1000 > token.expiresAt - 60
-      ) {
+      // Fails safe: an expiry we cannot read means refresh. The previous gate
+      // led with `typeof token.expiresAt === 'number'`, so a token carrying no
+      // expiry was trusted for the whole 30-day session — and a refresh that
+      // never runs never sets `RefreshAccessTokenError`, which is the only
+      // signal `isAuthorized()` has to send the caller back to sign in.
+      if (needsRefresh(token.expiresAt, Date.now() / 1000)) {
         try {
           const refreshed = await refreshKeycloakToken(token.refreshToken as string);
           return {

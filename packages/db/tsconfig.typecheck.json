@@ -1,0 +1,30 @@
+// The typecheck gate's view of this package: the SAME tsconfig, minus the
+// `exclude` that keeps `*.test.ts` out of `tsc --build`, and emitting nothing.
+//
+// `include` is widened too: this package keeps five suites in `__tests__/`,
+// outside the `src/**/*` the build compiles, so the exclude was not the only
+// thing keeping them out.
+//
+// A separate file rather than widening `tsconfig.json`, because that config is
+// what `tsc --build` compiles into `dist` — including the tests there would ship
+// them. `composite`/`incremental`/`declaration` are off for the same reason:
+// this run must not write a `.tsbuildinfo` the real build would then trust.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false,
+    "rootDir": "../.."
+  },
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
+  "include": [
+    "src/**/*",
+    "__tests__/**/*"
+  ]
+}

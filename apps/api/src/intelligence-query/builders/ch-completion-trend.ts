@@ -3,6 +3,7 @@ import { registerBuilder } from './registry.js';
 import type { BuilderInputs, BuiltSql } from './types.js';
 import { chNormalizedStatusExpr, formatDateTime, resolveDays } from '../../widgets/widget-helpers.js';
 import { resolvePeriod } from './period.js';
+import { jiraScopeFilter } from '../../widgets/unions.js';
 
 const DEFAULT_DAYS = 30;
 
@@ -16,22 +17,25 @@ export function buildChCompletionTrendSql({ config, scope }: BuilderInputs): Bui
 
   const days = resolveDays((config as { days?: unknown }).days, DEFAULT_DAYS);
   const { from, to } = resolvePeriod(config, Date.now, days);
+  const params: Record<string, unknown> = {};
 
-  return {
-    sql: `
+  const sql = `
       SELECT
         toString(toDate(transitioned_at)) AS date,
         count() AS count
       FROM cockpit.jira_transitions
-      WHERE project_key IN {projects:Array(String)}
+      WHERE ${jiraScopeFilter(scope, params, { keyColumn: 'issue_key' })}
         AND ${chNormalizedStatusExpr('to_status')} IN {doneStatuses:Array(String)}
         AND transitioned_at >= {from:DateTime}
         AND transitioned_at < {to:DateTime}
       GROUP BY date
       ORDER BY date ASC
-    `,
+    `;
+
+  return {
+    sql,
     params: {
-      projects: scope.jiraProjectKeys,
+      ...params,
       doneStatuses: [...DONE_STATUS_NAMES],
       from: formatDateTime(from),
       to: formatDateTime(to),

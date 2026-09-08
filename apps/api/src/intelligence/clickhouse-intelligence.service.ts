@@ -4,6 +4,14 @@
 // methods short-circuit with an empty payload. Otherwise WHERE-IN filters are
 // added against the columns present on each table (see clickhouse/schemas).
 import type { BoardScope } from './board-scope.js';
+// Task 8 — the four ADO query sites below (getTicketTimeline, the shared
+// normalizedWeeklyPrUnionSql leg used by getDeveloperTable, and
+// getDeveloperDetail's heatmap/recent-prs legs) route through the same
+// adoScopeFilter the widget builders use, rather than a hand-written
+// `project IN (...)` (or, for the two developer-detail/table sites, no filter
+// at all) — see the module doc comment on adoScopeFilter for why a bare
+// project filter bleeds rows across two orgs sharing a project name.
+import { adoScopeFilter } from '../widgets/unions.js';
 
 // P8.6 — minimal Prisma shape we depend on: just the DeveloperProfile lookup.
 // Importing the real PrismaClient type would pull a heavyweight dependency
@@ -416,27 +424,55 @@ export class ClickhouseIntelligenceService {
     return rows[0] ?? { coverage_rate: 0 };
   }
 
-  // EI-021 — unified ticket timeline across Jira / GitHub / GitLab / ADO.
+  /**
+   * EI-021 — unified ticket timeline across Jira / GitHub / GitLab / ADO.
+   *
+   * `key` must be a JIRA-STYLE key. The jira arm matches `issue_key`, and the
+   * other six match `has(linked_ticket_keys, key)`, where `linked_ticket_keys`
+   * is populated by `extractTicketKeys` and only ever holds `PREFIX-123` or
+   * `gh#N`. An ADO work-item key of the form `project#1234` therefore matches
+   * NOTHING in any of the seven arms — callers holding one should not ask.
+   */
   async getTicketTimeline(key: string, scope?: BoardScope): Promise<TicketTimelineEvent[]> {
     if (scope?.isEmpty) return [];
 
-    // Apply per-source WHERE-IN filters when scope is supplied. Each UNION
-    // branch is gated by its own column: jira_transitions.project_key,
-    // github_pull_requests.repo_full_name, github_commits.repo_full_name,
-    // gitlab_merge_requests.project_path, ado_pull_requests.project.
+    // Apply per-source WHERE-IN filters when scope is supplied. Each of the
+    // seven UNION branches is gated by its own column:
+    // jira_transitions.project_key, github_pull_requests.repo_full_name,
+    // github_commits.repo_full_name, gitlab_merge_requests.project_path,
+    // gitlab_commits.project_path, ado_pull_requests.project,
+    // ado_commits.project.
     const params: Record<string, unknown> = { key };
     if (scope) {
       params.jira = scope.jiraProjectKeys;
       params.gh = scope.githubRepoFullNames;
       params.gl = scope.gitlabProjectPaths;
-      params.ado = scope.adoProjects;
     }
 
     const jiraFilter = scope ? 'AND project_key IN ({jira:Array(String)})' : '';
     const ghPrFilter = scope ? 'AND repo_full_name IN ({gh:Array(String)})' : '';
     const ghCommitFilter = scope ? 'AND repo_full_name IN ({gh:Array(String)})' : '';
     const glFilter = scope ? 'AND project_path IN ({gl:Array(String)})' : '';
-    const adoFilter = scope ? 'AND project IN ({ado:Array(String)})' : '';
+    // Routed through the shared adoScopeFilter (Task 8) instead of a bare
+    // `project IN (...)`: two connected orgs can share a project name (case
+    // aside), and `ado_pull_requests` also carries repo_name, so this leg
+    // gains the org_url guard and the per-project repository restriction the
+    // hand-written filter never had. adoScopeFilter writes its own param names
+    // (adoOrgs/adoProjects/adoRefs/...) into `params`.
+    const adoFilter = scope ? `AND ${adoScopeFilter(scope, params, { repoColumn: 'repo_name' })}` : '';
+    // The commit arms filter on the same columns as their PR/MR siblings, but
+    // are named separately so a future divergence (ADO commits carry `repo_name`
+    // as well as `project`) does not silently reuse the wrong predicate.
+    const glCommitFilter = scope ? 'AND project_path IN ({gl:Array(String)})' : '';
+    // ado_commits also carries repo_name (verified against the running
+    // ClickHouse), so it gets the same org_url guard and per-project
+    // repository restriction as the PR arm above. Calling adoScopeFilter a
+    // second time with the same scope/repoColumn is safe: it writes the same
+    // adoOrgs/adoProjects/adoRefs/... values into the shared `params` both
+    // times.
+    const adoCommitFilter = scope
+      ? `AND ${adoScopeFilter(scope, params, { repoColumn: 'repo_name' })}`
+      : '';
 
     const result = await this.client.query({
       query: `
@@ -477,6 +513,15 @@ export class ClickhouseIntelligenceService {
           WHERE has(linked_ticket_keys, {key:String})
           ${glFilter}
           UNION ALL
+          SELECT 'gitlab-commit'         AS source,
+                 committed_at            AS ts,
+                 concat('Commit: ', message_subject)             AS title,
+                 author_name             AS actor,
+                 sha                     AS ref
+          FROM cockpit.gitlab_commits
+          WHERE has(linked_ticket_keys, {key:String})
+          ${glCommitFilter}
+          UNION ALL
           SELECT 'ado'                   AS source,
                  created_at              AS ts,
                  concat('ADO PR #', toString(pr_id), ': ', title) AS title,
@@ -485,6 +530,15 @@ export class ClickhouseIntelligenceService {
           FROM cockpit.ado_pull_requests
           WHERE has(linked_ticket_keys, {key:String})
           ${adoFilter}
+          UNION ALL
+          SELECT 'ado-commit'            AS source,
+                 committed_at            AS ts,
+                 concat('Commit: ', message_subject)             AS title,
+                 coalesce(author_login, author_name) AS actor,
+                 sha                     AS ref
+          FROM cockpit.ado_commits
+          WHERE has(linked_ticket_keys, {key:String})
+          ${adoCommitFilter}
         )
         ORDER BY ts ASC
         LIMIT 1000
@@ -574,8 +628,10 @@ export interface AiWeeklyTrendPoint {
 // preserve the original constructor + private field declaration above.)
 declare module './clickhouse-intelligence.service.js' {
   interface ClickhouseIntelligenceService {
-    getDeveloperTable(from: Date, to: Date): Promise<DeveloperTableRow[]>;
-    getDeveloperDetail(login: string, days?: number): Promise<DeveloperDetailDto>;
+    // scope is optional (Task 8): the github/gitlab legs are unaffected by it —
+    // only the ado leg is routed through adoScopeFilter when it is supplied.
+    getDeveloperTable(from: Date, to: Date, scope?: BoardScope): Promise<DeveloperTableRow[]>;
+    getDeveloperDetail(login: string, days?: number, scope?: BoardScope): Promise<DeveloperDetailDto>;
     getPullRequestList(opts: {
       from: Date;
       to: Date;
@@ -594,7 +650,15 @@ declare module './clickhouse-intelligence.service.js' {
 // Columns mirror the MV's SELECT (clickhouse/schemas/50_materialized_views.sql)
 // minus the State() wrappers, so downstream aggregation semantics are unchanged.
 // All three provider legs are present at code level; gitlab returns 0 rows today.
-function normalizedWeeklyPrUnionSql(): string {
+//
+// `scope`/`params` are optional and BOTH-or-NEITHER: passing scope narrows only
+// the ado leg via adoScopeFilter (github/gitlab are untouched here — out of
+// scope for Task 8), and adoScopeFilter needs a mutable params object to write
+// its own param names into. Callers that omit both keep the exact SQL this
+// function emitted before Task 8 (getAiWeeklyTrend still does).
+function normalizedWeeklyPrUnionSql(scope?: BoardScope, params?: Record<string, unknown>): string {
+  const adoFilter =
+    scope && params ? `WHERE ${adoScopeFilter(scope, params, { repoColumn: 'repo_name' })}` : '';
   return `
     SELECT
       author_login         AS developer_login,
@@ -628,6 +692,7 @@ function normalizedWeeklyPrUnionSql(): string {
       deletions            AS deletions,
       ai_assisted          AS ai_assisted
     FROM cockpit.ado_pull_requests FINAL
+    ${adoFilter}
   `;
 }
 
@@ -664,12 +729,40 @@ ClickhouseIntelligenceService.prototype.getDeveloperTable = async function (
   this: ClickhouseIntelligenceService,
   from: Date,
   to: Date,
+  scope?: BoardScope,
 ): Promise<DeveloperTableRow[]> {
   // 12-week PRs per developer aggregated over deduplicated FINAL source tables.
   // Sparkline = weekly counts as an array, ordered oldest-first.
   // Uses groupArray over a sorted subquery so ClickHouse 24.3 doesn't trip
   // over ORDER BY inside an aggregate.
   const client = (this as unknown as { client: ChQueryClient }).client;
+  // Task 8: `scope` narrows only the ado leg (via adoScopeFilter, appended
+  // inside normalizedWeeklyPrUnionSql) — github/gitlab stay unfiltered here,
+  // matching this method's existing (deliberately global) behaviour for those
+  // two providers.
+  //
+  // READINESS, NOT COVERAGE: no route passes `scope` here today. Its route
+  // (`/intelligence/developer-table`) parses `boardId` — it shares the
+  // `DateRangeQuery` schema with the six `SCOPED_ANALYTICS` routes, which DOES
+  // declare `boardId: z.string().uuid().optional()` — but then IGNORES the
+  // parsed value: `parsed.data.boardId` is never read, and this route is
+  // gated on bare `ANALYTICS`, not `SCOPED_ANALYTICS`, so `resolveScope`
+  // (the ONLY tenant boundary on `?boardId=`, per intelligence.routes.ts)
+  // never runs for it. Wiring this leg therefore requires moving the route to
+  // `SCOPED_ANALYTICS` first, so a foreign board's id can't be handed to
+  // ClickHouse with no membership check — not just reading the field that is
+  // already parsed. The parameter here is correct IF a caller ever supplies a
+  // scope, but nothing in this codebase does, so treat this leg as prepared
+  // rather than as an exercised board-repository restriction.
+  //
+  // MINOR: unlike the module header's P1 six methods, this method does not
+  // honour `scope.isEmpty` — an empty scope would zero out the ado leg while
+  // leaving github/gitlab fully unfiltered, rather than short-circuiting the
+  // whole method. Inert today (no caller passes a scope); whoever wires this
+  // leg should decide the right isEmpty behaviour for a mixed-provider method
+  // rather than assume the P1 convention already applies here.
+  const params: Record<string, unknown> = { from: formatDate(from), to: formatDate(to) };
+  const unionSql = normalizedWeeklyPrUnionSql(scope, params);
   const result = await client.query({
     query: `
       SELECT
@@ -687,7 +780,7 @@ ClickhouseIntelligenceService.prototype.getDeveloperTable = async function (
           countIf(is_merged)                    AS prs_merged_w,
           quantileIf(0.5)(cycle_time_hours, is_merged AND cycle_time_hours IS NOT NULL) AS median_cycle_w,
           sum(toUInt32(ai_assisted))            AS ai_count_w
-        FROM (${normalizedWeeklyPrUnionSql()})
+        FROM (${unionSql})
         WHERE week_start BETWEEN {from:Date} AND {to:Date}
         GROUP BY developer_login, week_start
         ORDER BY week_start ASC
@@ -696,7 +789,7 @@ ClickhouseIntelligenceService.prototype.getDeveloperTable = async function (
       ORDER BY prs_merged DESC
       LIMIT 200
     `,
-    query_params: { from: formatDate(from), to: formatDate(to) },
+    query_params: params,
     format: 'JSONEachRow',
   });
   const rawRows = castRows<Record<string, unknown>>(await result.json());
@@ -738,15 +831,41 @@ ClickhouseIntelligenceService.prototype.getDeveloperDetail = async function (
   this: ClickhouseIntelligenceService,
   login: string,
   days = 90,
+  scope?: BoardScope,
 ): Promise<DeveloperDetailDto> {
   const client = (this as unknown as { client: ChQueryClient }).client;
   const to = new Date();
   const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
 
+  // Task 8, READINESS NOT COVERAGE: `scope` narrows the ado_commits and
+  // ado_pull_requests legs below (heatmap, recent-prs, ai-trend) via
+  // adoScopeFilter when supplied, but no route passes one today. This is a
+  // fully org-wide, cross-board console view — its route
+  // (`/intelligence/developers/:login/detail`) is gated on bare `ANALYTICS`,
+  // not the `SCOPED_ANALYTICS` six-route allowlist, and its query schema
+  // accepts only `days`, no `?boardId=`. The plumbing below is correct IF a
+  // scope is ever supplied; do not read it as an exercised board-repository
+  // restriction.
+  //
+  // MINOR: this method also does not honour `scope.isEmpty` (see the module
+  // header's P1 convention) — an empty scope would zero the two ado legs while
+  // leaving the github legs fully unfiltered, rather than short-circuiting the
+  // whole method. Inert today (no caller passes a scope); whoever wires this
+  // should decide the right isEmpty behaviour for a mixed-provider method.
+
   // 1) Heatmap: per-day commit count across providers. GitHub matches by
   //    author_login; ADO commits have no login (NULL) so match by author_email,
   //    which equals the ADO developer's UPN/login. GitHub logins and ADO UPNs
   //    are disjoint, so each developer matches exactly one leg.
+  //
+  // Task 8: when `scope` is supplied, the ado_commits leg is narrowed through
+  // adoScopeFilter (org_url guard + per-project repo_name restriction). The
+  // github leg is unaffected — matched by login, not by repo/org, and out of
+  // scope for this task.
+  const heatmapParams: Record<string, unknown> = { login, from: formatDateTime(from) };
+  const heatmapAdoFilter = scope
+    ? `\n          AND ${adoScopeFilter(scope, heatmapParams, { repoColumn: 'repo_name' })}`
+    : '';
   const heatmapResp = await client.query({
     query: `
       -- developer-detail:heatmap
@@ -763,13 +882,13 @@ ClickhouseIntelligenceService.prototype.getDeveloperDetail = async function (
         SELECT toDate(committed_at) AS date, count() AS c
         FROM cockpit.ado_commits
         WHERE lower(author_email) = lower({login:String})
-          AND committed_at >= {from:DateTime}
+          AND committed_at >= {from:DateTime}${heatmapAdoFilter}
         GROUP BY date
       )
       GROUP BY date
       ORDER BY date ASC
     `,
-    query_params: { login, from: formatDateTime(from) },
+    query_params: heatmapParams,
     format: 'JSONEachRow',
   });
   const heatmapRows = castRows<Record<string, unknown>>(await heatmapResp.json()).map((r) => ({
@@ -783,6 +902,13 @@ ClickhouseIntelligenceService.prototype.getDeveloperDetail = async function (
   //    mean a given login matches exactly one leg. FINAL drops ReplacingMergeTree
   //    re-sync duplicates so no PR lists twice. ADO has no merged_at: a completed
   //    PR's merge timestamp is closed_at.
+  //
+  // Task 8: same treatment as the heatmap above — the ado_pull_requests leg
+  // is narrowed through adoScopeFilter when `scope` is supplied.
+  const prsParams: Record<string, unknown> = { login, from: formatDateTime(from) };
+  const prsAdoFilter = scope
+    ? `\n          AND ${adoScopeFilter(scope, prsParams, { repoColumn: 'repo_name' })}`
+    : '';
   const prsResp = await client.query({
     query: `
       -- developer-detail:recent-prs
@@ -810,12 +936,12 @@ ClickhouseIntelligenceService.prototype.getDeveloperDetail = async function (
           ai_assisted                               AS ai_assisted
         FROM cockpit.ado_pull_requests FINAL
         WHERE lower(created_by_login) = lower({login:String})
-          AND created_at >= {from:DateTime}
+          AND created_at >= {from:DateTime}${prsAdoFilter}
       )
       ORDER BY coalesce(merged_at, created_at) DESC
       LIMIT 20
     `,
-    query_params: { login, from: formatDateTime(from) },
+    query_params: prsParams,
     format: 'JSONEachRow',
   });
   const recentPrs = castRows<Record<string, unknown>>(await prsResp.json()).map((r) => ({
@@ -827,7 +953,10 @@ ClickhouseIntelligenceService.prototype.getDeveloperDetail = async function (
     ai_assisted: toBool(r.ai_assisted),
   }));
 
-  // 3) Weekly AI% over the window.
+  // 3) Weekly AI% over the window. Shares normalizedWeeklyPrUnionSql with
+  // getDeveloperTable, so it picks up the same optional ado-leg narrowing.
+  const aiParams: Record<string, unknown> = { login, from: formatDate(from), to: formatDate(to) };
+  const aiUnionSql = normalizedWeeklyPrUnionSql(scope, aiParams);
   const aiResp = await client.query({
     query: `
       -- developer-detail:ai-trend
@@ -835,13 +964,13 @@ ClickhouseIntelligenceService.prototype.getDeveloperDetail = async function (
         toString(week_start)                                 AS week_start,
         if(countIf(is_merged) = 0, 0,
            sum(toUInt32(ai_assisted)) / countIf(is_merged)) AS ai_pct
-      FROM (${normalizedWeeklyPrUnionSql()})
+      FROM (${aiUnionSql})
       WHERE developer_login = {login:String}
         AND week_start BETWEEN {from:Date} AND {to:Date}
       GROUP BY week_start
       ORDER BY week_start ASC
     `,
-    query_params: { login, from: formatDate(from), to: formatDate(to) },
+    query_params: aiParams,
     format: 'JSONEachRow',
   });
   const aiTrend = castRows<Record<string, unknown>>(await aiResp.json()).map((r) => ({

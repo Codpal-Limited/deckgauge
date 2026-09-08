@@ -38,6 +38,25 @@ import FlowThroughputCycleWidget from './widgets/FlowThroughputCycleWidget';
 import DeliveryTrendAnnotatedWidget from './widgets/DeliveryTrendAnnotatedWidget';
 import AiAdoptionWidget from './widgets/AiAdoptionWidget';
 import InvestmentAllocationWidget from './widgets/InvestmentAllocationWidget';
+import {
+  FocusRoadmapShareWidget,
+  FocusShippedRatioWidget,
+  FocusNeverMovedWidget,
+  FocusEpicCoverageWidget,
+} from './widgets/focus/FocusStatWidgets';
+import {
+  FocusAttentionSplitWidget,
+  FocusDeliveryFunnelWidget,
+  FocusProvenanceWidget,
+  FocusBoardCoverageWidget,
+} from './widgets/focus/FocusChartWidgets';
+import {
+  FocusScorecardWidget,
+  FocusLedgerWidget,
+  FocusCaveatsWidget,
+} from './widgets/focus/FocusTableWidgets';
+import { FocusMapWidget } from './widgets/focus/FocusMapWidget';
+
 import DoraMetricsWidget from './widgets/DoraMetricsWidget';
 import PeriodComparisonWidget from './widgets/PeriodComparisonWidget';
 import CompareReviewQualityWidget from './widgets/CompareReviewQualityWidget';
@@ -65,7 +84,21 @@ export interface WidgetDefinition {
   category: WidgetCategory;
   defaultSize: { w: number; h: number };
   configFields?: ConfigField[];
-  component: ComponentType<{ boardId: string; config: Record<string, unknown> }>;
+  // `canEdit` is optional: only widgets carrying their own settings surface read
+  // it (the Focus delivery funnel's stage-map editor), and every other component
+  // stays unchanged.
+  //
+  // `isAdmin` (Task 13 fix round 1) is optional the same way: only the widgets
+  // that drill through to the intelligence SQL console (`openIntelligenceConsole`)
+  // read it, to withhold that affordance from a non-admin — the console itself is
+  // ADMIN-gated at the API, so a non-admin's row/point click used to end at a
+  // silent `Could not load console: Forbidden` instead of the console.
+  component: ComponentType<{
+    boardId: string;
+    config: Record<string, unknown>;
+    canEdit?: boolean;
+    isAdmin?: boolean;
+  }>;
 
   // new metadata
   subject: WidgetSubject;
@@ -88,6 +121,138 @@ export interface WidgetDefinition {
 }
 
 export const WIDGET_CATALOG: WidgetDefinition[] = [
+  {
+    type: 'FOCUS_ROADMAP_SHARE', label: 'Roadmap Focus',
+    description: 'Share of real attention that went to roadmap work, counting only tasks that moved.',
+    timeAware: true,
+    category: 'focus', subject: 'issues',
+    sources: ['jira', 'ado'],
+    requiredScopeAny: ['jiraProjectKeys', 'adoProjects'],
+    chartKind: 'kpi',
+    defaultSize: { w: 3, h: 2 },
+    component: FocusRoadmapShareWidget,
+  },
+  {
+    type: 'FOCUS_SHIPPED_RATIO', label: 'Landed in Production',
+    description: 'How much of the work the team touched actually reached production.',
+    timeAware: true,
+    category: 'focus', subject: 'issues',
+    sources: ['jira', 'ado'],
+    requiredScopeAny: ['jiraProjectKeys', 'adoProjects'],
+    chartKind: 'kpi',
+    defaultSize: { w: 3, h: 2 },
+    component: FocusShippedRatioWidget,
+  },
+  {
+    type: 'FOCUS_NEVER_MOVED', label: 'Never Moved',
+    description: 'Tasks that did not change state once in the window.',
+    timeAware: true,
+    category: 'focus', subject: 'issues',
+    sources: ['jira', 'ado'],
+    requiredScopeAny: ['jiraProjectKeys', 'adoProjects'],
+    chartKind: 'kpi',
+    defaultSize: { w: 3, h: 2 },
+    component: FocusNeverMovedWidget,
+  },
+  {
+    type: 'FOCUS_EPIC_COVERAGE', label: 'Roadmap Epics Touched',
+    description: 'How many of the curated roadmap epics received any work.',
+    timeAware: true,
+    category: 'focus', subject: 'issues',
+    sources: ['jira', 'ado'],
+    requiredScopeAny: ['jiraProjectKeys', 'adoProjects'],
+    chartKind: 'kpi',
+    defaultSize: { w: 3, h: 2 },
+    component: FocusEpicCoverageWidget,
+  },
+  {
+    type: 'FOCUS_ATTENTION_SPLIT', label: 'Where the Attention Went',
+    description: 'Calendar days in a working state per person, split by class of work.',
+    timeAware: true,
+    category: 'focus', subject: 'issues',
+    sources: ['jira', 'ado'],
+    requiredScopeAny: ['jiraProjectKeys', 'adoProjects'],
+    chartKind: 'bar',
+    defaultSize: { w: 7, h: 5 },
+    component: FocusAttentionSplitWidget,
+  },
+  {
+    type: 'FOCUS_DELIVERY_FUNNEL', label: 'Where the Work Ended Up',
+    description: 'Tasks by delivery stage, from in production to not started.',
+    timeAware: true,
+    category: 'focus', subject: 'issues',
+    sources: ['jira', 'ado'],
+    requiredScopeAny: ['jiraProjectKeys', 'adoProjects'],
+    chartKind: 'bar',
+    defaultSize: { w: 5, h: 5 },
+    component: FocusDeliveryFunnelWidget,
+  },
+  {
+    type: 'FOCUS_MAP', label: 'Focus Map',
+    description: 'Person by work-area matrix. Shows days that were spent and days that merely elapsed.',
+    timeAware: true,
+    category: 'focus', subject: 'issues',
+    sources: ['jira', 'ado'],
+    requiredScopeAny: ['jiraProjectKeys', 'adoProjects'],
+    chartKind: 'heatmap',
+    defaultSize: { w: 12, h: 6 },
+    component: FocusMapWidget,
+  },
+  {
+    type: 'FOCUS_SCORECARD', label: 'Person by Person',
+    description: 'Per-person tasks, movement, delivery and attention split.',
+    timeAware: true,
+    category: 'focus', subject: 'issues',
+    sources: ['jira', 'ado'],
+    requiredScopeAny: ['jiraProjectKeys', 'adoProjects'],
+    chartKind: 'table',
+    defaultSize: { w: 12, h: 5 },
+    component: FocusScorecardWidget,
+  },
+  {
+    type: 'FOCUS_BOARD_COVERAGE', label: 'Board Elements Worked On',
+    description: 'Roadmap epics touched, and work that never reached this board at all.',
+    timeAware: true,
+    category: 'focus', subject: 'issues',
+    sources: ['jira', 'ado'],
+    requiredScopeAny: ['jiraProjectKeys', 'adoProjects'],
+    chartKind: 'table',
+    defaultSize: { w: 7, h: 5 },
+    component: FocusBoardCoverageWidget,
+  },
+  {
+    type: 'FOCUS_PROVENANCE', label: 'How Work Was Classified',
+    description: 'Which classifier decided each task: CAPEX, rule, model or a person.',
+    timeAware: true,
+    category: 'focus', subject: 'issues',
+    sources: ['jira', 'ado'],
+    requiredScopeAny: ['jiraProjectKeys', 'adoProjects'],
+    chartKind: 'bar',
+    defaultSize: { w: 5, h: 5 },
+    component: FocusProvenanceWidget,
+  },
+  {
+    type: 'FOCUS_LEDGER', label: 'Every Task, and Why',
+    description: 'Every task with its raw state, derived stage, class and printed reason.',
+    timeAware: true,
+    category: 'focus', subject: 'issues',
+    sources: ['jira', 'ado'],
+    requiredScopeAny: ['jiraProjectKeys', 'adoProjects'],
+    chartKind: 'table',
+    defaultSize: { w: 12, h: 7 },
+    component: FocusLedgerWidget,
+  },
+  {
+    type: 'FOCUS_CAVEATS', label: 'Method & Caveats',
+    description: 'What this window could and could not measure, generated from the render.',
+    timeAware: true,
+    category: 'focus', subject: 'issues',
+    sources: ['jira', 'ado'],
+    requiredScopeAny: ['jiraProjectKeys', 'adoProjects'],
+    chartKind: 'table',
+    defaultSize: { w: 12, h: 5 },
+    component: FocusCaveatsWidget,
+  },
   {
     type: 'STATUS_DISTRIBUTION',
     label: 'Status Distribution',

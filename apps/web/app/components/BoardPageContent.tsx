@@ -16,12 +16,22 @@ interface BoardPageContentProps {
   boardId: string;
   views: Array<{
     id: string;
-    type: 'BOARD' | 'DASHBOARD' | 'ROADMAP';
+    type: 'BOARD' | 'DASHBOARD' | 'ROADMAP' | 'FOCUS';
     name: string;
     position: number;
     presetKey?: string | null;
   }>;
   canEdit: boolean;
+  /**
+   * Task 13: gates the Intelligence tab, which opens the SQL console the API
+   * now gates at `ADMIN` (see BoardUnifiedTabs's `isAdmin` prop doc for why).
+   * Resolved by `page.tsx` from `getBootstrapState()` — the same
+   * presentation-only signal `apps/web/app/settings/layout.tsx` already uses
+   * to hide Members/Connections from non-admins — and threaded through here
+   * because this component, not `BoardUnifiedTabsHost`, is what actually
+   * renders the tab bar for the board's default (table/dashboard) view.
+   */
+  isAdmin: boolean;
   // Total project count for the board (from SSR). When it exceeds the rows the
   // SSR shipped (first page), the client progressively streams the rest.
   projectTotal: number;
@@ -113,6 +123,7 @@ export default function BoardPageContent({
   boardId,
   views,
   canEdit,
+  isAdmin,
   projectTotal,
   boardViewProps,
   deepLink,
@@ -218,9 +229,14 @@ export default function BoardPageContent({
         activeSection={null}
         onViewChange={setActiveViewId}
         canEdit={canEdit}
+        isAdmin={isAdmin}
       />
       {activeView?.type === 'ROADMAP' ? (
         <RoadmapTab boardId={boardId} viewId={activeViewId} canEdit={canEdit} />
+      ) : activeView?.type === 'FOCUS' ? (
+        // Same canvas, registry and period picker as DASHBOARD — the Focus view
+        // differs in its widget set and its data, not in how it renders.
+        <DashboardCanvas boardId={boardId} viewId={activeViewId} canEdit={canEdit} isAdmin={isAdmin} />
       ) : activeView?.type === 'DASHBOARD' ? (
         <>
           <ApplyPresetBanner
@@ -228,9 +244,16 @@ export default function BoardPageContent({
             alreadyApplied={views.some((v) => v.presetKey === 'engineering-intelligence-v1')}
             onApplied={(viewId) => setActiveViewId(viewId)}
           />
-          <DashboardCanvas boardId={boardId} viewId={activeViewId} canEdit={canEdit} />
+          <DashboardCanvas boardId={boardId} viewId={activeViewId} canEdit={canEdit} isAdmin={isAdmin} />
         </>
       ) : (
+        <>
+          <ApplyPresetBanner
+            boardId={boardId}
+            presetKey="team-focus-v1"
+            alreadyApplied={views.some((v) => v.presetKey === 'team-focus-v1')}
+            onApplied={(viewId) => setActiveViewId(viewId)}
+          />
         <BoardView
           {...boardViewProps}
           deepLink={deepLink}
@@ -252,6 +275,7 @@ export default function BoardPageContent({
             });
           }}
         />
+        </>
       )}
     </div>
   );

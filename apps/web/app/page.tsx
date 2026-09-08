@@ -6,11 +6,18 @@ import { BoardView } from "./components/BoardView";
 import BoardPageContent from "./components/BoardPageContent";
 import { authFetch } from "./actions/api";
 import { fetchMyRole, fetchAccess } from "./actions/access";
+import { getBootstrapState } from "./actions/organization";
+import { isOrganizationAdmin } from "./lib/org-role";
 import { boardsListTag, boardTag, commentsTag } from "./utils/cache-tags";
 import { bucketProjectsIntoGroups } from "./utils/bucket-projects";
 import { cookies } from "next/headers";
-import { selectDefaultBoard } from "./utils/select-default-board";
+import { redirect } from "next/navigation";
+import { resolveDefaultBoard } from "./utils/resolve-default-board";
+import type { DefaultBoardOutcome } from "./utils/resolve-default-board";
+import { isCredentialRefused } from "./utils/credential-refused";
+import { MissingSessionError } from "./lib/api-server";
 import { LAST_BOARD_COOKIE } from "./utils/last-board-cookie";
+import { SESSION_EXPIRED_REDIRECT } from "./utils/session-expired-redirect";
 
 export const dynamic = "force-dynamic";
 
@@ -67,15 +74,30 @@ async function fetchColumns(boardId: string): Promise<BoardColumn[]> {
   }
 }
 
-async function fetchBoard(boardId: string) {
+// Returns an OUTCOME for the same reason `ensureDefaultBoard` does, but for the
+// OTHER way this page is reached. `?boardId=` short-circuits the boards-list
+// fetch entirely — and that is the URL the app itself navigates to
+// (`BoardSidebar` pushes `/?boardId=<id>` on every board click, and
+// `LastLocationTracker` restores the same shape), so without this a dead session
+// on any board the user actually opened still rendered the empty board.
+type BoardOutcome =
+  | { status: "ok"; board: unknown }
+  | { status: "none" }
+  | { status: "unauthenticated" };
+
+async function fetchBoard(boardId: string): Promise<BoardOutcome> {
   try {
     const res = await authFetch(`/boards/${boardId}`, {
       tags: [boardTag(boardId)],
     });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
+    if (isCredentialRefused(res.status)) return { status: "unauthenticated" };
+    if (!res.ok) return { status: "none" };
+    return { status: "ok", board: await res.json() };
+  } catch (err) {
+    // "No session at all" is a refused credential, not a transport failure —
+    // the last place this page conflated the two.
+    if (err instanceof MissingSessionError) return { status: "unauthenticated" };
+    return { status: "none" };
   }
 }
 
@@ -185,17 +207,25 @@ async function fetchCommentCounts(
   }
 }
 
-async function ensureDefaultBoard(boardId?: string): Promise<string | null> {
-  if (boardId) return boardId;
+// Returns an OUTCOME rather than `string | null` so a refused credential stops
+// being indistinguishable from "this organization has no boards". Both used to
+// be `null`, and the caller's no-boards branch rendered a dead session as an
+// empty board — the reported "broken screen".
+async function ensureDefaultBoard(boardId?: string): Promise<DefaultBoardOutcome> {
+  if (boardId) return { status: "ok", boardId };
 
   try {
     const res = await authFetch("/boards", { tags: [boardsListTag()] });
-    if (!res.ok) return null;
-    const boards = (await res.json()) as Array<{ id: string }>;
+    const boards = res.ok
+      ? ((await res.json()) as Array<{ id: string }>)
+      : null;
     const lastBoardId = (await cookies()).get(LAST_BOARD_COOKIE)?.value;
-    return selectDefaultBoard(boards, lastBoardId);
-  } catch {
-    return null;
+    return resolveDefaultBoard(res, boards, lastBoardId);
+  } catch (err) {
+    if (err instanceof MissingSessionError) return { status: "unauthenticated" };
+    // Transport failure, not a verdict on the credential — keep degrading to
+    // the no-boards view rather than bouncing the caller to Keycloak.
+    return { status: "none" };
   }
 }
 
@@ -207,9 +237,16 @@ export default async function BoardPage(props: PageProps) {
   // so closing the panel does not reopen it and a refresh does not replay it.
   const itemId = searchParams?.itemId as string | undefined;
   const commentId = searchParams?.commentId as string | undefined;
-  const selectedBoardId = await ensureDefaultBoard(boardId);
+  const defaultBoard = await ensureDefaultBoard(boardId);
 
-  if (!selectedBoardId) {
+  // Outside any try/catch on purpose: `redirect()` unwinds the render by
+  // throwing, and this page is full of helpers whose bare `catch` would swallow
+  // that and carry on rendering the empty board this exists to prevent.
+  if (defaultBoard.status === "unauthenticated") {
+    redirect(SESSION_EXPIRED_REDIRECT);
+  }
+
+  if (defaultBoard.status === "none") {
     return (
       <Suspense fallback={<div>Loading...</div>}>
         <BoardView
@@ -230,7 +267,9 @@ export default async function BoardPage(props: PageProps) {
     );
   }
 
-  const [groupsResult, columns, board, jiraLinks, hasGitHubIntegration, adoOrgUrls, boardOwners, boardStatuses, views] = await Promise.all([
+  const selectedBoardId = defaultBoard.boardId;
+
+  const [groupsResult, columns, boardOutcome, jiraLinks, hasGitHubIntegration, adoOrgUrls, boardOwners, boardStatuses, views] = await Promise.all([
     fetchGroups(selectedBoardId),
     fetchColumns(selectedBoardId),
     fetchBoard(selectedBoardId),
@@ -241,6 +280,14 @@ export default async function BoardPage(props: PageProps) {
     fetchBoardStatuses(selectedBoardId),
     fetchBoardViews(selectedBoardId),
   ]);
+  // Same placement rule as the redirect above: this sits in `BoardPage`'s own
+  // body, after `Promise.all` has resolved, so it is outside every helper's
+  // `catch` and nothing can swallow the `NEXT_REDIRECT` throw.
+  if (boardOutcome.status === "unauthenticated") {
+    redirect(SESSION_EXPIRED_REDIRECT);
+  }
+
+  const board = boardOutcome.status === "ok" ? boardOutcome.board : null;
   const { groups, total: projectTotal } = groupsResult;
   const hasAdoIntegration = Object.keys(adoOrgUrls).length > 0;
 
@@ -256,10 +303,19 @@ export default async function BoardPage(props: PageProps) {
   // board(VIEWER)-gated and succeeds, so they demonstrably do. fetchMyRole fails
   // closed, so a genuine failure renders the board read-only rather than
   // granting phantom ownership.
-  const [{ role: userRole, userId: currentUserId }, boardAccess] = await Promise.all([
+  // Task 13: the Intelligence tab opens the SQL console, which the API now
+  // gates at `ADMIN` — its rewrite-and-assert scoping has three known
+  // privilege-escalation bypasses (see intelligence-query/routes.ts's
+  // file-header comment); this is a mitigation, not a fix. `isOrganizationAdmin`
+  // is the existing presentation-only admin signal this app already uses to
+  // hide the Members/Connections settings tabs from non-admins — reused here
+  // rather than inventing a second one, same as `boards/[boardId]/layout.tsx`.
+  const [{ role: userRole, userId: currentUserId }, boardAccess, orgState] = await Promise.all([
     fetchMyRole('board', selectedBoardId),
     fetchAccess('board', selectedBoardId),
+    getBootstrapState(),
   ]);
+  const isAdmin = isOrganizationAdmin(orgState);
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
@@ -268,6 +324,7 @@ export default async function BoardPage(props: PageProps) {
         views={views}
         deepLink={itemId ? { itemId, commentId } : undefined}
         canEdit={canEditEntity(userRole)}
+        isAdmin={isAdmin}
         projectTotal={projectTotal}
         boardViewProps={{
           board,

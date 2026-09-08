@@ -1,11 +1,13 @@
 import { registerBuilder } from './registry.js';
 import type { BuilderInputs, BuiltSql } from './types.js';
+import { jiraScopeFilter } from '../../widgets/unions.js';
 
 export function buildChBacklogAgeSql({ scope }: BuilderInputs): BuiltSql | null {
   if (scope.isEmpty || scope.jiraProjectKeys.length === 0) return null;
 
-  return {
-    sql: `
+  const params: Record<string, unknown> = {};
+
+  const sql = `
       SELECT
         multiIf(
           age_days < 7,  '0-7d',
@@ -17,15 +19,13 @@ export function buildChBacklogAgeSql({ scope }: BuilderInputs): BuiltSql | null 
       FROM (
         SELECT dateDiff('day', created_at, now()) AS age_days
         FROM cockpit.jira_issues
-        WHERE project_key IN {projects:Array(String)}
+        WHERE ${jiraScopeFilter(scope, params)}
           AND status_category != 'Done'
       )
       GROUP BY bucket
-    `,
-    params: {
-      projects: scope.jiraProjectKeys,
-    },
-  };
+    `;
+
+  return { sql, params };
 }
 
 registerBuilder('CH_BACKLOG_AGE', buildChBacklogAgeSql);

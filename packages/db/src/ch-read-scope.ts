@@ -1,4 +1,9 @@
-import type { ClickHouseClient, QueryParams } from '@clickhouse/client';
+import type {
+  ClickHouseClient,
+  DataFormat,
+  QueryParams,
+  QueryResult,
+} from '@clickhouse/client';
 // Relative import on purpose, NOT the `@deckgauge/db` barrel. `./clickhouse.ts`
 // builds a ClickHouseClient *eagerly at module import* against a hard-coded
 // `localhost:8123` fallback — the staging server — and the barrel re-exports it.
@@ -60,6 +65,17 @@ export type ChReadClient = Pick<ClickHouseClient, 'query'>;
  * `role?: never` rather than `Omit<…>` alone so that passing one is a type error
  * at the call site and not merely ignored — the runtime check below is the
  * backstop for JavaScript callers and for `as any`.
+ *
+ * **The type-level ban binds at `ChScopedReader` call sites only, and every read
+ * service in this repo takes `ChReadClient` instead.** `ChReadClient` is
+ * `Pick<ClickHouseClient,'query'>`, a METHOD-declared signature, so its
+ * parameters compare bivariantly and `role?: never` is discarded on widening:
+ * `function svc(ch: ChReadClient) { ch.query({ query, role: 'org_other' }) }`
+ * compiles clean. So for those services the runtime check below is not a backstop,
+ * it is the whole guard. Recorded because the previous version of this comment
+ * asserted a type-level guarantee that the interface did not actually provide
+ * (`query` was declared as `ClickHouseClient['query']`, which accepts `role`),
+ * and two suites' `@ts-expect-error` directives sat unused for it.
  */
 export type ChScopedQueryParams = Omit<QueryParams, 'role'> & { role?: never };
 
@@ -73,8 +89,17 @@ export interface ChScopedReader {
    * predicate) or on nothing at all (the API on an unsplit deployment).
    */
   readonly role: string | null;
-  /** Runs a query with this organization's role activated, if it has one. */
-  query: ClickHouseClient['query'];
+  /**
+   * Runs a query with this organization's role activated, if it has one.
+   *
+   * Declared over {@link ChScopedQueryParams} rather than `ClickHouseClient['query']`
+   * so that a caller-supplied `role` is the type error the type above says it is.
+   * It was `ClickHouseClient['query']` — which accepts `role` — so the guard
+   * existed only at runtime and the suite's `@ts-expect-error` had gone unused.
+   */
+  query: <Format extends DataFormat = 'JSON'>(
+    params: Omit<QueryParams, 'role' | 'format'> & { format?: Format; role?: never },
+  ) => Promise<QueryResult<Format>>;
 }
 
 /**

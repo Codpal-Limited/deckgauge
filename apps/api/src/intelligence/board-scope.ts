@@ -4,6 +4,7 @@
 // filters. A board with no sources connected yields isEmpty=true so callers
 // can short-circuit and return an empty payload without issuing a query.
 import type { PrismaClient } from '@deckgauge/db';
+import { hasActiveJqlFilter, JQL_FILTER_MATCHES_NOTHING_KEY } from '@deckgauge/shared';
 
 /** Explicit production allow-list for one ADO project. */
 export interface AdoProdConfig {
@@ -16,6 +17,37 @@ export interface AdoProdConfig {
 export interface BoardScope {
   /** Jira project keys (e.g. ['BWAY','DOS']) — filters jira_issues/transitions/worklogs */
   jiraProjectKeys: string[];
+  /**
+   * Per-project issue-key restrictions behind {@link jiraProjectKeys}.
+   *
+   * A board's Jira source may carry a `jqlFilter`; the worker resolves it to the
+   * set of issue keys it admits and persists it (`board_jira_source_keys`). The
+   * restriction is carried INSIDE the ref it belongs to rather than as a second
+   * top-level list, for the same reason `adoProjectRefs` carries `repos`: a
+   * caller that reads the project but not the sibling field silently misses the
+   * restriction, which is exactly the drift this file's history records.
+   *
+   * `issueKeys` absent or empty means "no restriction — every issue in the
+   * project", never "none": a board whose source has no filter must keep seeing
+   * everything. Optional at this level so the many hand-built scopes in tests
+   * keep compiling; `resolveBoardScope` always populates it.
+   *
+   * A source whose `jqlFilter` is ACTIVE but currently matches zero issues is a
+   * third case that must not collapse into the second: `board_jira_source_keys`
+   * is empty either way, so `resolveBoardScope` tells them apart by checking
+   * `jqlFilter` itself (see `resolveSourceIssueKeys`) and, for the zero-match
+   * case, populates `issueKeys` with the single sentinel
+   * `JQL_FILTER_MATCHES_NOTHING_KEY` (`@deckgauge/shared`) rather than leaving it
+   * empty — a value no real Jira key (`PROJECT-<digits>`) can ever equal, so the
+   * existing guarded disjunction (`jiraScopeFilter` in `widgets/unions.ts`)
+   * narrows the project to nothing, as a filter matching nothing should. This is
+   * the Jira-side fix for the same fail-open class `adoProjectRefs.areaPaths`
+   * (below) already closed on the ADO side by unioning the raw prefix back into
+   * an empty expansion; a JQL allow-list has no such "keep the input" fallback,
+   * since it is a set of concrete keys rather than a prefix, so the sentinel is
+   * the equivalent fail-closed device here.
+   */
+  jiraProjectRefs?: Array<{ projectKey: string; issueKeys?: string[] }>;
   /** GitHub repo full names (e.g. ['Acme/api']) — filters github_pull_requests/commits/reviews */
   githubRepoFullNames: string[];
   /** ADO projects (e.g. ['Acme/PaymentsService']) — filters ado_pull_requests/work_items */
@@ -33,8 +65,25 @@ export interface BoardScope {
    * union legs fall back to project-name-only filtering when it is absent,
    * which is correct for a single-org install. getBoardScope always populates
    * it, so the real query path is always exact.
+   *
+   * `repos` is the per-board ADO repository restriction
+   * (`BoardAdoSource.intelligenceRepos`), carried INSIDE the ref it belongs to
+   * rather than as a second top-level list — the same drift `adoProjectRefs`
+   * itself once caused (see the doc comment on {@link resolveBoardScope}) is
+   * exactly what a parallel field here would risk: a caller that reads the
+   * project but not the sibling field would silently miss the restriction.
+   * Optional, and absent/empty both mean "no restriction — all repositories",
+   * never "none": a board that has not been narrowed must keep seeing
+   * everything. On an (orgUrl, project) collision between two sources the
+   * lists union and an empty list wins, for the same reason.
+   *
+   * `areaPaths` is the ado_work_items counterpart to `repos`
+   * (`BoardAdoSource.intelligenceAreaPaths`) — `repos` cannot narrow work
+   * items at all, since `ado_work_items` has no repository column. Same
+   * optional/empty-means-all/union-on-collision rules as `repos`, but matched
+   * by PREFIX in `adoScopeFilter` rather than exact membership.
    */
-  adoProjectRefs?: Array<{ orgUrl: string; project: string }>;
+  adoProjectRefs?: Array<{ orgUrl: string; project: string; repos?: string[]; areaPaths?: string[] }>;
   /**
    * Per-project overrides for which release pipelines / stages count as a
    * PRODUCTION deploy. Only projects that have been configured appear here;
@@ -63,7 +112,8 @@ const EMPTY_SCOPE: BoardScope = {
  * present, never merely optional.
  */
 export interface ResolvedBoardScope extends BoardScope {
-  adoProjectRefs: Array<{ orgUrl: string; project: string }>;
+  jiraProjectRefs: Array<{ projectKey: string; issueKeys?: string[] }>;
+  adoProjectRefs: Array<{ orgUrl: string; project: string; repos?: string[]; areaPaths?: string[] }>;
   adoProdConfig: AdoProdConfig[];
 }
 
@@ -131,7 +181,11 @@ export async function resolveBoardScope(
   const [jiraSources, githubSources, adoSources, gitlabSources] = await Promise.all([
     prisma.boardJiraSource.findMany({
       where: { boardId, ...tenantFilter },
-      select: { jiraProjectSync: { select: { jiraProjectKey: true } } },
+      select: {
+        jqlFilter: true,
+        jiraProjectSync: { select: { jiraProjectKey: true } },
+        filteredKeys: { select: { issueKey: true } },
+      },
     }),
     prisma.boardGitHubSource.findMany({
       where: { boardId, ...intelligenceFilter, ...tenantFilter },
@@ -140,6 +194,8 @@ export async function resolveBoardScope(
     prisma.boardAdoSource.findMany({
       where: { boardId, ...intelligenceFilter, ...tenantFilter },
       select: {
+        intelligenceRepos: true,
+        intelligenceAreaPaths: true,
         azureDevOpsProjectSync: {
           select: {
             adoProject: true,
@@ -160,6 +216,32 @@ export async function resolveBoardScope(
     xs.filter((v): v is T => v !== null && v !== undefined);
 
   const jiraProjectKeys = uniq(present(jiraSources.map((s) => s.jiraProjectSync?.jiraProjectKey)));
+  // One ref per distinct project key, unioning the key sets of every source on
+  // that project. An UNFILTERED source (no rows) wins: its `issueKeys` is left
+  // absent, which means "no restriction". Same rule as uniqRefs applies to
+  // adoProjectRefs on an (orgUrl, project) collision, and for the same reason —
+  // a board that has not been narrowed must keep seeing everything.
+  const jiraRefsByProject = new Map<string, { projectKey: string; issueKeys?: string[] }>();
+  for (const source of jiraSources) {
+    const projectKey = source.jiraProjectSync?.jiraProjectKey;
+    if (!projectKey) continue;
+    const keys = resolveSourceIssueKeys(source);
+    const existing = jiraRefsByProject.get(projectKey);
+    if (!existing) {
+      jiraRefsByProject.set(
+        projectKey,
+        keys.length > 0 ? { projectKey, issueKeys: keys } : { projectKey },
+      );
+      continue;
+    }
+    // Either side unfiltered ⇒ the project stays unfiltered.
+    if (keys.length === 0 || existing.issueKeys === undefined) {
+      jiraRefsByProject.set(projectKey, { projectKey });
+      continue;
+    }
+    existing.issueKeys = uniq([...existing.issueKeys, ...keys]);
+  }
+  const jiraProjectRefs = Array.from(jiraRefsByProject.values());
   const githubRepoFullNames = uniq(
     present(githubSources.map((s) => s.gitHubRepoSync?.repoFullName)),
   );
@@ -174,7 +256,17 @@ export async function resolveBoardScope(
       const orgUrl = s.azureDevOpsProjectSync?.azureDevOpsInstance?.orgUrl;
       const project = s.azureDevOpsProjectSync?.adoProject;
       if (!orgUrl || !project) return [];
-      return [{ orgUrl: orgUrl.replace(/\/+$/, ''), project }];
+      // Empty/absent means "no restriction — all repositories", never "none".
+      const repos = s.intelligenceRepos ?? [];
+      const areaPaths = s.intelligenceAreaPaths ?? [];
+      return [
+        {
+          orgUrl: orgUrl.replace(/\/+$/, ''),
+          project,
+          ...(repos.length > 0 ? { repos } : {}),
+          ...(areaPaths.length > 0 ? { areaPaths } : {}),
+        },
+      ];
     }),
   );
   const adoProdConfig = collectAdoProdConfig(
@@ -197,6 +289,7 @@ export async function resolveBoardScope(
 
   return {
     jiraProjectKeys,
+    jiraProjectRefs,
     githubRepoFullNames,
     adoProjects,
     adoProjectRefs,
@@ -285,10 +378,72 @@ function uniq(xs: string[]): string[] {
   return Array.from(new Set(xs));
 }
 
+/**
+ * A source's admitted issue keys, distinguishing "no filter" from "a filter
+ * that currently matches nothing" — see `JQL_FILTER_MATCHES_NOTHING_KEY`.
+ *
+ * `filteredKeys` (`board_jira_source_keys`, written by the worker) is EMPTY in
+ * both of those cases, so it cannot answer the question on its own. Whether a
+ * filter exists at all is already persisted on `jqlFilter`, independent of how
+ * many rows it currently resolved to — so that column, not the row count, is
+ * what decides which of the two this is. This was the merge-blocking gap: an
+ * empty `filteredKeys` from an active-but-zero-match filter used to fall
+ * through as "unrestricted" here (and identically in `resolve-scope.ts`'s
+ * `collectJiraIssueKeys`), reverting a scoped board to project-wide analytics
+ * on ordinary Jira drift (a renamed component, a stale `cf[10001]` id, an
+ * ended sprint) with no error anywhere.
+ */
+function resolveSourceIssueKeys(source: {
+  jqlFilter?: string | null;
+  filteredKeys?: ReadonlyArray<{ issueKey: string }>;
+}): string[] {
+  const realKeys = (source.filteredKeys ?? []).map((k) => k.issueKey);
+  if (realKeys.length > 0) return realKeys;
+  return hasActiveJqlFilter(source.jqlFilter) ? [JQL_FILTER_MATCHES_NOTHING_KEY] : [];
+}
+
+/**
+ * De-duplicate by (orgUrl, project). On a collision the repo lists UNION, and
+ * an empty (or absent) list WINS — because empty means "all repositories",
+ * and a restriction from one source must never narrow what another source on
+ * the same project already opened up. `areaPaths` follows the identical rule,
+ * independently of `repos` — the two are separate restrictions (`repos`
+ * narrows PRs/commits/reviews, `areaPaths` narrows work items), so one
+ * carrying a restriction must never blank the other's.
+ */
 function uniqRefs(
-  refs: Array<{ orgUrl: string; project: string }>,
-): Array<{ orgUrl: string; project: string }> {
-  const seen = new Map<string, { orgUrl: string; project: string }>();
-  for (const ref of refs) seen.set(`${ref.orgUrl} ${ref.project}`, ref);
+  refs: Array<{ orgUrl: string; project: string; repos?: string[]; areaPaths?: string[] }>,
+): Array<{ orgUrl: string; project: string; repos?: string[]; areaPaths?: string[] }> {
+  const seen = new Map<
+    string,
+    { orgUrl: string; project: string; repos?: string[]; areaPaths?: string[] }
+  >();
+  for (const ref of refs) {
+    const key = `${ref.orgUrl} ${ref.project}`;
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, ref);
+      continue;
+    }
+    // Either side lacking a restriction (empty/absent) means the merged ref
+    // must also lack one — empty wins. Computed independently per field.
+    const repos =
+      !existing.repos || existing.repos.length === 0 || !ref.repos || ref.repos.length === 0
+        ? undefined
+        : uniq([...existing.repos, ...ref.repos]);
+    const areaPaths =
+      !existing.areaPaths ||
+      existing.areaPaths.length === 0 ||
+      !ref.areaPaths ||
+      ref.areaPaths.length === 0
+        ? undefined
+        : uniq([...existing.areaPaths, ...ref.areaPaths]);
+    seen.set(key, {
+      orgUrl: ref.orgUrl,
+      project: ref.project,
+      ...(repos ? { repos } : {}),
+      ...(areaPaths ? { areaPaths } : {}),
+    });
+  }
   return Array.from(seen.values());
 }

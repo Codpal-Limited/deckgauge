@@ -59,6 +59,7 @@ const CATEGORY_CHIP: Record<WidgetCategory, string> = {
   correlation: 'bg-fuchsia-100 text-fuchsia-700',
   ai: 'bg-violet-100 text-violet-700',
   comparison: 'bg-blue-100 text-blue-700',
+  focus: 'bg-rose-100 text-rose-700',
 };
 
 export default function WidgetPicker({ boardId, viewId, onClose, onAdded }: WidgetPickerProps) {

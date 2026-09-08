@@ -2,6 +2,7 @@ import { PrismaClient } from '@deckgauge/db'
 import { JiraPort, JiraFieldSchemaShape } from '@deckgauge/shared'
 import { JiraPromoteService } from './jira-promote.service.js'
 import { resolveJqlAllowLists } from './jira-jql-filter.js'
+import { persistJqlAllowLists } from './jira-key-set-store.js'
 import { type ChClient } from './jira-dual-writer.js'
 
 interface ProcessorInput {
@@ -145,6 +146,25 @@ export async function jiraSyncProcessor(input: ProcessorInput): Promise<Processo
     // admits. The fetch above is shared by every board on the project key, so the
     // filter has to be applied as an intersection at promote time.
     const jqlFilters = await resolveJqlAllowLists({ db, adapter, instanceId, projectKeys })
+
+    // Persist what the resolver just computed, so the intelligence path sees the
+    // same restriction the board does. Bounded to every board source THIS RUN
+    // covers, queried the same way resolveJqlAllowLists scopes its own lookup
+    // (jira-jql-filter.ts:88) — not just the union of its two result maps, which
+    // omits a source whose jqlFilter was just blanked (resolveJqlAllowLists
+    // `continue`s past it, so it lands in neither map) and would leave that
+    // source's stale, now-too-narrow rows in place.
+    const coveredSources = await db.boardJiraSource.findMany({
+      where: {
+        jiraProjectSync: { jiraInstanceId: instanceId, jiraProjectKey: { in: projectKeys } },
+      },
+      select: { id: true },
+    })
+    await persistJqlAllowLists(
+      db,
+      jqlFilters,
+      coveredSources.map((s) => s.id),
+    )
 
     // Second pass: promote Jira items to Project rows
     const promoteService = new JiraPromoteService(db)

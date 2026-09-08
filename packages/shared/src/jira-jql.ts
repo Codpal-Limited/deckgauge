@@ -60,3 +60,51 @@ export function buildFilteredKeyJql(projectKey: string, jqlFilter: string | null
   const filter = jqlFilter === null ? '' : stripJqlOrderBy(jqlFilter);
   return filter === '' ? scope : `${scope} AND (${filter})`;
 }
+
+/**
+ * True when a board source's `jqlFilter` actually restricts anything — i.e. it
+ * is not null/undefined and not reducible to blank once a trailing
+ * `ORDER BY …` is stripped. Shared by every reader of `BoardJiraSource` that
+ * needs to tell "no filter" apart from "a filter that currently matches
+ * nothing", which `filteredKeys`/`board_jira_source_keys` cannot do on its
+ * own — both leave that table empty. See {@link JQL_FILTER_MATCHES_NOTHING_KEY}.
+ */
+export function hasActiveJqlFilter(jqlFilter: string | null | undefined): boolean {
+  return jqlFilter != null && stripJqlOrderBy(jqlFilter) !== '';
+}
+
+/**
+ * A sentinel issue key emitted by the intelligence scope resolvers
+ * (`resolveBoardScope` in apps/api/src/intelligence/board-scope.ts,
+ * `resolveScope` in apps/api/src/intelligence-query/scope/resolve-scope.ts)
+ * when a board source's `jqlFilter` is active but currently admits zero real
+ * issues.
+ *
+ * The bug this closes: `board_jira_source_keys` is empty in BOTH of these
+ * cases — a source with no filter, and a source whose filter matches nothing
+ * — and every consumer of `issueKeys`/`jiraIssueKeysByProject` reads "empty"
+ * as "unrestricted" (deliberately: that is what lets an unfiltered board keep
+ * seeing everything). Reading the second case the same way as the first is a
+ * fail-OPEN defect — ordinary Jira drift (a renamed component, a stale
+ * `cf[10001]` id, an ended sprint) silently reverts a scoped board to
+ * project-wide analytics, with no error anywhere.
+ *
+ * The fix does NOT redefine what an empty `issueKeys` array means — that
+ * would touch every reader in the codebase for one edge case. Instead, when
+ * `hasActiveJqlFilter` is true but the resolved key set is empty, the
+ * resolvers emit `[JQL_FILTER_MATCHES_NOTHING_KEY]` instead of `[]`. A real
+ * Jira key is always `PROJECT-<digits>`, so this string can never collide
+ * with one, and the existing guarded-disjunction narrowing
+ * (`jiraScopeFilter` in apps/api/src/widgets/unions.ts, and the SQL console's
+ * rewriter/assert pair) then narrows the project to exactly nothing, as a
+ * filter that matches nothing should.
+ *
+ * The ADO analogue is `expandAdoAreaPaths` in `resolve-scope.ts`, which
+ * instead makes its list non-empty by construction (unioning the raw prefix
+ * back into an empty expansion). That shape doesn't transfer here: an ADO
+ * area-path restriction is itself the value being matched (by prefix), so
+ * keeping the prefix narrows correctly on its own. A JQL allow-list is a set
+ * of concrete issue keys with no such "keep the input" fallback — a value
+ * that can never be a real key is the equivalent fail-closed device.
+ */
+export const JQL_FILTER_MATCHES_NOTHING_KEY = '<none>';

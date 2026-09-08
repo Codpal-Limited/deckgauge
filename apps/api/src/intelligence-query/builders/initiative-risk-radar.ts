@@ -1,5 +1,6 @@
 import { registerBuilder } from './registry.js';
 import type { BuilderInputs, BuiltSql } from './types.js';
+import { jiraScopeFilter } from '../../widgets/unions.js';
 
 export function buildInitiativeRiskRadarSql({ scope }: BuilderInputs): BuiltSql | null {
   const hasJira = scope.jiraProjectKeys.length > 0;
@@ -13,11 +14,10 @@ export function buildInitiativeRiskRadarSql({ scope }: BuilderInputs): BuiltSql 
     legs.push(
       `SELECT summary AS name, toString(due_date) AS due_date, status_category AS status, 'jira' AS source
          FROM cockpit.jira_issues
-        WHERE project_key IN {jiraProjects:Array(String)}
+        WHERE ${jiraScopeFilter(scope, params)}
           AND issue_type = 'Epic'
           AND due_date IS NOT NULL`
     );
-    params.jiraProjects = scope.jiraProjectKeys;
   }
 
   if (hasGitHub) {

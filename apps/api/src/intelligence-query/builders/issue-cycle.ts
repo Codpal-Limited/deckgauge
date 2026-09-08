@@ -1,5 +1,6 @@
 import { DONE_STATUS_NAMES } from '@deckgauge/shared';
 import { chNormalizedStatusExpr } from '../../widgets/widget-helpers.js';
+import { jiraScopeFilter, adoScopeFilter } from '../../widgets/unions.js';
 import type { BoardScope } from '../../intelligence/board-scope.js';
 
 // Issue-based cycle time — the created→done span of a work item, in contrast to
@@ -43,15 +44,15 @@ export function buildIssueDoneItemsSql(
       FROM (
         SELECT issue_key AS issue_key, min(transitioned_at) AS done_at
         FROM cockpit.jira_transitions
-        WHERE project_key IN {icJiraKeys:Array(String)}
+        WHERE ${jiraScopeFilter(scope, params, { keyColumn: 'issue_key' })}
           AND ${chNormalizedStatusExpr('to_status')} IN {icDoneStatuses:Array(String)}
           AND transitioned_at >= {${fromKey}:DateTime}
           AND transitioned_at <  {${toKey}:DateTime}
         GROUP BY issue_key
       ) AS jt
       INNER JOIN cockpit.jira_issues AS i ON i.key = jt.issue_key
+      WHERE ${jiraScopeFilter(scope, params, { alias: 'i' })}
     `);
-    params.icJiraKeys = scope.jiraProjectKeys;
     params.icDoneStatuses = [...DONE_STATUS_NAMES];
   }
 
@@ -59,12 +60,11 @@ export function buildIssueDoneItemsSql(
     legs.push(`
       SELECT created_at AS created_at, closed_at AS done_at
       FROM cockpit.ado_work_items
-      WHERE project IN {icAdoProjects:Array(String)}
+      WHERE ${adoScopeFilter(scope, params, { areaPathColumn: 'area_path' })}
         AND closed_at IS NOT NULL
         AND closed_at >= {${fromKey}:DateTime}
         AND closed_at <  {${toKey}:DateTime}
     `);
-    params.icAdoProjects = scope.adoProjects;
   }
 
   return { sql: legs.length ? legs.join(' UNION ALL ') : null, params };

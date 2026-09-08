@@ -82,6 +82,7 @@ export const ModelName = {
   GitLabInstance: 'GitLabInstance',
   JiraProjectSync: 'JiraProjectSync',
   BoardJiraSource: 'BoardJiraSource',
+  BoardJiraSourceKey: 'BoardJiraSourceKey',
   GitHubRepoSync: 'GitHubRepoSync',
   PrJiraLink: 'PrJiraLink',
   BoardGitHubSource: 'BoardGitHubSource',
@@ -121,7 +122,10 @@ export const ModelName = {
   AdvisorChangeSet: 'AdvisorChangeSet',
   Notification: 'Notification',
   NotificationPreference: 'NotificationPreference',
-  BoardNotificationSetting: 'BoardNotificationSetting'
+  BoardNotificationSetting: 'BoardNotificationSetting',
+  FocusVerdict: 'FocusVerdict',
+  FocusConfig: 'FocusConfig',
+  FocusEpic: 'FocusEpic'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -617,6 +621,15 @@ export const BoardJiraSourceScalarFieldEnum = {
 export type BoardJiraSourceScalarFieldEnum = (typeof BoardJiraSourceScalarFieldEnum)[keyof typeof BoardJiraSourceScalarFieldEnum]
 
 
+export const BoardJiraSourceKeyScalarFieldEnum = {
+  boardJiraSourceId: 'boardJiraSourceId',
+  issueKey: 'issueKey',
+  resolvedAt: 'resolvedAt'
+} as const
+
+export type BoardJiraSourceKeyScalarFieldEnum = (typeof BoardJiraSourceKeyScalarFieldEnum)[keyof typeof BoardJiraSourceKeyScalarFieldEnum]
+
+
 export const GitHubRepoSyncScalarFieldEnum = {
   id: 'id',
   githubInstanceId: 'githubInstanceId',
@@ -724,6 +737,8 @@ export const BoardAdoSourceScalarFieldEnum = {
   targetGroupId: 'targetGroupId',
   syncWorkItemsToBoard: 'syncWorkItemsToBoard',
   useForIntelligence: 'useForIntelligence',
+  intelligenceRepos: 'intelligenceRepos',
+  intelligenceAreaPaths: 'intelligenceAreaPaths',
   allowedWorkItemTypes: 'allowedWorkItemTypes',
   wiqlFilter: 'wiqlFilter',
   fieldMappings: 'fieldMappings',
@@ -1235,6 +1250,55 @@ export const BoardNotificationSettingScalarFieldEnum = {
 } as const
 
 export type BoardNotificationSettingScalarFieldEnum = (typeof BoardNotificationSettingScalarFieldEnum)[keyof typeof BoardNotificationSettingScalarFieldEnum]
+
+
+export const FocusVerdictScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  fingerprint: 'fingerprint',
+  class: 'class',
+  epicKey: 'epicKey',
+  reason: 'reason',
+  source: 'source',
+  ruleId: 'ruleId',
+  model: 'model',
+  promptVersion: 'promptVersion',
+  decidedBy: 'decidedBy',
+  decidedAt: 'decidedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FocusVerdictScalarFieldEnum = (typeof FocusVerdictScalarFieldEnum)[keyof typeof FocusVerdictScalarFieldEnum]
+
+
+export const FocusConfigScalarFieldEnum = {
+  id: 'id',
+  boardId: 'boardId',
+  classLabels: 'classLabels',
+  workingStates: 'workingStates',
+  stageMap: 'stageMap',
+  migrationCutoff: 'migrationCutoff',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FocusConfigScalarFieldEnum = (typeof FocusConfigScalarFieldEnum)[keyof typeof FocusConfigScalarFieldEnum]
+
+
+export const FocusEpicScalarFieldEnum = {
+  id: 'id',
+  boardId: 'boardId',
+  sourceKey: 'sourceKey',
+  title: 'title',
+  programme: 'programme',
+  position: 'position',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FocusEpicScalarFieldEnum = (typeof FocusEpicScalarFieldEnum)[keyof typeof FocusEpicScalarFieldEnum]
 
 
 export const SortOrder = {

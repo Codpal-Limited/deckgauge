@@ -28,6 +28,26 @@ export const CostClassification = {
 export type CostClassification = (typeof CostClassification)[keyof typeof CostClassification]
 
 
+export const FocusClass = {
+  A: 'A',
+  B: 'B',
+  C: 'C',
+  UNCLASSIFIED: 'UNCLASSIFIED'
+} as const
+
+export type FocusClass = (typeof FocusClass)[keyof typeof FocusClass]
+
+
+export const FocusVerdictSource = {
+  HUMAN: 'HUMAN',
+  CAPEX: 'CAPEX',
+  RULE: 'RULE',
+  MODEL: 'MODEL'
+} as const
+
+export type FocusVerdictSource = (typeof FocusVerdictSource)[keyof typeof FocusVerdictSource]
+
+
 export const SyncRunStatus = {
   PENDING: 'PENDING',
   COMPLETED: 'COMPLETED',
@@ -117,7 +137,8 @@ export const BoardViewType = {
   BOARD: 'BOARD',
   DASHBOARD: 'DASHBOARD',
   ROADMAP: 'ROADMAP',
-  COMPARISON: 'COMPARISON'
+  COMPARISON: 'COMPARISON',
+  FOCUS: 'FOCUS'
 } as const
 
 export type BoardViewType = (typeof BoardViewType)[keyof typeof BoardViewType]

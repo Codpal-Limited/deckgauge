@@ -9,3 +9,4 @@ export * from './classification.js';
 export * from './daily-cap.js';
 export * from './aggregate.js';
 export * from './epic-breakdown.js';
+export * from './issue-timeline.js';

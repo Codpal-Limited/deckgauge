@@ -16,7 +16,17 @@ export const MAX_ROWS_TO_READ = 1_000_000;
 export interface ExecuteResult {
   rows: unknown[];
   ms: number;
-  scope: ResolvedScope;
+  /**
+   * The four identifier lists, and deliberately NOT the two narrowing maps the
+   * board filter added to `ResolvedScope`.
+   *
+   * This field goes to the browser (`RunIntelligenceQueryOk.scope` in
+   * `apps/web/app/actions/intelligence-query.ts`, which reads only the four
+   * lengths). `jiraIssueKeysByProject` can hold every issue key a JQL filter
+   * admits — thousands on a real board — so returning the whole resolved scope
+   * would have put that on every execute response for a count nothing displays.
+   */
+  scope: Pick<ResolvedScope, 'github' | 'jira' | 'ado' | 'gitlab'>;
   truncated: boolean;
   /** The post-rewrite SQL actually sent to ClickHouse — for audit logging. */
   executedSql: string;
@@ -71,7 +81,7 @@ export async function executeUserSql(
   const executedSql = serialize(parsed);
 
   try {
-    assertEveryRefIsScoped(executedSql);
+    assertEveryRefIsScoped(executedSql, scope);
   } catch (e) {
     if (e instanceof AssertError) {
       // Generic message — don't leak which check tripped.
@@ -95,7 +105,12 @@ export async function executeUserSql(
   return {
     rows: truncated ? json.slice(0, ROW_CAP) : json,
     ms: Date.now() - t0,
-    scope,
+    scope: {
+      github: scope.github,
+      jira: scope.jira,
+      ado: scope.ado,
+      gitlab: scope.gitlab,
+    },
     truncated,
     executedSql,
   };

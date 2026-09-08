@@ -11,6 +11,11 @@ import { WidgetEmptyState } from './WidgetEmptyState';
 interface Props {
   boardId: string;
   config: Record<string, unknown>;
+  // Task 13 fix round 1: the drill-through below opens the intelligence SQL
+  // console, which the API gates at ADMIN. Undefined/false withholds
+  // `onPointClick` entirely (not just a no-op) so TrendLineChart also drops
+  // the pointer cursor — a non-admin sees no affordance, not a dead click.
+  isAdmin?: boolean;
 }
 
 interface Data {
@@ -18,7 +23,7 @@ interface Data {
   emptyReason?: string;
 }
 
-export default function ReworkRateWidget({ boardId, config }: Props) {
+export default function ReworkRateWidget({ boardId, config, isAdmin }: Props) {
   const merged = useWidgetConfigWithBoardPeriod(config);
   const router = useRouter();
   const search = useSearchParams();
@@ -36,13 +41,16 @@ export default function ReworkRateWidget({ boardId, config }: Props) {
       ]}
       yAxisLabel="%"
       benchmarks={BENCHMARKS_V1.REWORK_RATE}
-      onPointClick={() =>
-        openIntelligenceConsole(
-          router,
-          boardId,
-          { widgetType: 'REWORK_RATE', config: merged },
-          search?.toString() ?? ''
-        )
+      onPointClick={
+        isAdmin
+          ? () =>
+              openIntelligenceConsole(
+                router,
+                boardId,
+                { widgetType: 'REWORK_RATE', config: merged },
+                search?.toString() ?? ''
+              )
+          : undefined
       }
     />
   );

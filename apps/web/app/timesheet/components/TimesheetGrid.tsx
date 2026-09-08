@@ -14,7 +14,8 @@ import { ClassificationPill } from './ClassificationPill';
 
 interface TimesheetGridProps {
   data: TimesheetGridResponse;
-  onTaskClick: (issueKey: string, employeeId: string) => void;
+  /** `countedSeconds` is this cell's own attributed total, so the drawer never has to re-derive it. */
+  onTaskClick: (issueKey: string, employeeId: string, countedSeconds: number) => void;
 }
 
 function rowTotal(e: TimesheetEmployeeRow): number {
@@ -134,7 +135,7 @@ export function TimesheetGrid({ data, onTaskClick }: TimesheetGridProps) {
                       >
                         <button
                           type="button"
-                          onClick={() => onTaskClick(t.issueKey, employee.employeeId)}
+                          onClick={() => onTaskClick(t.issueKey, employee.employeeId, t.total)}
                           className="font-medium text-indigo-600 hover:underline"
                         >
                           {t.issueKey}

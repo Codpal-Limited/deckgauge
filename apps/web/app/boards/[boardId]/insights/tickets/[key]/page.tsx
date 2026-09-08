@@ -44,7 +44,9 @@ const SOURCE_TONE: Record<string, string> = {
   github: 'bg-purple-50 text-purple-700 ring-purple-200',
   'github-commit': 'bg-purple-50 text-purple-700 ring-purple-200',
   gitlab: 'bg-orange-50 text-orange-700 ring-orange-200',
+  'gitlab-commit': 'bg-orange-50 text-orange-700 ring-orange-200',
   ado: 'bg-sky-50 text-sky-700 ring-sky-200',
+  'ado-commit': 'bg-sky-50 text-sky-700 ring-sky-200',
 };
 
 export default async function BoardTicketTimelinePage({

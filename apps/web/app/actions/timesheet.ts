@@ -6,6 +6,7 @@ import type {
   IntervalsResponse,
   CapexReportResponse,
   EpicBreakdownResponse,
+  TicketTimelineEvent,
 } from '@deckgauge/shared';
 import { revalidatePath } from 'next/cache';
 import { apiRequest, authFetch } from './api';
@@ -53,13 +54,81 @@ export interface IntervalsQueryArgs {
   to: string;
 }
 
+/**
+ * Every field the drawer renders is nullable or empty here, so a failed fetch
+ * degrades to an empty panel rather than a thrown render.
+ */
+function emptyIntervals(issueKey: string, employeeId: string): IntervalsResponse {
+  return {
+    issueKey,
+    employeeId,
+    intervals: [],
+    provider: null,
+    title: null,
+    url: null,
+    issueType: null,
+    reporter: null,
+    assignee: null,
+    priority: null,
+    storyPoints: null,
+    sprint: null,
+    epic: null,
+    openedAtMs: null,
+    resolvedAtMs: null,
+    currentStatus: null,
+    inProgressMs: 0,
+    timeline: [],
+    byStatus: [],
+  };
+}
+
 export async function fetchIntervals(q: IntervalsQueryArgs): Promise<IntervalsResponse> {
   const params = new URLSearchParams({ orgTreeId: q.orgTreeId, issueKey: q.issueKey, employeeId: q.employeeId, from: q.from, to: q.to });
   try {
     const res = await apiRequest(`/timesheet/intervals?${params.toString()}`);
     return (await res.json()) as IntervalsResponse;
   } catch {
-    return { issueKey: q.issueKey, employeeId: q.employeeId, intervals: [] };
+    return emptyIntervals(q.issueKey, q.employeeId);
+  }
+}
+
+/**
+ * Commits, PRs and status changes for one ticket, from the existing unified
+ * intelligence timeline.
+ *
+ * `forbidden` is a first-class outcome, not an error. `/timesheet/intervals` is
+ * gated by an ORG-TREE grant while this endpoint additionally requires the
+ * `ANALYTICS` realm role — and `TIMESHEET_TREE` dropped that role deliberately,
+ * so that sharing an org tree shares its hours (see the policy note in
+ * `timesheet.routes.ts`). A user who was shared a tree can therefore reach the
+ * drawer and legitimately not reach this. The drawer says so instead of
+ * rendering an empty Activity list that looks like "no commits".
+ */
+export type TicketActivityResult =
+  | { ok: true; events: TicketTimelineEvent[] }
+  | { ok: false; reason: 'forbidden' | 'unknown' | 'unsupported-key' };
+
+/**
+ * ADO work items are `project#1234`; every arm of the timeline query matches
+ * either `jira_transitions.issue_key` or `has(linked_ticket_keys, key)`, and
+ * `linked_ticket_keys` only ever holds `PREFIX-123` / `gh#N`. So an ADO key
+ * matches nothing, and asking costs a seven-table scan to prove it.
+ */
+function isJiraStyleKey(issueKey: string): boolean {
+  return !issueKey.includes('#');
+}
+
+export async function fetchTicketActivity(issueKey: string): Promise<TicketActivityResult> {
+  if (!isJiraStyleKey(issueKey)) return { ok: false, reason: 'unsupported-key' };
+  try {
+    const res = await authFetch(`/intelligence/tickets/${encodeURIComponent(issueKey)}`, {
+      cache: 'no-store',
+    });
+    if (res.status === 401 || res.status === 403) return { ok: false, reason: 'forbidden' };
+    if (!res.ok) return { ok: false, reason: 'unknown' };
+    return { ok: true, events: (await res.json()) as TicketTimelineEvent[] };
+  } catch {
+    return { ok: false, reason: 'unknown' };
   }
 }
 

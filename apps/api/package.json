@@ -11,7 +11,8 @@
     "start": "node dist/index.js",
     "test": "vitest run --passWithNoTests",
     "test:db:reset": "pnpm --filter @deckgauge/db test:db:reset",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.typecheck.json"
   },
   "//ai-sdk-pin": "ai and @ai-sdk/anthropic are pinned EXACTLY, not caret-ranged. `ai` 7.0.93 changes the tool-call loop enough to break AdvisorService.ask, AdvisorHelpService.ask and the advisor ask route's scoped-reader test — the loop resolves no text and no toolCalls, so the three suites fail with empty results rather than an error. Bisected: 7.0.48 passes all 31 cases, 7.0.93 fails 3 files. The previous range `^7.0.48` ALLOWED 7.0.93, which means main only worked because its lockfile happened to hold 7.0.48 — a fresh `pnpm install` resolving the range afresh would have broken the Advisor silently. The pin makes the working version explicit. Lifting it is a real migration against the new SDK behaviour, not a version bump.",
   "dependencies": {

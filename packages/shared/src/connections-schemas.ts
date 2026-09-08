@@ -108,6 +108,14 @@ export const BoardAdoSourceCreateSchema = z.object({
   defaultSyncedFields: z.array(z.string()).default(['name', 'status', 'owner']),
   syncWorkItemsToBoard: z.boolean().default(true),
   useForIntelligence: z.boolean().default(true),
+  // Repository names to include in engineering-intelligence analytics for
+  // this board's ADO source. An empty array means ALL repositories.
+  intelligenceRepos: z.array(z.string()).default([]),
+  // Area paths to include in engineering-intelligence analytics for this
+  // board's ADO source, matched by PREFIX. An empty array means ALL area paths.
+  // `intelligenceRepos` cannot narrow work items: ado_work_items has no
+  // repository column.
+  intelligenceAreaPaths: z.array(z.string()).default([]),
 });
 
 export const BoardAdoSourcePatchSchema = z.object({
@@ -118,7 +126,53 @@ export const BoardAdoSourcePatchSchema = z.object({
   defaultSyncedFields: z.array(z.string()).optional(),
   syncWorkItemsToBoard: z.boolean().optional(),
   useForIntelligence: z.boolean().optional(),
+  // Optional so that a patch omitting this field leaves the board's existing
+  // repository scope untouched — omission must never silently clear it.
+  intelligenceRepos: z.array(z.string()).optional(),
+  // Optional so a patch omitting this field leaves the board's existing area
+  // scope untouched — omission must never silently clear it.
+  intelligenceAreaPaths: z.array(z.string()).optional(),
 });
+
+export const AdoSourceRepositorySchema = z.object({
+  repoName: z.string(),
+  prCount: z.number().int().min(0),
+  // True when the project sync currently ingests this repo (sync_all_repos,
+  // or repoName in sync_repos). False means the repo has sync-state history
+  // (it was synced at some point) but is not part of the CURRENT sync scope —
+  // selecting it in the picker analyses frozen historical data.
+  syncing: z.boolean(),
+});
+export type AdoSourceRepositoryDto = z.infer<typeof AdoSourceRepositorySchema>;
+
+// Response for GET .../repositories. `otherBoardNames` names every OTHER board
+// that shares this same project sync (the sync is project-level, shared by
+// every board attached to it) — used to warn that editing the shared sync's
+// scope affects those boards too. Empty when this board is the only one
+// attached to the project sync.
+export const AdoSourceRepositoriesResponseSchema = z.object({
+  repos: z.array(AdoSourceRepositorySchema),
+  otherBoardNames: z.array(z.string()),
+});
+export type AdoSourceRepositoriesResponseDto = z.infer<typeof AdoSourceRepositoriesResponseSchema>;
+
+// The `intelligenceAreaPaths` (Task 3/9) counterpart to the repository picker
+// above. `workItemCount` lets the picker sort/label by how populated an area
+// path actually is.
+export const AdoAreaPathSchema = z.object({
+  areaPath: z.string(),
+  workItemCount: z.number().int().min(0),
+});
+export type AdoAreaPathDto = z.infer<typeof AdoAreaPathSchema>;
+
+// Response for GET .../area-paths. Unlike the repositories response above,
+// there is no `otherBoardNames`: area paths are read straight from ClickHouse
+// by (orgUrl, project), not filtered through a per-board sync-state table
+// another board's edit could affect.
+export const AdoAreaPathsResponseSchema = z.object({
+  areaPaths: z.array(AdoAreaPathSchema),
+});
+export type AdoAreaPathsResponseDto = z.infer<typeof AdoAreaPathsResponseSchema>;
 
 // ── GitLab ──────────────────────────────────────────────────────────────────
 export const GitLabProjectSyncSchema = z.object({
