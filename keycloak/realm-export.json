@@ -36,7 +36,9 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "protocol": "openid-connect",
-      "attributes": {}
+      "attributes": {
+        "post.logout.redirect.uris": "+"
+      }
     }
   ],
   "roles": {

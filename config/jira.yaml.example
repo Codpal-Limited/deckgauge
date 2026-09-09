@@ -15,7 +15,7 @@ email: user@example.com
 apiToken: your-api-token-here
 
 # List of Jira project keys to sync
-# Example: ["BWAY", "DOS"]
+# Example: ["ORBIT", "DOS"]
 projectKeys:
-  - BWAY
+  - ORBIT
   - DOS

@@ -7,6 +7,7 @@ import { updateEmployee, deleteEmployee } from '../../actions/org-trees';
 import { AddEmployeeDialog } from './AddEmployeeDialog';
 import {
   avatarColor,
+  buildDeleteConfirmMessage,
   deriveActivityStatus,
   formatActivityLabel,
   getInitials,
@@ -19,6 +20,13 @@ interface OrgEmployeeNodeProps {
   employee: OrgEmployeeDto;
   orgTreeId?: string;
   childrenNodes: React.ReactNode;
+  /**
+   * The tree's flat roster, needed only so the delete dialog can say who else
+   * goes — deletion cascades to the whole branch. Optional: without it the
+   * dialog degrades to naming just this employee, which is what a node
+   * rendered outside the tree view (or in a unit test) gets.
+   */
+  employees?: OrgEmployeeDto[];
   onRefresh?: () => void;
   onSelectEmployee?: (id: string) => void;
   /** Collapse caret (or other control) rendered in a fixed slot before the avatar. */
@@ -164,6 +172,7 @@ export function OrgEmployeeNode({
   employee,
   orgTreeId,
   childrenNodes,
+  employees,
   onRefresh,
   onSelectEmployee,
   leading,
@@ -219,10 +228,7 @@ export function OrgEmployeeNode({
   };
 
   const handleDelete = () => {
-    if (
-      !confirm(`Delete "${employee.name}"? Their direct reports will be moved up to their manager.`)
-    )
-      return;
+    if (!confirm(buildDeleteConfirmMessage(employees ?? [employee], employee.id))) return;
     startTransition(async () => {
       await deleteEmployee(employee.id);
       onRefresh?.();

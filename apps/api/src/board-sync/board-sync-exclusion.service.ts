@@ -16,8 +16,8 @@ import type {
 
 /**
  * Compares provider ids the way a human reads them: the trailing number
- * numerically, everything before it as text. A plain string sort puts SOE-10
- * before SOE-9, which makes a 60-key list very hard to scan.
+ * numerically, everything before it as text. A plain string sort puts PROJ-10
+ * before PROJ-9, which makes a 60-key list very hard to scan.
  */
 function compareExternalId(a: string, b: string): number {
   const split = (s: string): [string, number | null] => {

@@ -38,7 +38,7 @@ export const SYNC_FIELDS: readonly SyncFieldSpec[] = [
   // AND in the input schemas — and nothing in the product ever writes the column,
   // so for those two providers the gate could never be satisfied. Gating it meant
   // a Jira/ADO description was written once by the create path (which does not
-  // consult the allow-list) and then frozen: RDRR-1721 was imported while its
+  // consult the allow-list) and then frozen: PROJ-1721 was imported while its
   // Jira description was empty and could never pick it up afterwards.
   { key: 'description', label: 'Description', sources: ['jira', 'ado', 'github'], allowListGated: false },
   // GitHub issues carry no due date — only milestones do — so it is absent here

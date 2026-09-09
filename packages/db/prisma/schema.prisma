@@ -208,7 +208,7 @@ model Board {
   // "recruitment" = a candidate pipeline (seeded groups/columns + opt-in
   // calendar/onboard capabilities). Drives boardCapabilities() gating.
   kind               String   @default("development")
-  // Phase 3 (EI-001): ticket-key prefixes the board cares about (e.g. ["BWAY","DOS"]).
+  // Phase 3 (EI-001): ticket-key prefixes the board cares about (e.g. ["ORBIT","DOS"]).
   // Used by the intelligence layer to scope ClickHouse queries to the boards
   // that should see a given linked_ticket_keys[] entry.
   ticketKeyPrefixes  String[] @default([]) @map("ticket_key_prefixes")
@@ -2245,7 +2245,7 @@ model FocusEpic {
   boardId String @map("board_id")
   board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
 
-  /// The key as the source knows it, e.g. `RDRR-4`.
+  /// The key as the source knows it, e.g. `PROJ-4`.
   sourceKey String  @map("source_key") @db.VarChar(64)
   title     String  @db.VarChar(400)
   /// Groups epics that report as their own programme rather than as part of the

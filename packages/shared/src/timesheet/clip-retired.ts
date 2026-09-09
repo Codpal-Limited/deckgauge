@@ -5,7 +5,7 @@ export type RetiredProjectMap = ReadonlyMap<string, number>;
 
 /**
  * The Jira project key of an issue key: the uppercased substring before the
- * first '-' (e.g. 'PT-838' -> 'PT'). Returns null when there is no '-', which
+ * first '-' (e.g. 'PROJ-838' -> 'PROJ'). Returns null when there is no '-', which
  * excludes ADO 'project#id' keys and any malformed key.
  */
 export function jiraProjectKeyOf(issueKey: string): string | null {

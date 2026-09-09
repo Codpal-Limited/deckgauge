@@ -3,6 +3,7 @@ import {
   normalizeOrgRows,
   resolveHierarchy,
   wouldCreateCycle,
+  collectSubtree,
   computeRanking,
   EmployeeStatsSchema,
   type RawOrgRow,
@@ -417,16 +418,39 @@ export class OrgTreeService {
     });
   }
 
+  /**
+   * Deletes the employee AND everyone below them.
+   *
+   * This used to re-parent direct reports onto the deleted employee's own
+   * manager, which quietly left the grandchildren in place and reshaped the
+   * chart under the operator. Deleting a branch now deletes the branch.
+   *
+   * The roster is loaded scoped to `emp.orgTreeId`, so the traversal cannot
+   * leave this tree even if a `managerId` points across one; the delete set is
+   * computed by `collectSubtree` — the same function the confirmation dialog
+   * counts with, so what the operator is warned about and what is removed
+   * cannot drift.
+   *
+   * Everything hanging off these rows (aliases, board memberships, field
+   * values, comments, uploads) is `onDelete: Cascade` in the schema and needs
+   * nothing here. A board whose `scopeEmployeeId` was one of them survives with
+   * a null scope, which is the pre-existing `SetNull` behaviour.
+   */
   async deleteEmployee(id: string): Promise<void> {
     const emp = await this.prisma.orgEmployee.findUnique({ where: { id } });
     if (!emp) return;
-    await this.prisma.$transaction([
-      this.prisma.orgEmployee.updateMany({
-        where: { managerId: id },
-        data: { managerId: emp.managerId },
-      }),
-      this.prisma.orgEmployee.delete({ where: { id } }),
-    ]);
+    const roster = await this.prisma.orgEmployee.findMany({
+      where: { orgTreeId: emp.orgTreeId },
+      select: { id: true, managerId: true },
+    });
+    const doomed = collectSubtree(roster, id);
+    // `orgTreeId` is redundant against `doomed` — every id in it came from a
+    // roster already filtered to this tree — and it stays anyway, so the tree
+    // bound is enforced by the DELETE itself rather than only by the purity of
+    // the traversal feeding it. A cascade has no undo; one predicate is cheap.
+    await this.prisma.orgEmployee.deleteMany({
+      where: { id: { in: doomed }, orgTreeId: emp.orgTreeId },
+    });
   }
 
   async moveEmployee(id: string, input: { managerId: string | null; position: number }): Promise<void> {

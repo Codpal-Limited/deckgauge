@@ -98,7 +98,7 @@ export function assertEveryRefIsScoped(sql: string, scope?: ResolvedScope): void
  *
  * The whole node is offered FIRST and the spine walked only afterwards, because
  * the injected conjunct is itself an AND when a board has exactly one narrowed
- * project and nothing unnarrowed (`project_key IN ('RDRR') AND key IN (…)`) —
+ * project and nothing unnarrowed (`project_key IN ('PROJ') AND key IN (…)`) —
  * splitting first would hand the predicate two halves neither of which is the
  * shape.
  *
@@ -137,7 +137,7 @@ function whereHasConjunct(node: unknown, predicate: (conjunct: unknown) => boole
  * was a measured leak rather than a theoretical one.** The first version took
  * only `narrowedProjects` and compared nothing against `allowed`, so
  * `WHERE project_key IN ('SECRET') OR project_key IN ('SECRET')` on a board
- * scoped to a narrowed `RDRR` was ACCEPTED — the recogniser blessed the USER's
+ * scoped to a narrowed `PROJ` was ACCEPTED — the recogniser blessed the USER's
  * own branches. `injectPredicateIn`'s parenthesisation now keeps the injected
  * conjunct on the top-level AND spine so a user's clause can only narrow, but a
  * second line of defence must not depend on the first being right: a branch

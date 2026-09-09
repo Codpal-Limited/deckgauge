@@ -4,7 +4,7 @@
 // isVacancy / isDeparted / lastContributionAt) — the redesign just renders them
 // as an avatar ring + relative-time label instead of colouring the name.
 
-import type { RankingTier } from '@deckgauge/shared';
+import { collectSubtree, type RankingTier } from '@deckgauge/shared';
 
 /** An employee's activity health, one value drives ring, dot glyph, and label. */
 export type ActivityStatus = 'active' | 'idle' | 'none' | 'vacancy' | 'departed';
@@ -174,4 +174,43 @@ export const RANKING_METRIC_LABELS = {
 /** Format a 0–1 weight as a whole-percent string, e.g. 0.35 → "35%". */
 export function formatWeight(weight: number): string {
   return `${Math.round(weight * 100)}%`;
+}
+
+/** Names listed outright in the delete dialog before it switches to "and N more". */
+export const MAX_NAMED_IN_DELETE_CONFIRM = 5;
+
+/**
+ * The text of the delete confirmation, which is the only guard on a cascade.
+ *
+ * Deleting a manager deletes everyone under them and there is no undo anywhere
+ * in the product, so the dialog has to say how many people go and name as many
+ * as it reasonably can. The count comes from `collectSubtree` — the same
+ * function the API deletes with — so the number shown here is the number of
+ * rows removed, not an estimate of it.
+ */
+export function buildDeleteConfirmMessage(
+  employees: { id: string; name: string; managerId: string | null }[],
+  employeeId: string,
+): string {
+  const target = employees.find((e) => e.id === employeeId);
+  const name = target?.name ?? 'this employee';
+  const undoable = 'This cannot be undone.';
+
+  const doomed = collectSubtree(employees, employeeId);
+  const descendantIds = doomed.filter((id) => id !== employeeId);
+  if (descendantIds.length === 0) {
+    return `Delete "${name}"?\n\n${undoable}`;
+  }
+
+  const byId = new Map(employees.map((e) => [e.id, e.name]));
+  const names = descendantIds.map((id) => byId.get(id) ?? 'Unknown');
+  const shown = names.slice(0, MAX_NAMED_IN_DELETE_CONFIRM);
+  const hidden = names.length - shown.length;
+  const roll = hidden > 0 ? `${shown.join(', ')}, and ${hidden} more` : shown.join(', ');
+  const noun = descendantIds.length === 1 ? 'person' : 'people';
+
+  return (
+    `Delete "${name}" and the ${descendantIds.length} ${noun} below them?\n\n` +
+    `Also deleted: ${roll}.\n\n${undoable}`
+  );
 }

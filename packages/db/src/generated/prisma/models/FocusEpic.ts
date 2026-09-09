@@ -681,7 +681,7 @@ export type $FocusEpicPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     id: string
     boardId: string
     /**
-     * The key as the source knows it, e.g. `RDRR-4`.
+     * The key as the source knows it, e.g. `PROJ-4`.
      */
     sourceKey: string
     title: string

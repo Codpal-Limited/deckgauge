@@ -713,7 +713,7 @@ export {
 } from './org-chart-rows.js';
 export type { RawOrgRow, ParsedEmployee } from './org-chart-rows.js';
 
-export { wouldCreateCycle } from './org-tree-edit.js';
+export { collectSubtree, wouldCreateCycle } from './org-tree-edit.js';
 
 // Timesheet compute engine (Phase 2a) — capex/opex allocation.
 // NOTE: explicit named re-exports (not `export *`). The api/worker load this

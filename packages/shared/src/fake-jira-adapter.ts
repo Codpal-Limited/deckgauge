@@ -11,11 +11,11 @@ export class FakeJiraAdapter implements JiraPort {
   public fixtureCredentialState: JiraCredentialState = "valid";
 
   private readonly epicData: Record<string, JiraEpic[]> = {
-    BWAY: [
+    ORBIT: [
       {
-        id: "epic-bway-1",
-        key: "BWAY-1",
-        projectKey: "BWAY",
+        id: "epic-orbit-1",
+        key: "ORBIT-1",
+        projectKey: "ORBIT",
         summary: "Implement user authentication",
         description: "Set up OAuth2 and JWT-based auth for the application",
         status: "In Progress",
@@ -24,9 +24,9 @@ export class FakeJiraAdapter implements JiraPort {
         updatedAt: new Date("2026-04-10T10:00:00Z"),
       },
       {
-        id: "epic-bway-2",
-        key: "BWAY-2",
-        projectKey: "BWAY",
+        id: "epic-orbit-2",
+        key: "ORBIT-2",
+        projectKey: "ORBIT",
         summary: "Build API documentation",
         description: "Create OpenAPI spec and developer guides",
         status: "Not Started",
@@ -35,9 +35,9 @@ export class FakeJiraAdapter implements JiraPort {
         updatedAt: new Date("2026-04-09T14:30:00Z"),
       },
       {
-        id: "epic-bway-3",
-        key: "BWAY-3",
-        projectKey: "BWAY",
+        id: "epic-orbit-3",
+        key: "ORBIT-3",
+        projectKey: "ORBIT",
         summary: "Database schema optimization",
         description: null,
         status: "Done",
@@ -73,12 +73,12 @@ export class FakeJiraAdapter implements JiraPort {
   };
 
   private readonly issueData: Record<string, JiraIssue[]> = {
-    BWAY: [
+    ORBIT: [
       {
-        id: "issue-bway-1",
-        key: "BWAY-10",
-        projectKey: "BWAY",
-        epicKey: "BWAY-1",
+        id: "issue-orbit-1",
+        key: "ORBIT-10",
+        projectKey: "ORBIT",
+        epicKey: "ORBIT-1",
         summary: "Add OAuth2 support",
         description: "Integrate with Google and GitHub OAuth2 providers",
         status: "In Progress",
@@ -88,10 +88,10 @@ export class FakeJiraAdapter implements JiraPort {
         updatedAt: new Date("2026-04-10T10:00:00Z"),
       },
       {
-        id: "issue-bway-2",
-        key: "BWAY-11",
-        projectKey: "BWAY",
-        epicKey: "BWAY-1",
+        id: "issue-orbit-2",
+        key: "ORBIT-11",
+        projectKey: "ORBIT",
+        epicKey: "ORBIT-1",
         summary: "Implement JWT validation",
         description: "Validate JWT tokens on protected routes",
         status: "In Review",
@@ -101,10 +101,10 @@ export class FakeJiraAdapter implements JiraPort {
         updatedAt: new Date("2026-04-09T14:30:00Z"),
       },
       {
-        id: "issue-bway-3",
-        key: "BWAY-12",
-        projectKey: "BWAY",
-        epicKey: "BWAY-2",
+        id: "issue-orbit-3",
+        key: "ORBIT-12",
+        projectKey: "ORBIT",
+        epicKey: "ORBIT-2",
         summary: "Write API endpoint docs",
         description: null,
         status: "Not Started",
@@ -114,9 +114,9 @@ export class FakeJiraAdapter implements JiraPort {
         updatedAt: new Date("2026-04-08T09:00:00Z"),
       },
       {
-        id: "issue-bway-4",
-        key: "BWAY-13",
-        projectKey: "BWAY",
+        id: "issue-orbit-4",
+        key: "ORBIT-13",
+        projectKey: "ORBIT",
         epicKey: null,
         summary: "Fix login page bug",
         description: "Login button unresponsive on Safari mobile",

@@ -8,7 +8,7 @@
  * as a bug. Keeping both sides on these builders is what makes that testable.
  *
  * The shapes mirror how the promote services already store the ids:
- *   - Jira  `Project.jiraKey`        = the bare issue key (e.g. "RDRR-731")
+ *   - Jira  `Project.jiraKey`        = the bare issue key (e.g. "PROJ-731")
  *   - ADO   `Project.adoProject` + `Project.adoWorkItemId`, joined as "project#id" —
  *           the same convention `classification-mirror.ts` uses. ADO work-item ids are
  *           only unique within a project, so a bare id lets two projects cross-credit

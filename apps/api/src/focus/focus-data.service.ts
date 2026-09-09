@@ -361,7 +361,10 @@ async function loadBoardRows(
       // For the roadmap-epic denominator (R6.10). `jiraType` is how this repo
       // already identifies an epic (`jira-promote.service.ts`).
       jiraType: true,
-      title: true,
+      // The board row's label. `name`, not `title`: `Project` has no `title`
+      // column, and naming one makes Prisma reject this whole query — which
+      // takes every Focus widget down together, since they share one snapshot.
+      name: true,
     },
   });
 
@@ -406,11 +409,11 @@ async function loadBoardRows(
      * and is a separate read.
      */
     if (row.costClassification === 'CAPEX' && row.jiraType === 'Epic' && row.jiraKey) {
-      roadmapEpics.push({ key: row.jiraKey, title: row.title });
+      roadmapEpics.push({ key: row.jiraKey, title: row.name });
     }
 
     if (row.costClassification === 'CAPEX' && row.adoWorkItemId != null) {
-      adoCapexCandidates.push({ adoId: row.adoWorkItemId, title: row.title });
+      adoCapexCandidates.push({ adoId: row.adoWorkItemId, title: row.name });
     }
   }
 

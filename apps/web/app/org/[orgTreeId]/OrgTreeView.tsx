@@ -96,12 +96,14 @@ function buildChildMap(
 interface DraggableNodeProps {
   employee: OrgEmployeeDto;
   childMap: Map<string | null, OrgEmployeeDto[]>;
+  /** Flat roster, forwarded to the node purely for the cascade delete dialog. */
+  employees: OrgEmployeeDto[];
   orgTreeId: string;
   onRefresh: () => void;
   onSelectEmployee?: (id: string) => void;
 }
 
-function DraggableNode({ employee, childMap, orgTreeId, onRefresh, onSelectEmployee }: DraggableNodeProps) {
+function DraggableNode({ employee, childMap, employees, orgTreeId, onRefresh, onSelectEmployee }: DraggableNodeProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
@@ -121,6 +123,7 @@ function DraggableNode({ employee, childMap, orgTreeId, onRefresh, onSelectEmplo
             key={child.id}
             employee={child}
             childMap={childMap}
+            employees={employees}
             orgTreeId={orgTreeId}
             onRefresh={onRefresh}
             onSelectEmployee={onSelectEmployee}
@@ -173,6 +176,7 @@ function DraggableNode({ employee, childMap, orgTreeId, onRefresh, onSelectEmplo
         employee={employee}
         orgTreeId={orgTreeId}
         childrenNodes={childrenNodes}
+        employees={employees}
         onRefresh={onRefresh}
         onSelectEmployee={onSelectEmployee}
         leading={caret}
@@ -258,6 +262,7 @@ export function OrgTreeView({ tree, onRefresh, onSelectEmployee }: OrgTreeViewPr
             key={root.id}
             employee={root}
             childMap={childMap}
+            employees={tree.employees}
             orgTreeId={tree.id}
             onRefresh={refresh}
             onSelectEmployee={onSelectEmployee}

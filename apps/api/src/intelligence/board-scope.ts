@@ -15,7 +15,7 @@ export interface AdoProdConfig {
 }
 
 export interface BoardScope {
-  /** Jira project keys (e.g. ['BWAY','DOS']) — filters jira_issues/transitions/worklogs */
+  /** Jira project keys (e.g. ['ORBIT','DOS']) — filters jira_issues/transitions/worklogs */
   jiraProjectKeys: string[];
   /**
    * Per-project issue-key restrictions behind {@link jiraProjectKeys}.

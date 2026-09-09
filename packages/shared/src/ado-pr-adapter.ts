@@ -409,7 +409,7 @@ export class AdoPrAdapter implements AdoPrPort {
     // projects.ado_work_item_id, so the existing
     // has(linked_ticket_keys, {key}) timeline lookup resolves against a board
     // row's ADO id without any extra mapping. Prefix-extracted keys stay as a
-    // second source for teams that do write 'BWAY-7' in PR titles.
+    // second source for teams that do write 'ORBIT-7' in PR titles.
     const workItemKeys = workItemRefs
       .map((ref) => (ref.id == null ? '' : String(ref.id).trim()))
       .filter((id) => id.length > 0);

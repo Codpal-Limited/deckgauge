@@ -181,7 +181,7 @@ export function JiraInstanceForm({
                 handleAddProjectKey();
               }
             }}
-            placeholder="e.g., BWAY"
+            placeholder="e.g., ORBIT"
             className="input-dark flex-1"
             disabled={isLoading}
           />

@@ -124,7 +124,7 @@ export function adoScopeFilter(
  * before this function existed.
  *
  * `jiraAllowedKeys` is flat across projects rather than a per-project map. That
- * is sound because a Jira issue key embeds its own project (`RDRR-123`), so keys
+ * is sound because a Jira issue key embeds its own project (`PROJ-123`), so keys
  * from two projects cannot collide, and `jiraKeyScopedProjects` is what decides
  * which projects the allow-list applies to.
  *
