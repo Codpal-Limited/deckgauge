@@ -45,8 +45,42 @@ export interface ClassificationDeps {
     | ((tasks: FocusPromptTask[]) => Promise<unknown[]>)
     | null;
   saveVerdicts(rows: { fingerprint: string; verdict: ResolvedVerdict }[]): Promise<void>;
+  /**
+   * How many residue tasks this run may send to the model. Unset means all of
+   * them, which is the page-load path's behaviour and every existing caller's.
+   *
+   * The cap lives here rather than in the route because only this function knows
+   * what the residue IS — the tasks no cached verdict, no board classification
+   * and no rule could reach. A route capping the INPUT would spend the budget on
+   * tasks the cheap tiers were about to answer for free.
+   */
+  modelBudget?: number;
   rules?: FocusRule[];
   roadmapEpics: ReadonlySet<string>;
+  /**
+   * Child issue key -> parent issue key, for every issue in the board's scope.
+   *
+   * What makes inheritance reach a SUB-TASK. Jira does not put an epic link on
+   * one: `epic_key` comes from `customfield_10014`, which sub-tasks never
+   * carry, so `epicKey` above is null for all 1,650 of them on the reference
+   * instance and a one-hop classifier cannot reach a single one. Their epic is
+   * the parent's parent.
+   *
+   * `parent_key` is a strict superset of `epic_key` there — 4,223 issues carry
+   * both and the two are IDENTICAL in every case, and none has an `epic_key`
+   * without a `parent_key` — so walking this map alone loses nothing that the
+   * one-hop path used to find. `epicKey` is still consulted first all the same,
+   * because it is the field the epic-link rule and the display fallback already
+   * read, and having the two disagree about the first hop would be worse than
+   * the redundancy.
+   *
+   * Optional, and an absent map degrades to exactly the previous one-hop
+   * behaviour rather than to no inheritance at all.
+   *
+   * Scoped to the board, because `buildFocusParentsSql` is: an ancestor in a
+   * Jira project the board does not include is not in here and ends the walk.
+   */
+  parentOf?: ReadonlyMap<string, string>;
 }
 
 export interface ClassificationResult {
@@ -57,6 +91,47 @@ export interface ClassificationResult {
   unclassified: number;
   /** How many tasks were actually sent to the model. */
   modelCalls: number;
+  /**
+   * How many tasks THIS run got a MODEL verdict for — cache hits excluded.
+   *
+   * Distinct from `provenance.MODEL`, which is cumulative: it counts every task
+   * carrying a model class, including ones a previous run paid for and this one
+   * merely replayed. Reporting that as a run's output makes a second press read
+   * "classified 340" beside "modelCalls: 140" — a claim of work that did not
+   * happen, and a false efficiency figure against the per-call cost.
+   *
+   * `remaining` had the same defect in the other direction and is now derived
+   * from `unclassified`; this is the same correction one field over.
+   */
+  newlyClassified: number;
+  /**
+   * How many tasks the cheap tiers could not answer, WHETHER OR NOT the budget
+   * let them reach the model.
+   *
+   * **Do NOT compute a remainder as `residueTotal - modelCalls`.** That treats a
+   * SENT task as finished, which is false whenever the model did not answer for
+   * it — a provider failure or a malformed verdict leaves the task `source:
+   * null`, uncacheable, and re-sent on the next press. `unclassified` above is
+   * the honest remainder, because it counts what still has no class after the
+   * run rather than what was paid for. An earlier version of this comment
+   * recommended the subtraction and was wrong.
+   */
+  residueTotal: number;
+  /**
+   * The fingerprint each task was keyed under — the primary key of the
+   * `focus_verdicts` row that decides it, alongside the organization.
+   *
+   * Returned rather than kept private because anything that WRITES a verdict has
+   * to name one, and the ledger's class picker is exactly that. The alternative
+   * — a second caller computing `taskFingerprint` for itself — is a second
+   * definition of the storage key, and the failure mode is silent: the override
+   * is written, the request succeeds, and the row is never read again because it
+   * is filed under a hash nothing looks up.
+   *
+   * Keyed by task key rather than returned as a list because the consumer starts
+   * from a rendered row, not from a hash.
+   */
+  fingerprintByTaskKey: Map<string, string>;
 }
 
 const MODEL_BATCH = 40;
@@ -71,14 +146,81 @@ function fromStored(stored: StoredVerdict): ResolvedVerdict {
   };
 }
 
-/** The parent epic's classification, when the epic is itself a classified board row. */
-function epicCapexFor(
+/**
+ * Walk up from a task to the NEAREST ancestor that is a classified board row.
+ *
+ * Nearest, not highest: the closest decision is the most specific one. A CAPEX
+ * initiative sitting above an OPEX epic must not reach through it and re-promote
+ * work somebody deliberately marked operational — the same precedence that makes
+ * a task's own flag beat its epic's, one level up.
+ *
+ * The first hop is `epicKey` when the task has one, so a task whose epic link is
+ * set behaves exactly as it did before this walk existed; every hop after that
+ * is `parentOf`. An epic that is itself unclassified does NOT end the walk (10
+ * epics on the reference instance hang off an Initiative), which is the only
+ * behaviour change for tasks that already had an epic link.
+ *
+ * Returns the ancestor's own key, so `resolveVerdict` names the row somebody
+ * actually classified. Naming the intermediate parent would attribute the call
+ * to a row that decided nothing and cannot be argued with.
+ *
+ * **`ancestorKey` is not necessarily an epic, and `epicKey` is the only field
+ * that claims to be one.** `loadCapex` returns every classified board row with
+ * no type filter — `focus-data.service.ts` states that on a real board most
+ * CAPEX rows are tasks — so the walk routinely stops on a Story, a Task or an
+ * Initiative. `roadmapEpics` is the board's CAPEX-marked EPICS, which is exactly
+ * the licence to attribute one; without it the key is still worth NAMING in the
+ * reason but must not reach the roadmap-coverage join. Before the walk existed
+ * this distinction did not: the key came from the `epic_key` column and was an
+ * epic by construction.
+ */
+function classifiedAncestorFor(
   task: ClassifiableTask,
   capex: Map<string, 'CAPEX' | 'OPEX'>,
-): { classification: 'CAPEX' | 'OPEX'; epicKey: string } | null {
-  if (!task.epicKey) return null;
-  const classification = capex.get(task.epicKey);
-  return classification ? { classification, epicKey: task.epicKey } : null;
+  roadmapEpics: ReadonlySet<string>,
+  parentOf?: ReadonlyMap<string, string>,
+): { ancestorKey: string; classification: 'CAPEX' | 'OPEX'; epicKey: string | null } | null {
+  for (const key of ancestorsOf(task, parentOf)) {
+    const classification = capex.get(key);
+    if (classification) {
+      return {
+        ancestorKey: key,
+        classification,
+        epicKey: roadmapEpics.has(key) ? key : null,
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Every ancestor of a task, nearest first.
+ *
+ * `seen` is the ONLY thing that terminates this walk, and it is enough: each
+ * iteration adds one key to it and the walk stops the moment a key repeats, so
+ * the worst case is one hop per distinct issue in `parentOf` and a chain that
+ * loops ends on the hop that closes it. A second, arbitrary hop-count ceiling
+ * was here and has been removed — it terminated every cycle before `seen` ever
+ * saw one, which left no test able to tell whether `seen` worked, and two
+ * mechanisms for one job is how you end up not knowing which is load-bearing.
+ *
+ * A loop matters because nothing prevents one: Jira permits it and the sync
+ * does not validate it. Every Focus widget shares this one call, so an
+ * unterminated walk is the whole page hanging, not one task degrading.
+ */
+function* ancestorsOf(
+  task: ClassifiableTask,
+  parentOf?: ReadonlyMap<string, string>,
+): Generator<string> {
+  let current = task.epicKey ?? parentOf?.get(task.taskKey) ?? null;
+  const seen = new Set<string>([task.taskKey]);
+
+  while (current) {
+    if (seen.has(current)) return;
+    seen.add(current);
+    yield current;
+    current = parentOf?.get(current) ?? null;
+  }
 }
 
 /**
@@ -107,9 +249,30 @@ export async function classifyTasks(
   const [cached, capex] = await Promise.all([
     deps.loadVerdicts([...new Set(fingerprints.values())]),
     deps.loadCapex([
-      ...new Set(tasks.flatMap((t) => (t.epicKey ? [t.taskKey, t.epicKey] : [t.taskKey]))),
+      // The task and EVERY ancestor the walk may consult. The production
+      // implementation ignores this argument and returns the whole board, so
+      // this is the documented contract rather than a live constraint — which is
+      // exactly why it has to be right: an implementation that honoured it while
+      // this listed only the first hop would silently stop inheritance one level
+      // below where it now reaches, with every other test still green.
+      ...new Set(tasks.flatMap((t) => [t.taskKey, ...ancestorsOf(t, deps.parentOf)])),
     ]),
   ]);
+
+  /**
+   * One walk per task, reused by all three `resolveVerdict` sites below.
+   *
+   * The walk was previously re-run at each of them. Harmless at real Jira depth
+   * — three hops — but it made the cost of a deep chain quietly cubic in the
+   * number of places someone adds a call, and there is no reason for the answer
+   * to be recomputed when neither `capex` nor `parentOf` changes within a run.
+   */
+  const ancestorOf = new Map(
+    tasks.map((t) => [
+      t.taskKey,
+      classifiedAncestorFor(t, capex, deps.roadmapEpics, deps.parentOf),
+    ]),
+  );
 
   // Pass one: everything that can be decided without the model.
   const byTaskKey = new Map<string, ResolvedVerdict>();
@@ -139,16 +302,16 @@ export async function classifyTasks(
     // last render is picked up rather than frozen out by a stale cached answer.
     const ruleHit = matchRules(task, rules, deps.roadmapEpics);
     const capexFlag = capex.get(task.taskKey) ?? null;
-    const epicCapex = epicCapexFor(task, capex);
+    const ancestorCapex = ancestorOf.get(task.taskKey) ?? null;
 
     // Inheritance applies only when the task carries no classification of its
     // own. This condition MUST match the resolver's `!capex` guard: admitting a
     // task the resolver then declines to classify drops it out of the residue
     // and it never reaches the model — it silently returns UNCLASSIFIED.
-    const inherits = !capexFlag && epicCapex?.classification === 'CAPEX';
+    const inherits = !capexFlag && ancestorCapex?.classification === 'CAPEX';
 
     if (capexFlag === 'CAPEX' || inherits || ruleHit) {
-      byTaskKey.set(task.taskKey, resolveVerdict({ capex: capexFlag, epicCapex, ruleHit }));
+      byTaskKey.set(task.taskKey, resolveVerdict({ capex: capexFlag, ancestorCapex, ruleHit }));
       continue;
     }
 
@@ -173,33 +336,49 @@ export async function classifyTasks(
     residue.push(task);
   }
 
-  // Pass two: the model, if there is one.
+  // Pass two: the model, if there is one and the budget allows.
+  //
+  // `sent` and `held` partition the residue rather than filtering it: every task
+  // still gets a `byTaskKey` entry below, because dropping the ones the budget
+  // could not afford would shrink the population every widget divides by — the
+  // page would silently report on whatever the run paid for.
   let modelCalls = 0;
-  if (deps.classifyWithModel && residue.length > 0) {
-    const verdicts = await classifyResidue(residue, deps);
-    modelCalls = residue.length;
+  let newlyClassified = 0;
+  const budget = deps.modelBudget ?? residue.length;
+  const sent = residue.slice(0, budget);
+  const held = residue.slice(budget);
 
-    for (const task of residue) {
+  if (deps.classifyWithModel && sent.length > 0) {
+    const verdicts = await classifyResidue(sent, deps);
+    modelCalls = sent.length;
+
+    for (const task of sent) {
       const verdict = verdicts.get(task.taskKey) ?? null;
-      byTaskKey.set(
-        task.taskKey,
-        resolveVerdict({
-          capex: capex.get(task.taskKey) ?? null,
-          epicCapex: epicCapexFor(task, capex),
-          model: verdict,
-        }),
-      );
+      const resolved = resolveVerdict({
+        capex: capex.get(task.taskKey) ?? null,
+        ancestorCapex: ancestorOf.get(task.taskKey) ?? null,
+        model: verdict,
+      });
+      // Counted over `sent` only, which is what makes it per-run: a cache hit
+      // never reaches this loop.
+      if (resolved.source === 'MODEL') newlyClassified += 1;
+      byTaskKey.set(task.taskKey, resolved);
     }
-  } else {
-    for (const task of residue) {
-      byTaskKey.set(
-        task.taskKey,
-        resolveVerdict({
-          capex: capex.get(task.taskKey) ?? null,
-          epicCapex: epicCapexFor(task, capex),
-        }),
-      );
-    }
+  }
+
+  // Everything the model did not answer: the whole residue when there is no
+  // model, and the over-budget tail when there is. Resolved through the same
+  // path, so an unsent task is indistinguishable from an unanswerable one —
+  // UNCLASSIFIED, counted, never guessed at.
+  const unsent = deps.classifyWithModel ? held : residue;
+  for (const task of unsent) {
+    byTaskKey.set(
+      task.taskKey,
+      resolveVerdict({
+        capex: capex.get(task.taskKey) ?? null,
+        ancestorCapex: ancestorOf.get(task.taskKey) ?? null,
+      }),
+    );
   }
 
   // Persist only what is expensive to recompute or deliberate: a MODEL call
@@ -217,7 +396,15 @@ export async function classifyTasks(
   const provenance = { HUMAN: 0, CAPEX: 0, RULE: 0, MODEL: 0, NONE: 0 };
   for (const v of byTaskKey.values()) provenance[v.source ?? 'NONE'] += 1;
 
-  return { byTaskKey, provenance, unclassified: provenance.NONE, modelCalls };
+  return {
+    byTaskKey,
+    provenance,
+    unclassified: provenance.NONE,
+    modelCalls,
+    newlyClassified,
+    residueTotal: residue.length,
+    fingerprintByTaskKey: fingerprints,
+  };
 }
 
 async function classifyResidue(

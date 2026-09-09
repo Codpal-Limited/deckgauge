@@ -88,49 +88,100 @@ export interface SyncExclusion {
   excludedBy: string | null;
 }
 
+export interface SyncExclusionPage {
+  rows: SyncExclusion[];
+  total: number;
+}
+
+export interface ListExclusionsParams {
+  source: SyncExclusion['source'];
+  limit: number;
+  offset: number;
+}
+
 export type RestoreExclusionsResult =
   | { ok: true; restored: number }
   | { ok: false; error: string };
 
+const EMPTY_PAGE: SyncExclusionPage = { rows: [], total: 0 };
+
 /**
- * The keys this board has blacklisted by having a synced row deleted. An empty
- * list is also the failure shape: the block that renders this hides itself when
- * there is nothing to show, and an unreachable API is not worth an error banner
- * on a screen the user opened to do something else.
+ * One page of the keys this board has blacklisted by having a synced row
+ * deleted, scoped to a single provider. The filter is sent to the server as a
+ * query param rather than applied here or by the caller — a board can carry
+ * tens of thousands of exclusions for one provider, and shipping all of them
+ * to render a different provider's card would defeat the point of paginating
+ * at all. An unreachable API returns the empty page rather than throwing: the
+ * block that renders this hides itself when there is nothing to show, and an
+ * error banner is not worth it on a screen the user opened to do something
+ * else.
  */
-export async function listBoardSyncExclusions(boardId: string): Promise<SyncExclusion[]> {
+export async function listBoardSyncExclusions(
+  boardId: string,
+  { source, limit, offset }: ListExclusionsParams,
+): Promise<SyncExclusionPage> {
   try {
-    const res = await authFetch(`/boards/${boardId}/sync/exclusions`, { cache: 'no-store' });
-    if (!res.ok) return [];
-    return (await res.json()) as SyncExclusion[];
+    const params = new URLSearchParams({
+      source,
+      limit: String(limit),
+      offset: String(offset),
+    });
+    const res = await authFetch(`/boards/${boardId}/sync/exclusions?${params}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return EMPTY_PAGE;
+    return (await res.json()) as SyncExclusionPage;
   } catch {
-    return [];
+    return EMPTY_PAGE;
   }
 }
 
 /**
- * Drops exclusions so the next sync re-creates their rows. Returns a result
- * union rather than throwing — a thrown server action reaches the client as an
- * opaque digest, which would leave the user with a silent no-op.
+ * Drops the named exclusions so the next sync re-creates their rows. Returns a
+ * result union rather than throwing — a thrown server action reaches the
+ * client as an opaque digest, which would leave the user with a silent no-op.
  */
 export async function restoreBoardSyncExclusions(
   boardId: string,
   ids: string[],
 ): Promise<RestoreExclusionsResult> {
   if (ids.length === 0) return { ok: true, restored: 0 };
+  return sendRestoreRequest(boardId, { ids });
+}
+
+/**
+ * Restores every exclusion for one board+source in a single server-side
+ * operation — "Restore all N" on the Sources page. Takes no id list: the
+ * client never holds or sends the full set of ids (a board can carry tens of
+ * thousands), so this posts `{ source }` instead of `{ ids }` and the API
+ * deletes by (boardId, source) directly. The caller is responsible for
+ * confirming with the user before calling this — it is not undoable through
+ * this action.
+ */
+export async function restoreAllBoardSyncExclusions(
+  boardId: string,
+  source: SyncExclusion['source'],
+): Promise<RestoreExclusionsResult> {
+  return sendRestoreRequest(boardId, { source });
+}
+
+async function sendRestoreRequest(
+  boardId: string,
+  body: { ids: string[] } | { source: SyncExclusion['source'] },
+): Promise<RestoreExclusionsResult> {
   try {
     const res = await authFetch(`/boards/${boardId}/sync/exclusions`, {
       method: 'DELETE',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ids }),
+      body: JSON.stringify(body),
       cache: 'no-store',
     });
     if (res.status === 403) {
       return { ok: false, error: "You need edit access to this board to restore items." };
     }
     if (!res.ok) return { ok: false, error: await res.text() };
-    const body = (await res.json()) as { restored: number };
-    return { ok: true, restored: body.restored };
+    const responseBody = (await res.json()) as { restored: number };
+    return { ok: true, restored: responseBody.restored };
   } catch {
     return { ok: false, error: 'Could not reach the server. Check your connection and retry.' };
   }

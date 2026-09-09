@@ -58,7 +58,7 @@ export type BoardAdoSourceCountAggregateOutputType = {
   syncWorkItemsToBoard: number
   useForIntelligence: number
   intelligenceRepos: number
-  intelligenceAreaPaths: number
+  areaPaths: number
   allowedWorkItemTypes: number
   wiqlFilter: number
   fieldMappings: number
@@ -105,7 +105,7 @@ export type BoardAdoSourceCountAggregateInputType = {
   syncWorkItemsToBoard?: true
   useForIntelligence?: true
   intelligenceRepos?: true
-  intelligenceAreaPaths?: true
+  areaPaths?: true
   allowedWorkItemTypes?: true
   wiqlFilter?: true
   fieldMappings?: true
@@ -197,7 +197,7 @@ export type BoardAdoSourceGroupByOutputType = {
   syncWorkItemsToBoard: boolean
   useForIntelligence: boolean
   intelligenceRepos: string[]
-  intelligenceAreaPaths: string[]
+  areaPaths: string[]
   allowedWorkItemTypes: string[]
   wiqlFilter: string | null
   fieldMappings: runtime.JsonValue
@@ -237,7 +237,7 @@ export type BoardAdoSourceWhereInput = {
   syncWorkItemsToBoard?: Prisma.BoolFilter<"BoardAdoSource"> | boolean
   useForIntelligence?: Prisma.BoolFilter<"BoardAdoSource"> | boolean
   intelligenceRepos?: Prisma.StringNullableListFilter<"BoardAdoSource">
-  intelligenceAreaPaths?: Prisma.StringNullableListFilter<"BoardAdoSource">
+  areaPaths?: Prisma.StringNullableListFilter<"BoardAdoSource">
   allowedWorkItemTypes?: Prisma.StringNullableListFilter<"BoardAdoSource">
   wiqlFilter?: Prisma.StringNullableFilter<"BoardAdoSource"> | string | null
   fieldMappings?: Prisma.JsonFilter<"BoardAdoSource">
@@ -259,7 +259,7 @@ export type BoardAdoSourceOrderByWithRelationInput = {
   syncWorkItemsToBoard?: Prisma.SortOrder
   useForIntelligence?: Prisma.SortOrder
   intelligenceRepos?: Prisma.SortOrder
-  intelligenceAreaPaths?: Prisma.SortOrder
+  areaPaths?: Prisma.SortOrder
   allowedWorkItemTypes?: Prisma.SortOrder
   wiqlFilter?: Prisma.SortOrderInput | Prisma.SortOrder
   fieldMappings?: Prisma.SortOrder
@@ -285,7 +285,7 @@ export type BoardAdoSourceWhereUniqueInput = Prisma.AtLeast<{
   syncWorkItemsToBoard?: Prisma.BoolFilter<"BoardAdoSource"> | boolean
   useForIntelligence?: Prisma.BoolFilter<"BoardAdoSource"> | boolean
   intelligenceRepos?: Prisma.StringNullableListFilter<"BoardAdoSource">
-  intelligenceAreaPaths?: Prisma.StringNullableListFilter<"BoardAdoSource">
+  areaPaths?: Prisma.StringNullableListFilter<"BoardAdoSource">
   allowedWorkItemTypes?: Prisma.StringNullableListFilter<"BoardAdoSource">
   wiqlFilter?: Prisma.StringNullableFilter<"BoardAdoSource"> | string | null
   fieldMappings?: Prisma.JsonFilter<"BoardAdoSource">
@@ -307,7 +307,7 @@ export type BoardAdoSourceOrderByWithAggregationInput = {
   syncWorkItemsToBoard?: Prisma.SortOrder
   useForIntelligence?: Prisma.SortOrder
   intelligenceRepos?: Prisma.SortOrder
-  intelligenceAreaPaths?: Prisma.SortOrder
+  areaPaths?: Prisma.SortOrder
   allowedWorkItemTypes?: Prisma.SortOrder
   wiqlFilter?: Prisma.SortOrderInput | Prisma.SortOrder
   fieldMappings?: Prisma.SortOrder
@@ -332,7 +332,7 @@ export type BoardAdoSourceScalarWhereWithAggregatesInput = {
   syncWorkItemsToBoard?: Prisma.BoolWithAggregatesFilter<"BoardAdoSource"> | boolean
   useForIntelligence?: Prisma.BoolWithAggregatesFilter<"BoardAdoSource"> | boolean
   intelligenceRepos?: Prisma.StringNullableListFilter<"BoardAdoSource">
-  intelligenceAreaPaths?: Prisma.StringNullableListFilter<"BoardAdoSource">
+  areaPaths?: Prisma.StringNullableListFilter<"BoardAdoSource">
   allowedWorkItemTypes?: Prisma.StringNullableListFilter<"BoardAdoSource">
   wiqlFilter?: Prisma.StringNullableWithAggregatesFilter<"BoardAdoSource"> | string | null
   fieldMappings?: Prisma.JsonWithAggregatesFilter<"BoardAdoSource">
@@ -348,7 +348,7 @@ export type BoardAdoSourceCreateInput = {
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: Prisma.BoardAdoSourceCreateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceCreateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceCreateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceCreateallowedWorkItemTypesInput | string[]
   wiqlFilter?: string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -370,7 +370,7 @@ export type BoardAdoSourceUncheckedCreateInput = {
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: Prisma.BoardAdoSourceCreateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceCreateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceCreateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceCreateallowedWorkItemTypesInput | string[]
   wiqlFilter?: string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -386,7 +386,7 @@ export type BoardAdoSourceUpdateInput = {
   syncWorkItemsToBoard?: Prisma.BoolFieldUpdateOperationsInput | boolean
   useForIntelligence?: Prisma.BoolFieldUpdateOperationsInput | boolean
   intelligenceRepos?: Prisma.BoardAdoSourceUpdateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceUpdateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceUpdateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceUpdateallowedWorkItemTypesInput | string[]
   wiqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -408,7 +408,7 @@ export type BoardAdoSourceUncheckedUpdateInput = {
   syncWorkItemsToBoard?: Prisma.BoolFieldUpdateOperationsInput | boolean
   useForIntelligence?: Prisma.BoolFieldUpdateOperationsInput | boolean
   intelligenceRepos?: Prisma.BoardAdoSourceUpdateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceUpdateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceUpdateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceUpdateallowedWorkItemTypesInput | string[]
   wiqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -427,7 +427,7 @@ export type BoardAdoSourceCreateManyInput = {
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: Prisma.BoardAdoSourceCreateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceCreateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceCreateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceCreateallowedWorkItemTypesInput | string[]
   wiqlFilter?: string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -443,7 +443,7 @@ export type BoardAdoSourceUpdateManyMutationInput = {
   syncWorkItemsToBoard?: Prisma.BoolFieldUpdateOperationsInput | boolean
   useForIntelligence?: Prisma.BoolFieldUpdateOperationsInput | boolean
   intelligenceRepos?: Prisma.BoardAdoSourceUpdateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceUpdateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceUpdateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceUpdateallowedWorkItemTypesInput | string[]
   wiqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -462,7 +462,7 @@ export type BoardAdoSourceUncheckedUpdateManyInput = {
   syncWorkItemsToBoard?: Prisma.BoolFieldUpdateOperationsInput | boolean
   useForIntelligence?: Prisma.BoolFieldUpdateOperationsInput | boolean
   intelligenceRepos?: Prisma.BoardAdoSourceUpdateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceUpdateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceUpdateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceUpdateallowedWorkItemTypesInput | string[]
   wiqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -496,7 +496,7 @@ export type BoardAdoSourceCountOrderByAggregateInput = {
   syncWorkItemsToBoard?: Prisma.SortOrder
   useForIntelligence?: Prisma.SortOrder
   intelligenceRepos?: Prisma.SortOrder
-  intelligenceAreaPaths?: Prisma.SortOrder
+  areaPaths?: Prisma.SortOrder
   allowedWorkItemTypes?: Prisma.SortOrder
   wiqlFilter?: Prisma.SortOrder
   fieldMappings?: Prisma.SortOrder
@@ -663,7 +663,7 @@ export type BoardAdoSourceCreateintelligenceReposInput = {
   set: string[]
 }
 
-export type BoardAdoSourceCreateintelligenceAreaPathsInput = {
+export type BoardAdoSourceCreateareaPathsInput = {
   set: string[]
 }
 
@@ -680,7 +680,7 @@ export type BoardAdoSourceUpdateintelligenceReposInput = {
   push?: string | string[]
 }
 
-export type BoardAdoSourceUpdateintelligenceAreaPathsInput = {
+export type BoardAdoSourceUpdateareaPathsInput = {
   set?: string[]
   push?: string | string[]
 }
@@ -700,7 +700,7 @@ export type BoardAdoSourceCreateWithoutBoardInput = {
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: Prisma.BoardAdoSourceCreateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceCreateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceCreateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceCreateallowedWorkItemTypesInput | string[]
   wiqlFilter?: string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -720,7 +720,7 @@ export type BoardAdoSourceUncheckedCreateWithoutBoardInput = {
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: Prisma.BoardAdoSourceCreateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceCreateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceCreateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceCreateallowedWorkItemTypesInput | string[]
   wiqlFilter?: string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -768,7 +768,7 @@ export type BoardAdoSourceScalarWhereInput = {
   syncWorkItemsToBoard?: Prisma.BoolFilter<"BoardAdoSource"> | boolean
   useForIntelligence?: Prisma.BoolFilter<"BoardAdoSource"> | boolean
   intelligenceRepos?: Prisma.StringNullableListFilter<"BoardAdoSource">
-  intelligenceAreaPaths?: Prisma.StringNullableListFilter<"BoardAdoSource">
+  areaPaths?: Prisma.StringNullableListFilter<"BoardAdoSource">
   allowedWorkItemTypes?: Prisma.StringNullableListFilter<"BoardAdoSource">
   wiqlFilter?: Prisma.StringNullableFilter<"BoardAdoSource"> | string | null
   fieldMappings?: Prisma.JsonFilter<"BoardAdoSource">
@@ -784,7 +784,7 @@ export type BoardAdoSourceCreateWithoutTargetGroupInput = {
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: Prisma.BoardAdoSourceCreateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceCreateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceCreateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceCreateallowedWorkItemTypesInput | string[]
   wiqlFilter?: string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -804,7 +804,7 @@ export type BoardAdoSourceUncheckedCreateWithoutTargetGroupInput = {
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: Prisma.BoardAdoSourceCreateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceCreateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceCreateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceCreateallowedWorkItemTypesInput | string[]
   wiqlFilter?: string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -846,7 +846,7 @@ export type BoardAdoSourceCreateWithoutAzureDevOpsProjectSyncInput = {
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: Prisma.BoardAdoSourceCreateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceCreateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceCreateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceCreateallowedWorkItemTypesInput | string[]
   wiqlFilter?: string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -866,7 +866,7 @@ export type BoardAdoSourceUncheckedCreateWithoutAzureDevOpsProjectSyncInput = {
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: Prisma.BoardAdoSourceCreateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceCreateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceCreateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceCreateallowedWorkItemTypesInput | string[]
   wiqlFilter?: string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -910,7 +910,7 @@ export type BoardAdoSourceCreateManyBoardInput = {
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: Prisma.BoardAdoSourceCreateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceCreateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceCreateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceCreateallowedWorkItemTypesInput | string[]
   wiqlFilter?: string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -926,7 +926,7 @@ export type BoardAdoSourceUpdateWithoutBoardInput = {
   syncWorkItemsToBoard?: Prisma.BoolFieldUpdateOperationsInput | boolean
   useForIntelligence?: Prisma.BoolFieldUpdateOperationsInput | boolean
   intelligenceRepos?: Prisma.BoardAdoSourceUpdateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceUpdateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceUpdateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceUpdateallowedWorkItemTypesInput | string[]
   wiqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -946,7 +946,7 @@ export type BoardAdoSourceUncheckedUpdateWithoutBoardInput = {
   syncWorkItemsToBoard?: Prisma.BoolFieldUpdateOperationsInput | boolean
   useForIntelligence?: Prisma.BoolFieldUpdateOperationsInput | boolean
   intelligenceRepos?: Prisma.BoardAdoSourceUpdateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceUpdateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceUpdateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceUpdateallowedWorkItemTypesInput | string[]
   wiqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -964,7 +964,7 @@ export type BoardAdoSourceUncheckedUpdateManyWithoutBoardInput = {
   syncWorkItemsToBoard?: Prisma.BoolFieldUpdateOperationsInput | boolean
   useForIntelligence?: Prisma.BoolFieldUpdateOperationsInput | boolean
   intelligenceRepos?: Prisma.BoardAdoSourceUpdateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceUpdateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceUpdateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceUpdateallowedWorkItemTypesInput | string[]
   wiqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -982,7 +982,7 @@ export type BoardAdoSourceCreateManyTargetGroupInput = {
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: Prisma.BoardAdoSourceCreateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceCreateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceCreateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceCreateallowedWorkItemTypesInput | string[]
   wiqlFilter?: string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -998,7 +998,7 @@ export type BoardAdoSourceUpdateWithoutTargetGroupInput = {
   syncWorkItemsToBoard?: Prisma.BoolFieldUpdateOperationsInput | boolean
   useForIntelligence?: Prisma.BoolFieldUpdateOperationsInput | boolean
   intelligenceRepos?: Prisma.BoardAdoSourceUpdateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceUpdateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceUpdateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceUpdateallowedWorkItemTypesInput | string[]
   wiqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1018,7 +1018,7 @@ export type BoardAdoSourceUncheckedUpdateWithoutTargetGroupInput = {
   syncWorkItemsToBoard?: Prisma.BoolFieldUpdateOperationsInput | boolean
   useForIntelligence?: Prisma.BoolFieldUpdateOperationsInput | boolean
   intelligenceRepos?: Prisma.BoardAdoSourceUpdateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceUpdateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceUpdateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceUpdateallowedWorkItemTypesInput | string[]
   wiqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1036,7 +1036,7 @@ export type BoardAdoSourceUncheckedUpdateManyWithoutTargetGroupInput = {
   syncWorkItemsToBoard?: Prisma.BoolFieldUpdateOperationsInput | boolean
   useForIntelligence?: Prisma.BoolFieldUpdateOperationsInput | boolean
   intelligenceRepos?: Prisma.BoardAdoSourceUpdateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceUpdateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceUpdateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceUpdateallowedWorkItemTypesInput | string[]
   wiqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1054,7 +1054,7 @@ export type BoardAdoSourceCreateManyAzureDevOpsProjectSyncInput = {
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: Prisma.BoardAdoSourceCreateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceCreateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceCreateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceCreateallowedWorkItemTypesInput | string[]
   wiqlFilter?: string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1070,7 +1070,7 @@ export type BoardAdoSourceUpdateWithoutAzureDevOpsProjectSyncInput = {
   syncWorkItemsToBoard?: Prisma.BoolFieldUpdateOperationsInput | boolean
   useForIntelligence?: Prisma.BoolFieldUpdateOperationsInput | boolean
   intelligenceRepos?: Prisma.BoardAdoSourceUpdateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceUpdateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceUpdateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceUpdateallowedWorkItemTypesInput | string[]
   wiqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1090,7 +1090,7 @@ export type BoardAdoSourceUncheckedUpdateWithoutAzureDevOpsProjectSyncInput = {
   syncWorkItemsToBoard?: Prisma.BoolFieldUpdateOperationsInput | boolean
   useForIntelligence?: Prisma.BoolFieldUpdateOperationsInput | boolean
   intelligenceRepos?: Prisma.BoardAdoSourceUpdateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceUpdateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceUpdateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceUpdateallowedWorkItemTypesInput | string[]
   wiqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1108,7 +1108,7 @@ export type BoardAdoSourceUncheckedUpdateManyWithoutAzureDevOpsProjectSyncInput 
   syncWorkItemsToBoard?: Prisma.BoolFieldUpdateOperationsInput | boolean
   useForIntelligence?: Prisma.BoolFieldUpdateOperationsInput | boolean
   intelligenceRepos?: Prisma.BoardAdoSourceUpdateintelligenceReposInput | string[]
-  intelligenceAreaPaths?: Prisma.BoardAdoSourceUpdateintelligenceAreaPathsInput | string[]
+  areaPaths?: Prisma.BoardAdoSourceUpdateareaPathsInput | string[]
   allowedWorkItemTypes?: Prisma.BoardAdoSourceUpdateallowedWorkItemTypesInput | string[]
   wiqlFilter?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldMappings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1129,7 +1129,7 @@ export type BoardAdoSourceSelect<ExtArgs extends runtime.Types.Extensions.Intern
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: boolean
-  intelligenceAreaPaths?: boolean
+  areaPaths?: boolean
   allowedWorkItemTypes?: boolean
   wiqlFilter?: boolean
   fieldMappings?: boolean
@@ -1151,7 +1151,7 @@ export type BoardAdoSourceSelectCreateManyAndReturn<ExtArgs extends runtime.Type
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: boolean
-  intelligenceAreaPaths?: boolean
+  areaPaths?: boolean
   allowedWorkItemTypes?: boolean
   wiqlFilter?: boolean
   fieldMappings?: boolean
@@ -1173,7 +1173,7 @@ export type BoardAdoSourceSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: boolean
-  intelligenceAreaPaths?: boolean
+  areaPaths?: boolean
   allowedWorkItemTypes?: boolean
   wiqlFilter?: boolean
   fieldMappings?: boolean
@@ -1195,7 +1195,7 @@ export type BoardAdoSourceSelectScalar = {
   syncWorkItemsToBoard?: boolean
   useForIntelligence?: boolean
   intelligenceRepos?: boolean
-  intelligenceAreaPaths?: boolean
+  areaPaths?: boolean
   allowedWorkItemTypes?: boolean
   wiqlFilter?: boolean
   fieldMappings?: boolean
@@ -1206,7 +1206,7 @@ export type BoardAdoSourceSelectScalar = {
   updatedAt?: boolean
 }
 
-export type BoardAdoSourceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "boardId" | "azureDevOpsProjectSyncId" | "targetGroupId" | "syncWorkItemsToBoard" | "useForIntelligence" | "intelligenceRepos" | "intelligenceAreaPaths" | "allowedWorkItemTypes" | "wiqlFilter" | "fieldMappings" | "statusMapping" | "defaultSyncedFields" | "lastPromotedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["boardAdoSource"]>
+export type BoardAdoSourceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "boardId" | "azureDevOpsProjectSyncId" | "targetGroupId" | "syncWorkItemsToBoard" | "useForIntelligence" | "intelligenceRepos" | "areaPaths" | "allowedWorkItemTypes" | "wiqlFilter" | "fieldMappings" | "statusMapping" | "defaultSyncedFields" | "lastPromotedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["boardAdoSource"]>
 export type BoardAdoSourceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   board?: boolean | Prisma.BoardDefaultArgs<ExtArgs>
   azureDevOpsProjectSync?: boolean | Prisma.AzureDevOpsProjectSyncDefaultArgs<ExtArgs>
@@ -1238,7 +1238,7 @@ export type $BoardAdoSourcePayload<ExtArgs extends runtime.Types.Extensions.Inte
     syncWorkItemsToBoard: boolean
     useForIntelligence: boolean
     intelligenceRepos: string[]
-    intelligenceAreaPaths: string[]
+    areaPaths: string[]
     allowedWorkItemTypes: string[]
     wiqlFilter: string | null
     fieldMappings: runtime.JsonValue
@@ -1680,7 +1680,7 @@ export interface BoardAdoSourceFieldRefs {
   readonly syncWorkItemsToBoard: Prisma.FieldRef<"BoardAdoSource", 'Boolean'>
   readonly useForIntelligence: Prisma.FieldRef<"BoardAdoSource", 'Boolean'>
   readonly intelligenceRepos: Prisma.FieldRef<"BoardAdoSource", 'String[]'>
-  readonly intelligenceAreaPaths: Prisma.FieldRef<"BoardAdoSource", 'String[]'>
+  readonly areaPaths: Prisma.FieldRef<"BoardAdoSource", 'String[]'>
   readonly allowedWorkItemTypes: Prisma.FieldRef<"BoardAdoSource", 'String[]'>
   readonly wiqlFilter: Prisma.FieldRef<"BoardAdoSource", 'String'>
   readonly fieldMappings: Prisma.FieldRef<"BoardAdoSource", 'Json'>

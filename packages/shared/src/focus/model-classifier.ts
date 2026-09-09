@@ -7,6 +7,15 @@ import { z } from 'zod';
  */
 export const FOCUS_PROMPT_VERSION = 'v1';
 
+/**
+ * How many tasks one advisor run may send to the model.
+ *
+ * Shared because the API enforces it and the UI states it. Two copies drift, and
+ * the drift shows up as a button promising one thing while the run does another
+ * — on the one number in this feature that is about money.
+ */
+export const FOCUS_MODEL_BUDGET = 200;
+
 export const FocusModelVerdictSchema = z.object({
   id: z.string().min(1),
   class: z.enum(['A', 'B', 'C']),
@@ -31,6 +40,25 @@ export interface FocusPromptEpic {
 }
 
 export type FocusClassLabels = Record<'A' | 'B' | 'C', string>;
+
+/**
+ * What A, B and C mean, in the words the product uses.
+ *
+ * Lives here rather than in the web app because BOTH the prompt and the ledger
+ * need them, and two copies drift silently: the model would classify against one
+ * definition while the page explains another, with every number still adding up.
+ * `focus-ui.tsx` builds its own `CLASS_LABEL` on top of this by adding the
+ * UNCLASSIFIED entry, which the model may not return.
+ *
+ * UNCLASSIFIED is deliberately absent. `FocusModelVerdictSchema` does not accept
+ * it — "no classifier could reach this" is a fact about the pipeline, not a
+ * judgement the model gets to make about its own answer.
+ */
+export const FOCUS_CLASS_LABELS: FocusClassLabels = {
+  A: 'Roadmap / CAPEX',
+  B: 'OPEX',
+  C: 'Internal technical',
+};
 
 /**
  * Drop an epic key the model invented.

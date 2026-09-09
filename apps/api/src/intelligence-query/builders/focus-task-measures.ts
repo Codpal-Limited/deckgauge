@@ -62,6 +62,51 @@ export function buildFocusTaskMeasuresSql({ config, scope }: BuilderInputs): Bui
 }
 
 /**
+ * The same rows for the WHOLE board and all time — no window predicate.
+ *
+ * Feeds the FEATURE rollup, which needs every child of a feature and not only
+ * the ones that moved recently. `buildFocusTaskMeasuresSql` above cannot simply
+ * drop its window for both purposes: that lower bound is what keeps thousands of
+ * backlog tasks out of the per-task widgets and out of the classifier, and the
+ * comment on it explains why. So the window's tasks and the board's issues are
+ * two reads of one union, and the snapshot uses each for the thing it answers.
+ *
+ * **A superset of the windowed read, and the rollup depends on it.** Same union,
+ * same scope, weaker predicate — so every in-window key appears here too, which
+ * is what lets `buildFocusSnapshot` resolve a feature's root from these rows.
+ * `buildFocusParentsSql` below is unwindowed for the same underlying reason and
+ * has been since it was written.
+ *
+ * Row volume is one board's issues rather than one window's — ~1,674 on the
+ * reporting board against 105-267 in a 7-to-14-day window, uncached beyond the
+ * per-request memo, so a cold page load can assemble this a dozen times. Which
+ * is why the projection is five columns and **not** `description`: that is the
+ * largest column on this data (full Jira document JSON) and nothing in the
+ * rollup reads it. `title` and `created_at` are here only because
+ * `mergeTaskSets` reconciles the two providers — on the normalised TITLE alone —
+ * and a board-wide read that skipped the merge would count a migrated task twice
+ * under one feature.
+ */
+export function buildFocusBoardIssuesSql({ scope }: BuilderInputs): BuiltSql | null {
+  const tasks = focusTasksUnion(scope);
+  if (tasks.sql === null) return null;
+
+  return {
+    sql: `
+      WITH tasks AS (${tasks.sql})
+      SELECT
+        task_key       AS task_key,
+        provider       AS provider,
+        title          AS title,
+        state          AS state,
+        created_at     AS created_at
+      FROM tasks
+    `,
+    params: { ...tasks.params },
+  };
+}
+
+/**
  * Every state change for the board's tasks, oldest first.
  *
  * Both legs pin FINAL. The tables are ReplacingMergeTree(synced_at), so a

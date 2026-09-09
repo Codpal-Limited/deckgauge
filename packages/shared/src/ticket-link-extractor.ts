@@ -8,7 +8,7 @@ export type TicketSource = 'github' | 'gitlab' | 'ado';
 export interface TicketLinkInput {
   text: string;
   branchName?: string;
-  // Configured Board.ticketKeyPrefixes (e.g. ["ORBIT", "DOS"]).
+  // Configured Board.ticketKeyPrefixes (e.g. ["ORBIT", "NIMBUS"]).
   // When empty, no LETTERS-DIGITS extraction runs — guessing produces
   // false positives (CVE-2026, ADR-0008, SHA-256) so we refuse to guess.
   prefixes: string[];

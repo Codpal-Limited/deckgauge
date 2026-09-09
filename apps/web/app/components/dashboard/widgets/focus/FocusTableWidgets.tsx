@@ -4,6 +4,9 @@ import { useWidgetConfigWithBoardPeriod } from '../../useWidgetConfigWithBoardPe
 import { useWidgetData } from '../useWidgetData';
 import { WidgetErrorState } from '../WidgetErrorState';
 import { WidgetEmptyState } from '../WidgetEmptyState';
+import type { FocusVerdictSourceValue } from '@deckgauge/shared';
+import { FocusClassPicker } from './FocusClassPicker';
+import { FocusClassifyNotice } from './FocusClassifyNotice';
 import {
   FocusNoData,
   CLASS_GLYPH,
@@ -180,6 +183,10 @@ interface Task {
   stage: FocusStageKey;
   cls: FocusClassKey;
   reason: string;
+  /** Which classifier decided `cls`; null when none could. */
+  source: FocusVerdictSourceValue | null;
+  /** The content-addressed `focus_verdicts` row this class is filed under. */
+  fingerprint: string;
   epicKey: string | null;
   owner: string | null;
   attentionDays: number;
@@ -221,9 +228,9 @@ function Pill({
  * someone see HOW a state was interpreted and argue with it, rather than being
  * handed a stage and asked to trust it.
  */
-export function FocusLedgerWidget({ boardId, config }: Props) {
+export function FocusLedgerWidget({ boardId, config, canEdit }: Props & { canEdit?: boolean }) {
   const merged = useWidgetConfigWithBoardPeriod(config);
-  const { data, error } = useWidgetData<{ tasks: Task[]; taskCount?: number; sourcesLastSyncedAt?: string | null; emptyReason?: string }>(
+  const { data, error, refetch } = useWidgetData<{ tasks: Task[]; taskCount?: number; sourcesLastSyncedAt?: string | null; emptyReason?: string }>(
     boardId,
     'FOCUS_LEDGER',
     merged,
@@ -301,6 +308,17 @@ export function FocusLedgerWidget({ boardId, config }: Props) {
         </div>
       </div>
 
+      {/* Outside the filter block on purpose — it is an action, not a filter.
+          See FocusClassifyNotice's header. */}
+      {canEdit && (
+        <FocusClassifyNotice
+          boardId={boardId}
+          config={merged}
+          unclassified={tasks.filter((t) => t.cls === 'UNCLASSIFIED').length}
+          onRun={refetch}
+        />
+      )}
+
       <div className="flex-1 overflow-auto rounded-lg border border-slate-200">
         <table className="w-full text-sm min-w-[900px]">
           <thead>
@@ -331,17 +349,41 @@ export function FocusLedgerWidget({ boardId, config }: Props) {
                     </span>
                   </td>
                   <td className="px-2 py-2.5">
-                    <span
-                      title={CLASS_LABEL[t.cls]}
-                      className="inline-grid place-items-center w-5 h-5 rounded text-[11px] font-bold text-white"
-                      style={{ background: CLASS_COLOR[t.cls] }}
-                    >
-                      {CLASS_GLYPH[t.cls]}
-                    </span>
+                    {canEdit ? (
+                      <FocusClassPicker
+                        boardId={boardId}
+                        taskKey={t.taskKey}
+                        fingerprint={t.fingerprint}
+                        cls={t.cls}
+                        overridden={t.source === 'HUMAN'}
+                        onSaved={refetch}
+                      />
+                    ) : (
+                      <span
+                        title={CLASS_LABEL[t.cls]}
+                        className="inline-grid place-items-center w-5 h-5 rounded text-[11px] font-bold text-white"
+                        style={{ background: CLASS_COLOR[t.cls] }}
+                      >
+                        {CLASS_GLYPH[t.cls]}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="text-[13px] font-medium text-slate-800">{t.title}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">{t.reason}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      {/*
+                        A human call is marked in the text, not only by the
+                        ringed glyph: colour and a ring are not available to a
+                        screen reader, and this row asserts that a PERSON
+                        overruled the board's own CAPEX flag.
+                      */}
+                      {t.source === 'HUMAN' && (
+                        <span className="mr-1 rounded bg-slate-800 px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                          Set by hand
+                        </span>
+                      )}
+                      {t.reason}
+                    </div>
                   </td>
                   <td className="px-3 py-2.5 text-[13px] text-slate-600">{t.owner ?? '—'}</td>
                   <td className="px-3 py-2.5 text-[13px] text-slate-700">{t.state}</td>

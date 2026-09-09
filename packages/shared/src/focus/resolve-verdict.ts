@@ -17,16 +17,37 @@ export interface VerdictInputs {
   /** `Project.costClassification` for this task, when the board row carries one. */
   capex?: 'CAPEX' | 'OPEX' | null;
   /**
-   * The classification on this task's PARENT EPIC, when the epic is on the
-   * board and classified.
+   * The classification on the NEAREST ANCESTOR of this task that is a
+   * classified board row.
    *
    * A roadmap lives at epic level: people classify the epic, not the forty
    * tasks under it. Without inheritance a board with every epic marked CAPEX
    * still reported almost everything unclassified — on the board that surfaced
    * this, 27 classified epics covered 482 tasks while only 19 were being
    * matched, because only the epics themselves were.
+   *
+   * **Ancestor, not epic, and the distinction is load-bearing.** This was
+   * `epicCapex` and its key was by construction an epic, because it came from
+   * the `epic_key` column. It no longer is: the classifier now walks the parent
+   * chain, and the board rows it matches against carry NO type filter — most
+   * CAPEX rows on a real board are tasks. So the row that decides is routinely a
+   * Story, a Task or an Initiative, and the two fields below say so separately
+   * rather than letting one name imply both.
    */
-  epicCapex?: { classification: 'CAPEX' | 'OPEX'; epicKey: string } | null;
+  ancestorCapex?: {
+    /** The row that carried the classification. Any issue type. */
+    ancestorKey: string;
+    classification: 'CAPEX' | 'OPEX';
+    /**
+     * `ancestorKey` when it is a known roadmap epic, otherwise null.
+     *
+     * Separate from `ancestorKey` because this one is an ATTRIBUTION, not an
+     * explanation: it feeds the roadmap-coverage join and the ledger's Epic
+     * column, so a Story key in here is a wrong answer rather than a vague one.
+     * The caller knows which rows are epics; this file cannot.
+     */
+    epicKey: string | null;
+  } | null;
   ruleHit?: RuleVerdict | null;
   model?: ClassifierVerdict | null;
 }
@@ -63,7 +84,7 @@ export interface ResolvedVerdict {
  *   coverage.
  */
 export function resolveVerdict(inputs: VerdictInputs): ResolvedVerdict {
-  const { human, capex, epicCapex, ruleHit, model } = inputs;
+  const { human, capex, ancestorCapex, ruleHit, model } = inputs;
 
   if (human) {
     return {
@@ -85,19 +106,23 @@ export function resolveVerdict(inputs: VerdictInputs): ResolvedVerdict {
     };
   }
 
-  // Inherited from the parent epic. Ranks BELOW the task's own classification
-  // (a task explicitly marked OPEX under a CAPEX epic is a deliberate
-  // exception, and must win) and ABOVE a keyword rule, because someone
-  // classifying an epic is a decision and a regex is a guess.
+  // Inherited from the nearest classified ancestor. Ranks BELOW the task's own
+  // classification (a task explicitly marked OPEX under a CAPEX epic is a
+  // deliberate exception, and must win) and ABOVE a keyword rule, because
+  // someone classifying a board row is a decision and a regex is a guess.
   //
-  // The reason names the epic, so an inherited call reads as inherited and a
-  // wrong epic classification stays contestable rather than looking
-  // first-hand.
-  if (!capex && epicCapex?.classification === 'CAPEX') {
+  // The reason NAMES that row and says the call was inherited, so it reads as
+  // inherited and a wrong classification stays contestable rather than looking
+  // first-hand. It does not call the row an epic — see `ancestorCapex`.
+  if (!capex && ancestorCapex?.classification === 'CAPEX') {
     return {
       class: 'A',
-      epicKey: epicCapex.epicKey,
-      reason: `Roadmap: parent epic ${epicCapex.epicKey} is marked CAPEX on the board.`,
+      // Only an ancestor the caller vouched for as an epic. Falling back to the
+      // rule's or the model's epic — the same fallback the own-CAPEX branch
+      // above uses — rather than to `ancestorKey`, which would put a Story in
+      // the roadmap-coverage join.
+      epicKey: ancestorCapex.epicKey ?? ruleHit?.epicKey ?? model?.epicKey ?? null,
+      reason: `Roadmap: inherited from ${ancestorCapex.ancestorKey}, marked CAPEX on the board.`,
       source: 'CAPEX',
       // Carried through for the same reason the own-CAPEX branch above carries
       // it: the board decided the CLASS, but if a rule also matched it is still
@@ -139,8 +164,13 @@ export function resolveVerdict(inputs: VerdictInputs): ResolvedVerdict {
   const claimsRoadmap = (cls: FocusClassKey): boolean => cls === 'A';
 
   const ownOpex = capex === 'OPEX';
-  const epicOpex = !capex && epicCapex?.classification === 'OPEX' ? epicCapex.epicKey : null;
-  const notRoadmap = ownOpex || epicOpex !== null;
+  // `ancestorOpex`, not `epicOpex`: this holds `ancestorKey`, which can be any
+  // issue type. The last local carrying the old name — the field, the helper and
+  // both reason strings were renamed when the walk landed, and leaving one
+  // behind is how the next reader concludes the ancestor is an epic after all.
+  const ancestorOpex =
+    !capex && ancestorCapex?.classification === 'OPEX' ? ancestorCapex.ancestorKey : null;
+  const notRoadmap = ownOpex || ancestorOpex !== null;
 
   if (ruleHit && !(notRoadmap && claimsRoadmap(ruleHit.class))) {
     return {
@@ -188,8 +218,8 @@ export function resolveVerdict(inputs: VerdictInputs): ResolvedVerdict {
     return {
       class: 'B',
       epicKey: null,
-      reason: epicOpex
-        ? `Not roadmap: parent epic ${epicOpex} is marked OPEX on the board.`
+      reason: ancestorOpex
+        ? `Not roadmap: inherited from ${ancestorOpex}, marked OPEX on the board.`
         : 'Not roadmap: marked OPEX on the board row.',
       source: 'CAPEX',
       // Carried, for the same reason the two CAPEX branches above carry it: the

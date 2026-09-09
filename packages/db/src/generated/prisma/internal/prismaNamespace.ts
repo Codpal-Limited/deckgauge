@@ -6674,7 +6674,7 @@ export const BoardAdoSourceScalarFieldEnum = {
   syncWorkItemsToBoard: 'syncWorkItemsToBoard',
   useForIntelligence: 'useForIntelligence',
   intelligenceRepos: 'intelligenceRepos',
-  intelligenceAreaPaths: 'intelligenceAreaPaths',
+  areaPaths: 'areaPaths',
   allowedWorkItemTypes: 'allowedWorkItemTypes',
   wiqlFilter: 'wiqlFilter',
   fieldMappings: 'fieldMappings',

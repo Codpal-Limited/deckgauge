@@ -5,14 +5,16 @@ import { getWidgetBoardScope, type WidgetBoardScope } from '../widgets/widget-bo
 import { adoScopeFilter } from '../widgets/unions.js';
 import { castRows } from '../widgets/widget-helpers.js';
 import {
+  buildFocusBoardIssuesSql,
   buildFocusParentsSql,
   buildFocusTaskMeasuresSql,
   buildFocusTransitionsSql,
 } from '../intelligence-query/builders/focus-task-measures.js';
-import type { ResolvedVerdict } from '@deckgauge/shared';
+import type { FocusPromptEpic, FocusPromptTask, ResolvedVerdict } from '@deckgauge/shared';
 import { classifyTasks, type StoredVerdict } from './classification.service.js';
 import {
   buildFocusSnapshot,
+  type FocusBoardIssueRow,
   type FocusSnapshot,
   type FocusTaskRow,
   type FocusTransitionRow,
@@ -34,22 +36,28 @@ export interface FocusDataDeps {
 }
 
 /**
- * Everything the Focus widgets need, for one board and one window.
+ * Everything BOTH the snapshot and an advisor run need: the window's tasks, the
+ * board rows that classify them, the roadmap epics they may be attributed to,
+ * and the parent chain inheritance walks.
  *
- * Fetches rows, classifies, and hands both to `buildFocusSnapshot`, which owns
- * every rule about what the numbers mean. Nothing here decides anything — that
- * separation is what lets the meaning be tested against the reference report
- * without a database.
+ * Extracted rather than reimplemented on the run path. A second copy of the
+ * scope resolution and the epic union would be a second definition of which
+ * tasks are in the window, and this repository has already paid for that exact
+ * class of drift — see the fourteen project-only scope sites in
+ * `planning/STATE.md`. The classify route reads what the page reads, or the
+ * button classifies a different population from the one it counted.
  *
- * With no advisor LLM configured `classifyWithModel` is null and the residue
- * comes back UNCLASSIFIED with a count, rather than the view failing or
- * inventing classes.
+ * Returns null for the same reason `getFocusSnapshot` does: no issue source.
+ *
+ * Note it loads `transitions` even though only the snapshot uses them. Keeping
+ * one query list means the two paths cannot silently diverge, and the cost is one
+ * ClickHouse read on a route that is about to spend money on an LLM.
  */
-export async function getFocusSnapshot(
+async function loadClassificationInputs(
   deps: FocusDataDeps,
   boardId: string,
   config: Record<string, unknown>,
-): Promise<FocusSnapshot | null> {
+) {
   const scope = await getWidgetBoardScope(deps.prisma, boardId, deps.organizationId);
 
   const measures = buildFocusTaskMeasuresSql({ config, scope });
@@ -79,6 +87,11 @@ export async function getFocusSnapshot(
   // its children at themselves would split one feature into several.
   const parentsSql = buildFocusParentsSql({ config, scope });
   const transitionSql = buildFocusTransitionsSql({ config, scope });
+  // The board's whole issue set, for the feature rollup. Unwindowed for the
+  // reason the two above are, and stated on the builder: a feature's stage is a
+  // property of the feature, so it cannot be read off whichever children moved
+  // inside the window.
+  const boardIssuesSql = buildFocusBoardIssuesSql({ config, scope });
 
   const readRows = async <T>(built: { sql: string; params: Record<string, unknown> } | null) =>
     built
@@ -93,9 +106,10 @@ export async function getFocusSnapshot(
         )
       : [];
 
-  const [parentRows, transitions] = await Promise.all([
+  const [parentRows, transitions, boardIssues] = await Promise.all([
     readRows<{ task_key: string; parent_key: string }>(parentsSql),
     readRows<FocusTransitionRow>(transitionSql),
+    readRows<FocusBoardIssueRow>(boardIssuesSql),
   ]);
 
   const parentOf = new Map<string, string>();
@@ -131,11 +145,9 @@ export async function getFocusSnapshot(
 
   const roadmapEpics = new Set(allRoadmapEpics.map((e) => e.key));
 
-  // First recorded activity per assignee. Without it every member reads as
-  // present for the whole window, and someone who joined mid-window is reported
-  // as idle for the weeks before they arrived — the worst error this view can
-  // make, per the design.
-  const firstActivity = await loadFirstActivity(deps, transitions);
+  // `firstActivity` is deliberately NOT computed here. It is derived from the
+  // transitions and only the snapshot needs it — a classification run does not
+  // care when anybody joined — so it stays in `getFocusSnapshot`.
 
   // Only needed to explain an empty result, so it is fetched unconditionally but
   // costs one indexed row.
@@ -158,33 +170,215 @@ export async function getFocusSnapshot(
       })
     : null;
 
-  // `classification.provenance` is deliberately unused: it counts pre-merge
-  // tasks, and buildFocusSnapshot recomputes it over the merged rows so every
-  // widget on the page divides by the same population.
-  const classification = await classifyTasks(
-    tasks.map((t) => ({
+  return {
+    measures,
+    workingStates,
+    stageMap,
+    focusConfig,
+    tasks,
+    transitions,
+    parentOf,
+    // Loaded here rather than in `getFocusSnapshot` for the reason the header
+    // gives: one query list, so the page and the classify route cannot diverge
+    // on which rows they read. Only the snapshot consumes it — a classification
+    // run does not roll features up — which puts it alongside `transitions`.
+    boardIssues,
+    board,
+    allRoadmapEpics,
+    roadmapEpics,
+    lastSync,
+    scope,
+    classifiable: tasks.map((t) => ({
       taskKey: t.task_key,
       title: t.title,
       description: t.description,
-      type: t.provider === 'jira' ? 'Issue' : 'Work Item',
+      type: t.provider === 'jira' ? ('Issue' as const) : ('Work Item' as const),
       repo: null,
       epicKey: t.epic_key,
     })),
-    {
-      loadVerdicts: (fingerprints) => loadVerdicts(deps, fingerprints),
-      loadCapex: async () => board.capex,
-      // Wiring the advisor model in is a follow-up; until then the residue is
-      // reported as unclassified, which the caveats state plainly.
-      classifyWithModel: null,
-      saveVerdicts: (rows) => saveVerdicts(deps, rows),
-      roadmapEpics,
-    },
-  );
+  };
+}
+
+export interface FocusClassificationRunOptions {
+  /**
+   * Builds the adapter, given the roadmap epics the model may attribute work to.
+   *
+   * A FACTORY rather than a ready-made classifier, because the two things it
+   * needs are known in different places: the route resolves the organization's
+   * provider, and only this function loads the board's roadmap epics. Handing the
+   * route a finished classifier would mean passing it an empty epic list — the
+   * prompt would offer the model nothing to attribute to, and `coerceModelVerdict`
+   * would null every key it invented anyway, so roadmap coverage would come back
+   * empty from a run that looked successful.
+   */
+  classifierFor: (
+    epics: readonly FocusPromptEpic[],
+    /**
+     * Handed IN rather than owned by the caller, so the failure lands on the
+     * result this function returns.
+     *
+     * The route used to keep its own closure and merge the field itself, which
+     * left `providerError` below declared and never written — and made the
+     * route's own test pass by spreading the value its mock had returned, with
+     * the real chain uncovered. One owner, one path.
+     */
+    onProviderError: (err: unknown) => void,
+  ) => (tasks: FocusPromptTask[]) => Promise<unknown[]>;
+  /** How many residue tasks this run may pay for. Unset means all of them. */
+  modelBudget?: number;
+  run: FocusModelRun;
+}
+
+export interface FocusClassificationRunResult {
+  /**
+   * Tasks THIS run gave a model class to. Cache hits excluded — see
+   * `ClassificationResult.newlyClassified`.
+   */
+  classified: number;
+  /** Tasks actually sent to the model, which is what the run cost. */
+  modelCalls: number;
+  /**
+   * Set when the PROVIDER failed — a timeout, a 429, a rejected key.
+   *
+   * The run still completes and still saves what it earned; this is how the
+   * reason reaches the person who pressed the button, instead of a broken key
+   * reading as "the model classified nothing".
+   */
+  providerError?: string;
+  /**
+   * Tasks the cheap tiers could not answer and this run did not reach.
+   *
+   * The honest number for the button: a capped run that reported only what it
+   * classified would look complete. Non-zero means "press it again".
+   */
+  remaining: number;
+}
+
+/**
+ * Classify this board's window with the advisor, and say what it did.
+ *
+ * Deliberately separate from `getFocusSnapshot`, which keeps
+ * `classifyWithModel: null`. Page loads stay free and read only what a run has
+ * already paid for; the LLM stays off the render path and out from behind a lock
+ * it shares with the conversational advisor.
+ *
+ * Returns null when there is no issue source, exactly as the snapshot does.
+ */
+export async function runFocusClassification(
+  deps: FocusDataDeps,
+  boardId: string,
+  config: Record<string, unknown>,
+  opts: FocusClassificationRunOptions,
+): Promise<FocusClassificationRunResult | null> {
+  const input = await loadClassificationInputs(deps, boardId, config);
+  if (!input) return null;
+
+  // First failure only: a run that loses every batch to the same expired key
+  // would otherwise report the same sentence five times, and the first is the
+  // diagnosis.
+  let providerError: string | undefined;
+
+  const classification = await classifyTasks(input.classifiable, {
+    loadVerdicts: (fingerprints) => loadVerdicts(deps, fingerprints),
+    loadCapex: async () => input.board.capex,
+    parentOf: input.parentOf,
+    classifyWithModel: opts.classifierFor(input.allRoadmapEpics, (err) => {
+      providerError ??= err instanceof Error ? err.message : String(err);
+    }),
+    modelBudget: opts.modelBudget,
+    // The run context reaches the row here and nowhere else — a page load passes
+    // none, so it cannot invent a provenance it did not produce.
+    saveVerdicts: (rows) => saveVerdicts(deps, rows, opts.run),
+    roadmapEpics: input.roadmapEpics,
+  });
+
+  return {
+    classified: classification.newlyClassified,
+    modelCalls: classification.modelCalls,
+    /**
+     * Tasks still carrying no class AFTER this run — not `residueTotal -
+     * modelCalls`.
+     *
+     * That subtraction counted a SENT task as finished, which is false whenever
+     * the model did not answer for it: a provider failure or a malformed verdict
+     * leaves the task `source: null`, uncacheable, and re-sent on the next press.
+     * The old formula rendered "Classified 0. 140 still unclassified" on a board
+     * of 340 whose key had expired — two halves of one sentence contradicting
+     * each other.
+     */
+    remaining: classification.unclassified,
+    ...(providerError ? { providerError } : {}),
+  };
+}
+
+/**
+ * Everything the Focus widgets need, for one board and one window.
+ *
+ * Fetches rows, classifies, and hands both to `buildFocusSnapshot`, which owns
+ * every rule about what the numbers mean. Nothing here decides anything — that
+ * separation is what lets the meaning be tested against the reference report
+ * without a database.
+ *
+ * **This path never calls the model.** `classifyWithModel` is null here by
+ * design, so opening a board is free and reads only what a run already paid for
+ * — and the LLM stays off the render path and out from behind the lock it shares
+ * with the conversational advisor. The residue comes back UNCLASSIFIED with a
+ * count, which the caveats state plainly. `runFocusClassification` is what
+ * spends money, and only when someone presses the button.
+ */
+export async function getFocusSnapshot(
+  deps: FocusDataDeps,
+  boardId: string,
+  config: Record<string, unknown>,
+): Promise<FocusSnapshot | null> {
+  const input = await loadClassificationInputs(deps, boardId, config);
+  if (!input) return null;
+
+  const {
+    measures,
+    workingStates,
+    stageMap,
+    focusConfig,
+    tasks,
+    transitions,
+    parentOf,
+    boardIssues,
+    board,
+    allRoadmapEpics,
+    roadmapEpics,
+    lastSync,
+    scope,
+    classifiable,
+  } = input;
+  const firstActivity = await loadFirstActivity(deps, transitions);
+
+  // `classification.provenance` is deliberately unused: it counts pre-merge
+  // tasks, and buildFocusSnapshot recomputes it over the merged rows so every
+  // widget on the page divides by the same population.
+  const classification = await classifyTasks(classifiable, {
+    loadVerdicts: (fingerprints) => loadVerdicts(deps, fingerprints),
+    loadCapex: async () => board.capex,
+    // The SAME map the feature rollup uses, and the reason inheritance can
+    // reach a sub-task at all: Jira puts no epic link on one, so `epic_key`
+    // above is null for every sub-task and the chain is the only route to its
+    // epic. It was already loaded and already in memory here — it was simply
+    // never handed to the classifier, which is why 391 issues sat
+    // UNCLASSIFIED under epics somebody had classified.
+    parentOf,
+    // Null on purpose, and no longer a to-do: `runFocusClassification` is the
+    // advisor path, reached only by an explicit POST. See this function's header.
+    classifyWithModel: null,
+    saveVerdicts: (rows) => saveVerdicts(deps, rows),
+    roadmapEpics,
+  });
 
   return buildFocusSnapshot({
     tasks,
     transitions,
     verdicts: classification.byTaskKey,
+    // From the same call that produced the verdicts, so the two cannot describe
+    // different tasks. See `ClassificationResult.fingerprintByTaskKey`.
+    fingerprintByTaskKey: classification.fingerprintByTaskKey,
     window: {
       from: new Date(String(measures.params.from).replace(' ', 'T') + 'Z'),
       to: new Date(String(measures.params.to).replace(' ', 'T') + 'Z'),
@@ -192,6 +386,7 @@ export async function getFocusSnapshot(
     workingStates,
     stageMap,
     parentOf,
+    boardIssues,
     migrationCutoff: focusConfig?.migrationCutoff ?? null,
     firstActivity,
     onBoardKeys: board.onBoard,
@@ -226,11 +421,28 @@ async function loadVerdicts(
 
   return new Map(
     rows
-      .filter((r) => r.class !== 'UNCLASSIFIED')
+      /**
+       * Dropped by SOURCE, not by class.
+       *
+       * A stored UNCLASSIFIED row from any classifier is stale by construction —
+       * nothing in the pipeline can write one (a resolved unclassified verdict
+       * has `source: null`, which both `saveVerdicts` and the classifier's
+       * CACHEABLE set refuse), so such a row is a leftover from the retired
+       * class D and honouring it would freeze a task the rules can now reach.
+       *
+       * A HUMAN one is the opposite: somebody looked at the task and concluded
+       * it cannot be classified. That is a decision, and it is the only way
+       * UNCLASSIFIED ever reaches this table on purpose. Filtering it out was
+       * silent — the write succeeded and only the read discarded it.
+       */
+      .filter((r) => r.source === 'HUMAN' || r.class !== 'UNCLASSIFIED')
       .map((r) => [
         r.fingerprint,
         {
-          class: r.class as 'A' | 'B' | 'C',
+          // No cast. `StoredVerdict.class` is `FocusClassKey` through
+          // `ClassifierVerdict`, so narrowing it to 'A' | 'B' | 'C' here was
+          // asserting something the row can now contradict.
+          class: r.class,
           epicKey: r.epicKey,
           reason: r.reason,
           source: r.source as StoredVerdict['source'],
@@ -239,9 +451,69 @@ async function loadVerdicts(
   );
 }
 
+/**
+ * What produced the verdicts in this write, when a model did.
+ *
+ * Run-level rather than per-verdict: one run has one model and one prompt, so
+ * widening `ResolvedVerdict` with two fields every other caller passes as null
+ * would put the fact in the wrong place.
+ */
+export interface FocusModelRun {
+  model: string;
+  promptVersion: string;
+}
+
+/**
+ * The columns a verdict write sets, identical on create and update.
+ *
+ * `model` and `promptVersion` are populated only for a MODEL verdict produced by
+ * an actual run. They are what makes a stored verdict auditable — a verdict from
+ * an older prompt is identifiable and can be re-run rather than silently trusted,
+ * which is the whole reason `FOCUS_PROMPT_VERSION` exists. Both had existed on
+ * the table since it was created and had never been written.
+ *
+ * **BOTH halves of the guard are unreachable in production, not just one.**
+ *
+ * `source === 'MODEL'`: during a run this can only ever receive MODEL rows —
+ * `CACHEABLE` admits only HUMAN and MODEL, RULE and CAPEX are recomputed rather
+ * than stored, and a stored HUMAN verdict short-circuits into `servedFromCache`
+ * so it is never rewritten.
+ *
+ * `run !== undefined`: `saveVerdicts` is only ever *called* from
+ * `runFocusClassification`, which always passes one. The page-load path wires
+ * `saveVerdicts` too, but `fresh` is empty by construction there for the reason
+ * above, so it never fires.
+ *
+ * Two tests were written for these and deleted, because on the production paths
+ * they could not fail — they iterated an array that is always empty. This
+ * function is therefore EXPORTED and unit-tested directly. Testing an
+ * unreachable guard through a caller that cannot reach it is worse than not
+ * testing it: it reads as coverage.
+ *
+ * What the guard protects is a future change to `CACHEABLE`, or a second caller
+ * of `saveVerdicts`, crediting a model for a decision it did not make — which is
+ * the thing the ledger prints provenance to prevent.
+ */
+export function verdictRow(
+  row: { fingerprint: string; verdict: ResolvedVerdict },
+  run: FocusModelRun | undefined,
+) {
+  const fromModel = row.verdict.source === 'MODEL' && run !== undefined;
+  return {
+    class: row.verdict.class,
+    epicKey: row.verdict.epicKey,
+    reason: row.verdict.reason.slice(0, 400),
+    source: row.verdict.source!,
+    ruleId: row.verdict.ruleId ?? null,
+    model: fromModel ? run.model : null,
+    promptVersion: fromModel ? run.promptVersion : null,
+  };
+}
+
 async function saveVerdicts(
   deps: FocusDataDeps,
   rows: { fingerprint: string; verdict: ResolvedVerdict }[],
+  run?: FocusModelRun,
 ): Promise<void> {
   if (!deps.organizationId) return;
 
@@ -280,21 +552,11 @@ async function saveVerdicts(
         // refreshed and a hand-made one is not. `loadVerdicts` never returns a
         // HUMAN row to be overwritten here: the classifier short-circuits on it
         // before this is reached.
-        update: {
-          class: row.verdict.class,
-          epicKey: row.verdict.epicKey,
-          reason: row.verdict.reason.slice(0, 400),
-          source: row.verdict.source!,
-          ruleId: row.verdict.ruleId ?? null,
-        },
+        update: verdictRow(row, run),
         create: {
           organizationId: deps.organizationId!,
           fingerprint: row.fingerprint,
-          class: row.verdict.class,
-          epicKey: row.verdict.epicKey,
-          reason: row.verdict.reason.slice(0, 400),
-          source: row.verdict.source!,
-          ruleId: row.verdict.ruleId ?? null,
+          ...verdictRow(row, run),
         },
       })
     )

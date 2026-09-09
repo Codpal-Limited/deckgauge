@@ -224,7 +224,7 @@ export function FocusDeliveryFunnelWidget({ boardId, config, canEdit = false }: 
       )}
       {(data.wastedDaysInsideLiveFeatures ?? 0) > 0 && (
         <p className="text-xs text-slate-500">
-          ~{data.wastedDaysInsideLiveFeatures} days more went into cancelled work inside
+          ~{data.wastedDaysInsideLiveFeatures} days more went into aborted work inside
           features that shipped or are still live.
         </p>
       )}

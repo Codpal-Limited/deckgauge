@@ -1,6 +1,6 @@
 // `BoardAdoAreaPathsService` resolves one board's ADO source to the (orgUrl,
 // project) pair `listAdoAreaPaths` needs, for the intelligence-scope area-path
-// picker (Task 9) — the `intelligenceAreaPaths` counterpart to
+// picker (Task 9) — the `areaPaths` counterpart to
 // `AdoSourceRepositoriesService`.
 //
 // Unlike the repositories service, there is no Postgres-side name list to join

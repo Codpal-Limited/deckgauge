@@ -80,7 +80,10 @@ export function buildFocusCaveats(input: CaveatInputs): FocusCaveat[] {
         `The delivery funnel and the shipped ratio count ${input.featureTaskCount} FEATURES — ` +
         `issues rolled up to the top-level item they hang under, so work on a sub-task ` +
         `counts for its epic. Every other figure on this page counts ` +
-        `${input.totalTasks} issues. The two are not meant to match.`,
+        `${input.totalTasks} issues. The two are not meant to match. A feature is ` +
+        `listed here when anything under it moved in the window, but its STAGE is read ` +
+        `from every issue under it, including ones the window does not contain — so a ` +
+        `feature is only "in production" when nothing beneath it is still open.`,
     });
   }
 
@@ -184,8 +187,10 @@ export function buildFocusCaveats(input: CaveatInputs): FocusCaveat[] {
     out.push({
       key: 'Unclassified',
       text:
-        `${input.unclassified} tasks carry no classification, most often because no advisor ` +
-        `model is configured. They are excluded from the class split rather than assumed.`,
+        `${input.unclassified} tasks carry no classification — no rule matched them, no board ` +
+        `row classified them, no advisor run has reached them, or someone judged them ` +
+        `unclassifiable. They are counted as their own class rather than assumed into one of ` +
+        `the others, so they appear in every share on this page.`,
     });
   }
 

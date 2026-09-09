@@ -33,6 +33,16 @@ import type { FocusStage } from './delivery-stage.js';
  * `wastedDaysInsideLiveFeatures`, which is the only reason losing them here is
  * acceptable. Drop that second figure and this precedence starts hiding waste.
  *
+ * **`IN_PRODUCTION` sits BELOW `NOT_STARTED`, and it was above it until a board
+ * owner read the funnel.** A feature is in production only when nothing under
+ * it is still unstarted. Ranked above, one `Done` sub-task beat two `To Do` ones
+ * and an epic in `In Progress` (`PROJ-496` on the reporting board): the funnel
+ * called a feature landed in production while most of its scope had not begun,
+ * and the remaining work left the page — the SAME defect the CANCELLED demotion
+ * above was corrected for, in the one pair of stages that correction did not
+ * revisit. Nine of the ten stage assertions in `roll-up-stages.test.ts` hold
+ * under BOTH orders, which is why only a reader of the widget found it.
+ *
  * `workedChildren` is counted across every stage, not just cancelled ones,
  * because the caller needs it to apply the never-worked exclusion at the root:
  * a feature nobody ever worked was never work.
@@ -40,8 +50,8 @@ import type { FocusStage } from './delivery-stage.js';
 const PRECEDENCE: readonly FocusStage[] = [
   'IN_DEVELOPMENT',
   'WAITING_TO_SHIP',
-  'IN_PRODUCTION',
   'NOT_STARTED',
+  'IN_PRODUCTION',
   'CANCELLED',
 ];
 

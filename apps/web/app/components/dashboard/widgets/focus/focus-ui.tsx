@@ -1,4 +1,5 @@
 'use client';
+import { FOCUS_CLASS_LABELS } from '@deckgauge/shared';
 
 /**
  * Shared presentation for the Team Focus widgets.
@@ -23,10 +24,18 @@ export const CLASS_COLOR = {
   UNCLASSIFIED: '#475569',
 } as const;
 
+/**
+ * A, B and C come from `@deckgauge/shared` because the advisor's PROMPT defines
+ * the classes with the same words — two copies drift, and the drift is invisible:
+ * the model classifies against one definition while this page explains another,
+ * and every number still adds up.
+ *
+ * UNCLASSIFIED is added here and only here. It is not a class the model may
+ * return (`FocusModelVerdictSchema` refuses it), so the shared record — which is
+ * the prompt's input — must not contain it.
+ */
 export const CLASS_LABEL = {
-  A: 'Roadmap / CAPEX',
-  B: 'OPEX',
-  C: 'Internal technical',
+  ...FOCUS_CLASS_LABELS,
   UNCLASSIFIED: 'Unclassified',
 } as const;
 
@@ -132,18 +141,24 @@ export const STAGE_COLOR = {
 } as const;
 
 /**
- * `CANCELLED` reads as "Wasted effort", not "Cancelled".
+ * `CANCELLED` reads as "Aborted work", not "Cancelled".
  *
  * `Cancelled` would name the source STATE; the segment exists to name the
  * FINDING — effort spent on work that never reached production. Only tasks
  * somebody actually worked on land here; a ticket cancelled before anyone
  * touched it leaves the widget's population entirely.
+ *
+ * It read "Wasted effort" until 2026-09-09. Same finding, less verdict: the
+ * team did the work asked of it, and calling their output waste blames them for
+ * a decision taken above them. The KEY stays `CANCELLED` — it is a stored value
+ * in every board's `FocusConfig.stageMap`, so renaming it would be a data
+ * migration to change a word nobody reads.
  */
 export const STAGE_LABEL = {
   IN_PRODUCTION: 'In production',
   WAITING_TO_SHIP: 'Waiting to ship',
   IN_DEVELOPMENT: 'In development',
-  CANCELLED: 'Wasted effort',
+  CANCELLED: 'Aborted work',
   NOT_STARTED: 'Not started / stalled',
 } as const;
 

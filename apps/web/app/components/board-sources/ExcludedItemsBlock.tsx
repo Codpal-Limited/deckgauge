@@ -8,12 +8,21 @@
 // dozens of work items with no way to see or undo it, and the board would
 // simply stop receiving them forever.
 //
-// Keys are short and uniform, so they render as a dense selectable grid rather
-// than one row each — a 60-key list is far easier to scan across than down.
+// This was originally built for a 60-key list and rendered every excluded key
+// as a dense selectable grid in one request. That assumption broke on the real
+// `PAM - Compliance` board, which carries 20,607 ADO exclusions written in a
+// single bulk action on 2026-09-04 — shipping all of them to the browser on
+// every Sources page load, for every provider's card, regardless of which one
+// was open. The block now shows one capped, source-scoped page at a time
+// (`listBoardSyncExclusions` takes `{ source, limit, offset }` and the server
+// enforces a hard per-page cap), with the true total and Previous/Next to move
+// between pages, plus a server-side "Restore all N" that never asks the
+// browser to hold or resend the full id list.
 
 import { useCallback, useEffect, useState } from 'react';
 import {
   listBoardSyncExclusions,
+  restoreAllBoardSyncExclusions,
   restoreBoardSyncExclusions,
   triggerBoardSync,
   type SyncExclusion,
@@ -35,6 +44,15 @@ const LABEL_BY_PROVIDER: Record<ProviderName, string> = {
   gitlab: 'Excluded GitLab items',
 };
 
+/** One page of keys per request — matched to the server's rendering, not its
+ * hard cap (`MAX_PAGE = 200` in `BoardSyncExclusionService`). Kept small so a
+ * page of checkboxes stays scannable. */
+const PAGE_SIZE = 50;
+
+function formatCount(n: number): string {
+  return n.toLocaleString('en-US');
+}
+
 interface Props {
   boardId: string;
   provider: ProviderName;
@@ -42,6 +60,8 @@ interface Props {
 
 export function ExcludedItemsBlock({ boardId, provider }: Props) {
   const [rows, setRows] = useState<SyncExclusion[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -51,15 +71,24 @@ export function ExcludedItemsBlock({ boardId, provider }: Props) {
 
   const source = SOURCE_BY_PROVIDER[provider];
 
+  // A new board or provider always starts back at page one — the previous
+  // offset almost certainly does not exist in the new scope.
+  useEffect(() => {
+    setOffset(0);
+    setSelected(new Set());
+  }, [boardId, source]);
+
   useEffect(() => {
     let active = true;
-    listBoardSyncExclusions(boardId).then((all) => {
-      if (active) setRows(all.filter((r) => r.source === source));
+    listBoardSyncExclusions(boardId, { source, limit: PAGE_SIZE, offset }).then((page) => {
+      if (!active) return;
+      setRows(page.rows);
+      setTotal(page.total);
     });
     return () => {
       active = false;
     };
-  }, [boardId, source]);
+  }, [boardId, source, offset]);
 
   const toggle = useCallback((id: string) => {
     setSelected((prev) => {
@@ -70,12 +99,15 @@ export function ExcludedItemsBlock({ boardId, provider }: Props) {
     });
   }, []);
 
-  async function restore(ids: string[]) {
+  async function restoreSelected() {
+    const ids = Array.from(selected);
     if (ids.length === 0) return;
     // Optimistic: drop the keys now, put them back if the server refuses. The
     // doomed rows are captured first so the revert is exact.
-    const previous = rows;
+    const previousRows = rows;
+    const previousTotal = total;
     setRows((prev) => prev.filter((r) => !ids.includes(r.id)));
+    setTotal((prev) => Math.max(0, prev - ids.length));
     setSelected(new Set());
     setError(null);
     setBusy(true);
@@ -84,10 +116,47 @@ export function ExcludedItemsBlock({ boardId, provider }: Props) {
     setBusy(false);
 
     if (!result.ok) {
-      setRows(previous);
+      setRows(previousRows);
+      setTotal(previousTotal);
       setError(result.error);
       return;
     }
+    setRestoredCount(result.restored);
+    setSyncState('idle');
+
+    // The optimistic decrement above just drops the restored keys from THIS
+    // page and shrinks the count — correct for the count, but not for the
+    // rows: on a large board every later row's offset has shifted, so the
+    // page now silently omits whatever the server would have pulled up from
+    // the next page. Refetch the current page (same call the initial-load
+    // effect makes) to reconcile.
+    const page = await listBoardSyncExclusions(boardId, { source, limit: PAGE_SIZE, offset });
+    setRows(page.rows);
+    setTotal(page.total);
+  }
+
+  async function restoreAll() {
+    // Confirm BEFORE anything is deleted — exclusions are a deliberate user
+    // act and are never cleared without an explicit choice. Nothing below
+    // this check runs unless the user confirms.
+    const confirmed = window.confirm(
+      `Restore all ${formatCount(total)} ${LABEL_BY_PROVIDER[provider].toLowerCase()}? They will reappear on the next sync.`,
+    );
+    if (!confirmed) return;
+
+    setError(null);
+    setBusy(true);
+    const result = await restoreAllBoardSyncExclusions(boardId, source);
+    setBusy(false);
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setRows([]);
+    setTotal(0);
+    setOffset(0);
+    setSelected(new Set());
     setRestoredCount(result.restored);
     setSyncState('idle');
   }
@@ -100,7 +169,10 @@ export function ExcludedItemsBlock({ boardId, provider }: Props) {
   }
 
   // Nothing blacklisted for this provider — render no affordance at all.
-  if (rows.length === 0 && restoredCount === null) return null;
+  if (total === 0 && restoredCount === null) return null;
+
+  const hasPrev = offset > 0;
+  const hasNext = offset + rows.length < total;
 
   return (
     <div className="rounded-lg border border-slate-200 p-3">
@@ -108,12 +180,12 @@ export function ExcludedItemsBlock({ boardId, provider }: Props) {
         <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">
           {LABEL_BY_PROVIDER[provider]}
         </span>
-        {rows.length > 0 && (
+        {total > 0 && (
           <span className="text-xs font-semibold text-slate-700 bg-slate-100 rounded-full px-2 py-0.5">
-            {rows.length}
+            {formatCount(total)}
           </span>
         )}
-        {rows.length > 0 && (
+        {total > 0 && (
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -134,19 +206,22 @@ export function ExcludedItemsBlock({ boardId, provider }: Props) {
             {rows.map((r) => {
               const isSelected = selected.has(r.id);
               return (
-                <button
+                <label
                   key={r.id}
-                  type="button"
-                  aria-pressed={isSelected}
-                  onClick={() => toggle(r.id)}
-                  className={`font-mono text-[11px] px-1.5 py-0.5 rounded border transition-colors ${
+                  className={`flex items-center gap-1 font-mono text-[11px] px-1.5 py-0.5 rounded border cursor-pointer transition-colors ${
                     isSelected
                       ? 'bg-indigo-600 text-white border-indigo-600'
                       : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300'
                   }`}
                 >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={isSelected}
+                    onChange={() => toggle(r.id)}
+                  />
                   {r.externalId}
-                </button>
+                </label>
               );
             })}
           </div>
@@ -158,18 +233,45 @@ export function ExcludedItemsBlock({ boardId, provider }: Props) {
             <button
               type="button"
               disabled={selected.size === 0 || busy}
-              onClick={() => void restore(Array.from(selected))}
+              onClick={() => void restoreSelected()}
               className="ml-auto text-xs px-2 py-1 rounded-md border border-indigo-200 text-indigo-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-indigo-50"
             >
               Restore selected
             </button>
+          </div>
+
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={!hasPrev || busy}
+                onClick={() => {
+                  setSelected(new Set());
+                  setOffset((prev) => Math.max(0, prev - PAGE_SIZE));
+                }}
+                className="text-xs px-2 py-1 rounded-md border border-slate-200 text-slate-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={!hasNext || busy}
+                onClick={() => {
+                  setSelected(new Set());
+                  setOffset((prev) => prev + PAGE_SIZE);
+                }}
+                className="text-xs px-2 py-1 rounded-md border border-slate-200 text-slate-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+              >
+                Next
+              </button>
+            </div>
             <button
               type="button"
-              disabled={busy}
-              onClick={() => void restore(rows.map((r) => r.id))}
-              className="text-xs px-2 py-1 rounded-md border border-slate-200 text-slate-700 font-medium disabled:opacity-40 hover:bg-slate-50"
+              disabled={busy || total === 0}
+              onClick={() => void restoreAll()}
+              className="text-xs px-2 py-1 rounded-md border border-slate-200 text-slate-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
             >
-              Restore all
+              {`Restore all ${formatCount(total)}`}
             </button>
           </div>
         </>

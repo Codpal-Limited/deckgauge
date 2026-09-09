@@ -70,11 +70,6 @@ export type SourceShape =
       // Distinct from `connection.syncRepos`, which is the shared project
       // sync's ingest scope — see hydrate.ts's hydrateAdo for the rationale.
       intelligenceRepos: string[];
-      // Board-level engineering-intelligence area-path scope (Task 9) — the
-      // `intelligenceRepos` counterpart for work items: a repository
-      // restriction cannot narrow `ado_work_items`, which has no repository
-      // column.
-      intelligenceAreaPaths: string[];
       zoneValue: AdoZoneValue;
       connection: ConnectionState;
     })
@@ -241,13 +236,16 @@ export function BoardSourceCard({
   const [draftIntelligenceRepos, setDraftIntelligenceRepos] = useState<string[]>(
     source.provider === 'ado' ? source.intelligenceRepos : []
   );
-  // ADO only: the board-level engineering-intelligence area-path scope
-  // (Task 9). Same reasoning as `draftIntelligenceRepos` above — living here
-  // rather than inside CodeIntelZone/the area-path picker so the selection
-  // survives the zone's own unmount/remount across card collapse/expand.
-  const [draftIntelligenceAreaPaths, setDraftIntelligenceAreaPaths] = useState<string[]>(
-    source.provider === 'ado' ? source.intelligenceAreaPaths : []
-  );
+  // ADO only: the board's work-item area-path scope (Task 6/9) lives on
+  // `draft` itself now — `AdoZoneValue` carries `areaPaths` — rather than a
+  // separate piece of state like `draftIntelligenceRepos` above. It moved
+  // into Board Content's `AdoBoardZone` (from the Intelligence Feed zone's
+  // `CodeIntelZone`), which already owns `draft`/`setDraft`, so no extra prop
+  // threading is needed: `AreaPathPicker` reads `value.areaPaths` and writes
+  // through the zone's existing `onChange`. The Save-changes patch below
+  // still excludes it, since `AreaPathPicker` persists it immediately via
+  // `saveAdoAreaPaths` — the same "separate immediate save, not batched"
+  // rule `intelligenceRepos` already follows.
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<SavePhase>('idle');
   const [outcome, setOutcome] = useState<SourceSyncOutcome | null>(null);
@@ -274,6 +272,12 @@ export function BoardSourceCard({
     const patch: Record<string, unknown> = { ...draft };
     if (source.provider === 'github' || source.provider === 'ado') {
       patch.useForIntelligence = draftUseForIntelligence;
+    }
+    if (source.provider === 'ado') {
+      // AreaPathPicker (AdoBoardZone) persists this immediately via
+      // saveAdoAreaPaths on every toggle — never fold it into this batched
+      // patch, matching how intelligenceRepos already behaves.
+      delete patch.areaPaths;
     }
     const connectionPatch: AdoConnectionPatch | undefined =
       source.provider === 'ado'
@@ -453,8 +457,6 @@ export function BoardSourceCard({
                 sourceId={source.id}
                 intelligenceRepos={draftIntelligenceRepos}
                 onIntelligenceReposChange={setDraftIntelligenceRepos}
-                intelligenceAreaPaths={draftIntelligenceAreaPaths}
-                onIntelligenceAreaPathsChange={setDraftIntelligenceAreaPaths}
               />
             </>
           )}

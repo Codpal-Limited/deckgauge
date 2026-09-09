@@ -115,7 +115,7 @@ export const BoardAdoSourceCreateSchema = z.object({
   // board's ADO source, matched by PREFIX. An empty array means ALL area paths.
   // `intelligenceRepos` cannot narrow work items: ado_work_items has no
   // repository column.
-  intelligenceAreaPaths: z.array(z.string()).default([]),
+  areaPaths: z.array(z.string()).default([]),
 });
 
 export const BoardAdoSourcePatchSchema = z.object({
@@ -131,7 +131,7 @@ export const BoardAdoSourcePatchSchema = z.object({
   intelligenceRepos: z.array(z.string()).optional(),
   // Optional so a patch omitting this field leaves the board's existing area
   // scope untouched — omission must never silently clear it.
-  intelligenceAreaPaths: z.array(z.string()).optional(),
+  areaPaths: z.array(z.string()).optional(),
 });
 
 export const AdoSourceRepositorySchema = z.object({
@@ -156,7 +156,7 @@ export const AdoSourceRepositoriesResponseSchema = z.object({
 });
 export type AdoSourceRepositoriesResponseDto = z.infer<typeof AdoSourceRepositoriesResponseSchema>;
 
-// The `intelligenceAreaPaths` (Task 3/9) counterpart to the repository picker
+// The `areaPaths` (Task 3/9) counterpart to the repository picker
 // above. `workItemCount` lets the picker sort/label by how populated an area
 // path actually is.
 export const AdoAreaPathSchema = z.object({

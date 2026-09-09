@@ -58,6 +58,8 @@ import { boardViewRoutes } from "./widgets/board-views.routes.js";
 import { dashboardWidgetRoutes } from "./widgets/dashboard-widgets.routes.js";
 import { widgetDataRoutes } from "./widgets/widget-data.routes.js";
 import { focusConfigRoutes } from "./focus/focus-config.routes.js";
+import { focusClassifyRoutes } from "./focus/focus-classify.routes.js";
+import { focusVerdictRoutes } from "./focus/focus-verdict.routes.js";
 import { WidgetCache } from "./widgets/widget-cache.js";
 import { presetsRoutes } from "./widgets/presets.routes.js";
 import { intelligenceQueryRoutes } from "./intelligence-query/routes.js";
@@ -282,6 +284,12 @@ export function buildServer(prisma: PrismaClient) {
     const widgetCache = new WidgetCache(60_000);
     protectedApp.register(widgetDataRoutes, { prisma, singleUser, cache: widgetCache });
     protectedApp.register(focusConfigRoutes({ prisma, clickhouse, cache: widgetCache }));
+    // Same cache instance again: a run rewrites classes, and a private cache
+    // would leave the ledger showing the old ones for the rest of the TTL.
+    protectedApp.register(focusClassifyRoutes({ prisma, clickhouse, cache: widgetCache }));
+    // The SAME cache instance: a verdict write that evicts a private cache leaves
+    // the ledger showing the old class for the rest of the 60s TTL.
+    protectedApp.register(focusVerdictRoutes({ prisma, cache: widgetCache }));
     protectedApp.register(presetsRoutes, { prisma });
     protectedApp.register(intelligenceQueryRoutes, { prisma });
     protectedApp.register(advisorRoutes({ prisma, clickhouse }));

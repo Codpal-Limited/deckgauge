@@ -468,9 +468,10 @@ export async function saveAdoIntelligenceRepos(
   return res.json();
 }
 
-// Area paths a board's ADO source can choose from for its engineering-
-// intelligence scope, with each area path's work-item count for the picker
-// (Task 9). The `intelligenceAreaPaths` counterpart to
+// Area paths a board's ADO source can choose from for its work-item scope,
+// with each area path's work-item count for the picker (Task 6/9). Area paths
+// govern BOTH which work items the board syncs as cards and its engineering-
+// intelligence widgets — not analytics alone. The `areaPaths` counterpart to
 // `fetchAdoSourceRepositories` — `intelligenceRepos` cannot narrow work items,
 // since `ado_work_items` has no repository column.
 export async function fetchAdoSourceAreaPaths(
@@ -486,20 +487,22 @@ export async function fetchAdoSourceAreaPaths(
   return res.json();
 }
 
-// Persists the board's engineering-intelligence area-path scope. Deliberately
-// narrow (only `intelligenceAreaPaths`) rather than routing callers through the
-// general `patchBoardAdoSource`, for the same reason `saveAdoIntelligenceRepos`
-// is: a patch that omits the field must leave the existing selection
-// untouched, and a broad action makes that easy to get wrong.
-export async function saveAdoIntelligenceAreaPaths(
+// Persists the board's work-item area-path scope — narrows both the board's
+// synced cards and its engineering-intelligence widgets (Task 6/9), not
+// analytics alone. Deliberately narrow (only `areaPaths`) rather than routing
+// callers through the general `patchBoardAdoSource`, for the same reason
+// `saveAdoIntelligenceRepos` is: a patch that omits the field must leave the
+// existing selection untouched, and a broad action makes that easy to get
+// wrong.
+export async function saveAdoAreaPaths(
   boardId: string,
   sourceId: string,
-  intelligenceAreaPaths: string[],
+  areaPaths: string[],
 ) {
   const res = await authFetch(`/boards/${boardId}/sources/ado/${sourceId}`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ intelligenceAreaPaths }),
+    body: JSON.stringify({ areaPaths }),
   });
   if (!res.ok) throw new Error(`save ado intelligence area paths failed: ${res.status}`);
   return res.json();

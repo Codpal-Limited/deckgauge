@@ -2,6 +2,20 @@
 PUBLIC-FACING README for the open-source Deckgauge repo (published as README.md).
 Separate from the private repo's own README. Keep it public-appropriate.
 
+The demo credentials in "Try it live" are THE published copy, and this channel is
+deliberately not gated: deckgauge.com sends visitors through a form at /try/ that asks for a
+name, company and email before handing the login back, and a reader of this file gets it
+without that. Anyone who would rather not leave an email can therefore have the demo in two
+clicks, on purpose.
+
+On the marketing site — a separate codebase, not part of this repo — the pair lives only in
+that deployment's environment and is read at request time, never compiled into a page. So if
+the demo password rotates there are exactly two places to change: that environment, and the
+line below. Nothing shares a module across the two, and nothing can.
+
+A corollary worth stating plainly, since "we added a gate" invites the opposite inference:
+the demo is NOT access-controlled. The gate is a capture device on one channel.
+
 The "See it in action" GIFs are served from deckgauge.com/media/ rather than
 committed here, so they stay out of the clone and can be updated without a
 publish. Verify they still resolve before a launch — a broken hero image is the
@@ -22,9 +36,23 @@ rankings, and roadmaps engineering leaders use to see what’s really going on.
 [![License: FSL-1.1](https://img.shields.io/badge/license-FSL--1.1-0c8f83)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/Codpal-Limited/deckgauge?style=social)](https://github.com/Codpal-Limited/deckgauge)
 
-[**Website**](https://deckgauge.com) · [**Docs**](https://deckgauge.com/docs) · [**Enterprise**](https://deckgauge.com/enterprise)
+[**Live demo**](https://demo.deckgauge.com) · [**Website**](https://deckgauge.com) · [**Docs**](https://deckgauge.com/docs) · [**Enterprise**](https://deckgauge.com/enterprise)
 
 </div>
+
+---
+
+## Try it live — no install
+
+A hosted Deckgauge, seeded with a fictional company: two boards carrying 240 items, a
+roadmap, comparison dashboards, a 25-person org chart, timesheets, and six months of
+engineering history behind the intelligence widgets.
+
+**[demo.deckgauge.com](https://demo.deckgauge.com)** — sign in with `test@test.com` / `test`
+
+The demo is shared by everyone who visits and is reset periodically, so treat anything you
+change there as temporary. Do not put real data in it. For a private instance with your own
+sources connected, install it below — it takes one command.
 
 ---
 

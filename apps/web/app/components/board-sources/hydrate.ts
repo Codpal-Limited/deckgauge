@@ -76,11 +76,6 @@ export function hydrateAdo(row: Record<string, unknown>): SourceShape {
     // [] for a row predating the migration (or a fixture that omits it), where []
     // means "all repositories".
     intelligenceRepos: r.intelligenceRepos ?? [],
-    // Board-source-level: which area paths THIS board's engineering-intelligence
-    // widgets show — the `intelligenceRepos` counterpart for work items (a
-    // repository restriction cannot narrow `ado_work_items`, which has no
-    // repository column). Defaults to [] the same way, meaning "all area paths".
-    intelligenceAreaPaths: r.intelligenceAreaPaths ?? [],
     connection: {
       syncPrs: r.azureDevOpsProjectSync?.syncPrs ?? false,
       syncCommits: r.azureDevOpsProjectSync?.syncCommits ?? false,
@@ -94,6 +89,12 @@ export function hydrateAdo(row: Record<string, unknown>): SourceShape {
       allowedWorkItemTypes: r.allowedWorkItemTypes ?? [],
       wiqlFilter: r.wiqlFilter ?? null,
       statusMapping: r.statusMapping ?? {},
+      // This board's work-item scope (Task 6/9): governs BOTH which of the
+      // project's area paths become synced cards on this board AND which the
+      // engineering-intelligence widgets count — not analytics alone. Lives
+      // only here on the zone's draft object; AdoBoardZone's AreaPathPicker
+      // reads/writes it through `draft`/`setDraft`.
+      areaPaths: r.areaPaths ?? [],
     },
   };
 }

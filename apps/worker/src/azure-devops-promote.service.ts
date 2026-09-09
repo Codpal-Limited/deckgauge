@@ -45,6 +45,8 @@ interface BoardSourceConfig {
   fieldMappings: unknown;
   defaultSyncedFields: unknown;
   allowedWorkItemTypes: unknown;
+  areaPaths: unknown;
+  syncWorkItemsToBoard: boolean;
 }
 
 /**
@@ -60,6 +62,7 @@ interface BoardPromoteState {
   fieldMappings: Record<string, string>;
   defaultSyncedFields: string[];
   allowedWorkItemTypes: string[];
+  areaPaths: string[];
   statusCache: Map<string, CachedBoardStatus>;
   projectByAdoId: Map<number | null, ExistingProjectRow>;
   groupId: string | null;
@@ -152,6 +155,16 @@ export class AzureDevOpsPromoteService {
     for (const ps of projectSyncs) {
       const items: PromoteAdoWorkItem[] = payload.workItemsByProject[ps.adoProject] ?? [];
       for (const boardSource of ps.boardSources) {
+        // Skipped BEFORE initBoardState, deliberately: "off" must mean
+        // DETACHED, not EMPTIED. A source that promotes nothing must not
+        // finalize either, or it would mark every existing card removed.
+        //
+        // `=== false`, not `!flag`: the column is NOT NULL with @default(true),
+        // so production can never see `undefined` here — only a query that
+        // failed to select it could. Absent means ON ("empty means all, never
+        // none"), so the worst case of a missing value is a board that keeps
+        // syncing when it shouldn't, not every board going dark at once.
+        if (boardSource.syncWorkItemsToBoard === false) continue;
         const state = await this.initBoardState(boardSource, ps.adoProject);
         await this.processBatchForBoard(
           state,
@@ -189,6 +202,16 @@ export class AzureDevOpsPromoteService {
     const states: BoardPromoteState[] = [];
     for (const ps of projectSyncs) {
       for (const boardSource of ps.boardSources) {
+        // Skipped BEFORE initBoardState, deliberately: "off" must mean
+        // DETACHED, not EMPTIED. A source that promotes nothing must not
+        // finalize either, or it would mark every existing card removed.
+        //
+        // `=== false`, not `!flag`: the column is NOT NULL with @default(true),
+        // so production can never see `undefined` here — only a query that
+        // failed to select it could. Absent means ON ("empty means all, never
+        // none"), so the worst case of a missing value is a board that keeps
+        // syncing when it shouldn't, not every board going dark at once.
+        if (boardSource.syncWorkItemsToBoard === false) continue;
         states.push(await this.initBoardState(boardSource, opts.adoProject));
       }
     }
@@ -247,6 +270,7 @@ export class AzureDevOpsPromoteService {
         'owner',
       ]) as string[],
       allowedWorkItemTypes: (boardSource.allowedWorkItemTypes ?? []) as string[],
+      areaPaths: (boardSource.areaPaths ?? []) as string[],
       statusCache: await this.loadStatusCache(boardSource.boardId),
       projectByAdoId,
       // Resolve group lazily — only create a default group on first new-project
@@ -267,22 +291,52 @@ export class AzureDevOpsPromoteService {
     items: PromoteAdoWorkItem[],
     wiqlIds?: Set<number>,
   ): Promise<void> {
+    // Seen means "present in Azure DevOps", not "promoted to this board".
+    // Recorded before every filter below, so `finalizeBoard` can tell a work
+    // item that was DELETED in ADO from one that is simply outside this
+    // board's scope — narrowing a filter must never remove a card that may
+    // carry comments and local work.
+    for (const item of items) state.seenAdoIds.push(item.adoId);
+
     let workItems = items;
     if (state.allowedWorkItemTypes.length > 0) {
-      workItems = workItems.filter((wi) => state.allowedWorkItemTypes.includes(wi.type));
+      // An item ALREADY on this board stays in the batch whatever its type —
+      // same carve-out as area paths below (spec §4.2, Ruling 13): scope
+      // governs what is ADDED, not what keeps updating. Without this, an
+      // out-of-type card stops receiving Azure DevOps updates but is never
+      // marked removed either (finalizeBoard's seenAdoIds is unfiltered) — it
+      // would sit on the board frozen, looking current, forever.
+      workItems = workItems.filter(
+        (wi) => state.projectByAdoId.has(wi.adoId) || state.allowedWorkItemTypes.includes(wi.type),
+      );
     }
     if (wiqlIds !== undefined) {
-      workItems = workItems.filter((wi) => wiqlIds.has(wi.adoId));
+      // Same carve-out as above: a card already on the board keeps receiving
+      // updates even if it falls outside the WIQL filter.
+      workItems = workItems.filter((wi) => state.projectByAdoId.has(wi.adoId) || wiqlIds.has(wi.adoId));
     }
     if (state.excludedAdoIds.size > 0) {
+      // Deliberately NO projectByAdoId carve-out here: an excluded item is one
+      // the user explicitly deleted from the board, so it has no row and
+      // `projectByAdoId.has` is always false for it — it must stay filtered.
       workItems = workItems.filter((wi) => !state.excludedAdoIds.has(String(wi.adoId)));
+    }
+    if (state.areaPaths.length > 0) {
+      // Prefix match, value used verbatim: an area path is a tree and
+      // selecting a parent in ADO always means its subtree. An item ALREADY on
+      // this board stays in the batch whatever its area path — scope governs
+      // what is added, and a card that may carry comments and local work keeps
+      // receiving Azure DevOps updates (spec §4.2).
+      workItems = workItems.filter(
+        (wi) =>
+          state.projectByAdoId.has(wi.adoId) ||
+          state.areaPaths.some((p) => (wi.areaPath ?? '').startsWith(p)),
+      );
     }
 
     const boardId = state.boardSource.boardId;
 
     for (const item of workItems) {
-      state.seenAdoIds.push(item.adoId);
-
       const existing = state.projectByAdoId.get(item.adoId) ?? null;
 
       const statusId = await this.resolveStatusId(
@@ -412,13 +466,23 @@ export class AzureDevOpsPromoteService {
 
   /** Mark-removed for one board source after all its batches have been processed. */
   private async finalizeBoard(state: BoardPromoteState): Promise<void> {
-    // Projects on THIS board for this ADO project that are no longer in the work
-    // items list. Scoped by boardId for multi-board fan-out.
+    // Candidates are computed in memory from state already snapshotted, then
+    // matched with `in`. The old `notIn: seenAdoIds` would now carry the
+    // project's ENTIRE work-item id set — tens of thousands on a large
+    // project — against Postgres's 65535 bind-parameter ceiling (see
+    // sync-exclusion.ts). Candidates are normally a handful: the items
+    // genuinely deleted in ADO.
+    const seen = new Set(state.seenAdoIds);
+    const candidates = [...state.projectByAdoId.keys()].filter(
+      (id): id is number => id !== null && !seen.has(id),
+    );
+    if (candidates.length === 0) return;
+
     const markResult = await this.prisma.project.updateMany({
       where: {
         boardId: state.boardSource.boardId,
         adoProject: state.adoProject,
-        adoWorkItemId: { notIn: state.seenAdoIds },
+        adoWorkItemId: { in: candidates },
         adoRemovedFromSource: false,
       },
       data: { adoRemovedFromSource: true },

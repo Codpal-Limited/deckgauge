@@ -15,7 +15,7 @@ export interface AdoProdConfig {
 }
 
 export interface BoardScope {
-  /** Jira project keys (e.g. ['ORBIT','DOS']) — filters jira_issues/transitions/worklogs */
+  /** Jira project keys (e.g. ['ORBIT','NIMBUS']) — filters jira_issues/transitions/worklogs */
   jiraProjectKeys: string[];
   /**
    * Per-project issue-key restrictions behind {@link jiraProjectKeys}.
@@ -78,10 +78,12 @@ export interface BoardScope {
    * lists union and an empty list wins, for the same reason.
    *
    * `areaPaths` is the ado_work_items counterpart to `repos`
-   * (`BoardAdoSource.intelligenceAreaPaths`) — `repos` cannot narrow work
-   * items at all, since `ado_work_items` has no repository column. Same
-   * optional/empty-means-all/union-on-collision rules as `repos`, but matched
-   * by PREFIX in `adoScopeFilter` rather than exact membership.
+   * (`BoardAdoSource.areaPaths`) — it is the work-item scope for the board
+   * itself and for engineering-intelligence analytics alike; `repos` cannot
+   * narrow work items at all, since `ado_work_items` has no repository
+   * column. Same optional/empty-means-all/union-on-collision rules as
+   * `repos`, but matched by PREFIX in `adoScopeFilter` rather than exact
+   * membership.
    */
   adoProjectRefs?: Array<{ orgUrl: string; project: string; repos?: string[]; areaPaths?: string[] }>;
   /**
@@ -191,11 +193,16 @@ export async function resolveBoardScope(
       where: { boardId, ...intelligenceFilter, ...tenantFilter },
       select: { gitHubRepoSync: { select: { repoFullName: true } } },
     }),
+    // No `intelligenceFilter` here, deliberately: `useForIntelligence` gates
+    // this source's CODE, and an ADO source also supplies the board's WORK
+    // ITEMS. Gating both on one checkbox meant unticking "Include code in
+    // Intelligence" silently removed 368 work items from a board's widgets.
+    // GitHub keeps the filter above — that provider contributes only code.
     prisma.boardAdoSource.findMany({
-      where: { boardId, ...intelligenceFilter, ...tenantFilter },
+      where: { boardId, ...tenantFilter },
       select: {
         intelligenceRepos: true,
-        intelligenceAreaPaths: true,
+        areaPaths: true,
         azureDevOpsProjectSync: {
           select: {
             adoProject: true,
@@ -258,7 +265,7 @@ export async function resolveBoardScope(
       if (!orgUrl || !project) return [];
       // Empty/absent means "no restriction — all repositories", never "none".
       const repos = s.intelligenceRepos ?? [];
-      const areaPaths = s.intelligenceAreaPaths ?? [];
+      const areaPaths = s.areaPaths ?? [];
       return [
         {
           orgUrl: orgUrl.replace(/\/+$/, ''),

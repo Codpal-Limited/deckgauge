@@ -22,7 +22,7 @@ import {
   type FocusWindow,
   type StageMap,
 } from '@deckgauge/shared';
-import type { ResolvedVerdict } from '@deckgauge/shared';
+import type { FocusVerdictSourceValue, ResolvedVerdict } from '@deckgauge/shared';
 
 export interface FocusTaskRow {
   task_key: string;
@@ -34,6 +34,18 @@ export interface FocusTaskRow {
   epic_key: string | null;
   created_at: string;
 }
+
+/**
+ * The board-wide rows the FEATURE rollup reads.
+ *
+ * Narrower than `FocusTaskRow` on purpose. This read spans the whole board
+ * rather than one window (`buildFocusBoardIssuesSql`), and every column dropped
+ * here is one nothing in the rollup consumes: `assignee` and `epic_key` are
+ * per-task fields no feature's stage depends on, and `description` is the
+ * largest column on real data. `title` and `created_at` remain only because
+ * `mergeTaskSets` reconciles the two providers on the normalised title.
+ */
+export type FocusBoardIssueRow = Omit<FocusTaskRow, 'assignee' | 'epic_key' | 'description'>;
 
 export interface FocusTransitionRow {
   task_key: string;
@@ -47,6 +59,17 @@ export interface FocusSnapshotInput {
   tasks: FocusTaskRow[];
   transitions: FocusTransitionRow[];
   verdicts: Map<string, ResolvedVerdict>;
+  /**
+   * Task key -> the fingerprint its verdict is STORED under, from
+   * `classifyTasks`.
+   *
+   * Required rather than optional, for the reason `parentOf` is: an omitted map
+   * would leave every row with an empty fingerprint, the class picker would
+   * write to a row nothing reads, and the failure would be a silently
+   * ineffective override rather than a crash. A caller that forgets must fail to
+   * compile.
+   */
+  fingerprintByTaskKey: Map<string, string>;
   window: FocusWindow;
   workingStates: readonly string[];
   stageMap?: StageMap;
@@ -62,6 +85,25 @@ export interface FocusSnapshotInput {
    * See `buildFocusParentsSql`.
    */
   parentOf: Map<string, string>;
+  /**
+   * Every issue on the board, all time — the children a FEATURE's stage is
+   * rolled up from.
+   *
+   * Required for the reason `parentOf` is, and it is the same class of mistake:
+   * `tasks` is the WINDOW's issues, and rolling a feature up from those alone
+   * makes its stage depend on which of its children happened to move recently.
+   * On the reporting board that gave 3 features in production over 7 days and 2
+   * over 14: one epic (`PROJ-496`) read as shipped off a single `Done` sub-task,
+   * because its own `In Progress` row was 8 days old and — before the
+   * `rollUpStages` precedence was corrected — its two `To Do` children could not
+   * outrank a `Done` one.
+   *
+   * The window still chooses WHICH features are reported; see
+   * `inWindowRoots` below. Unwindowed here puts this input alongside `parentOf`
+   * and `transitions`, which are unwindowed already and for closely related
+   * reasons.
+   */
+  boardIssues: FocusBoardIssueRow[];
   migrationCutoff?: Date | null;
   /** First recorded activity per assignee, for the late-joiner floor. */
   firstActivity?: Map<string, Date>;
@@ -97,6 +139,26 @@ export interface FocusTaskView {
   stage: FocusStage;
   cls: FocusClassKey;
   reason: string;
+  /**
+   * Which classifier decided `cls`, or null when none could.
+   *
+   * Carried because `cls` alone cannot distinguish a person's judgement from the
+   * absence of one: a human who looked and concluded "unclassifiable" and a task
+   * no classifier could reach share a class and differ only here. The ledger
+   * renders that difference, and the class picker needs it to know whether it is
+   * replacing an override or making the first one.
+   */
+  source: FocusVerdictSourceValue | null;
+  /**
+   * The `focus_verdicts` row this task's class is filed under, alongside the
+   * organization.
+   *
+   * Exposed so the ledger's class picker can name what it is overriding.
+   * Resolved by the SAME rule as the verdict itself — see `pickForMergedRow` —
+   * because a merged twin has two raw fingerprints and only one of them belongs
+   * to the verdict on display.
+   */
+  fingerprint: string;
   epicKey: string | null;
   /** Set when the task existed in BOTH systems, so the ledger can say so. */
   alsoInAdo: boolean;
@@ -222,26 +284,70 @@ export interface FocusSnapshot {
  * and the provenance widget would diverge again in exactly the way that was
  * just fixed. One rule removes the trap.
  */
+function pickForMergedRow<T>(
+  row: { id: string; jiraId: string | null; adoId: string | null },
+  byRawKey: Map<string, T>,
+): T | undefined {
+  return (
+    byRawKey.get(row.id) ??
+    (row.jiraId ? byRawKey.get(row.jiraId) : undefined) ??
+    (row.adoId ? byRawKey.get(row.adoId) : undefined)
+  );
+}
+
 function verdictFor(
   row: { id: string; jiraId: string | null; adoId: string | null },
   verdicts: Map<string, ResolvedVerdict>,
 ): ResolvedVerdict | undefined {
-  return (
-    verdicts.get(row.id) ??
-    (row.jiraId ? verdicts.get(row.jiraId) : undefined) ??
-    (row.adoId ? verdicts.get(row.adoId) : undefined)
-  );
+  return pickForMergedRow(row, verdicts);
 }
 
-/** A source row in the shape `mergeTaskSets` reconciles on. */
-function toSourceTask(t: FocusTaskRow) {
+/**
+ * The fingerprint of the raw task whose verdict this row displays.
+ *
+ * Generic over the same lookup as `verdictFor` rather than repeating the
+ * `id` → `jiraId` → `adoId` order, because the two MUST agree: a merged twin has
+ * two raw fingerprints, and writing an override to the half that is not on
+ * display produces a row nothing ever reads back — a 200 that changes nothing.
+ *
+ * **What the shared helper does and does not guarantee.** It removes lookup-ORDER
+ * drift. It does not remove KEY-SET drift: if `verdicts` and `fingerprintByTaskKey`
+ * ever hold different keys, the two calls can still resolve to opposite halves of
+ * one twin. They cannot today because `classifyTasks` writes an entry in both maps
+ * for every task it is given, so the key sets are identical by construction — and
+ * that is the invariant this depends on, not the helper. Anything that classifies
+ * only PART of the input would break it; the advisor run's `modelBudget` is exactly
+ * that shape, so check this when it lands.
+ *
+ * The `''` fallback is therefore unreachable, and is left as a fallback rather than
+ * a throw because it fails loudly anyway: an empty fingerprint yields a `PUT
+ * /boards/:id/focus/verdicts/` that Fastify answers 404, which the picker surfaces.
+ */
+function fingerprintFor(
+  row: { id: string; jiraId: string | null; adoId: string | null },
+  fingerprints: Map<string, string>,
+): string {
+  return pickForMergedRow(row, fingerprints) ?? '';
+}
+
+/**
+ * A source row in the shape `mergeTaskSets` reconciles on.
+ *
+ * `assignee` and `description` are optional so the board-wide rollup rows can
+ * reuse this: those rows carry neither (see `FocusBoardIssueRow`) and nothing the
+ * rollup computes reads either. The window's rows always have both, where
+ * `assignee` becomes the owner on every per-task widget and `description` feeds
+ * the classifier — so `focus-data.service.test.ts` asserting a person's name end
+ * to end is what keeps this `??` from hiding a dropped projection.
+ */
+function toSourceTask(t: FocusBoardIssueRow & { assignee?: string | null; description?: string | null }) {
   return {
     id: t.task_key,
     title: t.title,
-    description: t.description,
+    description: t.description ?? null,
     createdAt: new Date(t.created_at.replace(' ', 'T') + 'Z'),
     state: t.state,
-    assignee: t.assignee,
+    assignee: t.assignee ?? null,
   };
 }
 
@@ -349,6 +455,8 @@ export function buildFocusSnapshot(input: FocusSnapshotInput): FocusSnapshot {
       stage: mapDeliveryStage(m.state, m.provider === 'ado' ? 'ado' : 'jira', stageMap),
       cls: verdict?.class ?? 'UNCLASSIFIED',
       reason: verdict?.reason ?? 'No classifier produced a verdict for this task.',
+      source: verdict?.source ?? null,
+      fingerprint: fingerprintFor(m, input.fingerprintByTaskKey),
       epicKey: verdict?.epicKey ?? source?.epic_key ?? null,
       alsoInAdo: !!m.jiraId && !!m.adoId,
       owner: m.assignee,
@@ -397,13 +505,87 @@ export function buildFocusSnapshot(input: FocusSnapshotInput): FocusSnapshot {
   // definition of "which feature is this", which is the defect this grain
   // exists to fix. It also already handles the two cases that matter, an issue
   // with no parent and a cycle.
-  const byFeature = new Map<string, { stage: FocusStage; everWorked: boolean }[]>();
-  for (const t of tasks) {
-    const root = resolveEpicKey(t.taskKey, input.parentOf);
-    const list = byFeature.get(root) ?? [];
-    list.push({ stage: t.stage, everWorked: t.everWorked });
-    byFeature.set(root, list);
+  //
+  // Merged board-wide and ONCE, for the reason the window's own merge exists: a
+  // migrated task present in both systems would otherwise contribute two
+  // children, and `mergeTaskSets` keeps the JIRA state precisely because the ADO
+  // twin is frozen wherever it was abandoned. A frozen `In Progress` twin
+  // alongside a live `Done` Jira row would demote the whole feature — the same
+  // false demotion this change exists to remove, arriving from the other side.
+  //
+  // Merged over `boardIssues` UNIONED WITH the window's own rows, de-duplicated
+  // by key. In production the union changes nothing — `buildFocusBoardIssuesSql`
+  // is the windowed union with the predicate removed, so it already contains
+  // every in-window key. It is here because it makes the superset a property of
+  // THIS function rather than an assumption about a query in another file: a
+  // `boardIssues` that ever failed to cover a key degrades to exactly the old
+  // window-scoped answer for that feature, with no second code path and no
+  // branch that answers "nothing here" (`rollUpStages([])` is `NOT_STARTED`,
+  // which would report live features as unstarted).
+  const rollupRows = new Map<string, FocusBoardIssueRow>();
+  for (const t of [...input.boardIssues, ...input.tasks]) {
+    if (!rollupRows.has(t.task_key)) rollupRows.set(t.task_key, t);
   }
+  const forRollup = [...rollupRows.values()];
+
+  const { rows: boardMerged } = mergeTaskSets(
+    forRollup.filter((t) => t.provider === 'jira').map(toSourceTask),
+    forRollup.filter((t) => t.provider === 'ado').map(toSourceTask),
+  );
+
+  const rootByKey = new Map<string, string>();
+  const childrenByRoot = new Map<string, { stage: FocusStage; everWorked: boolean }[]>();
+  for (const m of boardMerged) {
+    const root = resolveEpicKey(m.id, input.parentOf);
+    const provider = m.provider === 'ado' ? 'ado' : 'jira';
+    const history = [
+      ...(m.jiraId ? (byTask.get(m.jiraId) ?? []) : []),
+      ...(m.adoId ? (byTask.get(m.adoId) ?? []) : []),
+    ];
+
+    const list = childrenByRoot.get(root) ?? [];
+    list.push({
+      stage: mapDeliveryStage(m.state, provider, stageMap),
+      everWorked: everEnteredWorkingState(history, input.workingStates),
+    });
+    childrenByRoot.set(root, list);
+
+    // BOTH halves of a pair, so an in-window ADO row finds the same root its
+    // Jira twin does. Keying only on the merged id would root a twin-split pair
+    // twice — once down the ADO parent chain and once down the Jira one — and
+    // report one feature as two.
+    for (const key of [m.id, m.jiraId, m.adoId]) if (key) rootByKey.set(key, root);
+  }
+
+  /**
+   * The same parent walk, for a key `boardMerged` produced no row for.
+   *
+   * Not a second rule — an identical answer by a slower route, which is what
+   * separates it from the window-scoped fallback this replaced. The union above
+   * makes it unreachable; it costs one call to be total rather than to assume.
+   */
+  const rootOf = (key: string): string =>
+    rootByKey.get(key) ?? resolveEpicKey(key, input.parentOf);
+
+  /**
+   * Which features are REPORTED — still the window's, and deliberately.
+   *
+   * Only the STAGE stopped being window-scoped. A feature nobody touched in the
+   * window is not a finding about the window, so the population rule is
+   * unchanged and no per-issue denominator moves.
+   *
+   * **One population case DOES change, and it is a fix rather than a side
+   * effect.** For an in-window ADO key whose Jira twin sits outside the window,
+   * the old code walked the ADO parent chain and the pair could root as two
+   * features; `rootByKey` roots it where its Jira twin does, so `inWindowRoots`
+   * can be one smaller. That is the merge doing what the merge is for.
+   *
+   * Derived from the RAW rows rather than the merged view: both halves of a
+   * migrated pair resolve to one root through `rootByKey`, and the set collapses
+   * them.
+   */
+  const inWindowRoots = new Set<string>();
+  for (const t of input.tasks) inWindowRoots.add(rootOf(t.task_key));
 
   const featureCounts: Record<FocusStage, number> = {
     IN_PRODUCTION: 0,
@@ -415,12 +597,16 @@ export function buildFocusSnapshot(input: FocusSnapshotInput): FocusSnapshot {
   const featureStage = new Map<string, FocusStage>();
   let featuresCancelledNeverWorked = 0;
 
-  for (const [root, children] of byFeature) {
-    const { stage, workedChildren } = rollUpStages(children);
+  for (const root of inWindowRoots) {
+    // Never empty: every in-window key is in the merge input, so the root it
+    // resolves to had a child pushed for it in the loop above.
+    const { stage, workedChildren } = rollUpStages(childrenByRoot.get(root) ?? []);
     featureStage.set(root, stage);
 
     // The same exclusion as the per-issue rule, applied one level up: a feature
-    // nobody ever worked was never work.
+    // nobody ever worked was never work. Now judged over every child, so a
+    // feature with one cancelled sub-task in the window and live work outside it
+    // is no longer excluded as never-worked.
     if (stage === 'CANCELLED' && workedChildren === 0) {
       featuresCancelledNeverWorked += 1;
       continue;
@@ -431,7 +617,7 @@ export function buildFocusSnapshot(input: FocusSnapshotInput): FocusSnapshot {
   // One place that can be wrong, rather than three. The same expression appeared
   // in the returned field and the caveat call, which is how two figures that
   // must agree come to disagree — `sumClasses` exists for the same reason.
-  const featureTaskCount = byFeature.size - featuresCancelledNeverWorked;
+  const featureTaskCount = inWindowRoots.size - featuresCancelledNeverWorked;
 
   // Over the MERGED rows, not the raw ones — otherwise a twin is counted in two
   // stages and the funnel does not add up to the task total.
@@ -455,7 +641,7 @@ export function buildFocusSnapshot(input: FocusSnapshotInput): FocusSnapshot {
   // paths have to keep agreeing on — the test asserts the sum, and this is what
   // guarantees it holds even at the rounding boundary.
   const abandonedRaw = wasted
-    .filter((t) => featureStage.get(resolveEpicKey(t.taskKey, input.parentOf)) === 'CANCELLED')
+    .filter((t) => featureStage.get(rootOf(t.taskKey)) === 'CANCELLED')
     .reduce((n, t) => n + t.allTimeWorkingDays, 0);
   const wastedDaysAbandonedFeatures = Math.round(abandonedRaw);
   const wastedDaysInsideLiveFeatures = wastedAttentionDays - wastedDaysAbandonedFeatures;

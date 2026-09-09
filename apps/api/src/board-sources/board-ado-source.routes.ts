@@ -198,7 +198,7 @@ export function boardAdoSourceRoutes(deps: {
       },
     );
 
-    // The `intelligenceAreaPaths` (Task 9) counterpart to /repositories above —
+    // The `areaPaths` (Task 9) counterpart to /repositories above —
     // same DISCOVERY_POLICY, same tenant-scoped resolve-then-query shape, and
     // the same 404-not-403 story: a sourceId from another board or organization
     // reports not-found rather than leaking area-path names.

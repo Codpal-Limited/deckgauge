@@ -60,6 +60,8 @@ export {
 } from './merge-task-sets.js';
 
 export {
+  FOCUS_CLASS_LABELS,
+  FOCUS_MODEL_BUDGET,
   FOCUS_PROMPT_VERSION,
   FocusModelVerdictSchema,
   buildFocusPrompt,
@@ -80,6 +82,12 @@ export {
   type FocusMeasuredTask,
   type MovedParkedSplit,
 } from './moved-or-parked.js';
+
+export {
+  FOCUS_VERDICT_REASON_MAX,
+  FocusVerdictOverrideSchema,
+  type FocusVerdictOverride,
+} from './verdict-override.js';
 
 export {
   resolveVerdict,

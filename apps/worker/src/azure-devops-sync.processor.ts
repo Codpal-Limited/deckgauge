@@ -151,6 +151,9 @@ export async function azureDevOpsSyncProcessor(input: ProcessorInput): Promise<P
       // (allowedWorkItemTypes) is applied in the promote service, so pass `[]`.
       const wiqlIdsByBoardSource: Record<string, Set<number>> = {};
       for (const boardSource of boardSources) {
+        // `=== false`, not `!flag`: absent means ON — see the matching guard
+        // in azure-devops-promote.service.ts for the full rationale.
+        if (boardSource.syncWorkItemsToBoard === false) continue;
         const wiqlFilter = boardSource.wiqlFilter as string | null | undefined;
         if (wiqlFilter && wiqlFilter.trim().length > 0) {
           console.log(

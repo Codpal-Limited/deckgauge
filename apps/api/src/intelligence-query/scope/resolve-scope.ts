@@ -89,7 +89,7 @@ export async function resolveScope(
     prisma.boardAdoSource.findMany({
       where: { boardId, ...tenantFilter },
       select: {
-        intelligenceAreaPaths: true,
+        areaPaths: true,
         azureDevOpsProjectSync: {
           select: {
             adoProject: true,
@@ -182,7 +182,7 @@ function collectJiraIssueKeys(
 async function expandAdoAreaPaths(
   getCh: () => ChReadClient,
   sources: ReadonlyArray<{
-    intelligenceAreaPaths?: string[];
+    areaPaths?: string[];
     azureDevOpsProjectSync: {
       adoProject: string;
       azureDevOpsInstance: { orgUrl: string } | null;
@@ -196,7 +196,7 @@ async function expandAdoAreaPaths(
     const project = source.azureDevOpsProjectSync?.adoProject;
     if (!project) continue;
     const orgUrl = source.azureDevOpsProjectSync?.azureDevOpsInstance?.orgUrl;
-    const prefixes = source.intelligenceAreaPaths ?? [];
+    const prefixes = source.areaPaths ?? [];
     const existing = wanted.get(project);
     if (!existing) {
       wanted.set(project, {

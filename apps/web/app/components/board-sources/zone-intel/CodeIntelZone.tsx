@@ -1,12 +1,10 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { AdoSourceRepositoryDto, AdoAreaPathDto } from '@deckgauge/shared';
+import type { AdoSourceRepositoryDto } from '@deckgauge/shared';
 import {
   fetchAdoSourceRepositories,
   saveAdoIntelligenceRepos,
-  fetchAdoSourceAreaPaths,
-  saveAdoIntelligenceAreaPaths,
 } from '../../../actions/board-sources';
 
 export interface ConnectionState {
@@ -45,13 +43,6 @@ interface Props {
   // making the value itself survive the zone's own unmount/remount.
   intelligenceRepos?: string[];
   onIntelligenceReposChange?: (next: string[]) => void;
-  // ADO only: enables the per-board "Area paths for analytics" checkbox list
-  // (Task 9) — the `intelligenceRepos` counterpart for work items. Same
-  // gating and controlled-value rules as `intelligenceRepos` above: requires
-  // boardId, sourceId AND onIntelligenceAreaPathsChange, and is owned by the
-  // caller so the selection survives this zone's unmount/remount.
-  intelligenceAreaPaths?: string[];
-  onIntelligenceAreaPathsChange?: (next: string[]) => void;
 }
 
 function parseRepos(text: string): string[] {
@@ -88,11 +79,6 @@ type RepoPickerState =
   | { kind: 'ready'; repos: AdoSourceRepositoryDto[]; otherBoardNames: string[] }
   | { kind: 'error' };
 
-type AreaPathPickerState =
-  | { kind: 'loading' }
-  | { kind: 'ready'; areaPaths: AdoAreaPathDto[] }
-  | { kind: 'error' };
-
 export function CodeIntelZone({
   useForIntelligence,
   onChange,
@@ -105,8 +91,6 @@ export function CodeIntelZone({
   sourceId,
   intelligenceRepos,
   onIntelligenceReposChange,
-  intelligenceAreaPaths,
-  onIntelligenceAreaPathsChange,
 }: Props) {
   const anyAvailable = connectionState.syncPrs || connectionState.syncCommits;
   const used = useForIntelligence && anyAvailable;
@@ -135,27 +119,6 @@ export function CodeIntelZone({
   }, [boardId, sourceId, pickerEnabled]);
 
   const otherBoardNames = repoState.kind === 'ready' ? repoState.otherBoardNames : [];
-
-  // Same gate as the repo picker, but keyed off `onIntelligenceAreaPathsChange`
-  // — a caller that supplies the repos handler but not this one still gets
-  // only the repo picker, never a half-wired area-path fetch.
-  const areaPathsEnabled = Boolean(boardId && sourceId && onIntelligenceAreaPathsChange);
-
-  const [areaPathState, setAreaPathState] = useState<AreaPathPickerState>({ kind: 'loading' });
-
-  const loadAreaPaths = () => {
-    if (!areaPathsEnabled || !boardId || !sourceId) return;
-    setAreaPathState({ kind: 'loading' });
-    fetchAdoSourceAreaPaths(boardId, sourceId)
-      .then((res) => setAreaPathState({ kind: 'ready', areaPaths: res.areaPaths }))
-      .catch(() => setAreaPathState({ kind: 'error' }));
-  };
-
-  useEffect(() => {
-    if (areaPathsEnabled) loadAreaPaths();
-    // `loadAreaPaths` intentionally omitted — see the identical note on the
-    // repo picker's `load` effect above.
-  }, [boardId, sourceId, areaPathsEnabled]);
 
   return (
     <div className={`rounded-lg border border-slate-200 p-3 ${used ? '' : 'bg-slate-50'}`}>
@@ -200,17 +163,6 @@ export function CodeIntelZone({
           onRetry={load}
           syncAllRepos={connectionState.syncAllRepos ?? false}
           syncRepos={connectionState.syncRepos ?? []}
-        />
-      )}
-
-      {boardId && sourceId && onIntelligenceAreaPathsChange && (
-        <IntelligenceAreaPathPicker
-          boardId={boardId}
-          sourceId={sourceId}
-          selected={intelligenceAreaPaths ?? []}
-          onSelectedChange={onIntelligenceAreaPathsChange}
-          state={areaPathState}
-          onRetry={loadAreaPaths}
         />
       )}
 
@@ -363,14 +315,17 @@ function EditableCodeSync({
 }
 
 // ADO-only: lets THIS board narrow which of the project's repositories its
-// engineering-intelligence widgets show. Deliberately distinct from
-// `EditableCodeSync`'s repo text field above, which governs what the worker
-// INGESTS for every board sharing this connection — see the module doc on
+// engineering-intelligence widgets show — code metrics only: PRs, commits and
+// deployments. Work-item scope (which used to live here too) moved to the
+// area-path picker in Board Content (AdoBoardZone.tsx) — see that file's
+// AreaPathPicker doc comment. Deliberately distinct from `EditableCodeSync`'s
+// repo text field above, which governs what the worker INGESTS for every
+// board sharing this connection — see the module doc on
 // `SourceShape.intelligenceRepos` in BoardSourceCard.tsx. The two controls used
 // to render with no label distinguishing them, which is why a user seeing the
-// same repo names in both read it as a rendering bug — "SHOWN ON THIS BOARD"
-// below and "SYNCED FROM AZURE DEVOPS" on EditableCodeSync name what each one
-// actually does.
+// same repo names in both read it as a rendering bug — "REPOSITORIES FOR CODE
+// METRICS" below and "SYNCED FROM AZURE DEVOPS" on EditableCodeSync name what
+// each one actually does.
 //
 // Per Controller ruling R10 (task-13-brief.md): the save action does not
 // revalidate, so nothing here waits on a server round-trip to reflect a
@@ -459,8 +414,12 @@ function IntelligenceRepoPicker({
   return (
     <div className="mt-2 space-y-1.5 rounded-md border border-slate-200 p-2">
       <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500">
-        Shown on this board
+        Repositories for code metrics
       </div>
+      <p className="text-[10px] text-slate-400">
+        Empty means all repositories. Scopes pull requests, commits and deployments. Work items
+        are scoped by area path, in Board Content.
+      </p>
       <div className="flex items-center gap-2 text-xs">
         <input
           type="text"
@@ -522,128 +481,6 @@ function IntelligenceRepoPicker({
           failure rate still cover the whole project.
         </p>
       )}
-      {saveError && (
-        <p role="alert" className="text-[10px] text-rose-600">
-          {saveError}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ADO-only: lets THIS board narrow which area paths its engineering-
-// intelligence WORK-ITEM widgets show — the `IntelligenceRepoPicker`
-// counterpart for work items. `intelligenceRepos` cannot do this job:
-// `cockpit.ado_work_items` has no repository column at all, which is the
-// whole reason this picker (Task 9) exists. The helper text below is the
-// one place a user is told the two controls scope different things, so it
-// stays close to word-for-word between this file and its doc comments.
-//
-// Same R10 "no revalidation, update immediately" rule as the repo picker:
-// `selected` is fully controlled by the caller, and a toggle updates it
-// synchronously before firing the save in the background.
-function IntelligenceAreaPathPicker({
-  boardId,
-  sourceId,
-  selected,
-  onSelectedChange,
-  state,
-  onRetry,
-}: {
-  boardId: string;
-  sourceId: string;
-  selected: string[];
-  onSelectedChange: (next: string[]) => void;
-  state: AreaPathPickerState;
-  onRetry: () => void;
-}) {
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [filter, setFilter] = useState('');
-
-  const areaPaths = state.kind === 'ready' ? state.areaPaths : [];
-  const normalizedFilter = filter.trim().toLowerCase();
-  const filteredAreaPaths = useMemo(
-    () =>
-      normalizedFilter
-        ? areaPaths.filter((a) => a.areaPath.toLowerCase().includes(normalizedFilter))
-        : areaPaths,
-    [areaPaths, normalizedFilter],
-  );
-
-  if (state.kind === 'loading') {
-    return (
-      <div
-        role="status"
-        aria-label="Loading area paths"
-        className="mt-2 h-5 w-40 rounded bg-slate-100 animate-pulse"
-      />
-    );
-  }
-  if (state.kind === 'error') {
-    return (
-      <div className="mt-2 text-xs text-slate-500">
-        Couldn&apos;t load area paths.{' '}
-        <button type="button" onClick={onRetry} className="text-cyan-700 hover:underline">
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  const toggle = (areaPath: string, checked: boolean) => {
-    const next = checked ? [...selected, areaPath] : selected.filter((a) => a !== areaPath);
-    setSaveError(null);
-    onSelectedChange(next);
-    saveAdoIntelligenceAreaPaths(boardId, sourceId, next).catch(() => {
-      setSaveError("Couldn't save this selection. Your change is shown, but was not saved.");
-    });
-  };
-
-  return (
-    <div className="mt-2 space-y-1.5 rounded-md border border-slate-200 p-2">
-      <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500">
-        Area paths for analytics
-      </div>
-      {/* The whole point of this picker: repositories scope CODE metrics
-          (IntelligenceRepoPicker above); area paths scope WORK ITEMS. Empty
-          means all. */}
-      <p className="text-[10px] text-slate-400">
-        Empty means all area paths. Repositories scope code metrics; area paths scope work items.
-      </p>
-      <div className="flex items-center gap-2 text-xs">
-        <input
-          type="text"
-          aria-label="Filter area paths"
-          placeholder="Filter…"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="flex-1 min-w-0 rounded border border-slate-300 px-2 py-1 text-xs"
-        />
-        <span className="text-slate-500 whitespace-nowrap">
-          {selected.length} of {areaPaths.length} selected
-        </span>
-      </div>
-      <div className="text-[10px] text-slate-400">{filteredAreaPaths.length} shown</div>
-      <div className="space-y-1 max-h-40 overflow-auto">
-        {filteredAreaPaths.map((a) => (
-          <label key={a.areaPath} className="flex items-center gap-2 text-xs text-slate-700">
-            <input
-              type="checkbox"
-              checked={selected.includes(a.areaPath)}
-              onChange={(e) => toggle(a.areaPath, e.target.checked)}
-            />
-            <span>
-              {a.areaPath} ({a.workItemCount} work items)
-            </span>
-          </label>
-        ))}
-        {filteredAreaPaths.length === 0 && normalizedFilter && (
-          <p className="text-[10px] text-slate-400">No area paths match &quot;{filter}&quot;.</p>
-        )}
-        {filteredAreaPaths.length === 0 && !normalizedFilter && (
-          <p className="text-[10px] text-slate-400">No area paths with work items yet.</p>
-        )}
-      </div>
       {saveError && (
         <p role="alert" className="text-[10px] text-rose-600">
           {saveError}

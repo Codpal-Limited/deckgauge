@@ -1,7 +1,10 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { PrismaClient } from '@deckgauge/db';
-import { RestoreBoardSyncExclusionsInputSchema } from '@deckgauge/shared';
+import {
+  ListBoardSyncExclusionsQuerySchema,
+  RestoreBoardSyncExclusionsInputSchema,
+} from '@deckgauge/shared';
 import { BoardSyncService } from './board-sync.service.js';
 import { BoardSyncExclusionService } from './board-sync-exclusion.service.js';
 import {
@@ -123,6 +126,10 @@ export function boardSyncRoutes(deps: Deps) {
     // Deleting a synced row blacklists its key so the next sync cannot re-add
     // it. These two routes make that reversible: list what a board has
     // excluded, and drop entries so the next sync brings them back.
+    //
+    // `list` is paginated and source-scoped — one real board carries 20,607
+    // exclusions, so an unbounded `GET` here would ship all of them on every
+    // Sources page load regardless of which provider's card asked.
     app.get<{ Params: { boardId: string } }>(
       '/boards/:boardId/sync/exclusions',
       { config: { policy: board('VIEWER') } },
@@ -130,11 +137,19 @@ export function boardSyncRoutes(deps: Deps) {
         const params = ParamsSchema.safeParse(req.params);
         if (!params.success) return reply.code(400).send({ error: params.error.flatten() });
 
+        const query = ListBoardSyncExclusionsQuerySchema.safeParse(req.query);
+        if (!query.success) return reply.code(400).send({ error: query.error.flatten() });
+
         const service = new BoardSyncExclusionService(deps.prisma);
-        return reply.code(200).send(await service.list(params.data.boardId));
+        const page = await service.list(params.data.boardId, query.data);
+        return reply.code(200).send(page);
       },
     );
 
+    // Accepts either an explicit id list (selective restore, unchanged) or a
+    // `{ source }` body (restore-all for that provider) — see
+    // `RestoreBoardSyncExclusionsInputSchema`'s doc comment for why "restore
+    // all" is not shaped as an id list.
     app.delete<{ Params: { boardId: string } }>(
       '/boards/:boardId/sync/exclusions',
       { config: { policy: board('EDITOR') } },
@@ -146,7 +161,10 @@ export function boardSyncRoutes(deps: Deps) {
         if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
 
         const service = new BoardSyncExclusionService(deps.prisma);
-        const result = await service.restore(params.data.boardId, body.data.ids);
+        const result =
+          'ids' in body.data
+            ? await service.restore(params.data.boardId, body.data.ids)
+            : await service.restoreAll(params.data.boardId, body.data.source);
         return reply.code(200).send(result);
       },
     );

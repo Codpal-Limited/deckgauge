@@ -208,7 +208,7 @@ model Board {
   // "recruitment" = a candidate pipeline (seeded groups/columns + opt-in
   // calendar/onboard capabilities). Drives boardCapabilities() gating.
   kind               String   @default("development")
-  // Phase 3 (EI-001): ticket-key prefixes the board cares about (e.g. ["ORBIT","DOS"]).
+  // Phase 3 (EI-001): ticket-key prefixes the board cares about (e.g. ["ORBIT","NIMBUS"]).
   // Used by the intelligence layer to scope ClickHouse queries to the boards
   // that should see a given linked_ticket_keys[] entry.
   ticketKeyPrefixes  String[] @default([]) @map("ticket_key_prefixes")
@@ -1294,7 +1294,7 @@ model BoardAdoSource {
   syncWorkItemsToBoard  Boolean  @default(true) @map("sync_work_items_to_board")
   useForIntelligence    Boolean  @default(true) @map("use_for_intelligence")
   intelligenceRepos     String[] @default([]) @map("intelligence_repos")
-  intelligenceAreaPaths String[] @default([]) @map("intelligence_area_paths")
+  areaPaths             String[] @default([]) @map("area_paths")
   allowedWorkItemTypes  String[] @default([]) @map("allowed_work_item_types")
   wiqlFilter            String?  @map("wiql_filter")
   fieldMappings         Json     @default("{}") @map("field_mappings")
