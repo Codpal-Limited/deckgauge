@@ -211,7 +211,7 @@ export function SyncControls({ boardId, userRole }: SyncControlsProps) {
               <button
                 type="button"
                 onClick={() => goFix(expired[0])}
-                className="rounded bg-indigo-600 px-3 py-1.5 text-xs text-white hover:bg-indigo-700"
+                className="inline-flex min-h-11 items-center justify-center rounded bg-indigo-600 px-3 py-1.5 text-xs text-white hover:bg-indigo-700 md:min-h-0"
               >
                 Update token
               </button>

@@ -65,7 +65,11 @@ export function Header() {
         <Link
           href={homeHref}
           aria-label="Deckgauge home"
-          className="group flex items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          // Both axes, because the helper tests `min(width, height)`. Below `sm`
+          // the wordmark span is hidden, so the link's width is the 32px mark
+          // alone — `min-h-11` alone left it 32x44 and still failing. The mark
+          // stays 32px; only the tappable box grows. Inert at `md`.
+          className="group flex min-h-11 min-w-11 items-center justify-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:justify-start md:min-h-0 md:min-w-0"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-teal-600 shadow-sm ring-1 ring-black/5 transition-transform duration-200 group-hover:scale-105">
             <DeckgaugeMark className="h-6 w-6" />

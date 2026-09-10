@@ -65,7 +65,10 @@ export function UserMenu() {
       <button
         onClick={() => setOpen((prev) => !prev)}
         aria-label="User menu"
-        className="flex h-8 w-8 items-center justify-center rounded-full
+        // 32 -> 44px on phones. Like ThemeToggle this changes the VISUAL: the
+        // avatar becomes a 44px gradient circle. Deliberate, and it fits the
+        // 56px header row.
+        className="flex h-11 w-11 items-center justify-center rounded-full md:h-8 md:w-8
           bg-gradient-to-br from-violet-400 to-purple-600
           text-xs font-semibold text-white
           ring-2 ring-white/30

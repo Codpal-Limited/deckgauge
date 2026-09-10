@@ -116,7 +116,7 @@ export function InlineAddRow({ onAdd, onShiftEnterAdd, isLoading, groupColor = '
           type="button"
           onClick={() => handleSubmit()}
           disabled={isLoading || !value.trim()}
-          className="rounded-lg px-2 py-1 text-xs text-indigo-500 hover:bg-blue-50/50 disabled:text-slate-500 transition-colors"
+          className="inline-flex min-h-11 items-center justify-center md:min-h-0 rounded-lg px-2 py-1 text-xs text-indigo-500 hover:bg-blue-50/50 disabled:text-slate-500 transition-colors"
         >
           Add
         </button>

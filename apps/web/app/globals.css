@@ -96,15 +96,20 @@
       hover:border-slate-300;
   }
 
+  /* `min-h-11` (44px) below `md`, reset at `md`. These two classes are used at
+     26 call sites across 18 files (12 `.btn-primary`, 14 `.btn-secondary`), so
+     raising `py-2` instead would change desktop vertical rhythm everywhere; a
+     min-height only binds where the content is shorter.
+     Measured before: px-4 py-2 text-sm = 8 + 20 + 8 = 36px. */
   .btn-primary {
-    @apply rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white
+    @apply min-h-11 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white md:min-h-0
       shadow-sm transition-all duration-200
       hover:bg-teal-700 active:scale-[0.98]
       disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply rounded-lg bg-surface-1 border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600
+    @apply min-h-11 rounded-lg bg-surface-1 border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 md:min-h-0
       transition-all duration-200
       hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700
       active:scale-[0.98]
@@ -112,13 +117,13 @@
   }
 
   .btn-ghost {
-    @apply rounded-lg px-3 py-1.5 text-sm text-slate-500 transition-all duration-200
+    @apply min-h-11 md:min-h-0 rounded-lg px-3 py-1.5 text-sm text-slate-500 transition-all duration-200
       hover:bg-slate-100 hover:text-slate-700
       disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-danger {
-    @apply rounded-lg px-3 py-1.5 text-sm text-red-600 transition-all duration-200
+    @apply min-h-11 md:min-h-0 rounded-lg px-3 py-1.5 text-sm text-red-600 transition-all duration-200
       hover:bg-red-50;
   }
 

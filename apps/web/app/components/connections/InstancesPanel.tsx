@@ -114,10 +114,23 @@ export function InstancesPanel({
             const isDeleteOpen = open?.id === inst.id && open.mode === 'delete';
             return (
               <li key={inst.id} className="rounded border border-slate-100 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-medium text-slate-900">{inst.label}</div>
-                    <div className="text-xs text-slate-500">{inst.sublabel}</div>
+                {/* `sm:` rather than the repo's usual `md:` boundary (see
+                    `AppChrome.tsx`) because these two columns TRUNCATE, so they
+                    survive the 640-767px band that an untruncated row could not.
+                    Stacks below `sm`. Measured at 390px: this row pushed the
+                    page to 450px because the left column had no `min-w-0` (so it
+                    could not shrink below a long instance URL) while the right
+                    cluster is a badge plus two text buttons. `min-w-0` plus
+                    `truncate` is what lets the label give way instead of the
+                    viewport. */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                  <div className="min-w-0">
+                    {/* `title` because the sublabel is the instance URL, and that
+                        is how an administrator tells two Jira instances apart.
+                        Truncating without it removes information that used to
+                        wrap and be fully readable, on desktop too. */}
+                    <div className="truncate text-sm font-medium text-slate-900" title={inst.label}>{inst.label}</div>
+                    <div className="truncate text-xs text-slate-500" title={inst.sublabel}>{inst.sublabel}</div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-2">
                       {inst.isPersonal ? (
                         <span
@@ -135,7 +148,7 @@ export function InstancesPanel({
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3 sm:shrink-0">
                     <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClass[h]}`}>{badgeLabel[h]}</span>
                     <button
                       onClick={() => toggle(inst.id, 'refresh')}

@@ -1,4 +1,4 @@
-import { AcpClient, type AskHandlers, type BuildMcpServer } from './acp/acp-client.js';
+import { AcpClient, getErrorMessage, type AskHandlers, type BuildMcpServer } from './acp/acp-client.js';
 import { detectAgent, type AcpAgent } from './acp/agent-adapter.js';
 import { buildDeckgaugeMcpConfig } from './mcp-config.js';
 import { preflightDeckgaugeMcp } from './mcp-preflight.js';
@@ -335,7 +335,13 @@ export class AdvisorBridge {
       return null;
     } catch (error: unknown) {
       this.restorePending(token, client);
-      return error instanceof Error ? error.message : String(error);
+      // `reconnectMcp()`/`openSession()` bottom out in the same
+      // `ClientSideConnection` `AcpClient.ask()` does, so a rejected swap can
+      // carry the identical wire `{code, message, data}` object rather than an
+      // `Error` — `String(error)` on that shape is the literal "[object
+      // Object]" (see `getErrorMessage`'s docblock). Reuse the same extractor
+      // rather than a second copy of it.
+      return getErrorMessage(error);
     }
   }
 

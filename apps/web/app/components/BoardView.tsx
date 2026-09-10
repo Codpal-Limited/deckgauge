@@ -193,8 +193,14 @@ export function BoardView({ board, groups, columns, boardId, jiraLinks, hasGitHu
   return (
     <KeyboardNavProvider items={navItems} cellCount={3 + (visibleColumns?.length ?? 0)}>
       <div className="space-y-5">
-        {/* Action bar: identity + freshness on the left, controls on the right */}
-        <div className="flex items-start justify-between gap-4">
+        {/* Action bar: identity + freshness on the left, controls on the right.
+            WRAPS below `md`. Measured at 390px before this changed: the row's
+            content was 365px inside a 358px box with `overflow-x: visible`, so
+            the 7px difference was CLIPPED rather than scrolled — the rightmost
+            toolbar control was cut off at the viewport edge and unreachable.
+            The page reported no horizontal scroll throughout, which is why the
+            mobile helper missed it until it learned to check for clipping. */}
+        <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
           <div className="min-w-0 flex-1">
             {board && <BoardHeader board={board} userRole={userRole} />}
             <div className="mt-1">
@@ -202,7 +208,7 @@ export function BoardView({ board, groups, columns, boardId, jiraLinks, hasGitHu
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 md:shrink-0 md:flex-nowrap">
             <BoardToolbar
               columns={columns}
               onSearch={setSearchQuery}

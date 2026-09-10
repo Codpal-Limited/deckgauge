@@ -249,12 +249,27 @@ export const OrgTreeTimesheetConfigDtoSchema = z.object({
 });
 export type OrgTreeTimesheetConfigDto = z.infer<typeof OrgTreeTimesheetConfigDtoSchema>;
 
-export const PutOrgTreeTimesheetConfigSchema = z.object({
-  activeStatuses: z.array(z.string()),
-  // Optional so older clients that omit it keep working; omitted → default cap.
-  dailyCapHours: DailyCapHoursSchema.optional(),
-});
+/**
+ * Each field is OPTIONAL and omitting one means "leave it as it is".
+ *
+ * `activeStatuses` became optional when the Time rules drawer took over
+ * deciding statuses. That drawer DERIVES the list from the bucket map, so the
+ * only other writer of this row — the daily-cap form — must be able to save the
+ * cap without restating a status list; echoing back a list it read on page load
+ * would clobber whatever the drawer derived in between. Two writers, disjoint
+ * fields.
+ *
+ * `.refine`, because "every field optional" would otherwise accept `{}` and
+ * report a malformed request as a successful save. An empty body is not "leave
+ * everything alone"; it is a caller bug.
+ */
+export const PutOrgTreeTimesheetConfigSchema = z
+  .object({
+    activeStatuses: z.array(z.string()).optional(),
+    // null = use the engine default (8h); 0 = uncapped.
+    dailyCapHours: DailyCapHoursSchema.optional(),
+  })
+  .refine((v) => v.activeStatuses !== undefined || v.dailyCapHours !== undefined, {
+    message: 'set activeStatuses, dailyCapHours, or both',
+  });
 export type PutOrgTreeTimesheetConfig = z.infer<typeof PutOrgTreeTimesheetConfigSchema>;
-
-export const StatusPoolResponseSchema = z.array(z.string());
-export type StatusPoolResponse = z.infer<typeof StatusPoolResponseSchema>;

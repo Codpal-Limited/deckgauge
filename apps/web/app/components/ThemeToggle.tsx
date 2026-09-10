@@ -31,7 +31,11 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       title={dark ? "Switch to light mode" : "Switch to dark mode"}
-      className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
+      // 32 -> 44px on phones. NOTE this changes the VISUAL, not just the hit
+      // box: the hover pill becomes 44px. A deliberate exception to the rest of
+      // Task 3.0 — it fits the 56px header row, and an icon-only control has no
+      // text to give the box height any other way.
+      className="flex h-11 w-11 items-center justify-center rounded-lg text-white/80 md:h-8 md:w-8 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
     >
       {dark ? (
         <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">

@@ -57,7 +57,7 @@ export function JiraInstanceCard({
           <button
             onClick={onRemove}
             disabled={isLoading}
-            className="rounded-lg bg-red-50 border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-red-50 border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed md:min-h-0"
           >
             Remove
           </button>

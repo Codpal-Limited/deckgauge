@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { TimesheetGridResponse, IntervalsResponse } from '@deckgauge/shared';
+import type { TimesheetGridResponse, IntervalsResponse, PooledStatus } from '@deckgauge/shared';
 import {
   fetchTimesheetGridForTree,
   fetchIntervals,
@@ -14,6 +14,11 @@ import { buildGridCsv } from '../lib/grid-csv';
 import { PeriodNavigator } from './PeriodNavigator';
 import { SegmentedControl } from './SegmentedControl';
 import { TicketDetailDrawer } from './TicketDetailDrawer';
+import { StatusBucketDrawer } from './StatusBucketDrawer';
+import {
+  fetchOrgTreeStatusPool,
+  fetchOrgTreeTimesheetConfig,
+} from '../../actions/org-tree-timesheet';
 
 function downloadCsv(filename: string, contents: string): void {
   // Prepend a UTF-8 BOM so Excel decodes the file as UTF-8 rather than a legacy
@@ -35,6 +40,21 @@ interface DrawerState {
   countedSeconds: number;
   data: IntervalsResponse | null;
   activity: TicketActivityResult | null;
+}
+
+/**
+ * The Time rules panel's state, or null when it is closed.
+ *
+ * `pool` is null while the two fetches are in flight, so the panel is not
+ * rendered until it has something to show — unlike `TicketDetailDrawer`, which
+ * opens immediately because it has a headline figure from the grid cell to fill
+ * the first frame. Here there is nothing meaningful to render early.
+ */
+interface RulesState {
+  orgTreeId: string;
+  orgTreeName: string;
+  pool: PooledStatus[];
+  configured: boolean;
 }
 
 type View = 'week' | 'month' | 'year';
@@ -91,6 +111,8 @@ export function TimesheetView({
   const [data, setData] = useState<TimesheetGridResponse | null>(initialData);
   const [loading, setLoading] = useState(false);
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
+  const [rules, setRules] = useState<RulesState | null>(null);
+  const [rulesLoading, setRulesLoading] = useState(false);
   // Set on a 403 from either the initial SSR fetch or a reload (Prev/Next,
   // granularity, time-basis, or tree-picker change) — every path that can
   // replace `data` must also be able to set this, or a mid-session role/
@@ -116,6 +138,49 @@ export function TimesheetView({
       setDenied(res.reason === 'unknown' ? null : res.reason);
     }
     setLoading(false);
+  }
+
+  async function openRules() {
+    // For the CURRENTLY selected tree, read at click time rather than from a
+    // value captured when the toolbar rendered — the picker can have moved since,
+    // and configuring the wrong team's statuses would be silent.
+    const treeId = orgTreeId;
+    const treeName = orgTrees.find((t) => t.id === treeId)?.name ?? '';
+    setRulesLoading(true);
+    // Both are needed before the panel can render honestly: the pool for the
+    // rows, and the config to know whether these buckets are what is being
+    // COUNTED or merely a proposal. Configuration is opt-in per tree, so `null`
+    // is a real third state.
+    // `catch` AND `finally`. Without the finally, one rejection leaves
+    // `rulesLoading` true and the button disabled for the rest of the session.
+    // Without the catch, `try`/`finally` RE-THROWS and `void openRules()`
+    // discards the rejection — an unhandled promise rejection in the browser,
+    // which is what the first version of this guard shipped and the test gate
+    // caught.
+    //
+    // Both callees swallow their own errors and answer `[]` / `null`, so
+    // reaching the catch means something unexpected threw. The panel then stays
+    // CLOSED rather than opening onto an empty pool, which would render "No
+    // statuses yet" — a confident and wrong diagnosis. The residual is that the
+    // click looks like a no-op; distinguishing a failed pool read from a
+    // genuinely empty one needs the action to stop swallowing, which is its own
+    // change.
+    try {
+      const [pool, config] = await Promise.all([
+        fetchOrgTreeStatusPool(treeId),
+        fetchOrgTreeTimesheetConfig(treeId),
+      ]);
+      setRules({ orgTreeId: treeId, orgTreeName: treeName, pool, configured: config !== null });
+    } catch {
+      // `(cur) => cur`, NOT `null`. The button is disabled while loading but not
+      // while the panel is OPEN, so a second click re-runs this — and closing on
+      // failure would discard unsaved edits silently, the very thing declined
+      // for a tree change. On a first open `cur` is already null, so the panel
+      // still does not appear.
+      setRules((cur) => cur);
+    } finally {
+      setRulesLoading(false);
+    }
   }
 
   async function onTaskClick(issueKey: string, employeeId: string, countedSeconds: number) {
@@ -209,6 +274,16 @@ export function TimesheetView({
 
           <button
             type="button"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700
+                       transition-colors hover:border-slate-300"
+            disabled={rulesLoading}
+            onClick={() => void openRules()}
+          >
+            {rulesLoading ? 'Time rules…' : 'Time rules'}
+          </button>
+
+          <button
+            type="button"
             className="btn-primary"
             disabled={!data}
             onClick={() => {
@@ -237,6 +312,25 @@ export function TimesheetView({
           <TimesheetGrid data={data} onTaskClick={onTaskClick} />
         )}
       </div>
+
+      {rules && (
+        <StatusBucketDrawer
+          key={rules.orgTreeId}
+          orgTreeId={rules.orgTreeId}
+          orgTreeName={rules.orgTreeName}
+          pool={rules.pool}
+          configured={rules.configured}
+          onClose={() => setRules(null)}
+          onSaved={() => {
+            // The counted hours have just changed, so the grid behind the panel
+            // is stale. Reloaded rather than left for a navigation, because the
+            // panel deliberately has no scrim — the operator is looking at that
+            // grid while they work.
+            setRules((cur) => (cur ? { ...cur, configured: true } : cur));
+            void reload({});
+          }}
+        />
+      )}
 
       {drawer && (
         <TicketDetailDrawer

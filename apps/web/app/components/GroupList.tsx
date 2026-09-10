@@ -75,6 +75,7 @@ import { sortProjects } from '../utils/sort-projects';
 import type { SortConfig } from '../utils/sort-projects';
 import { applyFilterRules } from '../utils/filter-projects';
 import { useCollapsedGroups } from '../hooks/useCollapsedGroups';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { markMutation, measureMutation } from '../utils/perf-marks';
 import {
   setProjectField,
@@ -160,14 +161,43 @@ interface GridVisibility {
  * minWidth lets the board scroll horizontally once the columns outgrow the
  * viewport instead of squishing.
  */
-function buildGridTemplate(
+/**
+ * The Item column is PINNED (`ColumnHeaderRow`/`BoardRow` make the stripe,
+ * checkbox and name sticky), so its width is subtracted from the phone straight
+ * away rather than scrolling. At its 320px default the pinned block is
+ * 6 + 28 + 320 = **354px of a 390px viewport**, leaving 36px — so the sticky
+ * column defeated its own purpose: you could scroll, and there was nothing to
+ * scroll to. Reported from a phone with a screenshot showing exactly that.
+ *
+ * `namePhoneCap` clamps it below `md`. 168px keeps the pinned block at 202px and
+ * leaves ~188px, enough for one full data column beside it.
+ *
+ * It is a `minmax()` FLOOR, not a fixed width — the Item track is the only one
+ * carrying `flex`, and `board-grid-template.ts` emits `minmax(168px, 1.6fr)`. So
+ * the cap binds only when the columns actually overflow, which is precisely when
+ * you need something to scroll to. At 767px with owner+status+updated the row's
+ * min-width is 540px, the `fr` track reabsorbs the spare ~227px, and Item
+ * renders near 395px again — so this is not 168px across the whole 0-767 band.
+ * It also sits well clear of `MIN_COLUMN_WIDTH` (80).
+ *
+ * The Item text already truncates, the desktop template is byte-identical when
+ * no cap is passed, and this is a DISPLAY cap: the resize path starts from the
+ * persisted map (`ColumnHeaderRow` → `resolveWidth`), never from the rendered
+ * element, so a phone visit cannot write 168 into anyone's saved layout.
+ */
+export const NAME_PHONE_CAP_PX = 168;
+
+export function buildGridTemplate(
   columns: BoardColumn[] | undefined,
   vis: GridVisibility,
-  widths: Record<string, number>
+  widths: Record<string, number>,
+  namePhoneCap?: number
 ): { template: string; minWidth: number } {
   // Item column flexes (floor at its resolved width, fill spare room); every
   // other data column is a fixed px track sized from the persisted widths map.
-  const specs: GridColumnSpec[] = [{ width: resolveColumnWidth('name', widths), flex: 1.6 }];
+  const resolvedName = resolveColumnWidth('name', widths);
+  const nameWidth = namePhoneCap ? Math.min(resolvedName, namePhoneCap) : resolvedName;
+  const specs: GridColumnSpec[] = [{ width: nameWidth, flex: 1.6 }];
   const pushColumn = (key: string) => specs.push({ width: resolveColumnWidth(key, widths) });
 
   if (vis.owner) pushColumn('owner');
@@ -528,6 +558,9 @@ export function GroupList({
   const showUpdated = visibleSystemFields.updated !== false;
   const hasClassificationColumn = visibleSystemFields.classification !== false;
 
+  // Below `md` the pinned Item column is capped — see `NAME_PHONE_CAP_PX`.
+  const isMobile = useIsMobile();
+
   const { template: gridTemplate, minWidth: gridMinWidth } = useMemo(
     () =>
       buildGridTemplate(
@@ -544,7 +577,8 @@ export function GroupList({
           updated: showUpdated,
           classification: hasClassificationColumn,
         },
-        columnWidths
+        columnWidths,
+        isMobile ? NAME_PHONE_CAP_PX : undefined
       ),
     [
       columns,
@@ -559,6 +593,7 @@ export function GroupList({
       visibleSystemFields.dueDate,
       visibleSystemFields.duration,
       columnWidths,
+      isMobile,
     ]
   );
 

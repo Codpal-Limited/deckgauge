@@ -40,7 +40,7 @@ export function BoardDeleteDialog({
             type="button"
             onClick={onConfirm}
             disabled={isPending}
-            className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-rose-700 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-rose-700 disabled:opacity-50 md:min-h-0"
           >
             {isPending ? 'Deleting…' : 'Delete board'}
           </button>

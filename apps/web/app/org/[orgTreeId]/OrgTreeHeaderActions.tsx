@@ -80,7 +80,7 @@ export function OrgTreeHeaderActions({
             type="button"
             onClick={() => setShowShare(true)}
             disabled={busy}
-            className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-60"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-60 md:min-h-0"
           >
             Share
           </button>
@@ -96,7 +96,7 @@ export function OrgTreeHeaderActions({
             type="button"
             onClick={handleDelete}
             disabled={busy}
-            className="rounded-lg border border-red-200 bg-surface-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-red-200 bg-surface-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60 md:min-h-0"
           >
             Delete
           </button>

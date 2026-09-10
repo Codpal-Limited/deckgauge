@@ -308,7 +308,7 @@ export function BoardRow({
             <button
               type="button"
               onClick={() => onConfirmDelete?.()}
-              className="rounded-lg bg-red-500/20 border border-red-500/30 px-3 py-1.5 text-xs text-red-600 hover:bg-red-500/30 transition-colors"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg bg-red-500/20 border border-red-500/30 px-3 py-1.5 text-xs text-red-600 hover:bg-red-500/30 transition-colors md:min-h-0"
             >
               Delete
             </button>

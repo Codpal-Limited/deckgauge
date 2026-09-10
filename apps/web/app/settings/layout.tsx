@@ -52,7 +52,7 @@ export default async function SettingsLayout({ children }: { children: ReactNode
           <Link
             key={t.href}
             href={t.href}
-            className="whitespace-nowrap px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+            className="inline-flex min-h-11 items-center whitespace-nowrap px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 md:min-h-0"
           >
             {t.label}
           </Link>

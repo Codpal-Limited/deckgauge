@@ -97,7 +97,7 @@ export function NotificationBell() {
         type="button"
         aria-label={count > 0 ? `Notifications (${count} unread)` : 'Notifications'}
         onClick={() => (open ? setOpen(false) : void openMenu())}
-        className="relative px-2 py-1 text-slate-500 transition-colors hover:text-slate-700"
+        className="relative flex h-11 w-11 items-center justify-center text-slate-500 transition-colors hover:text-slate-700 md:h-auto md:w-auto md:px-2 md:py-1"
       >
         <span aria-hidden="true">{'\u{1F514}'}</span>
         {count > 0 && (

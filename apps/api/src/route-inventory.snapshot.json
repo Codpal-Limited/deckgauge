@@ -338,6 +338,7 @@
   "GET /org-trees/:id/timesheet-config": "orgTree(VIEWER)",
   "PUT /org-trees/:id/timesheet-config": "orgTree(EDITOR)",
   "GET /org-trees/:id/timesheet-status-pool": "orgTree(VIEWER)",
+  "PUT /org-trees/:id/timesheet-status-buckets": "orgTree(EDITOR)",
   "GET /locations/search": "authenticated",
   "GET /enterprise/status": "public"
 }

@@ -335,7 +335,7 @@ services:
       MP_SMTP_AUTH_ACCEPT_ANY: "true"
       MP_SMTP_AUTH_ALLOW_INSECURE: "true"
     ports:
-      - "${BIND_HOST-}8025:8025"
+      - "${BIND_HOST-}${MAILPIT_PORT:-8025}:8025"
   api:
     build:
       context: .

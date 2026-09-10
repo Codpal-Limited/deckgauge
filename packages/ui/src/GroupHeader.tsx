@@ -234,7 +234,7 @@ export function GroupHeader({
                             setShowMenu(false);
                             setShowDeleteConfirm(false);
                           }}
-                          className="rounded-lg bg-red-500/20 border border-red-500/30 px-2 py-1 text-xs text-red-600 hover:bg-red-500/30 transition-colors"
+                          className="inline-flex min-h-11 items-center justify-center md:min-h-0 rounded-lg bg-red-500/20 border border-red-500/30 px-2 py-1 text-xs text-red-600 hover:bg-red-500/30 transition-colors"
                         >
                           Delete
                         </button>

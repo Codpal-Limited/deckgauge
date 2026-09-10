@@ -63,7 +63,9 @@ export function AdvisorTeaser({ pageKey, teaser, onAsk }: AdvisorTeaserProps) {
           close();
           onAsk();
         }}
-        className="text-left text-xs leading-snug text-indigo-800 hover:underline"
+        // min-h-11 below `md`: this teaser sits on every route, so its 33px
+        // height was three of the remaining sub-44px controls app-wide.
+        className="min-h-11 text-left text-xs leading-snug text-indigo-800 hover:underline md:min-h-0"
       >
         {teaser}
       </button>
@@ -71,7 +73,12 @@ export function AdvisorTeaser({ pageKey, teaser, onAsk }: AdvisorTeaserProps) {
         type="button"
         onClick={close}
         aria-label="Dismiss advisor suggestion"
-        className="shrink-0 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+        // 16x28 before. `-m-1` grows the hit box to 44px without moving the ✕
+        // or changing the teaser's height. NOT `-m-2`, which was the first
+        // attempt and measured a 4px tap overlap onto the teaser button beside
+        // it — `-m-1` is 4px against the container's 4px `gap-1`, so the two
+        // boxes abut at exactly 0px.
+        className="flex h-11 w-11 -m-1 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 md:h-auto md:w-auto md:m-0 md:p-0.5"
       >
         ✕
       </button>

@@ -35,7 +35,7 @@ export function AskAdvisorButton({ boardId, widgetType, variant }: AskAdvisorBut
         onClick={onClick}
         aria-label="Ask the Advisor"
         title="Ask the Advisor"
-        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-teal-600 px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40"
+        className="inline-flex h-11 items-center gap-1.5 rounded-lg bg-teal-600 px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 md:h-9"
       >
         <SparkleIcon className="h-4 w-4" />
         Advisor

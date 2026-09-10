@@ -150,7 +150,7 @@ docker compose run --rm api npx tsx /app/packages/db/src/demo/seed-demo.ts
 # fills the per-engineer leaderboard, heat strip and per-employee board lists,
 # which are computed by the org-tree sync rather than written by the seeder
 docker compose run --rm -e DECKGAUGE_ORG_SLUG=your-org-slug \
-  worker npx tsx src/scripts/trigger-org-sync.ts
+  worker npx tsx /app/apps/worker/src/scripts/trigger-org-sync.ts
 ```
 
 Full setup — connecting sources, SSO, access control — is in the [docs](https://deckgauge.com/docs).

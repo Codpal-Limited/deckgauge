@@ -122,13 +122,20 @@ export function RetiredProjectsPanel({ initial, knownProjectKeys }: RetiredProje
           {initial.map((r) => (
             <li
               key={r.projectKey}
-              className="flex items-center justify-between gap-3 rounded border border-slate-100 p-3"
+              // `sm:` rather than the repo's usual `md:` boundary because this
+              // row's left column is short (a project key plus an optional note),
+              // so it survives the 640-767px band. Same reasoning as
+              // `InstancesPanel`.
+              // Stacks below `sm` for the same reason as `InstancesPanel`: the
+              // left column had no `min-w-0`, so a long note could not give way
+              // and the row pushed the page wider than the phone.
+              className="flex flex-col gap-2 rounded border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
             >
-              <div>
+              <div className="min-w-0">
                 <span className="text-sm font-medium text-slate-900">{r.projectKey}</span>
                 {r.note ? <span className="ml-2 text-xs text-slate-500">{r.note}</span> : null}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 sm:shrink-0">
                 <input
                   aria-label={`Cutoff date for ${r.projectKey}`}
                   type="date"

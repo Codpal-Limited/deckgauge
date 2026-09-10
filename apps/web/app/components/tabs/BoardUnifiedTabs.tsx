@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { createView, updateView, deleteView } from '../../actions/views';
 
@@ -95,8 +96,12 @@ function iconFor(type: BoardView['type']) {
   return TableIcon;
 }
 
+/** Menu width, shared by the render and the right-edge clamp so they cannot drift. */
+const MENU_WIDTH_PX = 144;
+
 const TAB_BASE =
-  'group relative flex items-center gap-1.5 pl-3 pr-2 py-2 text-[13px] cursor-pointer rounded-t-md border transition-colors';
+  // `min-h-11` below `md` puts the tabs on the touch floor; they measured 38px.
+  'group relative flex min-h-11 md:min-h-0 items-center gap-1.5 pl-3 pr-2 py-2 text-[13px] cursor-pointer rounded-t-md border transition-colors';
 const TAB_ACTIVE =
   'bg-white text-indigo-600 font-semibold border-slate-200 border-b-white -mb-px z-10';
 const TAB_INACTIVE =
@@ -115,6 +120,16 @@ export function BoardUnifiedTabs({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [menuId, setMenuId] = useState<string | null>(null);
+  /**
+   * Viewport coordinates for the portaled menu. The menu USED to be
+   * `absolute top-full` inside its tab, which is why the strip could never be
+   * given `overflow-x-auto`: that forces `overflow-y: auto` too, so the strip
+   * clipped the menu and `elementFromPoint` over Rename/Delete returned the
+   * strip instead of the button — unclickable at every viewport, desktop
+   * included. Portaling it to `document.body` with fixed positioning decouples
+   * it from the strip's overflow, which is what makes the strip scrollable.
+   */
+  const [menuAnchor, setMenuAnchor] = useState<{ left: number; top: number } | null>(null);
   const [isPending, startTransition] = useTransition();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -127,11 +142,19 @@ export function BoardUnifiedTabs({
       if (!menuRef.current) return;
       if (!menuRef.current.contains(e.target as Node)) setMenuId(null);
     };
+    // A fixed-position menu does not travel with its tab, so scrolling the
+    // strip or the page would leave it stranded beside the wrong tab. Closing is
+    // the honest behaviour and is what every native menu does.
+    const onDetach = () => setMenuId(null);
     window.addEventListener('keydown', onKey);
     window.addEventListener('mousedown', onClick);
+    window.addEventListener('resize', onDetach);
+    window.addEventListener('scroll', onDetach, true);
     return () => {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('mousedown', onClick);
+      window.removeEventListener('resize', onDetach);
+      window.removeEventListener('scroll', onDetach, true);
     };
   }, [menuId]);
 
@@ -178,7 +201,16 @@ export function BoardUnifiedTabs({
   return (
     <div
       role="tablist"
-      className="flex items-end gap-0 pl-4 pr-4 bg-white border-b border-slate-200"
+      // `overflow-x-auto` is SAFE only because the view menu is portaled to
+      // `document.body` with fixed positioning. An earlier attempt added this
+      // while the menu was still `absolute top-full` inside a `relative` tab,
+      // and it was a functional regression at every viewport including desktop:
+      // `overflow-x: auto` forces the used value of `overflow-y` to `auto` too,
+      // so the strip clipped the menu hanging below it and `elementFromPoint`
+      // over Rename/Delete returned this div. `z-50` cannot help — overflow
+      // clipping ignores stacking. If you ever move that menu back inside a tab,
+      // remove this class in the same commit.
+      className="flex flex-nowrap items-end gap-0 overflow-x-auto pl-4 pr-4 bg-white border-b border-slate-200"
     >
       {/* LEFT — view tabs */}
       <div className="flex items-end">
@@ -226,13 +258,44 @@ export function BoardUnifiedTabs({
                 <button
                   type="button"
                   aria-label="Dashboard menu"
-                  className={`p-0.5 rounded transition-all ${
+                  // 18x18 before this — the smallest control in the app, and
+                  // the one that opens Rename/Delete.
+                  //
+                  // TWO things had to change together, and the first attempt got
+                  // both wrong. (a) It stayed `opacity-0` until hover, and a
+                  // phone has no hover — so it became an INVISIBLE 44x44
+                  // hit-testable box. (b) `-m-3` pushed that box 6px over its own
+                  // tab label and 3px into the next tab, so tapping the tail of a
+                  // tab's name opened Rename/Delete instead of switching views,
+                  // with Delete one tap behind a `confirm()`. It also bought
+                  // nothing at the gate: the mobile helper skips controls whose
+                  // computed opacity is 0, so the inactive trigger was never
+                  // measured.
+                  //
+                  // So below `md` it is always VISIBLE, and `-m-2` against the
+                  // tab's own `pr-2` keeps the box inside the tab's bounds.
+                  className={`flex h-11 w-11 -m-2 items-center justify-center rounded transition-all md:h-auto md:w-auto md:m-0 md:p-0.5 ${
                     isActive
                       ? 'opacity-60 hover:opacity-100 hover:bg-indigo-50'
-                      : 'opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:bg-slate-100'
+                      : 'opacity-60 md:opacity-0 md:group-hover:opacity-60 hover:!opacity-100 hover:bg-slate-100'
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
+                    const r = e.currentTarget.getBoundingClientRect();
+                    // Clamp so a tab near the right edge does not push a 144px
+                    // menu off a 390px screen.
+                    // Width set inline from the same constant the clamp uses, so
+                    // the two cannot drift — a `w-36` class here would silently
+                    // desynchronise from this arithmetic if anyone changed it.
+                    // `documentElement.clientWidth`, not `innerWidth`: the latter
+                    // includes the vertical scrollbar on desktop.
+                    setMenuAnchor({
+                      left: Math.max(
+                        8,
+                        Math.min(r.left, document.documentElement.clientWidth - MENU_WIDTH_PX - 8)
+                      ),
+                      top: r.bottom + 4,
+                    });
                     setMenuId(menuId === view.id ? null : view.id);
                   }}
                 >
@@ -240,11 +303,16 @@ export function BoardUnifiedTabs({
                 </button>
               )}
 
-              {menuId === view.id && (
+              {menuId === view.id && menuAnchor && createPortal(
                 <div
                   ref={menuRef}
                   role="menu"
-                  className="absolute left-0 top-full mt-1 w-36 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50"
+                  // FIXED and portaled to `document.body`, not `absolute` inside
+                  // the tab. See `menuAnchor` for why: an in-tab absolute menu
+                  // is clipped the moment the strip gets any overflow, and was
+                  // not hit-testable.
+                  style={{ left: menuAnchor.left, top: menuAnchor.top, width: MENU_WIDTH_PX }}
+                  className="fixed bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50"
                 >
                   <button
                     type="button"
@@ -271,14 +339,15 @@ export function BoardUnifiedTabs({
                   >
                     Delete
                   </button>
-                </div>
+                </div>,
+                document.body
               )}
             </div>
           );
         })}
         {canEdit && (
           <button
-            className="flex items-center justify-center w-7 h-7 mb-0.5 ml-1 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded transition-all duration-150"
+            className="flex h-11 w-11 items-center justify-center rounded text-slate-400 transition-all duration-150 hover:bg-indigo-50 hover:text-indigo-500 md:mb-0.5 md:ml-1 md:h-7 md:w-7"
             onClick={handleAddDashboard}
             disabled={isPending}
             title="Add dashboard view"
@@ -323,7 +392,7 @@ export function BoardUnifiedTabs({
           type="button"
           aria-label="Board settings"
           onClick={onSettingsClick}
-          className="ml-auto mb-1 flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[13px] text-slate-600 hover:bg-slate-50"
+          className="ml-auto mb-1 flex min-h-11 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[13px] text-slate-600 hover:bg-slate-50 md:min-h-0"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
             <path fillRule="evenodd" d="M10 3a1 1 0 0 1 .894.553l.382.764a1 1 0 0 0 .598.516l.832.277a1 1 0 0 1 .668.668l.277.832a1 1 0 0 0 .516.598l.764.382a1 1 0 0 1 0 1.788l-.764.382a1 1 0 0 0-.516.598l-.277.832a1 1 0 0 1-.668.668l-.832.277a1 1 0 0 0-.598.516l-.382.764a1 1 0 0 1-1.788 0l-.382-.764a1 1 0 0 0-.598-.516l-.832-.277a1 1 0 0 1-.668-.668l-.277-.832a1 1 0 0 0-.516-.598l-.764-.382a1 1 0 0 1 0-1.788l.764-.382a1 1 0 0 0 .516-.598l.277-.832a1 1 0 0 1 .668-.668l.832-.277a1 1 0 0 0 .598-.516l.382-.764A1 1 0 0 1 10 3Zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" clipRule="evenodd" />

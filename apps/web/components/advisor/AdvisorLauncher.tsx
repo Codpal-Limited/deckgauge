@@ -78,7 +78,9 @@ export function AdvisorLauncher() {
           onClick={openAdvisor}
           aria-label={label}
           title={label}
-          className="relative flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500 text-lg text-white shadow-lg transition-colors hover:bg-indigo-600"
+          // 40x40 -> 44x44 on phones. A floating action button is the one control
+          // a thumb reaches for most, so it should not be the one under the floor.
+          className="relative flex h-11 w-11 items-center justify-center rounded-full bg-indigo-500 text-lg text-white shadow-lg transition-colors hover:bg-indigo-600 md:h-10 md:w-10"
         >
           <span aria-hidden="true">✦</span>
           {state.isAsking && (

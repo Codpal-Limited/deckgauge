@@ -70,12 +70,47 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NODE_OPTIONS=--max-old-space-size=2048
 RUN pnpm --filter @deckgauge/web build
 
+# Fold the client assets INTO the standalone tree, so the runner stage below can
+# take the whole build in one COPY. `next build` deliberately leaves
+# `.next/static` out of `.next/standalone`; the two are halves of one build and
+# must travel together. See the comment on that COPY for what happens when they
+# do not.
+RUN cp -R apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
+
 # Production — Next.js standalone
 FROM node:24-slim AS runner
 WORKDIR /app
 
+# ONE COPY, deliberately — do not split the client assets back out.
+#
+# `.next/standalone` (server, manifests, BUILD_ID) and `.next/static` (the client
+# chunks those manifests name) are two halves of a SINGLE `next build`. Shipped as
+# two `COPY --from=build` layers, Docker's layer cache can pair halves from
+# DIFFERENT builds, and on 2026-09-10 it did: `docker history` on the deployed
+# image showed the standalone layer reused from the 14:40 build while the static
+# layer was fresh from 18:02. Webpack chunk hashes are per-build, so the shipped
+# manifests named 25 of 65 client files that the shipped static did not contain —
+# `webpack-*.js` and `app/layout-*.js` among them. Every one 404s, the route dies
+# on hydration with `ChunkLoadError`, and the browser shows only "Application
+# error: a client-side exception has occurred". Nothing else notices: the image
+# builds, the container reports healthy, SSR HTML still renders, and a browser
+# holding the previous deploy's chunks in its HTTP cache keeps working — which is
+# why this surfaced as one broken route rather than a broken app.
+#
+# Merging static into the standalone tree upstream makes the halves consistent BY
+# CONSTRUCTION: this layer now replays a whole build or none of it.
 COPY --from=build /app/apps/web/.next/standalone ./
-COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
+
+# A second line of defence for the above: fail the BUILD if the manifests ever
+# name a client file that is not in the image, rather than shipping a stack that
+# only breaks in a browser with a cold cache.
+#
+# It is the single COPY above that actually holds, and this is deliberately the
+# weaker of the two — a `RUN` layer is itself cacheable, so on the very
+# unsound-cache path that caused the incident this could be REPLAYED rather than
+# re-executed. Treat it as a net under a fresh layer, not as licence to re-split
+# the COPY.
+RUN node -e "const fs=require('fs'),p=require('path'),d='apps/web/.next';const m=JSON.parse(fs.readFileSync(p.join(d,'app-build-manifest.json'),'utf8'));const refs=[...new Set(Object.values(m.pages||{}).flat())];const missing=refs.filter(f=>!fs.existsSync(p.join(d,f)));if(!refs.length){console.error('ERROR: app-build-manifest.json names no client files at all, so this check would pass vacuously.');process.exit(1)}if(missing.length){console.error('ERROR: '+missing.length+' of '+refs.length+' files named by app-build-manifest.json are absent from .next/static.');console.error('The server half and the client half of this image are from different builds.');missing.slice(0,10).forEach(f=>console.error('  missing: '+f));process.exit(1)}console.log('client asset manifest consistent: '+refs.length+' files present')"
 
 EXPOSE 3000
 ENV PORT=3000

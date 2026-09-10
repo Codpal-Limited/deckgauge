@@ -292,8 +292,14 @@ function describeJsonRpcDetail(code: unknown, data: unknown): string {
  * code and any `data` it carries; anything else object-shaped → its JSON.
  * `String()` remains the fallback for primitives (a thrown string still
  * reports as itself).
+ *
+ * Exported because the same rejection shape crosses a second boundary:
+ * `bridge.ts`'s `performSwap()` awaits `reconnectMcp()`/`openSession()`, which
+ * bottom out in this same `ClientSideConnection`, so its catch hit the exact
+ * "[object Object]" symptom this function exists to prevent. One extractor,
+ * reused, rather than a second copy drifting from this one.
  */
-function getErrorMessage(error: unknown): string {
+export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
   }

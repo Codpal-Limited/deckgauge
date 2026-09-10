@@ -302,9 +302,8 @@ local agent drive Deckgauge questions actually exposes:
    The size of that exposure is the token's own lifetime, and it used to be a
    day: the `deckgauge-web` CLIENT pinned `"access.token.lifespan": "86400"`
    (24h), overriding the realm. That override is gone — the client now inherits
-   the realm's ~5 minutes (see `planning/STATE.md`, 2026-09-07) — which narrows
-   the window sharply but does not close it, and does nothing for the `stdio`
-   path described below.
+   the realm's ~5 minutes — which narrows the window sharply but does not close
+   it, and does nothing for the `stdio` path described below.
 
    **How a rotation reaches a live agent.** With the 5-minute token, NextAuth
    mints a new one every few minutes while the panel is open, and

@@ -124,7 +124,10 @@ export function StatusRulesEditor({ initialRules, roles, employees }: StatusRule
           </tbody>
         </table>
       </TableScroller>
-      <div className="flex gap-2">
+      {/* Wraps: "Add role rule" + "Add employee override" + Save do not fit a
+          390px phone on one line, and the row was clipping rather than
+          scrolling. `ml-auto` on Save still right-aligns it once wrapped. */}
+      <div className="flex flex-wrap gap-2">
         <button type="button" onClick={addRole} className="rounded border border-slate-200 px-3 py-1 text-sm">
           Add role rule
         </button>

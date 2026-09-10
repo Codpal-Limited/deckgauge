@@ -806,7 +806,6 @@ export {
   PutStatusRulesSchema,
   OrgTreeTimesheetConfigDtoSchema,
   PutOrgTreeTimesheetConfigSchema,
-  StatusPoolResponseSchema,
 } from './timesheet-api-schemas.js';
 export type {
   TimesheetGridQuery,
@@ -829,7 +828,6 @@ export type {
   PutStatusRules,
   OrgTreeTimesheetConfigDto,
   PutOrgTreeTimesheetConfig,
-  StatusPoolResponse,
 } from './timesheet-api-schemas.js';
 
 export {
