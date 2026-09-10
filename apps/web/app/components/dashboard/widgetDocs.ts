@@ -37,6 +37,21 @@ export const WIDGET_DOC_SLUGS: Record<string, string> = {
   COMPARE_REVIEW_QUALITY: 'compare-review-quality',
   COMPARE_FLOW: 'compare-flow',
   COMPARE_DELIVERY: 'compare-delivery',
+  // Team Focus. Slugs are keyword-bearing rather than product labels, because
+  // these pages are the organic-search landing pages for the questions the
+  // widgets answer — "roadmap vs unplanned work", not "the Roadmap Focus widget".
+  FOCUS_ROADMAP_SHARE: 'roadmap-focus',
+  FOCUS_SHIPPED_RATIO: 'landed-in-production',
+  FOCUS_NEVER_MOVED: 'never-moved-tasks',
+  FOCUS_EPIC_COVERAGE: 'roadmap-epic-coverage',
+  FOCUS_ATTENTION_SPLIT: 'attention-split',
+  FOCUS_DELIVERY_FUNNEL: 'delivery-funnel',
+  FOCUS_MAP: 'focus-map',
+  FOCUS_SCORECARD: 'focus-scorecard',
+  FOCUS_BOARD_COVERAGE: 'board-coverage',
+  FOCUS_PROVENANCE: 'classification-provenance',
+  FOCUS_LEDGER: 'focus-ledger',
+  FOCUS_CAVEATS: 'focus-caveats',
 };
 
 const DOCS_BASE = 'https://deckgauge.com/docs/widgets';

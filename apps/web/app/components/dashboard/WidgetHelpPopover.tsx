@@ -129,6 +129,15 @@ export default function WidgetHelpPopover({ widgetType }: Props): JSX.Element | 
         </section>
       )}
 
+      {help.rawData && (
+        <section>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">
+            Check the raw data
+          </h4>
+          <p className="leading-snug">{help.rawData}</p>
+        </section>
+      )}
+
       {docUrl && (
         <a
           href={docUrl}

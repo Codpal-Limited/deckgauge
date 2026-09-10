@@ -7,7 +7,33 @@ export interface WidgetHelp {
   howToRead: string;
   whatToLookFor: string[];
   useCases: WidgetHelpUseCase[];
+  /**
+   * How to see the rows this widget's number was computed from.
+   *
+   * Optional because the intelligence widgets drill through to the console
+   * instead (`drillDimensions` on the registry entry). The Team Focus widgets
+   * have no drill-through: their audit trail is a SIBLING WIDGET, `FOCUS_LEDGER`
+   * ("Every Task, and Why"), which prints every task's raw source state beside
+   * the stage it was mapped to, its class, and the reason the classifier gave.
+   * A reader who distrusts a focus number has no way to find that widget from
+   * the number itself, so every focus entry names it here.
+   */
+  rawData?: string;
 }
+
+/**
+ * The lead sentence of every Team Focus `rawData` pointer.
+ *
+ * One const rather than the same sentence retyped twelve times: the ledger's
+ * columns are what make it the audit trail, and a description of them that
+ * drifts per widget is worse than none. Each entry appends the part specific to
+ * its own number — which filter to apply, which column to read.
+ */
+const LEDGER =
+  'Add \u201cEvery Task, and Why\u201d (the ledger) to this board for the same period. ' +
+  'It prints every task with its raw source state beside the delivery stage it was ' +
+  'mapped to, its class, the reason the classifier gave, its owner and its move count, ' +
+  'and filters by person, class and stage';
 
 // CTO-facing help, keyed by widget `type`. Content is authored against what each
 // widget actually computes. Widgets without an entry render no help icon.
@@ -730,5 +756,288 @@ export const WIDGET_HELP: Record<string, WidgetHelp> = {
         signal: 'Its line diverges downward from the others outside of any shared freeze window.',
       },
     ],
+  },
+
+  // ── Team Focus ────────────────────────────────────────────────────────────
+  //
+  // Authored against what each widget computes, not against its label. These
+  // twelve had NO entry at all, so they rendered no help icon: `WidgetHelpPopover`
+  // returns null on a missing entry. Each carries `rawData`, because the focus
+  // widgets have no console drill-through — their audit trail is the ledger.
+  FOCUS_ROADMAP_SHARE: {
+    howToRead:
+      'The share of attention-days that went to class A (roadmap / CAPEX) work, counting only tasks that actually moved in the window. Attention-days are calendar days a task sat in a working state — a proxy for where attention went, never FTE effort, because tasks overlap and one person can hold a dozen at once. Days on parked tasks are excluded from both halves of the fraction, and the caveat under the number states how many were dropped.',
+    whatToLookFor: [
+      'The caveat line under the percentage — it names the numerator, the denominator, the parked days excluded and the unclassified count, so you can see what the number is actually over.',
+      'A refusal instead of a percentage: when more than half the tasks are unclassified the widget declines to answer rather than printing a confident 0%.',
+      'A high share on a board where few tasks moved — the denominator is small, so the percentage is volatile.',
+    ],
+    useCases: [
+      {
+        scenario: 'Reporting to leadership how much of the quarter went to the roadmap',
+        signal:
+          'The percentage plus its attention-day fraction; quote both, because the fraction is what makes the percentage defensible.',
+      },
+      {
+        scenario: 'The team feels busy but the roadmap has not moved',
+        signal:
+          'A low class-A share next to a large parked-day exclusion — attention went somewhere, and it was not roadmap work that progressed.',
+      },
+    ],
+    rawData:
+      `${LEDGER}. Filter Class to “A · Roadmap / CAPEX” to see exactly which tasks fed the numerator, and read the Moves column — a zero there means the task was parked and excluded.`,
+  },
+  FOCUS_SHIPPED_RATIO: {
+    howToRead:
+      'The share of FEATURES that reached production. A feature is an issue rolled up to the top of its parent chain, so work on a sub-task counts for its epic. This tile and the delivery funnel count features; every other figure on the page counts issues — the two totals are not meant to match, and the Method & Caveats widget states both. A feature is only “in production” when nothing beneath it is still open.',
+    whatToLookFor: [
+      'The “merged but unshipped” figure beside the percentage — work that is finished engineering-side but has not reached users is a release-cadence problem, not a delivery one.',
+      'The word “features” in the caveat line. The tile next to this one says “tasks” and means issues; reading them as the same population is the most common misreading of this page.',
+      'A high ratio on a small feature count — one feature either way swings the percentage hard.',
+    ],
+    useCases: [
+      {
+        scenario: 'Engineering reports the work as done but customers have not seen it',
+        signal:
+          'A modest shipped percentage with a large merged-but-unshipped count — the constraint is release, not development.',
+      },
+      {
+        scenario: 'Judging whether a quarter actually delivered',
+        signal:
+          'The shipped share of features, read against the delivery funnel that breaks the same population down by stage.',
+      },
+    ],
+    rawData:
+      `${LEDGER}. Filter Stage to “In production” and “Waiting to ship” to separate what landed from what is merged and waiting. Note the ledger lists ISSUES, so its row count is the larger, issue-grain population.`,
+  },
+  FOCUS_NEVER_MOVED: {
+    howToRead:
+      'How many tasks recorded no state change at all inside the window, out of the total. Movement means a real transition; a bulk-migration burst is excluded, because an import that rewrites changelog entries at one instant would otherwise make a task untouched for a year look active. A task still accrues attention-days while never moving — that is the point of the pairing, not a contradiction.',
+    whatToLookFor: [
+      'The ratio, not the count. The tile turns red once the never-moved share passes a quarter of the board — exactly a quarter is still neutral.',
+      'The same tasks on the Focus Map — a large hatched cell is a large amount of nothing happening, and it is the only place that is visible.',
+      'Whether never-moved tasks are concentrated on one person or spread across the board; the first is a workload problem, the second a process one.',
+    ],
+    useCases: [
+      {
+        scenario: 'The board looks full but delivery is flat',
+        signal:
+          'A high never-moved count — the board is holding work, not progressing it.',
+      },
+      {
+        scenario: 'Deciding what to cut before the next planning round',
+        signal:
+          'Tasks that never moved across two consecutive windows are the honest candidates for closing.',
+      },
+    ],
+    rawData:
+      `${LEDGER}. Sort or scan the Moves column — every row showing 0 is one of the tasks counted here, and the row keeps its owner and its raw state so you can tell a stalled ticket from an unstarted one.`,
+  },
+  FOCUS_EPIC_COVERAGE: {
+    howToRead:
+      'How many of the roadmap epics received any work at all, out of the epics marked CAPEX on this board. The denominator is the curated roadmap — nothing else. Until at least one epic on the board is marked CAPEX there is no denominator, and the widget says so rather than showing 0 / 0, because “nobody has said which epics are the roadmap” is a different fact from “the team touched no roadmap”.',
+    whatToLookFor: [
+      'The untouched count. An epic that received nothing all window is either not really this quarter’s roadmap or is being starved.',
+      'A denominator that looks too small — it means only some of the roadmap is marked CAPEX, so coverage flatters itself.',
+      'Coverage that is high while the roadmap share of attention is low: many epics touched a little is a spread-thin signature.',
+    ],
+    useCases: [
+      {
+        scenario: 'Confirming the roadmap the team committed to is the one being worked',
+        signal:
+          'Touched versus untouched epics, read against the Board Elements Worked On widget for the per-epic detail.',
+      },
+      {
+        scenario: 'A roadmap epic is quietly slipping',
+        signal:
+          'It shows as untouched here for a second consecutive window.',
+      },
+    ],
+    rawData:
+      `${LEDGER}. Its classification reason names the board row that decided each task’s class — including “inherited from <KEY>, marked CAPEX on the board”, which is how a task is attributed to an epic it does not itself carry.`,
+  },
+  FOCUS_ATTENTION_SPLIT: {
+    howToRead:
+      'One bar per person, segmented by class of work, measured in calendar days a task sat in a working state and counting moved tasks only. This is a share-of-attention proxy, not FTE effort: tasks overlap, so a person’s days across tasks can exceed the days in the window. Someone whose first recorded activity falls inside the window is marked as a late joiner with that date, so a short bar reads as a short tenure rather than a quiet quarter.',
+    whatToLookFor: [
+      'The class mix per person, not the bar length. Length is task overlap as much as effort.',
+      'The late-joiner marker before comparing anyone to anyone — an unmarked comparison against a partial window is the classic wrong read here.',
+      'A person carrying almost entirely one class — sustained single-class loading is a retention risk as often as a specialism.',
+    ],
+    useCases: [
+      {
+        scenario: 'Checking whether one engineer is absorbing all the unplanned work',
+        signal:
+          'Their bar is dominated by class B (OPEX) while their peers are mostly class A.',
+      },
+      {
+        scenario: 'A person appears to have contributed little',
+        signal:
+          'Check the late-joiner date first, then the unclassified segment — unclassified attention is work nobody has categorised, not absent work.',
+      },
+    ],
+    rawData:
+      `${LEDGER}. Filter Person to one name to see every task behind that bar, with the class and the reason each was given — which is where a suspicious class mix is either confirmed or corrected.`,
+  },
+  FOCUS_DELIVERY_FUNNEL: {
+    howToRead:
+      'Features by delivery stage: in production, waiting to ship, in development, aborted work, and not started or stalled. The population is FEATURES — issues rolled up to the top-level item they hang under. The boundary between in development and waiting to ship is MERGED: in development is still the engineer’s to finish, waiting to ship is not. Features cancelled before any work began are excluded entirely, since they were never work.',
+    whatToLookFor: [
+      'An unmapped-state warning. States this board’s stage map does not know are counted as not started, which inflates that bar and empties the two middle ones — the widget names them and offers the stage-map editor inline.',
+      'The two wasted-days figures, which are ALL-TIME rather than windowed: days sunk into features abandoned whole, and days sunk into aborted work inside features that survived.',
+      'A fat waiting-to-ship bar — that is a release constraint, and it is the one stage nobody on the engineering side can clear.',
+    ],
+    useCases: [
+      {
+        scenario: 'Work is finished but not reaching users',
+        signal:
+          'Waiting to ship is the widest bar while in production is thin.',
+      },
+      {
+        scenario: 'Quantifying the cost of a change in direction',
+        signal:
+          'The abandoned-features day count, which is deliberately all-time — the decision was made in this window, but the cost was paid over every window before it.',
+      },
+    ],
+    rawData:
+      `${LEDGER}. Its State column shows the raw value from Jira or Azure DevOps beside the Delivery stage it mapped to — so a bar you distrust can be traced to the exact states feeding it, and argued with.`,
+  },
+  FOCUS_MAP: {
+    howToRead:
+      'A person × work-area matrix on one shared scale, where square area is attention-days. Four cell states, and the third earns the widget: a filled square is days on tasks that moved, a HATCHED square is days in a working state with no state change at all, a ring is owned with zero days, and a dot is nothing. Roadmap columns share the scale with the OPEX columns on purpose — giving them their own would flatter them.',
+    whatToLookFor: [
+      'The largest hatched cell on the map. That is the biggest concentration of nothing happening, and no bar chart or funnel will show it to you.',
+      'A row that is all rings — someone owns work and has recorded no days against any of it.',
+      'A column with one dominant cell: a work area effectively owned by one person is a bus-factor problem.',
+    ],
+    useCases: [
+      {
+        scenario: 'Finding where a quarter actually went',
+        signal:
+          'The distribution of filled area across columns, versus where the roadmap columns sit.',
+      },
+      {
+        scenario: 'A ticket has been open for months and nobody noticed',
+        signal:
+          'A large hatched cell — days accruing in a working state with no movement behind it.',
+      },
+    ],
+    rawData:
+      `${LEDGER}. Filter Person to the row and Class to the column to reach the exact tasks in a cell; a hatched cell is precisely the rows whose Moves column reads 0.`,
+  },
+  FOCUS_SCORECARD: {
+    howToRead:
+      'One row per person: tasks held, how many never moved, how many reached production, how many are merged but unshipped, working days, and their attention split as a bar plus every non-zero class share. TICKET COUNTS ONLY — reviewing, mentoring, incident response and meetings appear in no column here, so a manager’s row will understate their contribution and a low row is not evidence of low output.',
+    whatToLookFor: [
+      'The never-moved column, which turns red above zero — it is the per-person version of the board-level tile.',
+      'The late-joiner note under a name before comparing rows; it names the date the measurement actually starts from.',
+      'The class-share line under each bar. It lists every non-zero class, so a person at 10% roadmap cannot read as a roadmap-focused row.',
+    ],
+    useCases: [
+      {
+        scenario: 'Preparing for a one-to-one',
+        signal:
+          'Read the row as a conversation opener, never a verdict — the footnote about what these columns omit is the point.',
+      },
+      {
+        scenario: 'Work is distributed unevenly and nobody can prove it',
+        signal:
+          'Task counts and class mix side by side across rows, with late joiners discounted.',
+      },
+    ],
+    rawData:
+      `${LEDGER}. Filter Person to that name: every column in their row is a count over those rows, so the ledger is where a number that looks wrong gets checked task by task.`,
+  },
+  FOCUS_BOARD_COVERAGE: {
+    howToRead:
+      'Every roadmap epic marked CAPEX on this board, badged touched or untouched, plus the finding this view exists for: how many tasks never appeared on this board at all. Those exist only in the synced source. This view reads the SOURCE rather than the board rows, which is what makes the gap visible instead of invisible.',
+    whatToLookFor: [
+      'The off-board task count. A large number means the board is not a faithful picture of the work, and every board-scoped metric elsewhere is measuring a subset.',
+      'Untouched epics, badged in red — nothing was recorded against them all window.',
+      'The absence of a denominator: with no epic marked CAPEX, the widget asks you to mark them rather than reporting zero.',
+    ],
+    useCases: [
+      {
+        scenario: 'Board metrics disagree with what the team says it did',
+        signal:
+          'A high off-board count — the work happened, it just never reached this board.',
+      },
+      {
+        scenario: 'Auditing whether the board reflects the roadmap',
+        signal:
+          'Touched versus untouched epic badges, read with the off-board count underneath.',
+      },
+    ],
+    rawData:
+      `${LEDGER}. It lists every task the source returned, on-board or not, so the off-board population is inspectable rather than a bare count.`,
+  },
+  FOCUS_PROVENANCE: {
+    howToRead:
+      'Which classifier decided each task’s class, over ISSUES. Precedence is human, then the board’s CAPEX/OPEX field, then an inherited classification from the nearest classified ancestor row, then a keyword rule, then the model — a human override is someone taking responsibility, CAPEX is a finance-audited field, a rule is deterministic, and the model is the fallback. “Not classified” means nothing could reach the task, which is a fact about the pipeline rather than a judgement.',
+    whatToLookFor: [
+      'The CAPEX bar against the total. The footer states the share carrying a CAPEX/OPEX value — where it is low, the model is doing work the field would do for free and more defensibly.',
+      'A large model segment. Those classes are inferred, so any number resting on them is softer than one resting on CAPEX.',
+      'A large not-classified segment — it is what makes the roadmap share refuse to answer.',
+    ],
+    useCases: [
+      {
+        scenario: 'Someone challenges a roadmap-share figure',
+        signal:
+          'The provenance mix answers “who decided this” before you defend the number itself.',
+      },
+      {
+        scenario: 'Making the classification cheaper and more defensible',
+        signal:
+          'A dominant model segment — classify rows on the board and the mix shifts left on the next sync.',
+      },
+    ],
+    rawData:
+      `${LEDGER}. Each row prints the reason its class was given, and a class set by a person is badged “Set by hand” — so a provenance segment can be read task by task rather than trusted in aggregate.`,
+  },
+  FOCUS_LEDGER: {
+    howToRead:
+      'The audit trail for every other widget on this view: one row per task, with the raw state from Jira or Azure DevOps sitting beside the delivery stage it was mapped to, the class, the reason the classifier gave, the owner, the source system and the number of real moves in the window. The raw state sits next to the mapped stage deliberately — that is what lets you see HOW a state was interpreted and argue with it, rather than being handed a stage and asked to trust it.',
+    whatToLookFor: [
+      'A zero in Moves — nothing observable happened to that task in the window, and it is why a parked task can still hold attention-days.',
+      'The “Set by hand” badge, which marks a class a person set, overruling the board’s own CAPEX flag.',
+      'A System column reading “Jira + Azure DevOps” — that task existed in both and was merged on a normalised title, so its history came from both.',
+    ],
+    useCases: [
+      {
+        scenario: 'A number on this page looks wrong',
+        signal:
+          'Filter to the population behind it. Every figure on the view is a count or a sum over these rows, so a disagreement resolves here.',
+      },
+      {
+        scenario: 'A task is classified wrongly',
+        signal:
+          'Its printed reason names what decided it; with edit rights the class can be corrected in place, and the widgets follow.',
+      },
+    ],
+    rawData:
+      'This IS the raw-data widget — every other Team Focus number is a count or a sum over these rows. Filter by person, class and stage to isolate the population behind any figure on the view.',
+  },
+  FOCUS_CAVEATS: {
+    howToRead:
+      'What this particular window could and could not measure, generated by the render rather than written by a person. A caveat that does not apply is ABSENT rather than greyed out, so the list keeps its weight instead of becoming boilerplate nobody reads. Two entries are unconditional because they are true of the method rather than the data: attention-days are a proxy, and lines-changed is unavailable.',
+    whatToLookFor: [
+      'The “Two grains” entry, which reconciles the feature-grain widgets with the issue-grain ones — two totals on one page that are not meant to match is the thing readers most often report as a bug.',
+      'A commit-window entry, which marks a DATA boundary rather than inactivity.',
+      'De-duplication and both-systems entries, which say how many tasks existed in both trackers and what counting one alone would have found.',
+    ],
+    useCases: [
+      {
+        scenario: 'Circulating this view outside the team',
+        signal:
+          'Send the caveats with it — they are the record of what the numbers do and do not support.',
+      },
+      {
+        scenario: 'Two widgets show totals that do not reconcile',
+        signal:
+          'The grain and exclusion entries name the reason, usually features versus issues or cancelled-before-started tasks.',
+      },
+    ],
+    rawData:
+      `${LEDGER}. The caveats describe the population in aggregate; the ledger is that same population row by row.`,
   },
 };
