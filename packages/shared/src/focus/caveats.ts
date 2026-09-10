@@ -165,11 +165,20 @@ export function buildFocusCaveats(input: CaveatInputs): FocusCaveat[] {
       text: `${toWorking} of ${outOfApproved} transitions out of Approved led to a working state — ${finding}.`,
     });
   } else if (input.approved) {
+    // `unknown` has two causes and they need different sentences. Saying
+    // "nothing left Approved" when four things did would be as untrue as the
+    // completion claim this branch exists to avoid.
+    const { outOfApproved } = input.approved;
     out.push({
       key: '"Approved"',
       text:
-        `Nothing left the Approved state in this window, so what it means here could not be ` +
-        `verified. It is counted as not started on the shipped default.`,
+        outOfApproved > 0
+          ? `${outOfApproved} transition${outOfApproved === 1 ? '' : 's'} left the Approved ` +
+            `state in this window, but no status is configured as a working state, so what ` +
+            `Approved means here could not be verified. It is counted as not started on the ` +
+            `shipped default.`
+          : `Nothing left the Approved state in this window, so what it means here could not be ` +
+            `verified. It is counted as not started on the shipped default.`,
     });
   }
 

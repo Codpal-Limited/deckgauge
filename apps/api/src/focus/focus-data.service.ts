@@ -19,13 +19,7 @@ import {
   type FocusTaskRow,
   type FocusTransitionRow,
 } from './focus-snapshot.js';
-
-const DEFAULT_WORKING_STATES = [
-  'In Progress',
-  'Code Review',
-  'Pull Request Doing',
-  'Send Back to Dev',
-];
+import { resolveWorkingStates } from './working-states.js';
 
 export const EMPTY_SNAPSHOT_REASON = 'no_issue_source';
 
@@ -65,7 +59,14 @@ async function loadClassificationInputs(
 
   const focusConfig = await deps.prisma.focusConfig.findUnique({ where: { boardId } });
 
-  const workingStates = readStringArray(focusConfig?.workingStates) ?? DEFAULT_WORKING_STATES;
+  // Derived from the organization's bucket decisions, with the legacy per-board
+  // column and the shipped default behind it — see `resolveWorkingStates` for
+  // why it is a chain rather than a replacement.
+  const workingStates = await resolveWorkingStates(
+    deps.prisma,
+    deps.organizationId,
+    focusConfig?.workingStates,
+  );
   const stageMap = mergeStageMap(focusConfig?.stageMap);
 
   const tasks = castRows<FocusTaskRow>(
@@ -438,12 +439,6 @@ function describeSources(scope: { jiraProjectKeys: string[]; adoProjects: string
   if (scope.jiraProjectKeys.length) out.push('Jira');
   if (scope.adoProjects.length) out.push('Azure DevOps');
   return out;
-}
-
-function readStringArray(value: unknown): string[] | null {
-  if (!Array.isArray(value)) return null;
-  const strings = value.filter((v): v is string => typeof v === 'string');
-  return strings.length > 0 ? strings : null;
 }
 
 async function loadVerdicts(

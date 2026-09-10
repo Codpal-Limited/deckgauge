@@ -27,7 +27,10 @@ const CLEAR_MAJORITY = 0.6;
  *                  does mark finished work here and the stage map is wrong;
  * - `ambiguous`  — neither side is clear, meaning the state is doing two jobs.
  *                  Worth saying out loud rather than resolving by coin flip;
- * - `unknown`    — nothing left Approved in the window. No evidence, no claim.
+ * - `unknown`    — no evidence, no claim. TWO causes: nothing left Approved in
+ *                  the window, or there is no working vocabulary to compare
+ *                  departures against. `outOfApproved` tells them apart, and
+ *                  the caveat says which.
  */
 export function verifyApprovedIsNotDone(
   transitions: FocusTransition[],
@@ -38,6 +41,16 @@ export function verifyApprovedIsNotDone(
   const outOfApproved = departures.length;
 
   if (outOfApproved === 0) return { outOfApproved: 0, toWorking: 0, verdict: 'unknown' };
+
+  // No vocabulary, no claim — and this guard is load-bearing rather than
+  // defensive. Without it the arithmetic reads silence as EVIDENCE: `toWorking`
+  // is 0, `share` is 0, `1 - share >= CLEAR_MAJORITY` is true, and the verdict
+  // is `completion` — the strongest claim here, rendered to the reader as "it
+  // marks completed work in this project" on the strength of nothing.
+  //
+  // `outOfApproved` is REPORTED, not zeroed: the caveat needs it to tell this
+  // apart from the case above, where genuinely nothing left Approved.
+  if (working.size === 0) return { outOfApproved, toWorking: 0, verdict: 'unknown' };
 
   const toWorking = departures.filter((t) => working.has(t.toState)).length;
   const share = toWorking / outOfApproved;

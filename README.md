@@ -125,19 +125,23 @@ per-engineer views runs as part of that command, so nothing is left to press.
 > in `.env` — note the trailing colon — before the machine is reachable by
 > anyone but you.
 
-**The account and the data are removed separately** — removing one leaves the
-other exactly as it was. Remove the account and its grants, keeping the seeded
-content and anything you have built beside it:
+**Remove them in this order — data first, then the account.** Neither touches a
+board you made yourself, but the sequence matters:
 
 ```bash
+# 1. the demo data, keeping the account
+docker compose run --rm api npx tsx /app/packages/db/src/demo/seed-demo.ts --remove
+
+# 2. then the account and its grants
 ./scripts/test-account.sh --remove
 ```
 
-Remove the demo *data*, keeping your own boards, connections and account:
-
-```bash
-docker compose run --rm api npx tsx /app/packages/db/src/demo/seed-demo.ts --remove
-```
+Removing the account deletes its `User` row, and every grant — `OrgMembership`,
+`BoardAccess`, `OrgTreeAccess`, `RoadmapAccess`, `ComparisonAccess` — cascades
+with it. `test@test.com` is the only member of a stock install, so once it is
+gone the organization has no active admin, and `seed-demo.ts --remove` looks one
+up before it removes anything: it refuses, and the demo content is stranded —
+in the database, visible to nobody, removable by nothing.
 
 **Prefer to start empty and register your own account?** Skip
 `scripts/test-account.sh` entirely. Open `http://localhost:3000`, sign in, and
@@ -152,6 +156,33 @@ docker compose run --rm api npx tsx /app/packages/db/src/demo/seed-demo.ts
 docker compose run --rm -e DECKGAUGE_ORG_SLUG=your-org-slug \
   worker npx tsx /app/apps/worker/src/scripts/trigger-org-sync.ts
 ```
+
+You need nothing further on a fresh install: the first account to sign in is
+granted admin automatically, which is the same grant that lets you create the
+organization at all — so the Engineering Intelligence dashboards and the org
+chart's salary column both work for you.
+
+That only changes if yours is **not** the first account (you ran
+`scripts/test-account.sh` earlier, or someone else registered first). Analytics
+then falls back to the `cockpit-admin` Keycloak realm role rather than your
+organization role — the cross-cutting people-analytics reads carry no board id to
+check — so grant it and sign out and back in to re-mint the token:
+
+```bash
+docker compose exec keycloak sh -c '
+  /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 \
+    --realm master --user "$KC_BOOTSTRAP_ADMIN_USERNAME" \
+    --password "$KC_BOOTSTRAP_ADMIN_PASSWORD" &&
+  /opt/keycloak/bin/kcadm.sh add-roles -r deckgauge \
+    --uusername you@example.com --rolename cockpit-admin'
+```
+
+The `config credentials` line is required: `kcadm.sh` stores its session in a
+config file the container does not ship with, and an unauthenticated call hangs
+instead of failing. It reads the admin credentials from the container's own
+environment, so you never type or paste them — unless you rotated
+`KEYCLOAK_ADMIN_PASSWORD` after first boot, in which case those variables hold a
+password the master realm no longer has and you must pass the real one.
 
 Full setup — connecting sources, SSO, access control — is in the [docs](https://deckgauge.com/docs).
 

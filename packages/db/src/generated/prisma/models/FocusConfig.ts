@@ -524,7 +524,20 @@ export type $FocusConfigPayload<ExtArgs extends runtime.Types.Extensions.Interna
      */
     classLabels: runtime.JsonValue
     /**
-     * Which source states count as "being worked" for attention days.
+     * LEGACY. Which source states count as "being worked" for attention days.
+     * 
+     * No longer the source of truth: `resolveWorkingStates` in
+     * `apps/api/src/focus/working-states.ts` takes the ORGANIZATION's
+     * `IN_PROGRESS` bucket decisions first, so the timesheet and the funnel
+     * cannot disagree about which states mean "being worked". This column is
+     * consulted only when an organization has made no bucket decisions at all.
+     * 
+     * It never had an editor — `focus-config.routes.ts` only ever accepted
+     * `stageMap` — and its one writer is `packages/db/src/demo/write-postgres.ts`,
+     * which is why it cannot simply be dropped: `DEFAULT_WORKING_STATES` overlaps
+     * the demo's statuses by exactly one, and the last time that was true "every
+     * day spent in review vanished" (see `demo/focus-seed.ts`). Dropping it is
+     * blocked on the demo seeding `SourceStatusBucket` rows instead.
      */
     workingStates: runtime.JsonValue
     /**
