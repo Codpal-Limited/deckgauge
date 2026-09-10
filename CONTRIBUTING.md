@@ -19,10 +19,15 @@ cd deckgauge
 cp .env.example .env
 docker compose up -d
 # create the database schema
-docker compose run --rm api sh -c "cd /app/packages/db && npx prisma db push"
+docker compose run --rm -T api sh -c "cd /app/packages/db && npx prisma db push"
 # create the ClickHouse analytics tables
 bash scripts/apply-clickhouse-schemas.sh
 ```
+
+Keep the `-T`: it makes `db push` non-interactive. On a database that already holds tables the
+Prisma schema does not declare **and that are not empty**, the command then fails with exit 1
+instead of blocking on a `(y/N)` data-loss prompt. Do not answer that by adding `--accept-data-loss` — it drops those
+tables. It means the database is not a fresh install.
 
 Then open **http://localhost:3000**. Full setup — connecting sources, SSO, access control — is in the [docs](https://deckgauge.com/docs).
 

@@ -8,14 +8,16 @@ import {
   useEffect,
   useRef,
   useDeferredValue,
-  type PointerEvent as ReactPointerEvent,
+  type MouseEvent as ReactMouseEvent,
+  type TouchEvent as ReactTouchEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import {
   DndContext,
   closestCorners,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -96,6 +98,10 @@ import {
   type GroupTree,
 } from '../utils/optimistic-mutators';
 import { resolveBulkTargets } from '../utils/bulk-selection';
+import { MOUSE_DRAG_ACTIVATION, TOUCH_DRAG_ACTIVATION } from '../lib/dnd-activation';
+
+/** `MouseEvent.button` for the right button; dnd-kit's own MouseSensor declines it. */
+const RIGHT_MOUSE_BUTTON = 2;
 
 const DRAG_BLOCK_SELECTOR =
   'input,textarea,select,button,a,[contenteditable="true"],[data-no-dnd="true"]';
@@ -105,11 +111,36 @@ export function shouldStartPointerDrag(target: EventTarget | null): boolean {
   return target.closest(DRAG_BLOCK_SELECTOR) === null;
 }
 
-class BoardPointerSensor extends PointerSensor {
+/**
+ * Two sensors rather than one `PointerSensor`, because mouse and touch need
+ * opposite activation constraints — see `app/lib/dnd-activation.ts` for why a
+ * shared delay constraint breaks mouse dragging outright.
+ *
+ * Each subclass keeps its base sensor's own refusal alongside our
+ * `shouldStartPointerDrag` guard: `MouseSensor` declines right-click and
+ * `TouchSensor` declines a second finger, and dropping either would be a
+ * regression that no test on this branch would have caught.
+ */
+class BoardMouseSensor extends MouseSensor {
   static activators = [
     {
-      eventName: 'onPointerDown' as const,
-      handler: ({ nativeEvent }: ReactPointerEvent) => shouldStartPointerDrag(nativeEvent.target),
+      eventName: 'onMouseDown' as const,
+      handler: ({ nativeEvent }: ReactMouseEvent) =>
+        nativeEvent.button !== RIGHT_MOUSE_BUTTON && shouldStartPointerDrag(nativeEvent.target),
+    },
+  ];
+}
+
+class BoardTouchSensor extends TouchSensor {
+  static activators = [
+    {
+      eventName: 'onTouchStart' as const,
+      handler: ({ nativeEvent }: ReactTouchEvent) =>
+        // `<= 1` mirrors dnd-kit's own refusal, which is `touches.length > 1`
+        // (`core.cjs.development.js:1745`). `=== 1` would additionally refuse a
+        // zero-touch event — behaviourally identical, since no real
+        // `touchstart` has none, but this is the faithful form.
+        nativeEvent.touches.length <= 1 && shouldStartPointerDrag(nativeEvent.target),
     },
   ];
 }
@@ -513,7 +544,8 @@ export function GroupList({
   const isSorted = !!sortConfig;
 
   const sensors = useSensors(
-    useSensor(BoardPointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(BoardMouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
+    useSensor(BoardTouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
     useSensor(BoardKeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })

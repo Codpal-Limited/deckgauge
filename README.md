@@ -105,8 +105,9 @@ git clone https://github.com/Codpal-Limited/deckgauge
 cd deckgauge
 cp .env.example .env
 docker compose up -d
-# create the schema
-docker compose run --rm api sh -c "cd /app/packages/db && npx prisma db push"
+# create the schema (-T keeps it non-interactive; if it fails, see CONTRIBUTING.md
+# — do NOT add --accept-data-loss, it drops tables)
+docker compose run --rm -T api sh -c "cd /app/packages/db && npx prisma db push"
 # create a signed-in-and-populated demo account
 ./scripts/test-account.sh
 ```

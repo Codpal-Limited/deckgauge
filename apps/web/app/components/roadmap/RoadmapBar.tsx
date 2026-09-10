@@ -80,8 +80,12 @@ export function RoadmapBar(props: RoadmapBarProps) {
       data-unsized={isUnsized}
       data-pinned={isPinned}
       className="group/bar transition-[transform,box-shadow] duration-150 hover:-translate-y-px hover:shadow-lg hover:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-slate-400"
-      // listeners spread on the container, but the PointerSensor distance
-      // constraint (set in DndContext) prevents a plain click from activating.
+      // listeners spread on the container. The MouseSensor distance constraint
+      // (set in DndContext) still prevents a plain click from activating, so
+      // `onClick` below survives on desktop. On touch the sensor holds instead
+      // of measuring distance, so a long-press-then-release does activate and
+      // dnd-kit swallows the click — a tap is unaffected, since it never
+      // reaches the 200ms delay. See `app/lib/dnd-activation.ts`.
       {...attributes}
       {...listeners}
       // After the spreads on purpose: dnd-kit's `attributes` also carries
@@ -116,7 +120,15 @@ export function RoadmapBar(props: RoadmapBarProps) {
         whiteSpace: 'nowrap',
         overflow: 'hidden',
         cursor: readOnly ? 'pointer' : 'grab',
-        touchAction: 'none',
+        // No `touchAction: 'none'` here, deliberately. This is the bar BODY —
+        // the thing a finger lands on to scroll the timeline — not a drag
+        // handle. `none` here blocked every scroll gesture that started on a
+        // bar, which on a dense roadmap is most of the surface. Gesture
+        // disambiguation is the activation constraint's job now
+        // (`TOUCH_DRAG_ACTIVATION`: hold 200ms to drag, swipe to scroll), and
+        // dnd-kit suppresses scrolling itself once a drag activates. The
+        // resize grip below keeps `none`, because a 10px grip is a handle and
+        // has no scrolling to preserve.
       }}
     >
       {editing ? (

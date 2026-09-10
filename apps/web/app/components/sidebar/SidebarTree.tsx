@@ -11,7 +11,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   pointerWithin,
   rectIntersection,
   useDroppable,
@@ -26,6 +27,7 @@ import { FolderNode, type FolderHandlers } from './FolderNode';
 import { DraggableBoard } from './DraggableBoard';
 import { DraggableRoadmap } from './DraggableRoadmap';
 import { findBoardById, findRoadmapById, preferFolderCollision, resolveDropTarget } from './sidebar-dnd';
+import { MOUSE_DRAG_ACTIVATION, TOUCH_DRAG_ACTIVATION } from '../../lib/dnd-activation';
 
 interface SidebarTreeProps {
   nodes: SidebarNode[];
@@ -51,10 +53,16 @@ export function SidebarTree({ nodes, handlers }: SidebarTreeProps) {
   const topLevel = useDroppable({ id: 'folder:root' });
   const [dragging, setDragging] = useState<{ name: string; kind: 'board' | 'roadmap' } | null>(null);
 
-  // Require a small drag distance before activating, otherwise the pointer
-  // sensor swallows the synthetic click and rows never open on click.
+  // Mouse keeps a distance constraint, which is what stops the sensor
+  // swallowing the click so rows still open when clicked. Touch cannot use
+  // distance — it is indistinguishable from a scroll — so it holds instead,
+  // and the trade is explicit: a long-press-then-release on touch activates
+  // and ends a drag in place, and dnd-kit blocks the click that follows. The
+  // row does not open on a long press. A tap opens it, because a tap never
+  // reaches the 200ms delay. See `app/lib/dnd-activation.ts`.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
+    useSensor(TouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
     useSensor(KeyboardSensor),
   );
 
@@ -71,7 +79,18 @@ export function SidebarTree({ nodes, handlers }: SidebarTreeProps) {
 
   const onDragEnd = (e: DragEndEvent) => {
     setDragging(null);
-    const move = resolveDropTarget(String(e.active.id), e.over ? String(e.over.id) : null);
+    const activeId = String(e.active.id);
+    // The node's current parent, so a drop onto it resolves to a no-op rather
+    // than a redundant write. Nodes carry `folderId`, so no tree walk beyond
+    // the existing finders is needed.
+    const current = activeId.startsWith('board:')
+      ? findBoardById(nodes, activeId.slice('board:'.length))
+      : findRoadmapById(nodes, activeId.slice('roadmap:'.length));
+    const move = resolveDropTarget(
+      activeId,
+      e.over ? String(e.over.id) : null,
+      current?.folderId ?? null
+    );
     if (!move) return;
     if (move.kind === 'board') handlers.onMoveBoard(move.id, move.folderId);
     else handlers.onMoveRoadmap(move.id, move.folderId);

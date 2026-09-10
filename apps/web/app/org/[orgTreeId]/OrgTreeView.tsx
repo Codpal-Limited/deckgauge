@@ -6,7 +6,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   pointerWithin,
   rectIntersection,
   useDraggable,
@@ -21,6 +22,7 @@ import type { OrgTreeDto, OrgEmployeeDto } from '@deckgauge/shared';
 import { wouldCreateCycle } from '@deckgauge/shared';
 import { OrgEmployeeNode } from './OrgEmployeeNode';
 import { moveEmployee } from '../../actions/org-trees';
+import { MOUSE_DRAG_ACTIVATION, TOUCH_DRAG_ACTIVATION } from '../../lib/dnd-activation';
 
 // ---------------------------------------------------------------------------
 // Pure DnD helper (exported for testing)
@@ -206,7 +208,8 @@ export function OrgTreeView({ tree, onRefresh, onSelectEmployee }: OrgTreeViewPr
   const roots = childMap.get(null) ?? [];
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
+    useSensor(TouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
     useSensor(KeyboardSensor),
   );
 

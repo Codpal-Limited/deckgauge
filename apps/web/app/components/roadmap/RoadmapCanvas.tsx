@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react';
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   KeyboardSensor,
   useSensor,
   useSensors,
@@ -35,6 +36,7 @@ import { classifyDrag } from './drag';
 import { ItemDetailPanel } from '../ItemDetailPanel';
 import type { RoadmapPersistenceAdapter } from './roadmap-adapter';
 import { DragDateOverlay } from './DragDateOverlay';
+import { MOUSE_DRAG_ACTIVATION, TOUCH_DRAG_ACTIVATION } from '../../lib/dnd-activation';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -179,7 +181,8 @@ export function RoadmapCanvas({
   // ---------------------------------------------------------------------------
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
+    useSensor(TouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
     useSensor(KeyboardSensor),
   );
 

@@ -51,7 +51,21 @@ export interface DropMove {
  * Handles both `board:` and `roadmap:` draggables; the drop target is a folder
  * (`folder:<id>`) or the root droppable (un-file to top level).
  */
-export function resolveDropTarget(activeId: string, overId: string | null): DropMove | null {
+export function resolveDropTarget(
+  activeId: string,
+  overId: string | null,
+  /**
+   * The folder the dragged node currently sits in (`null` = top level).
+   *
+   * Required rather than optional on purpose: it is what makes a drop onto the
+   * node's existing parent a no-op, and an optional parameter is one a call
+   * site can quietly omit and lose the guard. Touch made this load-bearing — a
+   * drag now activates on a 200ms hold and can end with the finger never
+   * having moved, so "dropped where it started" went from rare to routine, and
+   * every long press was firing a redundant persistence write.
+   */
+  currentFolderId: string | null
+): DropMove | null {
   if (!overId) return null;
   const kind = activeId.startsWith('board:')
     ? 'board'
@@ -60,7 +74,15 @@ export function resolveDropTarget(activeId: string, overId: string | null): Drop
       : null;
   if (!kind) return null;
   const id = activeId.slice(kind.length + 1); // strip "board:" / "roadmap:"
-  if (overId === ROOT_DROPPABLE_ID) return { kind, id, folderId: null };
-  if (overId.startsWith('folder:')) return { kind, id, folderId: overId.slice('folder:'.length) };
-  return null;
+
+  const folderId =
+    overId === ROOT_DROPPABLE_ID
+      ? null
+      : overId.startsWith('folder:')
+        ? overId.slice('folder:'.length)
+        : undefined;
+  if (folderId === undefined) return null;
+
+  if (folderId === currentFolderId) return null;
+  return { kind, id, folderId };
 }

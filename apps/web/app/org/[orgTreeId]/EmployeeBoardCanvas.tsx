@@ -5,7 +5,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCorners,
   useDroppable,
   useSensor,
@@ -58,6 +59,7 @@ import { EmployeeColumnSummaryRow } from './EmployeeColumnSummaryRow';
 import { makeEmployeeShellRow } from './EmployeeShellRow';
 import { EmployeeBulkActionBar } from './EmployeeBulkActionBar';
 import { resolveBulkTargets } from '../../utils/bulk-selection';
+import { MOUSE_DRAG_ACTIVATION, TOUCH_DRAG_ACTIVATION } from '../../lib/dnd-activation';
 
 type BoardMember = EmployeeBoardDetailDto['groups'][number]['members'][number];
 
@@ -740,7 +742,8 @@ export function EmployeeBoardCanvas({ board, allEmployees, canSeeSalary, onChang
   };
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
+    useSensor(TouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
     useSensor(KeyboardSensor)
   );
 
