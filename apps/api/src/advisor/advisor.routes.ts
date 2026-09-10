@@ -9,7 +9,8 @@ import { advisorAskRequestSchema } from '@deckgauge/shared';
 import { all, board, orgRole, UNRESTRICTED } from '../auth/policy.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
 import { AccessService } from '../access/access.service.js';
-import { ClickhouseIntelligenceService, type ChQueryClient } from '../intelligence/clickhouse-intelligence.service.js';
+import { ClickhouseIntelligenceService } from '../intelligence/clickhouse-intelligence.service.js';
+import type { ChReadClient } from '../analytics/ch-read-scope.js';
 import { getBoardScope } from '../intelligence/board-scope.js';
 import { BoardReadsService } from './board-reads.service.js';
 import { ChangeSetService } from './change-set/change-set.service.js';
@@ -17,14 +18,29 @@ import { AdvisorService } from './advisor.service.js';
 import { inferenceLock } from './inference-lock.js';
 import { AdvisorConfigService } from './advisor-config.service.js';
 import { resolveProvider } from './llm-provider.js';
+import { WidgetCache } from '../widgets/widget-cache.js';
 
 export function advisorRoutes({
   prisma,
   clickhouse,
+  cache,
 }: {
   prisma: PrismaClient;
-  clickhouse: ChQueryClient;
+  clickhouse: ChReadClient;
+  /**
+   * The widget-data plugin's cache instance (Task 3-12, the controller ruling
+   * widening this task beyond `mcpRoutes`): the conversational advisor can
+   * invoke `set_focus_verdicts` exactly like the MCP bridge can, so it needs
+   * the SAME instance `widgetDataRoutes` holds — `server.ts` passes it — or a
+   * verdict written from a chat turn leaves the board serving a stale cached
+   * payload for up to the cache's TTL. Optional, defaulting to a private
+   * instance, matching `focusClassifyRoutes`'s own `cache?: WidgetCache`
+   * convention, so route-level tests that don't care about caching (most of
+   * this file) keep compiling unchanged.
+   */
+  cache?: WidgetCache;
 }) {
+  const focusToolsCache = cache ?? new WidgetCache(60_000);
   return async function (app: FastifyInstance) {
     /**
      * Built PER REQUEST from the scoped reader (tenancy §11 precondition 8),
@@ -50,7 +66,7 @@ export function advisorRoutes({
      * built per request below, same as `intel`; it is stateless, so there is
      * no state to leak across requests either way.
      */
-    const advisorFor = (req: FastifyRequest) =>
+    const advisorFor = (req: FastifyRequest, verdictModelLabel: string) =>
       new AdvisorService({
         intel: new ClickhouseIntelligenceService({ client: req.chRead ?? clickhouse }),
         boardReads: new BoardReadsService(prisma),
@@ -59,6 +75,22 @@ export function advisorRoutes({
         // `orgRole('VIEWER')` on this route (below) guarantees both are present.
         userId: req.user.id,
         membership: { organizationId: requireOrganizationId(req) },
+        // Same request-scoped reader `intel` above is built from, and the same
+        // organization `membership` states — `set_focus_verdicts` writes into
+        // this organization's `focus_verdicts`, so it needs a real tenant, not a
+        // second, independently-resolved one.
+        focusTools: {
+          prisma,
+          clickhouse: req.chRead ?? clickhouse,
+          organizationId: requireOrganizationId(req),
+        },
+        // The org's own configured provider authored this answer — see
+        // `AdvisorToolDeps.verdictModelLabel`'s comment for why this is a
+        // parameter here and a fixed literal on the MCP surface.
+        verdictModelLabel,
+        // The SAME instance this plugin was constructed with (or its own
+        // private default) — see this function's `cache` param comment.
+        cache: focusToolsCache,
       });
     const configService = new AdvisorConfigService(prisma);
     /**
@@ -157,7 +189,7 @@ export function advisorRoutes({
           // nothing (spec §5.1, LIMIT 1). Scope/provider resolution stays outside,
           // so the lock is not held during database work.
           await inferenceLock.run(async () => {
-            const run = advisorFor(req).ask({
+            const run = advisorFor(req, config.model).ask({
               boardId,
               role,
               provider,

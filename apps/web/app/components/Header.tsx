@@ -1,95 +1,66 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState, type ComponentType, type SVGProps } from "react";
+import { usePathname } from "next/navigation";
 import { UserMenu } from "./UserMenu";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
 import { DeckgaugeMark } from "./DeckgaugeMark";
-import { isResumableLocation, readLastLocationCookie } from "../utils/last-location-cookie";
+import { NAV_ITEMS } from "./nav-items";
+import { useHomeHref } from "../hooks/useHomeHref";
+import { useMobileNav } from "./MobileNavProvider";
 
-type IconProps = SVGProps<SVGSVGElement>;
-
-function HomeIcon(props: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M3 9.5 12 3l9 6.5" />
-      <path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9" />
-    </svg>
-  );
-}
-
-function SourcesIcon(props: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <ellipse cx="12" cy="5" rx="8" ry="3" />
-      <path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5" />
-      <path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" />
-    </svg>
-  );
-}
-
-function SettingsIcon(props: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
-}
-
-interface NavItem {
-  href: string;
-  label: string;
-  icon: ComponentType<IconProps>;
-  /** Whether this item is the active one for the given pathname. */
-  isActive: (pathname: string) => boolean;
-  /** Home resolves its href at runtime to the last workspace location. */
-  resume?: boolean;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  // "Home" covers the whole workspace (boards, roadmaps, org trees, timesheets),
-  // so it's lit on any resumable location and its href resolves at runtime.
-  { href: "/", label: "Home", icon: HomeIcon, resume: true, isActive: isResumableLocation },
-  {
-    href: "/sources",
-    label: "Sources",
-    icon: SourcesIcon,
-    isActive: (p) => p === "/sources" || p.startsWith("/sources/"),
-  },
-  {
-    href: "/settings/timesheet-statuses",
-    label: "Settings",
-    icon: SettingsIcon,
-    isActive: (p) => p === "/settings" || p.startsWith("/settings/"),
-  },
-];
-
+/**
+ * The nav bar. Below `md` the primary nav row is hidden and a hamburger takes
+ * its place — the same `NAV_ITEMS` are rendered inside the drawer by
+ * `ResponsiveSidebar`, so the two lists cannot drift.
+ *
+ * The icons and the nav list used to be declared inline here; they moved to
+ * `nav-items.tsx` when the drawer became a second renderer of them, and the
+ * "Home resumes the last workspace location" logic moved to `useHomeHref` for
+ * the same reason.
+ */
 export function Header() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [homeHref, setHomeHref] = useState("/");
-
-  // "Home" resumes the last workspace location. While already in one, that's the
-  // current URL (so Home is a no-op re-entry); on a chrome page (Settings/Sources)
-  // it's the last recorded location, falling back to "/" (which opens the last board).
-  useEffect(() => {
-    if (pathname && isResumableLocation(pathname)) {
-      const qs = searchParams?.toString();
-      setHomeHref(qs ? `${pathname}?${qs}` : pathname);
-    } else {
-      setHomeHref(readLastLocationCookie() ?? "/");
-    }
-  }, [pathname, searchParams]);
+  const homeHref = useHomeHref();
+  const nav = useMobileNav();
 
   // Login page renders its own nav bar — hide the shared header
   if (pathname === "/login") return null;
 
   return (
     <nav className="sticky top-0 z-30 border-b border-white/10 bg-gradient-to-r from-teal-800 via-teal-700 to-emerald-600 shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,0_2px_8px_rgba(49,46,129,0.25)]">
-      <div className="flex h-14 items-center gap-4 px-4 sm:px-6">
+      <div className="flex h-14 items-center gap-2 px-4 sm:gap-4 sm:px-6">
+        {/* Drawer trigger. Only below `md`, where the sidebar is not in the
+            flow. 44px square to clear the touch-target floor the mobile e2e
+            helper asserts. */}
+        {nav && (
+          <button
+            type="button"
+            data-testid="mobile-nav-trigger"
+            onClick={nav.toggle}
+            // A disclosure button keeps ONE accessible name and communicates its
+            // state through `aria-expanded`. Flipping the name to "Close…" made
+            // it collide with the drawer's own close button, leaving two visible
+            // controls with the same name on a phone.
+            aria-label="Navigation menu"
+            aria-expanded={nav.isOpen}
+            className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/80 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 md:hidden"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              className="h-5 w-5"
+              aria-hidden="true"
+            >
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
+
         {/* Brand lockup */}
         <Link
           href={homeHref}
@@ -108,8 +79,9 @@ export function Header() {
         {/* Divider */}
         <span className="hidden h-6 w-px bg-white/15 sm:block" aria-hidden="true" />
 
-        {/* Primary navigation */}
-        <div className="flex items-center gap-1">
+        {/* Primary navigation. Hidden below `md`; the drawer renders the same
+            items there. */}
+        <div className="hidden items-center gap-1 md:flex">
           {NAV_ITEMS.map((item) => {
             const active = item.isActive(pathname);
             const Icon = item.icon;

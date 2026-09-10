@@ -227,6 +227,38 @@ export interface FocusClassificationRunOptions {
   /** How many residue tasks this run may pay for. Unset means all of them. */
   modelBudget?: number;
   run: FocusModelRun;
+  /**
+   * Optional hook exposing `classifyTasks`' own per-task resolution — the SAME
+   * `byTaskKey` it already builds for provenance — after the run completes.
+   *
+   * NOT part of the return value below on purpose. `focus-classify.routes.ts`
+   * spreads the result straight into the HTTP response
+   * (`{ ...result, model, promptVersion }`), and a `Map` riding along there
+   * would either leak internals or silently serialize to `{}` — nobody
+   * reading that route's response shape would learn it exists. A caller that
+   * genuinely needs per-task detail — `listResidue`, which must tell a task
+   * pass 1 merely COULD NOT RULE OUT (e.g. one with no rule hit) apart from a
+   * task pass 2 went on to answer anyway (an OPEX flag or ancestor, resolved by
+   * `resolveVerdict`'s `notRoadmap` branch) — takes it here instead, where it
+   * cannot leak into a response nobody asked to reshape.
+   *
+   * `fingerprintByTaskKey` is `classifyTasks`' own map — the SAME one
+   * `saveVerdicts` keys its writes under, for the same run. This is what lets
+   * `focus-tools.service.ts`'s `captureFingerprintsAndEpics` (consumed by
+   * `listResidue` and `setVerdicts`) answer "what fingerprint would this run
+   * have filed that task's verdict under" without a second, independent
+   * computation of `taskFingerprint` that could disagree with the ledger's
+   * own.
+   *
+   * A single named-fields object rather than two positional arguments — fix
+   * round 1 on task 3-4 caught that `(a, b) => void` has no names at the call
+   * site to anchor which map is which, and a third payload would only make
+   * that worse. Both current callers destructure only the field they need.
+   */
+  onResolved?: (resolved: {
+    byTaskKey: ReadonlyMap<string, ResolvedVerdict>;
+    fingerprintByTaskKey: ReadonlyMap<string, string>;
+  }) => void;
 }
 
 export interface FocusClassificationRunResult {
@@ -290,6 +322,11 @@ export async function runFocusClassification(
     // none, so it cannot invent a provenance it did not produce.
     saveVerdicts: (rows) => saveVerdicts(deps, rows, opts.run),
     roadmapEpics: input.roadmapEpics,
+  });
+
+  opts.onResolved?.({
+    byTaskKey: classification.byTaskKey,
+    fingerprintByTaskKey: classification.fingerprintByTaskKey,
   });
 
   return {

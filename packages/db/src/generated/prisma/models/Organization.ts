@@ -201,6 +201,7 @@ export type OrganizationWhereInput = {
   syncRuns?: Prisma.SyncRunListRelationFilter
   notifications?: Prisma.NotificationListRelationFilter
   notificationPreferences?: Prisma.NotificationPreferenceListRelationFilter
+  sourceStatusBuckets?: Prisma.SourceStatusBucketListRelationFilter
 }
 
 export type OrganizationOrderByWithRelationInput = {
@@ -228,6 +229,7 @@ export type OrganizationOrderByWithRelationInput = {
   syncRuns?: Prisma.SyncRunOrderByRelationAggregateInput
   notifications?: Prisma.NotificationOrderByRelationAggregateInput
   notificationPreferences?: Prisma.NotificationPreferenceOrderByRelationAggregateInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketOrderByRelationAggregateInput
 }
 
 export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
@@ -258,6 +260,7 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   syncRuns?: Prisma.SyncRunListRelationFilter
   notifications?: Prisma.NotificationListRelationFilter
   notificationPreferences?: Prisma.NotificationPreferenceListRelationFilter
+  sourceStatusBuckets?: Prisma.SourceStatusBucketListRelationFilter
 }, "id" | "slug">
 
 export type OrganizationOrderByWithAggregationInput = {
@@ -307,6 +310,7 @@ export type OrganizationCreateInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateInput = {
@@ -334,6 +338,7 @@ export type OrganizationUncheckedCreateInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUpdateInput = {
@@ -361,6 +366,7 @@ export type OrganizationUpdateInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateInput = {
@@ -388,6 +394,7 @@ export type OrganizationUncheckedUpdateInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateManyInput = {
@@ -647,6 +654,20 @@ export type OrganizationUpdateOneRequiredWithoutTimesheetStatusRulesNestedInput 
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutTimesheetStatusRulesInput, Prisma.OrganizationUpdateWithoutTimesheetStatusRulesInput>, Prisma.OrganizationUncheckedUpdateWithoutTimesheetStatusRulesInput>
 }
 
+export type OrganizationCreateNestedOneWithoutSourceStatusBucketsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutSourceStatusBucketsInput, Prisma.OrganizationUncheckedCreateWithoutSourceStatusBucketsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutSourceStatusBucketsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutSourceStatusBucketsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutSourceStatusBucketsInput, Prisma.OrganizationUncheckedCreateWithoutSourceStatusBucketsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutSourceStatusBucketsInput
+  upsert?: Prisma.OrganizationUpsertWithoutSourceStatusBucketsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutSourceStatusBucketsInput, Prisma.OrganizationUpdateWithoutSourceStatusBucketsInput>, Prisma.OrganizationUncheckedUpdateWithoutSourceStatusBucketsInput>
+}
+
 export type OrganizationCreateNestedOneWithoutRetiredJiraProjectsInput = {
   create?: Prisma.XOR<Prisma.OrganizationCreateWithoutRetiredJiraProjectsInput, Prisma.OrganizationUncheckedCreateWithoutRetiredJiraProjectsInput>
   connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutRetiredJiraProjectsInput
@@ -741,6 +762,7 @@ export type OrganizationCreateWithoutMembershipsInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutMembershipsInput = {
@@ -767,6 +789,7 @@ export type OrganizationUncheckedCreateWithoutMembershipsInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutMembershipsInput = {
@@ -809,6 +832,7 @@ export type OrganizationUpdateWithoutMembershipsInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutMembershipsInput = {
@@ -835,6 +859,7 @@ export type OrganizationUncheckedUpdateWithoutMembershipsInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutBoardsInput = {
@@ -861,6 +886,7 @@ export type OrganizationCreateWithoutBoardsInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutBoardsInput = {
@@ -887,6 +913,7 @@ export type OrganizationUncheckedCreateWithoutBoardsInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutBoardsInput = {
@@ -929,6 +956,7 @@ export type OrganizationUpdateWithoutBoardsInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutBoardsInput = {
@@ -955,6 +983,7 @@ export type OrganizationUncheckedUpdateWithoutBoardsInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutJiraInstancesInput = {
@@ -981,6 +1010,7 @@ export type OrganizationCreateWithoutJiraInstancesInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutJiraInstancesInput = {
@@ -1007,6 +1037,7 @@ export type OrganizationUncheckedCreateWithoutJiraInstancesInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutJiraInstancesInput = {
@@ -1049,6 +1080,7 @@ export type OrganizationUpdateWithoutJiraInstancesInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutJiraInstancesInput = {
@@ -1075,6 +1107,7 @@ export type OrganizationUncheckedUpdateWithoutJiraInstancesInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutSyncRunsInput = {
@@ -1101,6 +1134,7 @@ export type OrganizationCreateWithoutSyncRunsInput = {
   focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutSyncRunsInput = {
@@ -1127,6 +1161,7 @@ export type OrganizationUncheckedCreateWithoutSyncRunsInput = {
   focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutSyncRunsInput = {
@@ -1169,6 +1204,7 @@ export type OrganizationUpdateWithoutSyncRunsInput = {
   focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutSyncRunsInput = {
@@ -1195,6 +1231,7 @@ export type OrganizationUncheckedUpdateWithoutSyncRunsInput = {
   focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutGithubInstancesInput = {
@@ -1221,6 +1258,7 @@ export type OrganizationCreateWithoutGithubInstancesInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutGithubInstancesInput = {
@@ -1247,6 +1285,7 @@ export type OrganizationUncheckedCreateWithoutGithubInstancesInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutGithubInstancesInput = {
@@ -1289,6 +1328,7 @@ export type OrganizationUpdateWithoutGithubInstancesInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutGithubInstancesInput = {
@@ -1315,6 +1355,7 @@ export type OrganizationUncheckedUpdateWithoutGithubInstancesInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutAzureDevOpsInstancesInput = {
@@ -1341,6 +1382,7 @@ export type OrganizationCreateWithoutAzureDevOpsInstancesInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutAzureDevOpsInstancesInput = {
@@ -1367,6 +1409,7 @@ export type OrganizationUncheckedCreateWithoutAzureDevOpsInstancesInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutAzureDevOpsInstancesInput = {
@@ -1409,6 +1452,7 @@ export type OrganizationUpdateWithoutAzureDevOpsInstancesInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutAzureDevOpsInstancesInput = {
@@ -1435,6 +1479,7 @@ export type OrganizationUncheckedUpdateWithoutAzureDevOpsInstancesInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutDeveloperProfilesInput = {
@@ -1461,6 +1506,7 @@ export type OrganizationCreateWithoutDeveloperProfilesInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutDeveloperProfilesInput = {
@@ -1487,6 +1533,7 @@ export type OrganizationUncheckedCreateWithoutDeveloperProfilesInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutDeveloperProfilesInput = {
@@ -1529,6 +1576,7 @@ export type OrganizationUpdateWithoutDeveloperProfilesInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutDeveloperProfilesInput = {
@@ -1555,6 +1603,7 @@ export type OrganizationUncheckedUpdateWithoutDeveloperProfilesInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutComparisonsInput = {
@@ -1581,6 +1630,7 @@ export type OrganizationCreateWithoutComparisonsInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutComparisonsInput = {
@@ -1607,6 +1657,7 @@ export type OrganizationUncheckedCreateWithoutComparisonsInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutComparisonsInput = {
@@ -1649,6 +1700,7 @@ export type OrganizationUpdateWithoutComparisonsInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutComparisonsInput = {
@@ -1675,6 +1727,7 @@ export type OrganizationUncheckedUpdateWithoutComparisonsInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutGitlabInstancesInput = {
@@ -1701,6 +1754,7 @@ export type OrganizationCreateWithoutGitlabInstancesInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutGitlabInstancesInput = {
@@ -1727,6 +1781,7 @@ export type OrganizationUncheckedCreateWithoutGitlabInstancesInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutGitlabInstancesInput = {
@@ -1769,6 +1824,7 @@ export type OrganizationUpdateWithoutGitlabInstancesInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutGitlabInstancesInput = {
@@ -1795,6 +1851,7 @@ export type OrganizationUncheckedUpdateWithoutGitlabInstancesInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutPrJiraLinksInput = {
@@ -1821,6 +1878,7 @@ export type OrganizationCreateWithoutPrJiraLinksInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutPrJiraLinksInput = {
@@ -1847,6 +1905,7 @@ export type OrganizationUncheckedCreateWithoutPrJiraLinksInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutPrJiraLinksInput = {
@@ -1889,6 +1948,7 @@ export type OrganizationUpdateWithoutPrJiraLinksInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutPrJiraLinksInput = {
@@ -1915,6 +1975,7 @@ export type OrganizationUncheckedUpdateWithoutPrJiraLinksInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutBoardFoldersInput = {
@@ -1941,6 +2002,7 @@ export type OrganizationCreateWithoutBoardFoldersInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutBoardFoldersInput = {
@@ -1967,6 +2029,7 @@ export type OrganizationUncheckedCreateWithoutBoardFoldersInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutBoardFoldersInput = {
@@ -2009,6 +2072,7 @@ export type OrganizationUpdateWithoutBoardFoldersInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutBoardFoldersInput = {
@@ -2035,6 +2099,7 @@ export type OrganizationUncheckedUpdateWithoutBoardFoldersInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutOrgTreesInput = {
@@ -2061,6 +2126,7 @@ export type OrganizationCreateWithoutOrgTreesInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutOrgTreesInput = {
@@ -2087,6 +2153,7 @@ export type OrganizationUncheckedCreateWithoutOrgTreesInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutOrgTreesInput = {
@@ -2129,6 +2196,7 @@ export type OrganizationUpdateWithoutOrgTreesInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutOrgTreesInput = {
@@ -2155,6 +2223,7 @@ export type OrganizationUncheckedUpdateWithoutOrgTreesInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutRoadmapsInput = {
@@ -2181,6 +2250,7 @@ export type OrganizationCreateWithoutRoadmapsInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutRoadmapsInput = {
@@ -2207,6 +2277,7 @@ export type OrganizationUncheckedCreateWithoutRoadmapsInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutRoadmapsInput = {
@@ -2249,6 +2320,7 @@ export type OrganizationUpdateWithoutRoadmapsInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutRoadmapsInput = {
@@ -2275,6 +2347,7 @@ export type OrganizationUncheckedUpdateWithoutRoadmapsInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutTimesheetStatusRulesInput = {
@@ -2301,6 +2374,7 @@ export type OrganizationCreateWithoutTimesheetStatusRulesInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutTimesheetStatusRulesInput = {
@@ -2327,6 +2401,7 @@ export type OrganizationUncheckedCreateWithoutTimesheetStatusRulesInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutTimesheetStatusRulesInput = {
@@ -2369,6 +2444,7 @@ export type OrganizationUpdateWithoutTimesheetStatusRulesInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutTimesheetStatusRulesInput = {
@@ -2388,6 +2464,131 @@ export type OrganizationUncheckedUpdateWithoutTimesheetStatusRulesInput = {
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
+  retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
+  prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
+  developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
+  syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
+  notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
+  notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutSourceStatusBucketsInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  memberships?: Prisma.OrgMembershipCreateNestedManyWithoutOrganizationInput
+  boards?: Prisma.BoardCreateNestedManyWithoutOrganizationInput
+  roadmaps?: Prisma.RoadmapCreateNestedManyWithoutOrganizationInput
+  orgTrees?: Prisma.OrgTreeCreateNestedManyWithoutOrganizationInput
+  comparisons?: Prisma.ComparisonCreateNestedManyWithoutOrganizationInput
+  boardFolders?: Prisma.BoardFolderCreateNestedManyWithoutOrganizationInput
+  jiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOrganizationInput
+  githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
+  azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
+  gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
+  timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
+  retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
+  prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
+  developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
+  syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
+  notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
+  notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutSourceStatusBucketsInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  memberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutOrganizationInput
+  boards?: Prisma.BoardUncheckedCreateNestedManyWithoutOrganizationInput
+  roadmaps?: Prisma.RoadmapUncheckedCreateNestedManyWithoutOrganizationInput
+  orgTrees?: Prisma.OrgTreeUncheckedCreateNestedManyWithoutOrganizationInput
+  comparisons?: Prisma.ComparisonUncheckedCreateNestedManyWithoutOrganizationInput
+  boardFolders?: Prisma.BoardFolderUncheckedCreateNestedManyWithoutOrganizationInput
+  jiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
+  timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
+  retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
+  prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
+  developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
+  syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
+  notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutSourceStatusBucketsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutSourceStatusBucketsInput, Prisma.OrganizationUncheckedCreateWithoutSourceStatusBucketsInput>
+}
+
+export type OrganizationUpsertWithoutSourceStatusBucketsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutSourceStatusBucketsInput, Prisma.OrganizationUncheckedUpdateWithoutSourceStatusBucketsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutSourceStatusBucketsInput, Prisma.OrganizationUncheckedCreateWithoutSourceStatusBucketsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutSourceStatusBucketsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutSourceStatusBucketsInput, Prisma.OrganizationUncheckedUpdateWithoutSourceStatusBucketsInput>
+}
+
+export type OrganizationUpdateWithoutSourceStatusBucketsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.OrgMembershipUpdateManyWithoutOrganizationNestedInput
+  boards?: Prisma.BoardUpdateManyWithoutOrganizationNestedInput
+  roadmaps?: Prisma.RoadmapUpdateManyWithoutOrganizationNestedInput
+  orgTrees?: Prisma.OrgTreeUpdateManyWithoutOrganizationNestedInput
+  comparisons?: Prisma.ComparisonUpdateManyWithoutOrganizationNestedInput
+  boardFolders?: Prisma.BoardFolderUpdateManyWithoutOrganizationNestedInput
+  jiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOrganizationNestedInput
+  githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
+  azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
+  gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
+  timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
+  retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
+  prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
+  developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
+  syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
+  notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
+  notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutSourceStatusBucketsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutOrganizationNestedInput
+  boards?: Prisma.BoardUncheckedUpdateManyWithoutOrganizationNestedInput
+  roadmaps?: Prisma.RoadmapUncheckedUpdateManyWithoutOrganizationNestedInput
+  orgTrees?: Prisma.OrgTreeUncheckedUpdateManyWithoutOrganizationNestedInput
+  comparisons?: Prisma.ComparisonUncheckedUpdateManyWithoutOrganizationNestedInput
+  boardFolders?: Prisma.BoardFolderUncheckedUpdateManyWithoutOrganizationNestedInput
+  jiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
+  timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2421,6 +2622,7 @@ export type OrganizationCreateWithoutRetiredJiraProjectsInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutRetiredJiraProjectsInput = {
@@ -2447,6 +2649,7 @@ export type OrganizationUncheckedCreateWithoutRetiredJiraProjectsInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutRetiredJiraProjectsInput = {
@@ -2489,6 +2692,7 @@ export type OrganizationUpdateWithoutRetiredJiraProjectsInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutRetiredJiraProjectsInput = {
@@ -2515,6 +2719,7 @@ export type OrganizationUncheckedUpdateWithoutRetiredJiraProjectsInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutAdvisorConfigInput = {
@@ -2541,6 +2746,7 @@ export type OrganizationCreateWithoutAdvisorConfigInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutAdvisorConfigInput = {
@@ -2567,6 +2773,7 @@ export type OrganizationUncheckedCreateWithoutAdvisorConfigInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutAdvisorConfigInput = {
@@ -2609,6 +2816,7 @@ export type OrganizationUpdateWithoutAdvisorConfigInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutAdvisorConfigInput = {
@@ -2635,6 +2843,7 @@ export type OrganizationUncheckedUpdateWithoutAdvisorConfigInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutNotificationsInput = {
@@ -2661,6 +2870,7 @@ export type OrganizationCreateWithoutNotificationsInput = {
   focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutNotificationsInput = {
@@ -2687,6 +2897,7 @@ export type OrganizationUncheckedCreateWithoutNotificationsInput = {
   focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutNotificationsInput = {
@@ -2729,6 +2940,7 @@ export type OrganizationUpdateWithoutNotificationsInput = {
   focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutNotificationsInput = {
@@ -2755,6 +2967,7 @@ export type OrganizationUncheckedUpdateWithoutNotificationsInput = {
   focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutNotificationPreferencesInput = {
@@ -2781,6 +2994,7 @@ export type OrganizationCreateWithoutNotificationPreferencesInput = {
   focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutNotificationPreferencesInput = {
@@ -2807,6 +3021,7 @@ export type OrganizationUncheckedCreateWithoutNotificationPreferencesInput = {
   focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutNotificationPreferencesInput = {
@@ -2849,6 +3064,7 @@ export type OrganizationUpdateWithoutNotificationPreferencesInput = {
   focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutNotificationPreferencesInput = {
@@ -2875,6 +3091,7 @@ export type OrganizationUncheckedUpdateWithoutNotificationPreferencesInput = {
   focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutFocusVerdictsInput = {
@@ -2901,6 +3118,7 @@ export type OrganizationCreateWithoutFocusVerdictsInput = {
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutFocusVerdictsInput = {
@@ -2927,6 +3145,7 @@ export type OrganizationUncheckedCreateWithoutFocusVerdictsInput = {
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutFocusVerdictsInput = {
@@ -2969,6 +3188,7 @@ export type OrganizationUpdateWithoutFocusVerdictsInput = {
   syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutFocusVerdictsInput = {
@@ -2995,6 +3215,7 @@ export type OrganizationUncheckedUpdateWithoutFocusVerdictsInput = {
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
   notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 
@@ -3021,6 +3242,7 @@ export type OrganizationCountOutputType = {
   syncRuns: number
   notifications: number
   notificationPreferences: number
+  sourceStatusBuckets: number
 }
 
 export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -3042,6 +3264,7 @@ export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Exte
   syncRuns?: boolean | OrganizationCountOutputTypeCountSyncRunsArgs
   notifications?: boolean | OrganizationCountOutputTypeCountNotificationsArgs
   notificationPreferences?: boolean | OrganizationCountOutputTypeCountNotificationPreferencesArgs
+  sourceStatusBuckets?: boolean | OrganizationCountOutputTypeCountSourceStatusBucketsArgs
 }
 
 /**
@@ -3180,6 +3403,13 @@ export type OrganizationCountOutputTypeCountNotificationPreferencesArgs<ExtArgs 
   where?: Prisma.NotificationPreferenceWhereInput
 }
 
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountSourceStatusBucketsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SourceStatusBucketWhereInput
+}
+
 
 export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -3206,6 +3436,7 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   syncRuns?: boolean | Prisma.Organization$syncRunsArgs<ExtArgs>
   notifications?: boolean | Prisma.Organization$notificationsArgs<ExtArgs>
   notificationPreferences?: boolean | Prisma.Organization$notificationPreferencesArgs<ExtArgs>
+  sourceStatusBuckets?: boolean | Prisma.Organization$sourceStatusBucketsArgs<ExtArgs>
   _count?: boolean | Prisma.OrganizationCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["organization"]>
 
@@ -3254,6 +3485,7 @@ export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.Interna
   syncRuns?: boolean | Prisma.Organization$syncRunsArgs<ExtArgs>
   notifications?: boolean | Prisma.Organization$notificationsArgs<ExtArgs>
   notificationPreferences?: boolean | Prisma.Organization$notificationPreferencesArgs<ExtArgs>
+  sourceStatusBuckets?: boolean | Prisma.Organization$sourceStatusBucketsArgs<ExtArgs>
   _count?: boolean | Prisma.OrganizationCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type OrganizationIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -3281,6 +3513,7 @@ export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     syncRuns: Prisma.$SyncRunPayload<ExtArgs>[]
     notifications: Prisma.$NotificationPayload<ExtArgs>[]
     notificationPreferences: Prisma.$NotificationPreferencePayload<ExtArgs>[]
+    sourceStatusBuckets: Prisma.$SourceStatusBucketPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -3701,6 +3934,7 @@ export interface Prisma__OrganizationClient<T, Null = never, ExtArgs extends run
   syncRuns<T extends Prisma.Organization$syncRunsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$syncRunsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SyncRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   notifications<T extends Prisma.Organization$notificationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$notificationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$NotificationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   notificationPreferences<T extends Prisma.Organization$notificationPreferencesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$notificationPreferencesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$NotificationPreferencePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  sourceStatusBuckets<T extends Prisma.Organization$sourceStatusBucketsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$sourceStatusBucketsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SourceStatusBucketPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4576,6 +4810,30 @@ export type Organization$notificationPreferencesArgs<ExtArgs extends runtime.Typ
   take?: number
   skip?: number
   distinct?: Prisma.NotificationPreferenceScalarFieldEnum | Prisma.NotificationPreferenceScalarFieldEnum[]
+}
+
+/**
+ * Organization.sourceStatusBuckets
+ */
+export type Organization$sourceStatusBucketsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SourceStatusBucket
+   */
+  select?: Prisma.SourceStatusBucketSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SourceStatusBucket
+   */
+  omit?: Prisma.SourceStatusBucketOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SourceStatusBucketInclude<ExtArgs> | null
+  where?: Prisma.SourceStatusBucketWhereInput
+  orderBy?: Prisma.SourceStatusBucketOrderByWithRelationInput | Prisma.SourceStatusBucketOrderByWithRelationInput[]
+  cursor?: Prisma.SourceStatusBucketWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SourceStatusBucketScalarFieldEnum | Prisma.SourceStatusBucketScalarFieldEnum[]
 }
 
 /**

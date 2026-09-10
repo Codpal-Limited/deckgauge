@@ -10,6 +10,7 @@ import {
 import { grantAccess } from '../../../actions/access';
 import { ShareDialog } from '../../../components/sharing/ShareDialog';
 import { AccessPeopleStack } from '../../../components/sharing/AccessPeopleStack';
+import { TableScroller } from '../../../components/TableScroller';
 
 const MESSAGES: Record<string, string> = {
   NETWORK_ERROR: 'Could not reach the server. Check your connection and try again.',
@@ -83,130 +84,135 @@ export function OrgBoardsScreen({
         </p>
       ) : null}
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 text-left text-slate-500">
-            <th className="py-2">Board</th>
-            <th className="py-2">Items</th>
-            <th className="py-2">People</th>
-            <th className="py-2">Created</th>
-            <th className="py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {boards.map((board) => (
-            <tr key={board.id} className="border-b border-slate-100">
-              <td className="py-2">
-                {editing === board.id ? (
-                  <span className="flex items-center gap-2">
-                    <input
-                      aria-label="Board name"
-                      className="rounded border border-slate-300 px-2 py-1"
-                      value={draftName}
-                      onChange={(e) => setDraftName(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="text-sm font-medium text-teal-700"
-                      onClick={async () => {
-                        const name = draftName.trim();
-                        if (!name) return;
-                        if (await run(() => onRename(board.id, name))) setEditing(null);
-                      }}
-                    >
-                      Save
-                    </button>
-                    <button
-                      type="button"
-                      className="text-sm text-slate-500"
-                      onClick={() => setEditing(null)}
-                    >
-                      Cancel
-                    </button>
-                  </span>
-                ) : (
-                  <span className="font-medium">{board.name}</span>
-                )}
-              </td>
-              <td className="py-2">{board.projectCount}</td>
-              <td className="py-2">
-                <AccessPeopleStack
-                  entries={board.access}
-                  nounLabel="board"
-                  onOpen={() => setSharing(board)}
-                />
-                {board.access.length === 0 ? (
-                  <button
-                    type="button"
-                    className="text-sm text-slate-500 underline"
-                    onClick={() => setSharing(board)}
-                  >
-                    Nobody yet
-                  </button>
-                ) : null}
-              </td>
-              <td className="py-2">{new Date(board.createdAt).toLocaleDateString()}</td>
-              <td className="space-x-3 py-2">
-                <button
-                  type="button"
-                  aria-label={`Rename ${board.name}`}
-                  className="text-sm text-slate-700"
-                  onClick={() => {
-                    setEditing(board.id);
-                    setDraftName(board.name);
-                  }}
-                >
-                  Rename
-                </button>
-                {!myGrant(board) && currentUserId ? (
-                  <button
-                    type="button"
-                    aria-label={`Make me owner of ${board.name}`}
-                    className="text-sm text-slate-700"
-                    onClick={() =>
-                      run(async () => {
-                        const result = await grantAccess('board', board.id, currentUserId, 'OWNER');
-                        return result.ok ? { ok: true } : { ok: false, error: result.error };
-                      })
-                    }
-                  >
-                    Make me owner
-                  </button>
-                ) : null}
-                {confirming === board.id ? (
-                  <>
-                    <button
-                      type="button"
-                      className="text-sm font-medium text-red-600"
-                      onClick={async () => {
-                        if (await run(() => onDelete(board.id))) setConfirming(null);
-                      }}
-                    >
-                      Yes, delete
-                    </button>
-                    <button
-                      type="button"
-                      className="text-sm text-slate-500"
-                      onClick={() => setConfirming(null)}
-                    >
-                      Keep it
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    aria-label={`Delete ${board.name}`}
-                    className="text-sm text-red-600"
-                    onClick={() => setConfirming(board.id)}
-                  >
-                    Delete
-                  </button>
-                )}
-              </td>
+      {/* Five columns, the last holding up to three buttons — far past 390px.
+          Wrapped inside the section, so the header and the error alert above
+          it and the empty-state note below it do not scroll with it. */}
+      <TableScroller>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 text-left text-slate-500">
+              <th className="py-2">Board</th>
+              <th className="py-2">Items</th>
+              <th className="py-2">People</th>
+              <th className="py-2">Created</th>
+              <th className="py-2">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {boards.map((board) => (
+              <tr key={board.id} className="border-b border-slate-100">
+                <td className="py-2">
+                  {editing === board.id ? (
+                    <span className="flex items-center gap-2">
+                      <input
+                        aria-label="Board name"
+                        className="rounded border border-slate-300 px-2 py-1"
+                        value={draftName}
+                        onChange={(e) => setDraftName(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-teal-700"
+                        onClick={async () => {
+                          const name = draftName.trim();
+                          if (!name) return;
+                          if (await run(() => onRename(board.id, name))) setEditing(null);
+                        }}
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        className="text-sm text-slate-500"
+                        onClick={() => setEditing(null)}
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="font-medium">{board.name}</span>
+                  )}
+                </td>
+                <td className="py-2">{board.projectCount}</td>
+                <td className="py-2">
+                  <AccessPeopleStack
+                    entries={board.access}
+                    nounLabel="board"
+                    onOpen={() => setSharing(board)}
+                  />
+                  {board.access.length === 0 ? (
+                    <button
+                      type="button"
+                      className="text-sm text-slate-500 underline"
+                      onClick={() => setSharing(board)}
+                    >
+                      Nobody yet
+                    </button>
+                  ) : null}
+                </td>
+                <td className="py-2">{new Date(board.createdAt).toLocaleDateString()}</td>
+                <td className="space-x-3 py-2">
+                  <button
+                    type="button"
+                    aria-label={`Rename ${board.name}`}
+                    className="text-sm text-slate-700"
+                    onClick={() => {
+                      setEditing(board.id);
+                      setDraftName(board.name);
+                    }}
+                  >
+                    Rename
+                  </button>
+                  {!myGrant(board) && currentUserId ? (
+                    <button
+                      type="button"
+                      aria-label={`Make me owner of ${board.name}`}
+                      className="text-sm text-slate-700"
+                      onClick={() =>
+                        run(async () => {
+                          const result = await grantAccess('board', board.id, currentUserId, 'OWNER');
+                          return result.ok ? { ok: true } : { ok: false, error: result.error };
+                        })
+                      }
+                    >
+                      Make me owner
+                    </button>
+                  ) : null}
+                  {confirming === board.id ? (
+                    <>
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-red-600"
+                        onClick={async () => {
+                          if (await run(() => onDelete(board.id))) setConfirming(null);
+                        }}
+                      >
+                        Yes, delete
+                      </button>
+                      <button
+                        type="button"
+                        className="text-sm text-slate-500"
+                        onClick={() => setConfirming(null)}
+                      >
+                        Keep it
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label={`Delete ${board.name}`}
+                      className="text-sm text-red-600"
+                      onClick={() => setConfirming(board.id)}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableScroller>
 
       {boards.length === 0 ? (
         <p className="text-sm text-slate-600">This organization has no boards yet.</p>

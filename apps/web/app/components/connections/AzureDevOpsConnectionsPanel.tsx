@@ -7,6 +7,7 @@ import {
   saveAdoProductionConfig,
   type AdoProjectSyncRow,
 } from '../../actions/connections';
+import { TableScroller } from '../TableScroller';
 
 interface Props {
   initialSyncs: AdoProjectSyncRow[];
@@ -243,171 +244,173 @@ export function AzureDevOpsConnectionsPanel({
       {syncs.length === 0 ? (
         <p className="mt-3 text-sm text-slate-500">No Azure DevOps project syncs yet.</p>
       ) : (
-        <table className="mt-4 w-full text-sm">
-          <thead className="text-left text-xs uppercase text-slate-500">
-            <tr>
-              <th className="pb-2">Instance</th>
-              <th className="pb-2">Project</th>
-              <th className="pb-2">Code sync</th>
-              <th className="pb-2">Production deploys</th>
-              <th className="pb-2">Used by</th>
-              <th className="pb-2">Last synced</th>
-              <th className="pb-2 text-right"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {syncs.map((s) => {
-              const isEditing = editingId === s.id && editDraft !== null;
-              return (
-                <tr key={s.id} className="border-t border-slate-100 align-top">
-                  <td className="py-2 font-mono text-xs text-slate-600">
-                    {s.azureDevOpsInstanceId.slice(0, 8)}
-                  </td>
-                  <td className="py-2 font-mono">{s.adoProject}</td>
-                  <td className="py-2">
-                    {isEditing && editDraft ? (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <label className="flex items-center gap-1 text-xs text-slate-700">
+        <TableScroller className="mt-4">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase text-slate-500">
+              <tr>
+                <th className="pb-2">Instance</th>
+                <th className="pb-2">Project</th>
+                <th className="pb-2">Code sync</th>
+                <th className="pb-2">Production deploys</th>
+                <th className="pb-2">Used by</th>
+                <th className="pb-2">Last synced</th>
+                <th className="pb-2 text-right"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {syncs.map((s) => {
+                const isEditing = editingId === s.id && editDraft !== null;
+                return (
+                  <tr key={s.id} className="border-t border-slate-100 align-top">
+                    <td className="py-2 font-mono text-xs text-slate-600">
+                      {s.azureDevOpsInstanceId.slice(0, 8)}
+                    </td>
+                    <td className="py-2 font-mono">{s.adoProject}</td>
+                    <td className="py-2">
+                      {isEditing && editDraft ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="flex items-center gap-1 text-xs text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={editDraft.syncPrs}
+                              onChange={(e) =>
+                                setEditDraft({ ...editDraft, syncPrs: e.target.checked })
+                              }
+                            />
+                            PRs
+                          </label>
+                          <label className="flex items-center gap-1 text-xs text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={editDraft.syncCommits}
+                              onChange={(e) =>
+                                setEditDraft({ ...editDraft, syncCommits: e.target.checked })
+                              }
+                            />
+                            Commits
+                          </label>
                           <input
-                            type="checkbox"
-                            checked={editDraft.syncPrs}
+                            value={editDraft.syncReposText}
                             onChange={(e) =>
-                              setEditDraft({ ...editDraft, syncPrs: e.target.checked })
+                              setEditDraft({ ...editDraft, syncReposText: e.target.value })
                             }
+                            placeholder="repo1, repo2"
+                            disabled={editDraft.syncAllRepos}
+                            className="rounded border border-slate-300 px-2 py-1 text-xs disabled:bg-slate-100 disabled:text-slate-400"
                           />
-                          PRs
-                        </label>
-                        <label className="flex items-center gap-1 text-xs text-slate-700">
-                          <input
-                            type="checkbox"
-                            checked={editDraft.syncCommits}
-                            onChange={(e) =>
-                              setEditDraft({ ...editDraft, syncCommits: e.target.checked })
-                            }
-                          />
-                          Commits
-                        </label>
-                        <input
-                          value={editDraft.syncReposText}
-                          onChange={(e) =>
-                            setEditDraft({ ...editDraft, syncReposText: e.target.value })
-                          }
-                          placeholder="repo1, repo2"
-                          disabled={editDraft.syncAllRepos}
-                          className="rounded border border-slate-300 px-2 py-1 text-xs disabled:bg-slate-100 disabled:text-slate-400"
-                        />
-                        <label className="flex items-center gap-1 text-xs text-slate-700">
-                          <input
-                            type="checkbox"
-                            checked={editDraft.syncAllRepos}
-                            onChange={(e) =>
-                              setEditDraft({ ...editDraft, syncAllRepos: e.target.checked })
-                            }
-                          />
-                          All repositories
-                        </label>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-1 text-xs text-slate-600">
-                        <span className={s.syncPrs ? 'text-emerald-700' : 'text-slate-400'}>
-                          PRs {s.syncPrs ? 'on' : 'off'}
-                        </span>
-                        <span className="text-slate-300">·</span>
-                        <span className={s.syncCommits ? 'text-emerald-700' : 'text-slate-400'}>
-                          Commits {s.syncCommits ? 'on' : 'off'}
-                        </span>
-                        {s.syncAllRepos ? (
-                          <span className="ml-1 text-slate-500">(All repos)</span>
-                        ) : (
-                          s.syncRepos.length > 0 && (
-                            <span className="ml-1 text-slate-500">({s.syncRepos.join(', ')})</span>
-                          )
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-2">
-                    {isEditing && editDraft && canManageConnections ? (
-                      <div className="flex flex-col gap-1">
-                        <input
-                          value={editDraft.prodDefinitionsText}
-                          onChange={(e) =>
-                            setEditDraft({ ...editDraft, prodDefinitionsText: e.target.value })
-                          }
-                          placeholder="Production pipelines"
-                          className="rounded border border-slate-300 px-2 py-1 text-xs"
-                        />
-                        <input
-                          value={editDraft.prodStagesText}
-                          onChange={(e) =>
-                            setEditDraft({ ...editDraft, prodStagesText: e.target.value })
-                          }
-                          placeholder="Production stages"
-                          className="rounded border border-slate-300 px-2 py-1 text-xs"
-                        />
-                        <span className="text-[11px] text-slate-500">
-                          Comma-separated. Leave both empty to infer production from stage names.
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-1">
-                        <ProductionDeploysSummary sync={s} />
-                        {isEditing ? (
-                          <span className="text-[11px] text-slate-500">
-                            Only an organization administrator can change production deploys.
+                          <label className="flex items-center gap-1 text-xs text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={editDraft.syncAllRepos}
+                              onChange={(e) =>
+                                setEditDraft({ ...editDraft, syncAllRepos: e.target.checked })
+                              }
+                            />
+                            All repositories
+                          </label>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-1 text-xs text-slate-600">
+                          <span className={s.syncPrs ? 'text-emerald-700' : 'text-slate-400'}>
+                            PRs {s.syncPrs ? 'on' : 'off'}
                           </span>
-                        ) : null}
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-2">
-                    {s.boardCount} board{s.boardCount === 1 ? '' : 's'}
-                  </td>
-                  <td className="py-2 text-slate-500">
-                    {s.lastSyncedAt ? new Date(s.lastSyncedAt).toLocaleString() : '—'}
-                  </td>
-                  <td className="py-2 text-right">
-                    {isEditing ? (
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => saveEdit(s.id)}
-                          disabled={isPending}
-                          className="text-indigo-600 hover:underline disabled:opacity-50"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          disabled={isPending}
-                          className="text-slate-500 hover:underline disabled:opacity-50"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-end gap-3">
-                        <button
-                          onClick={() => startEdit(s)}
-                          disabled={isPending || editingId !== null}
-                          className="text-indigo-600 hover:underline disabled:opacity-50"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => remove(s.id)}
-                          disabled={isPending || editingId !== null}
-                          className="text-rose-600 hover:underline disabled:opacity-50"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                          <span className="text-slate-300">·</span>
+                          <span className={s.syncCommits ? 'text-emerald-700' : 'text-slate-400'}>
+                            Commits {s.syncCommits ? 'on' : 'off'}
+                          </span>
+                          {s.syncAllRepos ? (
+                            <span className="ml-1 text-slate-500">(All repos)</span>
+                          ) : (
+                            s.syncRepos.length > 0 && (
+                              <span className="ml-1 text-slate-500">({s.syncRepos.join(', ')})</span>
+                            )
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-2">
+                      {isEditing && editDraft && canManageConnections ? (
+                        <div className="flex flex-col gap-1">
+                          <input
+                            value={editDraft.prodDefinitionsText}
+                            onChange={(e) =>
+                              setEditDraft({ ...editDraft, prodDefinitionsText: e.target.value })
+                            }
+                            placeholder="Production pipelines"
+                            className="rounded border border-slate-300 px-2 py-1 text-xs"
+                          />
+                          <input
+                            value={editDraft.prodStagesText}
+                            onChange={(e) =>
+                              setEditDraft({ ...editDraft, prodStagesText: e.target.value })
+                            }
+                            placeholder="Production stages"
+                            className="rounded border border-slate-300 px-2 py-1 text-xs"
+                          />
+                          <span className="text-[11px] text-slate-500">
+                            Comma-separated. Leave both empty to infer production from stage names.
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          <ProductionDeploysSummary sync={s} />
+                          {isEditing ? (
+                            <span className="text-[11px] text-slate-500">
+                              Only an organization administrator can change production deploys.
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-2">
+                      {s.boardCount} board{s.boardCount === 1 ? '' : 's'}
+                    </td>
+                    <td className="py-2 text-slate-500">
+                      {s.lastSyncedAt ? new Date(s.lastSyncedAt).toLocaleString() : '—'}
+                    </td>
+                    <td className="py-2 text-right">
+                      {isEditing ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => saveEdit(s.id)}
+                            disabled={isPending}
+                            className="text-indigo-600 hover:underline disabled:opacity-50"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            disabled={isPending}
+                            className="text-slate-500 hover:underline disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => startEdit(s)}
+                            disabled={isPending || editingId !== null}
+                            className="text-indigo-600 hover:underline disabled:opacity-50"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => remove(s.id)}
+                            disabled={isPending || editingId !== null}
+                            className="text-rose-600 hover:underline disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableScroller>
       )}
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <input

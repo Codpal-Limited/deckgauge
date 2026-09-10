@@ -28,6 +28,7 @@ export { JiraKeyBadge } from "./JiraKeyBadge";
 export { GitHubIssueBadge } from "./GitHubIssueBadge";
 export { AdoWorkItemBadge } from "./AdoWorkItemBadge";
 export { SlideOverPanel } from "./SlideOverPanel";
+export { useOverlayDismiss, useBodyScrollLock } from "./useOverlayDismiss";
 export { KeyboardNavProvider, useKeyboardNavContext } from "./KeyboardNavProvider";
 export { navReducer, initialNavState, type NavState, type NavAction, type NavMode } from "./hooks/useKeyboardNav";
 export { getRowClasses, getCellClasses } from "./hooks/useFocusIndicator";

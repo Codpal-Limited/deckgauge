@@ -505,6 +505,13 @@ export type {
 } from './widget-types.js';
 
 export {
+  ENGINEERING_INTELLIGENCE_PRESET_V1,
+  TEAM_FOCUS_PRESET_V1,
+  ALL_PRESETS,
+} from './widgets/presets.js';
+export type { Preset, PresetWidget } from './widgets/presets.js';
+
+export {
   JiraProjectSyncSchema,
   JiraProjectSyncListSchema,
   JiraProjectSyncCreateSchema,
@@ -1143,3 +1150,7 @@ export {
 // (`normalise-title.js` IS on the barrel and is safe: it is pure, which is
 // exactly why the fingerprint was split out of it.)
 export * from "./focus/index.js";
+
+// The five status buckets, shared by the timesheet's Time rules panel and the
+// Focus stage map. Pure — no node builtins — so apps/web can import it.
+export * from "./status-buckets/index.js";

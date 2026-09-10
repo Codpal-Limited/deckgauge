@@ -1,5 +1,6 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { subscribeBoardMutated } from '../../../../../components/advisor/board-mutation-signal';
 import { useWidgetConfigWithBoardPeriod } from '../../useWidgetConfigWithBoardPeriod';
 import { useWidgetData } from '../useWidgetData';
 import { WidgetErrorState } from '../WidgetErrorState';
@@ -239,6 +240,19 @@ export function FocusLedgerWidget({ boardId, config, canEdit }: Props & { canEdi
   const [person, setPerson] = useState<string | null>(null);
   const [cls, setCls] = useState<string | null>(null);
   const [stage, setStage] = useState<string | null>(null);
+
+  // The Advisor (an AI classify request via the local bridge, writing through
+  // `set_focus_verdicts`) can rewrite this board's classes from outside this
+  // widget's own click handlers. Without this, only a manual reload would show
+  // them. `propose_board_changes` never applies itself — it only persists a
+  // proposal a human applies later — so it is not a source of this signal.
+  useEffect(
+    () =>
+      subscribeBoardMutated((mutatedBoardId) => {
+        if (mutatedBoardId === boardId) refetch();
+      }),
+    [boardId, refetch],
+  );
 
   const tasks = useMemo(() => data?.tasks ?? [], [data]);
   const people = useMemo(

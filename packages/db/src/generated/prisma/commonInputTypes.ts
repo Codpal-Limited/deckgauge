@@ -613,6 +613,40 @@ export type EnumTimesheetRuleScopeWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedEnumTimesheetRuleScopeFilter<$PrismaModel>
 }
 
+export type EnumStatusBucketProviderFilter<$PrismaModel = never> = {
+  equals?: $Enums.StatusBucketProvider | Prisma.EnumStatusBucketProviderFieldRefInput<$PrismaModel>
+  in?: $Enums.StatusBucketProvider[] | Prisma.ListEnumStatusBucketProviderFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StatusBucketProvider[] | Prisma.ListEnumStatusBucketProviderFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStatusBucketProviderFilter<$PrismaModel> | $Enums.StatusBucketProvider
+}
+
+export type EnumStatusBucketFilter<$PrismaModel = never> = {
+  equals?: $Enums.StatusBucket | Prisma.EnumStatusBucketFieldRefInput<$PrismaModel>
+  in?: $Enums.StatusBucket[] | Prisma.ListEnumStatusBucketFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StatusBucket[] | Prisma.ListEnumStatusBucketFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStatusBucketFilter<$PrismaModel> | $Enums.StatusBucket
+}
+
+export type EnumStatusBucketProviderWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.StatusBucketProvider | Prisma.EnumStatusBucketProviderFieldRefInput<$PrismaModel>
+  in?: $Enums.StatusBucketProvider[] | Prisma.ListEnumStatusBucketProviderFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StatusBucketProvider[] | Prisma.ListEnumStatusBucketProviderFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStatusBucketProviderWithAggregatesFilter<$PrismaModel> | $Enums.StatusBucketProvider
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumStatusBucketProviderFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumStatusBucketProviderFilter<$PrismaModel>
+}
+
+export type EnumStatusBucketWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.StatusBucket | Prisma.EnumStatusBucketFieldRefInput<$PrismaModel>
+  in?: $Enums.StatusBucket[] | Prisma.ListEnumStatusBucketFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StatusBucket[] | Prisma.ListEnumStatusBucketFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStatusBucketWithAggregatesFilter<$PrismaModel> | $Enums.StatusBucket
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumStatusBucketFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumStatusBucketFilter<$PrismaModel>
+}
+
 export type EnumAdvisorChangeSetStatusFilter<$PrismaModel = never> = {
   equals?: $Enums.AdvisorChangeSetStatus | Prisma.EnumAdvisorChangeSetStatusFieldRefInput<$PrismaModel>
   in?: $Enums.AdvisorChangeSetStatus[] | Prisma.ListEnumAdvisorChangeSetStatusFieldRefInput<$PrismaModel>
@@ -1215,6 +1249,40 @@ export type NestedEnumTimesheetRuleScopeWithAggregatesFilter<$PrismaModel = neve
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumTimesheetRuleScopeFilter<$PrismaModel>
   _max?: Prisma.NestedEnumTimesheetRuleScopeFilter<$PrismaModel>
+}
+
+export type NestedEnumStatusBucketProviderFilter<$PrismaModel = never> = {
+  equals?: $Enums.StatusBucketProvider | Prisma.EnumStatusBucketProviderFieldRefInput<$PrismaModel>
+  in?: $Enums.StatusBucketProvider[] | Prisma.ListEnumStatusBucketProviderFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StatusBucketProvider[] | Prisma.ListEnumStatusBucketProviderFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStatusBucketProviderFilter<$PrismaModel> | $Enums.StatusBucketProvider
+}
+
+export type NestedEnumStatusBucketFilter<$PrismaModel = never> = {
+  equals?: $Enums.StatusBucket | Prisma.EnumStatusBucketFieldRefInput<$PrismaModel>
+  in?: $Enums.StatusBucket[] | Prisma.ListEnumStatusBucketFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StatusBucket[] | Prisma.ListEnumStatusBucketFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStatusBucketFilter<$PrismaModel> | $Enums.StatusBucket
+}
+
+export type NestedEnumStatusBucketProviderWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.StatusBucketProvider | Prisma.EnumStatusBucketProviderFieldRefInput<$PrismaModel>
+  in?: $Enums.StatusBucketProvider[] | Prisma.ListEnumStatusBucketProviderFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StatusBucketProvider[] | Prisma.ListEnumStatusBucketProviderFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStatusBucketProviderWithAggregatesFilter<$PrismaModel> | $Enums.StatusBucketProvider
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumStatusBucketProviderFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumStatusBucketProviderFilter<$PrismaModel>
+}
+
+export type NestedEnumStatusBucketWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.StatusBucket | Prisma.EnumStatusBucketFieldRefInput<$PrismaModel>
+  in?: $Enums.StatusBucket[] | Prisma.ListEnumStatusBucketFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StatusBucket[] | Prisma.ListEnumStatusBucketFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStatusBucketWithAggregatesFilter<$PrismaModel> | $Enums.StatusBucket
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumStatusBucketFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumStatusBucketFilter<$PrismaModel>
 }
 
 export type NestedEnumAdvisorChangeSetStatusFilter<$PrismaModel = never> = {

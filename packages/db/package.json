@@ -13,6 +13,7 @@
     "migrate:dev": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} prisma migrate dev",
     "migrate:clickhouse": "tsx src/clickhouse-migrate.ts",
     "seed:demo": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} tsx src/demo/seed-demo.ts",
+    "test-account": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} tsx src/demo/test-account.ts",
     "grant-owner": "DATABASE_URL=${DATABASE_URL:-postgresql://cockpit:cockpit@localhost:5433/cockpit} tsx scripts/grant-owner-access.ts",
     "grant:org-access": "tsx src/scripts/grant-org-access.ts",
     "bootstrap:admin": "tsx src/scripts/bootstrap-admin.ts",
@@ -26,6 +27,7 @@
   },
   "dependencies": {
     "@clickhouse/client": "^1.23.1",
+    "@deckgauge/shared": "workspace:*",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "pg": "^8.13.0"

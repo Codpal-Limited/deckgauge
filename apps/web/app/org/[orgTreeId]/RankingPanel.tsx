@@ -6,6 +6,7 @@ import {
   RANKING_METRIC_LABELS,
   formatWeight,
 } from './employee-presentation';
+import { TableScroller } from '../../components/TableScroller';
 
 // The four metrics in descending weight order — matches the leaderboard weighting
 // so the breakdown reads top-down by importance.
@@ -59,41 +60,47 @@ export function RankingPanel({ employee }: { employee: OrgEmployeeDto }) {
 
       {/* Breakdown table */}
       <div className="overflow-hidden rounded-lg border border-slate-200">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400">
-              <th className="px-3 py-2 font-medium">Metric</th>
-              <th className="px-3 py-2 text-right font-medium">Count</th>
-              <th className="px-3 py-2 text-right font-medium">Subscore</th>
-              <th className="px-3 py-2 text-right font-medium">Weight</th>
-              <th className="px-3 py-2 text-right font-medium">Points</th>
-            </tr>
-          </thead>
-          <tbody>
-            {METRIC_ORDER.map((key) => {
-              const m = ranking.metrics[key];
-              return (
-                <tr key={key} className="border-b border-slate-100 last:border-0">
-                  <td className="px-3 py-2 text-slate-700">{RANKING_METRIC_LABELS[key]}</td>
-                  <td className="px-3 py-2 text-right font-medium text-slate-800">{m.raw}</td>
-                  <td className="px-3 py-2 text-right text-slate-500">{m.normalized}</td>
-                  <td className="px-3 py-2 text-right text-slate-500">{formatWeight(m.weight)}</td>
-                  <td className="px-3 py-2 text-right font-medium text-slate-800">
-                    {m.weightedContribution}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-slate-200 bg-slate-50">
-              <td className="px-3 py-2 font-semibold text-slate-700" colSpan={4}>
-                Composite score
-              </td>
-              <td className="px-3 py-2 text-right font-semibold text-slate-900">{ranking.score}</td>
-            </tr>
-          </tfoot>
-        </table>
+        {/* Inside the card, not around it: the card owns the border and the
+            `overflow-hidden` that rounds it. That `overflow-hidden` is a CLIP,
+            not a scroll container — five numeric columns in a 390px drawer were
+            being cut off with no way to reach them. */}
+        <TableScroller>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400">
+                <th className="px-3 py-2 font-medium">Metric</th>
+                <th className="px-3 py-2 text-right font-medium">Count</th>
+                <th className="px-3 py-2 text-right font-medium">Subscore</th>
+                <th className="px-3 py-2 text-right font-medium">Weight</th>
+                <th className="px-3 py-2 text-right font-medium">Points</th>
+              </tr>
+            </thead>
+            <tbody>
+              {METRIC_ORDER.map((key) => {
+                const m = ranking.metrics[key];
+                return (
+                  <tr key={key} className="border-b border-slate-100 last:border-0">
+                    <td className="px-3 py-2 text-slate-700">{RANKING_METRIC_LABELS[key]}</td>
+                    <td className="px-3 py-2 text-right font-medium text-slate-800">{m.raw}</td>
+                    <td className="px-3 py-2 text-right text-slate-500">{m.normalized}</td>
+                    <td className="px-3 py-2 text-right text-slate-500">{formatWeight(m.weight)}</td>
+                    <td className="px-3 py-2 text-right font-medium text-slate-800">
+                      {m.weightedContribution}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-slate-200 bg-slate-50">
+                <td className="px-3 py-2 font-semibold text-slate-700" colSpan={4}>
+                  Composite score
+                </td>
+                <td className="px-3 py-2 text-right font-semibold text-slate-900">{ranking.score}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </TableScroller>
       </div>
 
       <p className="text-xs text-slate-400">

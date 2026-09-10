@@ -133,10 +133,12 @@ services:
       KC_DB_USERNAME: keycloak
       KC_HOSTNAME: http://localhost:8080
       KC_HOSTNAME_STRICT: "false"
+      KEYCLOAK_CLIENT_SECRET: deckgauge-secret
       KEYCLOAK_PUBLIC_ORIGIN: ""
       MICROSOFT_CLIENT_ID: ""
       MICROSOFT_CLIENT_SECRET: ""
       MICROSOFT_TENANT_ID: ""
+      POST_LOGOUT_REDIRECT_URL: ""
       SMTP_AUTH: ""
       SMTP_FROM: no-reply@deckgauge.com
       SMTP_FROM_DISPLAY_NAME: Deckgauge
@@ -322,6 +324,7 @@ services:
       NEXTAUTH_URL: http://localhost:3000
       NODE_OPTIONS: --max-old-space-size=1280
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      POST_LOGOUT_REDIRECT_URL: ""
     networks:
       default: null
     ports:

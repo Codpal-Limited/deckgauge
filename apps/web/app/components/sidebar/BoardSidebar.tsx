@@ -12,6 +12,7 @@ import type {
 } from '@deckgauge/shared';
 import { setLastBoardCookie } from '../../utils/last-board-cookie';
 import { useSidebarUiState, type SidebarType } from '../../hooks/useSidebarUiState';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { SidebarSearch } from './SidebarSearch';
 import { SidebarRail } from './SidebarRail';
 import { SidebarPanelHeader } from './SidebarPanelHeader';
@@ -192,6 +193,11 @@ export function BoardSidebar({
   const searchParams = useSearchParams();
   const { collapsed, toggleCollapsed, activeType, setActiveType, isSectionOpen, toggleSection } =
     useSidebarUiState();
+  // Inside the mobile drawer the panel is ALWAYS shown. `collapsed` is persisted
+  // desktop preference, so a user who collapsed the sidebar on their laptop
+  // would otherwise open the drawer to a bare 56px rail in an 88vw panel.
+  const isMobile = useIsMobile();
+  const showPanel = isMobile || !collapsed;
   const [query, setQuery] = useState('');
   const [createTarget, setCreateTarget] = useState<CreateTarget | null>(null);
   const [creating, setCreating] = useState(false);
@@ -474,15 +480,18 @@ export function BoardSidebar({
   ];
 
   return (
-    <aside className="sticky top-14 flex h-[calc(100vh-3.5rem)] shrink-0 border-r border-slate-200 bg-slate-50">
+    // Desktop: a sticky column beside `<main>`, offset by the 3.5rem header.
+    // Below `md` it is inside a fixed, full-height drawer, so the sticky
+    // offset and the viewport-minus-header height are both wrong there.
+    <aside className="sticky top-14 flex h-[calc(100vh-3.5rem)] shrink-0 border-r border-slate-200 bg-slate-50 max-md:static max-md:h-full max-md:w-full max-md:border-r-0">
       <SidebarRail activeType={activeType} onSelect={setActiveType} />
 
-      {!collapsed && (
-        <div className="flex w-60 flex-col">
+      {showPanel && (
+        <div className="flex w-60 flex-col max-md:w-auto max-md:min-w-0 max-md:flex-1">
           <SidebarPanelHeader
             title={TITLES[activeType]}
             count={counts[activeType]}
-            onCollapse={toggleCollapsed}
+            onCollapse={isMobile ? undefined : toggleCollapsed}
           />
 
           <SidebarSearch value={query} onChange={setQuery} placeholder={PLACEHOLDERS[activeType]} />

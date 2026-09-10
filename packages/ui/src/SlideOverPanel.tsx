@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { useOverlayDismiss } from "./useOverlayDismiss";
 
 interface SlideOverPanelProps {
   isOpen: boolean;
@@ -17,19 +18,10 @@ export function SlideOverPanel({
 }: SlideOverPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    if (isOpen) {
-      document.addEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "hidden";
-    }
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [isOpen, onClose]);
+  // Escape-to-close and the body scroll lock live in `useOverlayDismiss`, which
+  // the mobile nav drawer shares. The lock is reference counted there, so this
+  // panel no longer unlocks the page when it closes over a still-open drawer.
+  useOverlayDismiss(isOpen, onClose);
 
   if (!isOpen) return null;
 

@@ -115,6 +115,7 @@ export const ModelName = {
   UserRoadmapPref: 'UserRoadmapPref',
   TimesheetStatusRule: 'TimesheetStatusRule',
   OrgTreeTimesheetConfig: 'OrgTreeTimesheetConfig',
+  SourceStatusBucket: 'SourceStatusBucket',
   RetiredJiraProject: 'RetiredJiraProject',
   AdvisorConfig: 'AdvisorConfig',
   AdvisorSession: 'AdvisorSession',
@@ -1136,6 +1137,20 @@ export const OrgTreeTimesheetConfigScalarFieldEnum = {
 } as const
 
 export type OrgTreeTimesheetConfigScalarFieldEnum = (typeof OrgTreeTimesheetConfigScalarFieldEnum)[keyof typeof OrgTreeTimesheetConfigScalarFieldEnum]
+
+
+export const SourceStatusBucketScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  provider: 'provider',
+  sourceId: 'sourceId',
+  status: 'status',
+  bucket: 'bucket',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SourceStatusBucketScalarFieldEnum = (typeof SourceStatusBucketScalarFieldEnum)[keyof typeof SourceStatusBucketScalarFieldEnum]
 
 
 export const RetiredJiraProjectScalarFieldEnum = {

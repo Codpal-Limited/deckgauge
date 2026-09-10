@@ -1,0 +1,104 @@
+<clickhouse>
+  <!--
+    Stop the test ClickHouse profiling itself into a memory wall.
+
+    THE FAILURE. `packages/db`'s `src/demo/*.int.test.ts` were refused by the
+    server, and the refusal moved with the cap rather than with the data:
+
+      (total) memory limit exceeded: would use 2.61 GiB, current RSS: 2.64 GiB,
+      maximum: 2.64 GiB: While executing AggregatingTransform
+
+    THE ROOT CAUSE, and it is not the product's data. Measured on the running
+    server: `system.parts` held **4.93 GiB**, of which
+
+      system.trace_log              3.11 GiB   238,326,364 rows
+      system.text_log               1.41 GiB    36,421,629 rows
+      system.part_log             126.68 MiB     2,275,917 rows
+      system.processors_profile_log 109.83 MiB    4,188,755 rows
+
+    while the entire `cockpit` database — everything the suites actually query —
+    was **74 KiB across 219 rows**. The failing query is
+    `SELECT count() FROM cockpit.<table> FINAL WHERE organization_id = ?` over
+    tables of at most 160 rows; it cannot want gigabytes. It was simply the
+    query unlucky enough to ask for memory while the server was already near its
+    ceiling holding its own diagnostics.
+
+    WHAT DOES NOT FIX IT, tried and reverted: raising the container cap. At
+    3000M the query wanted 2.61 GiB of a 2.64 GiB ceiling; at 6000M it wanted
+    5.27 GiB of a 5.27 GiB ceiling, failing with resident memory at 2.37 GiB —
+    under half the budget. The demand tracked the ceiling both times, so more
+    memory only moves the number in the error.
+
+    WHICH PROFILER FILLS `trace_log` — measured, because the obvious answer is
+    wrong. An earlier version of this file disabled the QUERY profiler
+    (`query_profiler_real_time_period_ns` / `_cpu_time_period_ns`) on the
+    assumption that sampled stack traces were the bulk. They are not. Grouping
+    the table by `trace_type` on the shared test server:
+
+      Memory        10,653      <- memory profiler
+      MemoryPeak    10,550      <- memory profiler
+      Real              81      <- query profiler
+      CPU               28      <- query profiler
+
+    The query profiler accounts for **0.51%** of the growth; the MEMORY profiler
+    accounts for 99.5%. `memory_profiler_step` defaults to 4 MiB, so every
+    allocation step of every query writes a trace row. Both profilers are
+    PROFILE settings, so both are in scope for this file — which is why all four
+    are set below rather than the two that looked obvious.
+
+    SCOPE. Only `docker-compose.test.yml` mounts `clickhouse/users.d`;
+    `docker-compose.yml` mounts `clickhouse/config` as `config.d` and no
+    `users.d` at all, and every other compose file (phase3, oss, rehearsal,
+    demo, hosted, site) is either an overlay that adds no clickhouse volumes or
+    has no clickhouse service. So this reaches the disposable test server and
+    nothing else — staging, the demo VM and the hosted path keep their profilers.
+
+    BOTH PROFILES, not just `default`. `deckgauge_console.xml` puts the
+    query-console login on `readonly_profile`, and a ClickHouse profile does NOT
+    inherit `default`, so settings placed only there would leave that user
+    profiling normally. The block below merges into the profile that file
+    declares rather than redefining it.
+
+    A NEW FILE, not an edit to `default-user.xml`: the image's entrypoint
+    REWRITES that file on every container start (see the
+    CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT comment in docker-compose.test.yml), so
+    settings placed there are clobbered on restart. Files it does not know about
+    survive.
+
+    WHAT THIS STILL DOES NOT DO. It bounds the growth; it does not bound the
+    TABLES. 238 million rows is not one test run — `clickhouse_test_data`
+    survives every recreate, so it was weeks of accumulation with no retention
+    policy at all. Retention has two routes and the tracked one is not the only
+    one: `ALTER TABLE system.trace_log MODIFY TTL event_date + INTERVAL 7 DAY`
+    persists in the volume and needs no mount, while putting it in `config.d`
+    makes it reproducible on a fresh stack but means adding a second bind mount
+    to `docker-compose.test.yml` — which inherits the stranding hazard CLAUDE.md
+    documents for `users.d`. Worth deciding on purpose; not smuggled in here.
+
+    ALSO FOUND, ALSO NOT FIXED HERE: the suites leak access-control objects.
+    **1,224 of 1,276** row policies on that server are `iso_org_<uuid>` residue
+    from the tenant-isolation probes, alongside 51 roles — and both counts were
+    lower when first measured hours earlier, so it is still climbing.
+    Server-global, never cleaned up, held in memory. CLAUDE.md notes these
+    objects are global and that suites suffix them per worktree; it does not say
+    anyone deletes them.
+  -->
+  <profiles>
+    <default>
+      <!-- 99.5% of trace_log. Step is bytes-between-samples; 0 disables. -->
+      <memory_profiler_step>0</memory_profiler_step>
+      <memory_profiler_sample_probability>0</memory_profiler_sample_probability>
+      <!-- The remaining 0.51%. -->
+      <query_profiler_real_time_period_ns>0</query_profiler_real_time_period_ns>
+      <query_profiler_cpu_time_period_ns>0</query_profiler_cpu_time_period_ns>
+    </default>
+    <readonly_profile>
+      <!-- Declared in deckgauge_console.xml; a profile does not inherit
+           `default`, so the console login needs these too. This merges. -->
+      <memory_profiler_step>0</memory_profiler_step>
+      <memory_profiler_sample_probability>0</memory_profiler_sample_probability>
+      <query_profiler_real_time_period_ns>0</query_profiler_real_time_period_ns>
+      <query_profiler_cpu_time_period_ns>0</query_profiler_cpu_time_period_ns>
+    </readonly_profile>
+  </profiles>
+</clickhouse>

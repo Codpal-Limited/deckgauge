@@ -4,12 +4,11 @@
 // transport also writes directly to the raw Node response.
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { PrismaClient } from '@deckgauge/db';
-import {
-  ClickhouseIntelligenceService,
-  type ChQueryClient,
-} from '../intelligence/clickhouse-intelligence.service.js';
+import { ClickhouseIntelligenceService } from '../intelligence/clickhouse-intelligence.service.js';
+import type { ChReadClient } from '../analytics/ch-read-scope.js';
 import { createMcpConnection } from './mcp.server.js';
 import { ORG_VIEWER } from '../auth/policy.js';
+import { WidgetCache } from '../widgets/widget-cache.js';
 
 async function requireUser(request: FastifyRequest, reply: FastifyReply) {
   if (!request.user) return reply.code(401).send({ error: 'Unauthorized' });
@@ -18,10 +17,22 @@ async function requireUser(request: FastifyRequest, reply: FastifyReply) {
 export function mcpRoutes({
   prisma,
   clickhouse,
+  cache,
 }: {
   prisma: PrismaClient;
-  clickhouse: ChQueryClient;
+  clickhouse: ChReadClient;
+  /**
+   * The widget-data plugin's cache instance (Task 3-12). Pass the SAME one
+   * `widgetDataRoutes` gets — `server.ts` does — or `set_focus_verdicts`
+   * evicts nothing and a written verdict leaves the board serving a stale
+   * cached payload for up to the cache's TTL. Optional, defaulting to a
+   * private instance, so callers that register this plugin without caring
+   * about eviction (i.e. the unit tests) keep compiling unchanged; matches
+   * `focusClassifyRoutes`'s own `cache?: WidgetCache` convention.
+   */
+  cache?: WidgetCache;
 }) {
+  const boardToolsCache = cache ?? new WidgetCache(60_000);
   return async function (app: FastifyInstance) {
     async function handleMcpRequest(req: FastifyRequest, reply: FastifyReply, body?: unknown) {
       /**
@@ -47,12 +58,20 @@ export function mcpRoutes({
       const { transport } = await createMcpConnection({
         prisma,
         intel,
+        // `focus-tools.service.ts`'s pipeline reads ClickHouse directly, bypassing
+        // `ClickhouseIntelligenceService` entirely, so it needs the SAME
+        // request-scoped reader `intel` above is built from — not a second,
+        // independently-resolved one.
+        clickhouse: req.chRead ?? clickhouse,
         getUserId: () => req.user?.id ?? null,
         // The tools resolve board access through `AccessService`, which needs the
         // caller's organization standing to apply the org-role ceiling and to
         // read the board through the right tenant. `null` is the membership-less
         // break-glass identity, which that resolver already handles.
         membership: req.membership ?? null,
+        // The SAME instance this plugin was constructed with (or its own
+        // private default) — see this function's `cache` param comment.
+        cache: boardToolsCache,
       });
 
       // Hand the raw response off to the transport — Fastify must not send

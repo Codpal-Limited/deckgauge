@@ -4,7 +4,13 @@ interface SidebarPanelHeaderProps {
   title: string;
   /** Item count shown as a subtle pill; omit to hide. */
   count?: number;
-  onCollapse: () => void;
+  /**
+   * Collapse handler. Omit to hide the collapse control entirely — which is
+   * what the mobile drawer does, because collapsing the panel there would leave
+   * a 56px rail floating in an 88vw drawer. The drawer closes via its backdrop,
+   * Escape, or its own close button instead.
+   */
+  onCollapse?: () => void;
 }
 
 export function SidebarPanelHeader({ title, count, onCollapse }: SidebarPanelHeaderProps) {
@@ -18,25 +24,27 @@ export function SidebarPanelHeader({ title, count, onCollapse }: SidebarPanelHea
           </span>
         )}
       </h2>
-      <button
-        type="button"
-        aria-label="Collapse sidebar"
-        onClick={onCollapse}
-        className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-4 w-4"
-          aria-hidden="true"
+      {onCollapse && (
+        <button
+          type="button"
+          aria-label="Collapse sidebar"
+          onClick={onCollapse}
+          className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
         >
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-      </button>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-4 w-4"
+            aria-hidden="true"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

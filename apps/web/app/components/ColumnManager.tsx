@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { ColumnType } from "@deckgauge/shared";
+import { useBodyScrollLock } from "@deckgauge/ui";
 import { createColumn } from "../actions/projects";
 
 const COLUMN_TYPES = [
@@ -78,12 +79,10 @@ export function ColumnManager({
     return () => modalContent?.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, []);
+  // Reference counted in `packages/ui`, deliberately. This used to clear
+  // `overflow` unconditionally on unmount, which unlocked the page beneath any
+  // other overlay that was still open.
+  useBodyScrollLock(true);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === overlayRef.current) {

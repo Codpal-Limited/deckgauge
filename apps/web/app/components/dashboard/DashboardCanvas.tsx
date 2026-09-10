@@ -40,8 +40,16 @@ interface DashboardCanvasProps {
 
 // Column counts per breakpoint. Only `lg` matches the 12-column geometry a
 // widget's stored layout is written in — see persistLayout.
-const BREAKPOINTS = { lg: 1200, md: 996, sm: 768 } as const;
-const COLS = { lg: 12, md: 8, sm: 4 } as const;
+//
+// `xs` and `xxs` exist because react-grid-layout picks the widest breakpoint a
+// viewport clears, so with `sm: 768` as the floor a 390px phone was laid out in
+// FOUR columns — roughly 90px per widget. At `xxs` each widget spans the single
+// column, one per row. `rowHeight` deliberately does not vary with the
+// breakpoint: re-flowing only clamps `x`/`w`, never `h`, so a widget is exactly
+// as tall on a phone as on a desktop and its aspect ratio at one column is
+// close to what a 4-of-12 widget already has at `lg`.
+const BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 } as const;
+const COLS = { lg: 12, md: 8, sm: 4, xs: 2, xxs: 1 } as const;
 const DESKTOP_BREAKPOINT = 'lg';
 
 export default function DashboardCanvas({ boardId, viewId, canEdit, isAdmin }: DashboardCanvasProps) {

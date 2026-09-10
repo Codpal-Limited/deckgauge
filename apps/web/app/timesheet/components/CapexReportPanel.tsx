@@ -14,6 +14,7 @@ import { costFromSeconds, DEFAULT_BLENDED_HOURLY_RATE, type CapexReportResponse 
 import { formatHours, formatCost } from '../lib/timesheet-ui';
 import { SPLIT_COLORS } from '../lib/classification';
 import { SplitBar } from './SplitBar';
+import { TableScroller } from '../../components/TableScroller';
 
 interface CapexReportPanelProps {
   report: CapexReportResponse;
@@ -171,54 +172,56 @@ export function CapexReportPanel({ report }: CapexReportPanelProps) {
 
       {report.byGroup.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-slate-200">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400">
-                <th className="px-3 py-2 font-medium">Group</th>
-                <th className="px-3 py-2 text-right font-medium">CapEx</th>
-                <th className="px-3 py-2 text-right font-medium">OpEx</th>
-                <th className="px-3 py-2 text-right font-medium">Unclassified</th>
-                <th className="px-3 py-2 text-right font-medium">CapEx %</th>
-                <th className="px-3 py-2 text-right font-medium">Cost</th>
-                <th className="px-3 py-2 text-left font-medium">Split</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.byGroup.map((g) => (
-                <tr key={g.group} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="px-3 py-2 font-medium text-slate-700">{g.group}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-600">
-                    {formatHours(g.capexSeconds)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-600">
-                    {formatHours(g.opexSeconds)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-600">
-                    {formatHours(g.unclassifiedSeconds)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums font-medium text-slate-700">
-                    {pct(g.capexPct)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-600">
-                    {formatCost(
-                      costFromSeconds(
-                        g.capexSeconds + g.opexSeconds + g.unclassifiedSeconds,
-                        rate
-                      )
-                    )}
-                  </td>
-                  <td className="px-3 py-2">
-                    <SplitBar
-                      capexSeconds={g.capexSeconds}
-                      opexSeconds={g.opexSeconds}
-                      unclassifiedSeconds={g.unclassifiedSeconds}
-                      className="min-w-[6rem]"
-                    />
-                  </td>
+          <TableScroller>
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400">
+                  <th className="px-3 py-2 font-medium">Group</th>
+                  <th className="px-3 py-2 text-right font-medium">CapEx</th>
+                  <th className="px-3 py-2 text-right font-medium">OpEx</th>
+                  <th className="px-3 py-2 text-right font-medium">Unclassified</th>
+                  <th className="px-3 py-2 text-right font-medium">CapEx %</th>
+                  <th className="px-3 py-2 text-right font-medium">Cost</th>
+                  <th className="px-3 py-2 text-left font-medium">Split</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {report.byGroup.map((g) => (
+                  <tr key={g.group} className="border-t border-slate-100 hover:bg-slate-50">
+                    <td className="px-3 py-2 font-medium text-slate-700">{g.group}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-600">
+                      {formatHours(g.capexSeconds)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-600">
+                      {formatHours(g.opexSeconds)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-600">
+                      {formatHours(g.unclassifiedSeconds)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums font-medium text-slate-700">
+                      {pct(g.capexPct)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-600">
+                      {formatCost(
+                        costFromSeconds(
+                          g.capexSeconds + g.opexSeconds + g.unclassifiedSeconds,
+                          rate
+                        )
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <SplitBar
+                        capexSeconds={g.capexSeconds}
+                        opexSeconds={g.opexSeconds}
+                        unclassifiedSeconds={g.unclassifiedSeconds}
+                        className="min-w-[6rem]"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroller>
         </div>
       )}
     </div>

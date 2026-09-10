@@ -31,17 +31,34 @@ export default async function SettingsLayout({ children }: { children: ReactNode
   const state = await getBootstrapState();
   const tabs = isOrganizationAdmin(state) ? [...BASE_TABS, ...ADMIN_TABS] : BASE_TABS;
 
+  // A `div`, not a `main`: `AppChrome` already wraps every page in `<main>`
+  // (AppChrome.tsx:51) and this layout renders inside it, so a second one is
+  // invalid HTML and a second competing landmark for assistive technology.
+  //
+  // Mobile-first padding and width. The unconditional `mx-auto max-w-4xl p-6`
+  // added 48px of horizontal padding on top of the shell's own at 390px, where
+  // the max-width never binds anyway. From `md` (768px, Tailwind's default —
+  // this repo does not override `screens`) it is exactly as before.
   return (
-    <main className="mx-auto max-w-4xl p-6">
+    <div className="p-4 md:mx-auto md:max-w-4xl md:p-6">
       <h1 className="mb-4 text-xl font-semibold">Settings</h1>
-      <nav className="mb-6 flex gap-2 border-b border-slate-200">
+      {/* Scrolls rather than wraps. An admin sees five tabs (~540px of them),
+          which wrap to three lines on a phone and push the page content far down;
+          the border sits on the scroll container, so it reads as one continuous
+          rule however far the tabs are scrolled. `whitespace-nowrap` is what
+          keeps each tab at its full width instead of letting flex shrink it. */}
+      <nav className="mb-6 flex gap-2 overflow-x-auto border-b border-slate-200">
         {tabs.map((t) => (
-          <Link key={t.href} href={t.href} className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900">
+          <Link
+            key={t.href}
+            href={t.href}
+            className="whitespace-nowrap px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+          >
             {t.label}
           </Link>
         ))}
       </nav>
       {children}
-    </main>
+    </div>
   );
 }

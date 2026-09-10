@@ -6,6 +6,7 @@ import { formatHours } from '../lib/timesheet-ui';
 import { classificationColor } from '../lib/classification';
 import { ClassificationPill } from './ClassificationPill';
 import { SplitBar } from './SplitBar';
+import { TableScroller } from '../../components/TableScroller';
 
 interface TopEpicsPanelProps {
   epics: EpicRow[];
@@ -192,32 +193,34 @@ export function TopEpicsPanel({ epics, rankOffset = 0 }: TopEpicsPanelProps) {
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200" data-testid="top-epics">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400">
-            <th className="w-16 px-3 py-2 text-right font-medium">#</th>
-            <th className="px-3 py-2 font-medium">Epic</th>
-            <th className="px-3 py-2 font-medium">Type</th>
-            <th className="px-3 py-2 text-right font-medium">Hours</th>
-            <th className="px-3 py-2 text-left font-medium">Split</th>
-          </tr>
-        </thead>
-        <tbody>
-          {epics.map((e, i) => {
-            const key = `${e.provider}:${e.epicKey}`;
-            const open = expanded.has(key);
-            return (
-              <FragmentRow
-                key={key}
-                epic={e}
-                rank={rankOffset + i + 1}
-                open={open}
-                onToggle={() => toggle(key)}
-              />
-            );
-          })}
-        </tbody>
-      </table>
+      <TableScroller>
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400">
+              <th className="w-16 px-3 py-2 text-right font-medium">#</th>
+              <th className="px-3 py-2 font-medium">Epic</th>
+              <th className="px-3 py-2 font-medium">Type</th>
+              <th className="px-3 py-2 text-right font-medium">Hours</th>
+              <th className="px-3 py-2 text-left font-medium">Split</th>
+            </tr>
+          </thead>
+          <tbody>
+            {epics.map((e, i) => {
+              const key = `${e.provider}:${e.epicKey}`;
+              const open = expanded.has(key);
+              return (
+                <FragmentRow
+                  key={key}
+                  epic={e}
+                  rank={rankOffset + i + 1}
+                  open={open}
+                  onToggle={() => toggle(key)}
+                />
+              );
+            })}
+          </tbody>
+        </table>
+      </TableScroller>
     </div>
   );
 }

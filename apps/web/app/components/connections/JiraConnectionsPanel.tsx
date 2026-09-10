@@ -5,6 +5,7 @@ import {
   deleteJiraProjectSync,
   type JiraProjectSyncRow,
 } from '../../actions/connections';
+import { TableScroller } from '../TableScroller';
 
 interface Props {
   initialSyncs: JiraProjectSyncRow[];
@@ -54,42 +55,44 @@ export function JiraConnectionsPanel({ initialSyncs }: Props) {
       {syncs.length === 0 ? (
         <p className="mt-3 text-sm text-slate-500">No Jira project syncs yet.</p>
       ) : (
-        <table className="mt-4 w-full text-sm">
-          <thead className="text-left text-xs uppercase text-slate-500">
-            <tr>
-              <th className="pb-2">Instance</th>
-              <th className="pb-2">Project key</th>
-              <th className="pb-2">Used by</th>
-              <th className="pb-2">Last synced</th>
-              <th className="pb-2 text-right"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {syncs.map((s) => (
-              <tr key={s.id} className="border-t border-slate-100">
-                <td className="py-2 font-mono text-xs text-slate-600">
-                  {s.jiraInstanceId.slice(0, 8)}
-                </td>
-                <td className="py-2 font-mono">{s.jiraProjectKey}</td>
-                <td className="py-2">
-                  {s.boardCount} board{s.boardCount === 1 ? '' : 's'}
-                </td>
-                <td className="py-2 text-slate-500">
-                  {s.lastSyncedAt ? new Date(s.lastSyncedAt).toLocaleString() : '—'}
-                </td>
-                <td className="py-2 text-right">
-                  <button
-                    onClick={() => remove(s.id)}
-                    disabled={isPending}
-                    className="text-rose-600 hover:underline disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
-                </td>
+        <TableScroller className="mt-4">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase text-slate-500">
+              <tr>
+                <th className="pb-2">Instance</th>
+                <th className="pb-2">Project key</th>
+                <th className="pb-2">Used by</th>
+                <th className="pb-2">Last synced</th>
+                <th className="pb-2 text-right"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {syncs.map((s) => (
+                <tr key={s.id} className="border-t border-slate-100">
+                  <td className="py-2 font-mono text-xs text-slate-600">
+                    {s.jiraInstanceId.slice(0, 8)}
+                  </td>
+                  <td className="py-2 font-mono">{s.jiraProjectKey}</td>
+                  <td className="py-2">
+                    {s.boardCount} board{s.boardCount === 1 ? '' : 's'}
+                  </td>
+                  <td className="py-2 text-slate-500">
+                    {s.lastSyncedAt ? new Date(s.lastSyncedAt).toLocaleString() : '—'}
+                  </td>
+                  <td className="py-2 text-right">
+                    <button
+                      onClick={() => remove(s.id)}
+                      disabled={isPending}
+                      className="text-rose-600 hover:underline disabled:opacity-50"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroller>
       )}
       <div className="mt-4 flex flex-wrap gap-2">
         <input

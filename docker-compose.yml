@@ -255,6 +255,21 @@ services:
       # deckgauge-web client's __PUBLIC_ORIGIN__ placeholder. Empty resolves to
       # http://localhost:3000, i.e. unchanged self-host behaviour.
       KEYCLOAK_PUBLIC_ORIGIN: ${KEYCLOAK_PUBLIC_ORIGIN:-}
+      # Substituted into the deckgauge-web client's __CLIENT_SECRET__ placeholder
+      # by the entrypoint, so the realm and the web container agree by
+      # construction rather than by an operator remembering to rotate both. The
+      # keycloak service did NOT receive this variable before, which would have
+      # left the substitution permanently on its default.
+      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_CLIENT_SECRET:-deckgauge-secret}"
+      # Adds this URL's ORIGIN to the deckgauge-web client's
+      # post.logout.redirect.uris, on top of the `+` that already covers the
+      # app's own origin. Empty leaves the attribute at a bare `+`, i.e.
+      # unchanged self-host behaviour. Must match the web service's copy above.
+      #
+      # This only affects a realm being CREATED. `--import-realm` never modifies
+      # an existing one, so a running stack needs
+      # scripts/apply-realm-post-logout.sh — which reads the same variable.
+      POST_LOGOUT_REDIRECT_URL: ${POST_LOGOUT_REDIRECT_URL:-}
       # Renamed in Keycloak 26: KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD became
       # KC_BOOTSTRAP_ADMIN_USERNAME / KC_BOOTSTRAP_ADMIN_PASSWORD. The .env keys
       # they read (KEYCLOAK_ADMIN_USER / KEYCLOAK_ADMIN_PASSWORD) are unchanged,
@@ -486,6 +501,14 @@ services:
       NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-deckgauge-nextauth-secret}"
       NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
       AUTH_TRUST_HOST: "true"
+      # Where sign-out lands. Unset (the default) returns the user to this
+      # install's own /login. The public demo points it at the commercial site.
+      #
+      # Setting this ALONE is not enough: Keycloak validates
+      # `post_logout_redirect_uri` against the deckgauge-web client's
+      # post.logout.redirect.uris, so the keycloak service below reads the same
+      # variable to allowlist that origin. Change one, change both.
+      POST_LOGOUT_REDIRECT_URL: ${POST_LOGOUT_REDIRECT_URL:-}
       # Microsoft Graph "Connect" OAuth (org-tree directory sync). Empty = the
       # Source tab shows a "not configured" note; no errors.
       MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-}

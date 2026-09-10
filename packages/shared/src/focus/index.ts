@@ -73,6 +73,17 @@ export {
 } from './model-classifier.js';
 
 export {
+  AGENT_TOOL_BATCH_DEFAULT,
+  listUnclassifiedTasksInputSchema,
+  setFocusVerdictsInputSchema,
+  type ListUnclassifiedTasksInput,
+  type ListUnclassifiedTasksResultDto,
+  type RejectedFocusVerdictDto,
+  type SetFocusVerdictsInput,
+  type SetFocusVerdictsResultDto,
+} from './agent-tools.js';
+
+export {
   attentionDaysByClass,
   attentionSharesByClass,
   countMovesInWindow,

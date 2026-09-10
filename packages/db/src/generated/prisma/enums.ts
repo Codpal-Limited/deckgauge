@@ -169,6 +169,26 @@ export const RoadmapViewType = {
 export type RoadmapViewType = (typeof RoadmapViewType)[keyof typeof RoadmapViewType]
 
 
+export const StatusBucket = {
+  TODO: 'TODO',
+  IN_PROGRESS: 'IN_PROGRESS',
+  WAITING_TO_SHIP: 'WAITING_TO_SHIP',
+  DONE: 'DONE',
+  ABORTED: 'ABORTED'
+} as const
+
+export type StatusBucket = (typeof StatusBucket)[keyof typeof StatusBucket]
+
+
+export const StatusBucketProvider = {
+  JIRA: 'JIRA',
+  ADO: 'ADO',
+  GITHUB: 'GITHUB'
+} as const
+
+export type StatusBucketProvider = (typeof StatusBucketProvider)[keyof typeof StatusBucketProvider]
+
+
 export const AdvisorChangeSetStatus = {
   PENDING: 'PENDING',
   APPLIED: 'APPLIED',

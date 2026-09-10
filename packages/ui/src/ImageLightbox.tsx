@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useBodyScrollLock } from './useOverlayDismiss';
 import { createPortal } from 'react-dom';
 
 interface ImageLightboxProps {
@@ -66,13 +67,15 @@ export function ImageLightbox({ src, alt = '', onClose }: ImageLightboxProps) {
   }, [onClose, zoomIn, zoomOut, reset]);
 
   // Prevent the page behind the overlay from scrolling while it's open.
-  useEffect(() => {
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, []);
+  //
+  // Reference counted with every other overlay, deliberately. A private
+  // save/restore here was safe only under the tree shape that happens to exist
+  // (this is always a descendant of a panel that already holds the lock). Review
+  // demonstrated the general case: if the panel closed while this stayed
+  // mounted, the page unlocked BENEATH an open lightbox, and this component's
+  // own cleanup then restored `hidden` with no overlay open at all — a
+  // permanently unscrollable page.
+  useBodyScrollLock(true);
 
   const handleWheel = (e: React.WheelEvent) => {
     setZoom((z) => {

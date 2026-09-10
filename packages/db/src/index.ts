@@ -127,3 +127,14 @@ export type {
   ChStatementExecutor,
 } from "./ch-provisioning.js";
 export { EXCLUDE_DEMO_INSTANCE, EXCLUDE_DEMO_REPO_SYNC } from "./demo/sync-exclusion.js";
+
+/**
+ * Exported for the tsx-run scripts OUTSIDE this package — today
+ * `apps/worker/src/scripts/trigger-org-sync.ts`, which needs the same
+ * "invoked directly?" guard `seed-demo.ts` and `test-account.ts` use. It is
+ * reachable only through this entry point (`packages/db` publishes no
+ * `exports` map with subpaths), and the alternative was a second copy of two
+ * lines whose correctness depends on `process.argv[1]` and `import.meta.url`
+ * agreeing — exactly the thing not to have two of.
+ */
+export { isMainModule } from "./esm-main.js";

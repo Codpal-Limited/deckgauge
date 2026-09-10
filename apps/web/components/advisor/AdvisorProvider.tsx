@@ -15,6 +15,7 @@ import {
 import { usePathname, useRouter } from 'next/navigation';
 import { buildHistoryForAsk, type AdvisorHistoryMessage } from '@deckgauge/shared';
 import { useLocalBridge, type BridgeStatus } from './useLocalBridge';
+import { notifyToolCall } from './board-mutation-signal';
 import { describeAdvisorError, type AdvisorErrorCopy } from './advisor-error-copy';
 import {
   advisorReducer,
@@ -625,7 +626,10 @@ export function AdvisorProvider({ children }: { children: ReactNode }) {
           const drained = await drainAdvisorStream(response.body, {
             isCurrent,
             onDelta: (text) => dispatch({ type: 'DELTA', text }),
-            onToolCall: (name) => dispatch({ type: 'TOOL_CALL', name }),
+            onToolCall: (name) => {
+              notifyToolCall(boardId, name);
+              dispatch({ type: 'TOOL_CALL', name });
+            },
             fail,
           });
           // No sessionId: `finish` skips persistence when it is absent.
@@ -660,6 +664,11 @@ export function AdvisorProvider({ children }: { children: ReactNode }) {
               dispatch({ type: 'DELTA', text });
             },
             onToolCall: (name) => {
+              // The mutation already happened server-side by the time this
+              // frame arrives, regardless of whether this ask is still the
+              // conversation's live one — unlike the dispatch below, this must
+              // not be skipped just because the user moved on.
+              notifyToolCall(boardId, name);
               if (!isCurrent()) return;
               toolCalls.push(name);
               dispatch({ type: 'TOOL_CALL', name });
@@ -699,7 +708,10 @@ export function AdvisorProvider({ children }: { children: ReactNode }) {
         const drained = await drainAdvisorStream(response.body, {
           isCurrent,
           onDelta: (text) => dispatch({ type: 'DELTA', text }),
-          onToolCall: (name) => dispatch({ type: 'TOOL_CALL', name }),
+          onToolCall: (name) => {
+            notifyToolCall(boardId, name);
+            dispatch({ type: 'TOOL_CALL', name });
+          },
           fail,
         });
         if (drained) finish(sessionId, drained.answer, drained.toolCalls);

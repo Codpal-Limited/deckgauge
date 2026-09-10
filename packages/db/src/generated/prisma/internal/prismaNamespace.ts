@@ -461,6 +461,7 @@ export const ModelName = {
   UserRoadmapPref: 'UserRoadmapPref',
   TimesheetStatusRule: 'TimesheetStatusRule',
   OrgTreeTimesheetConfig: 'OrgTreeTimesheetConfig',
+  SourceStatusBucket: 'SourceStatusBucket',
   RetiredJiraProject: 'RetiredJiraProject',
   AdvisorConfig: 'AdvisorConfig',
   AdvisorSession: 'AdvisorSession',
@@ -487,7 +488,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "organization" | "orgMembership" | "board" | "boardCalendarEvent" | "boardOwner" | "boardStatus" | "boardSyncExclusion" | "group" | "project" | "projectComment" | "boardColumn" | "projectFieldValue" | "automationRule" | "jiraInstance" | "syncRun" | "upload" | "gitHubInstance" | "azureDevOpsInstance" | "user" | "developerProfile" | "boardAccess" | "boardView" | "comparison" | "comparisonAccess" | "comparisonMember" | "roadmapConfig" | "dashboardWidget" | "projectStatusChange" | "gitLabInstance" | "jiraProjectSync" | "boardJiraSource" | "boardJiraSourceKey" | "gitHubRepoSync" | "prJiraLink" | "boardGitHubSource" | "azureDevOpsProjectSync" | "adoRepoSyncState" | "boardAdoSource" | "gitLabProjectSync" | "boardGitLabSource" | "boardFolder" | "userBoardPref" | "orgTree" | "orgTreeAccess" | "orgEmployee" | "orgTreeSource" | "boardCalendarSource" | "orgEmployeeAlias" | "orgEmployeeComment" | "employeeBoard" | "employeeBoardAccess" | "employeeGroup" | "employeeBoardMember" | "employeeColumn" | "employeeFieldValue" | "roadmap" | "roadmapAccess" | "roadmapBoardSubscription" | "roadmapGroup" | "roadmapView" | "roadmapGanttConfig" | "userRoadmapPref" | "timesheetStatusRule" | "orgTreeTimesheetConfig" | "retiredJiraProject" | "advisorConfig" | "advisorSession" | "advisorMessage" | "advisorChangeSet" | "notification" | "notificationPreference" | "boardNotificationSetting" | "focusVerdict" | "focusConfig" | "focusEpic"
+    modelProps: "organization" | "orgMembership" | "board" | "boardCalendarEvent" | "boardOwner" | "boardStatus" | "boardSyncExclusion" | "group" | "project" | "projectComment" | "boardColumn" | "projectFieldValue" | "automationRule" | "jiraInstance" | "syncRun" | "upload" | "gitHubInstance" | "azureDevOpsInstance" | "user" | "developerProfile" | "boardAccess" | "boardView" | "comparison" | "comparisonAccess" | "comparisonMember" | "roadmapConfig" | "dashboardWidget" | "projectStatusChange" | "gitLabInstance" | "jiraProjectSync" | "boardJiraSource" | "boardJiraSourceKey" | "gitHubRepoSync" | "prJiraLink" | "boardGitHubSource" | "azureDevOpsProjectSync" | "adoRepoSyncState" | "boardAdoSource" | "gitLabProjectSync" | "boardGitLabSource" | "boardFolder" | "userBoardPref" | "orgTree" | "orgTreeAccess" | "orgEmployee" | "orgTreeSource" | "boardCalendarSource" | "orgEmployeeAlias" | "orgEmployeeComment" | "employeeBoard" | "employeeBoardAccess" | "employeeGroup" | "employeeBoardMember" | "employeeColumn" | "employeeFieldValue" | "roadmap" | "roadmapAccess" | "roadmapBoardSubscription" | "roadmapGroup" | "roadmapView" | "roadmapGanttConfig" | "userRoadmapPref" | "timesheetStatusRule" | "orgTreeTimesheetConfig" | "sourceStatusBucket" | "retiredJiraProject" | "advisorConfig" | "advisorSession" | "advisorMessage" | "advisorChangeSet" | "notification" | "notificationPreference" | "boardNotificationSetting" | "focusVerdict" | "focusConfig" | "focusEpic"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -5227,6 +5228,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SourceStatusBucket: {
+      payload: Prisma.$SourceStatusBucketPayload<ExtArgs>
+      fields: Prisma.SourceStatusBucketFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SourceStatusBucketFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SourceStatusBucketPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SourceStatusBucketFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SourceStatusBucketPayload>
+        }
+        findFirst: {
+          args: Prisma.SourceStatusBucketFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SourceStatusBucketPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SourceStatusBucketFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SourceStatusBucketPayload>
+        }
+        findMany: {
+          args: Prisma.SourceStatusBucketFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SourceStatusBucketPayload>[]
+        }
+        create: {
+          args: Prisma.SourceStatusBucketCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SourceStatusBucketPayload>
+        }
+        createMany: {
+          args: Prisma.SourceStatusBucketCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SourceStatusBucketCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SourceStatusBucketPayload>[]
+        }
+        delete: {
+          args: Prisma.SourceStatusBucketDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SourceStatusBucketPayload>
+        }
+        update: {
+          args: Prisma.SourceStatusBucketUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SourceStatusBucketPayload>
+        }
+        deleteMany: {
+          args: Prisma.SourceStatusBucketDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SourceStatusBucketUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SourceStatusBucketUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SourceStatusBucketPayload>[]
+        }
+        upsert: {
+          args: Prisma.SourceStatusBucketUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SourceStatusBucketPayload>
+        }
+        aggregate: {
+          args: Prisma.SourceStatusBucketAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSourceStatusBucket>
+        }
+        groupBy: {
+          args: Prisma.SourceStatusBucketGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SourceStatusBucketGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SourceStatusBucketCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SourceStatusBucketCountAggregateOutputType> | number
+        }
+      }
+    }
     RetiredJiraProject: {
       payload: Prisma.$RetiredJiraProjectPayload<ExtArgs>
       fields: Prisma.RetiredJiraProjectFieldRefs
@@ -7074,6 +7149,20 @@ export const OrgTreeTimesheetConfigScalarFieldEnum = {
 export type OrgTreeTimesheetConfigScalarFieldEnum = (typeof OrgTreeTimesheetConfigScalarFieldEnum)[keyof typeof OrgTreeTimesheetConfigScalarFieldEnum]
 
 
+export const SourceStatusBucketScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  provider: 'provider',
+  sourceId: 'sourceId',
+  status: 'status',
+  bucket: 'bucket',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SourceStatusBucketScalarFieldEnum = (typeof SourceStatusBucketScalarFieldEnum)[keyof typeof SourceStatusBucketScalarFieldEnum]
+
+
 export const RetiredJiraProjectScalarFieldEnum = {
   projectKey: 'projectKey',
   cutoffDate: 'cutoffDate',
@@ -7579,6 +7668,34 @@ export type ListEnumTimesheetRuleScopeFieldRefInput<$PrismaModel> = FieldRefInpu
 
 
 /**
+ * Reference to a field of type 'StatusBucketProvider'
+ */
+export type EnumStatusBucketProviderFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StatusBucketProvider'>
+    
+
+
+/**
+ * Reference to a field of type 'StatusBucketProvider[]'
+ */
+export type ListEnumStatusBucketProviderFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StatusBucketProvider[]'>
+    
+
+
+/**
+ * Reference to a field of type 'StatusBucket'
+ */
+export type EnumStatusBucketFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StatusBucket'>
+    
+
+
+/**
+ * Reference to a field of type 'StatusBucket[]'
+ */
+export type ListEnumStatusBucketFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StatusBucket[]'>
+    
+
+
+/**
  * Reference to a field of type 'AdvisorChangeSetStatus'
  */
 export type EnumAdvisorChangeSetStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AdvisorChangeSetStatus'>
@@ -7848,6 +7965,7 @@ export type GlobalOmitConfig = {
   userRoadmapPref?: Prisma.UserRoadmapPrefOmit
   timesheetStatusRule?: Prisma.TimesheetStatusRuleOmit
   orgTreeTimesheetConfig?: Prisma.OrgTreeTimesheetConfigOmit
+  sourceStatusBucket?: Prisma.SourceStatusBucketOmit
   retiredJiraProject?: Prisma.RetiredJiraProjectOmit
   advisorConfig?: Prisma.AdvisorConfigOmit
   advisorSession?: Prisma.AdvisorSessionOmit

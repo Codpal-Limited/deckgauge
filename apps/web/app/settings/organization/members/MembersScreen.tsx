@@ -9,6 +9,7 @@ import {
   updateMemberStatus,
   removeMember,
 } from '../../../actions/organization';
+import { TableScroller } from '../../../components/TableScroller';
 
 const MESSAGES: Record<string, string> = {
   MEMBER_ALREADY_INVITED: 'That email has already been invited.',
@@ -108,89 +109,95 @@ export function MembersScreen({
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 text-left text-slate-500">
-            <th className="py-2">Member</th><th>Role</th><th>Status</th><th />
-          </tr>
-        </thead>
-        <tbody>
-          {members.map((m) => (
-            <tr key={m.id} className="border-b border-slate-100">
-              <td className="py-2">
-                <div>{m.email}</div>
-                {m.name && <div className="text-xs text-slate-500">{m.name}</div>}
-              </td>
-              <td>
-                <select
-                  id={`role-${m.id}`}
-                  aria-label={`Role for ${m.email}`}
-                  value={m.role}
-                  onChange={(e) => run(() => updateMemberRole(m.id, e.target.value as OrgRoleValue))}
-                  className="rounded border border-slate-300 px-2 py-1"
-                >
-                  {ORG_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </td>
-              <td>{m.status}</td>
-              <td className="space-x-2 text-right">
-                {m.status === 'PENDING' && (
-                  <>
+      {/* The four columns carry an email, a role `select`, a status and up to
+          three action buttons, which do not fit 390px. The scroller sits
+          inside the section so the invite form and the error alert above it
+          stay put. */}
+      <TableScroller>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 text-left text-slate-500">
+              <th className="py-2">Member</th><th>Role</th><th>Status</th><th />
+            </tr>
+          </thead>
+          <tbody>
+            {members.map((m) => (
+              <tr key={m.id} className="border-b border-slate-100">
+                <td className="py-2">
+                  <div>{m.email}</div>
+                  {m.name && <div className="text-xs text-slate-500">{m.name}</div>}
+                </td>
+                <td>
+                  <select
+                    id={`role-${m.id}`}
+                    aria-label={`Role for ${m.email}`}
+                    value={m.role}
+                    onChange={(e) => run(() => updateMemberRole(m.id, e.target.value as OrgRoleValue))}
+                    className="rounded border border-slate-300 px-2 py-1"
+                  >
+                    {ORG_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </td>
+                <td>{m.status}</td>
+                <td className="space-x-2 text-right">
+                  {m.status === 'PENDING' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setError(null);
+                          // Not guaranteed to exist: the Clipboard API is absent on
+                          // insecure origins and rejects when the document lacks
+                          // focus or permission. A silent failure here would have
+                          // the admin paste nothing at all.
+                          try {
+                            await navigator.clipboard.writeText(inviteLink);
+                            setCopied(m.id);
+                          } catch {
+                            setCopied(null);
+                            setError(messageFor('CLIPBOARD_ERROR'));
+                          }
+                        }}
+                        className="text-teal-700 underline"
+                      >
+                        Copy invite link
+                      </button>
+                      {copied === m.id && <span className="text-teal-700">Copied</span>}
+                    </>
+                  )}
+                  {/* No suspend/reactivate for PENDING: activation is first-login
+                      binding's job, and updateStatus refuses it. */}
+                  {m.status === 'ACTIVE' && (
                     <button
                       type="button"
-                      onClick={async () => {
-                        setError(null);
-                        // Not guaranteed to exist: the Clipboard API is absent on
-                        // insecure origins and rejects when the document lacks
-                        // focus or permission. A silent failure here would have
-                        // the admin paste nothing at all.
-                        try {
-                          await navigator.clipboard.writeText(inviteLink);
-                          setCopied(m.id);
-                        } catch {
-                          setCopied(null);
-                          setError(messageFor('CLIPBOARD_ERROR'));
-                        }
-                      }}
-                      className="text-teal-700 underline"
+                      onClick={() => run(() => updateMemberStatus(m.id, 'SUSPENDED'))}
+                      className="text-slate-600 underline"
                     >
-                      Copy invite link
+                      Suspend
                     </button>
-                    {copied === m.id && <span className="text-teal-700">Copied</span>}
-                  </>
-                )}
-                {/* No suspend/reactivate for PENDING: activation is first-login
-                    binding's job, and updateStatus refuses it. */}
-                {m.status === 'ACTIVE' && (
+                  )}
+                  {m.status === 'SUSPENDED' && (
+                    <button
+                      type="button"
+                      onClick={() => run(() => updateMemberStatus(m.id, 'ACTIVE'))}
+                      className="text-slate-600 underline"
+                    >
+                      Reactivate
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => run(() => updateMemberStatus(m.id, 'SUSPENDED'))}
-                    className="text-slate-600 underline"
+                    onClick={() => run(() => removeMember(m.id))}
+                    className="text-red-600 underline"
                   >
-                    Suspend
+                    Remove
                   </button>
-                )}
-                {m.status === 'SUSPENDED' && (
-                  <button
-                    type="button"
-                    onClick={() => run(() => updateMemberStatus(m.id, 'ACTIVE'))}
-                    className="text-slate-600 underline"
-                  >
-                    Reactivate
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => run(() => removeMember(m.id))}
-                  className="text-red-600 underline"
-                >
-                  Remove
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableScroller>
     </section>
   );
 }

@@ -25,7 +25,7 @@
       "clientId": "deckgauge-web",
       "enabled": true,
       "publicClient": false,
-      "secret": "deckgauge-secret",
+      "secret": "__CLIENT_SECRET__",
       "redirectUris": [
         "http://localhost:3000/*",
         "http://localhost:3010/*",
@@ -37,7 +37,7 @@
       "directAccessGrantsEnabled": false,
       "protocol": "openid-connect",
       "attributes": {
-        "post.logout.redirect.uris": "+"
+        "post.logout.redirect.uris": "__POST_LOGOUT_REDIRECT_URIS__"
       }
     }
   ],

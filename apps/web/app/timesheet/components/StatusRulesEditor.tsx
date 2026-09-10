@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { StatusRuleDto } from '@deckgauge/shared';
 import { saveStatusRules, type StatusRuleInput } from '../../actions/timesheet';
+import { TableScroller } from '../../components/TableScroller';
 
 interface EmployeeOption {
   id: string;
@@ -71,56 +72,58 @@ export function StatusRulesEditor({ initialRules, roles, employees }: StatusRule
 
   return (
     <div className="flex flex-col gap-3">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-slate-500">
-            <th className="px-2 py-1">Scope</th>
-            <th className="px-2 py-1">Applies to</th>
-            <th className="px-2 py-1">In-progress statuses (comma-separated)</th>
-            <th className="px-2 py-1" />
-          </tr>
-        </thead>
-        <tbody>
-          {drafts.map((d, i) => (
-            <tr key={i} data-testid="rule-row">
-              <td className="px-2 py-1">{d.scope === 'ROLE' ? 'Role' : 'Person'}</td>
-              <td className="px-2 py-1">
-                {d.scope === 'ROLE' ? (
-                  <select aria-label="Role" value={d.role ?? ''} onChange={(e) => update(i, { role: e.target.value })}>
-                    {roles.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <select aria-label="Employee" value={d.employeeId ?? ''} onChange={(e) => update(i, { employeeId: e.target.value })}>
-                    {employees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </td>
-              <td className="px-2 py-1">
-                <input
-                  aria-label="In-progress statuses"
-                  className="w-full rounded border border-slate-200 px-2 py-1"
-                  value={d.statusesText}
-                  placeholder="In Progress, In QA"
-                  onChange={(e) => update(i, { statusesText: e.target.value })}
-                />
-              </td>
-              <td className="px-2 py-1">
-                <button type="button" aria-label="Remove rule" onClick={() => remove(i)} className="text-slate-400 hover:text-red-500">
-                  Remove
-                </button>
-              </td>
+      <TableScroller>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-slate-500">
+              <th className="px-2 py-1">Scope</th>
+              <th className="px-2 py-1">Applies to</th>
+              <th className="px-2 py-1">In-progress statuses (comma-separated)</th>
+              <th className="px-2 py-1" />
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {drafts.map((d, i) => (
+              <tr key={i} data-testid="rule-row">
+                <td className="px-2 py-1">{d.scope === 'ROLE' ? 'Role' : 'Person'}</td>
+                <td className="px-2 py-1">
+                  {d.scope === 'ROLE' ? (
+                    <select aria-label="Role" value={d.role ?? ''} onChange={(e) => update(i, { role: e.target.value })}>
+                      {roles.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select aria-label="Employee" value={d.employeeId ?? ''} onChange={(e) => update(i, { employeeId: e.target.value })}>
+                      {employees.map((emp) => (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </td>
+                <td className="px-2 py-1">
+                  <input
+                    aria-label="In-progress statuses"
+                    className="w-full rounded border border-slate-200 px-2 py-1"
+                    value={d.statusesText}
+                    placeholder="In Progress, In QA"
+                    onChange={(e) => update(i, { statusesText: e.target.value })}
+                  />
+                </td>
+                <td className="px-2 py-1">
+                  <button type="button" aria-label="Remove rule" onClick={() => remove(i)} className="text-slate-400 hover:text-red-500">
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableScroller>
       <div className="flex gap-2">
         <button type="button" onClick={addRole} className="rounded border border-slate-200 px-3 py-1 text-sm">
           Add role rule

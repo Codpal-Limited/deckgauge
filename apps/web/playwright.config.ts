@@ -27,5 +27,14 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      // Mobile verification project (mobile-responsive plan, Slice 1).
+      // `iPhone 13` is a 390x664 viewport with `isMobile` and touch enabled --
+      // 390px is the width the plan measures every surface against. Same
+      // `testDir` and `testMatch` as `chromium`: select it with
+      // `--project=mobile`.
+      name: 'mobile',
+      use: { ...devices['iPhone 13'] },
+    },
   ],
 });

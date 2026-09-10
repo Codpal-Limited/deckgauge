@@ -61,6 +61,16 @@ FROM deps-${EDITION} AS deps
 # ── build ───────────────────────────────────────────────────────────────────────
 FROM deps AS build
 COPY packages/db/ packages/db/
+# BEFORE the db build, and that ordering is load-bearing now.
+#
+# `packages/db` gained a `@deckgauge/shared` dependency (it imports the widget
+# preset definitions), so `packages/db/tsconfig.json` carries a project
+# reference to `../shared`. `tsc --build` WALKS that reference and reads
+# `packages/shared/tsconfig.json` — so with shared's source still uncopied, the
+# build below fails on a missing tsconfig rather than on anything to do with the
+# worker. This copy used to sit in `runner-common` below, which was fine only
+# while nothing built against shared ran first.
+COPY packages/shared/ packages/shared/
 # The Prisma client is NOT generated here. `prisma generate` needs the Prisma
 # CLI's native schema engine, and that engine is a Linux binary this network
 # cannot fetch: binaries.prisma.sh serves the darwin build fine but answers every
@@ -85,7 +95,6 @@ FROM build AS runner-common
 # certificate for any provider while holding customer tokens.
 ARG NODE_TLS_REJECT_UNAUTHORIZED=0
 ENV NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
-COPY packages/shared/ packages/shared/
 COPY packages/ui/ packages/ui/
 COPY packages/notifications/ packages/notifications/
 COPY packages/automations/ packages/automations/

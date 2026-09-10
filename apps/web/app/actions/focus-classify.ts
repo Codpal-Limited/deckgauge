@@ -17,7 +17,15 @@ export interface FocusClassificationRun {
 
 export type FocusClassifyOutcome =
   | { ok: true; result: FocusClassificationRun }
-  | { ok: false; error: string };
+  /**
+   * `status` rides along with the message because `FocusClassifyNotice` needs
+   * to tell "no advisor configured" (409, and only 409 — see
+   * `focus-classify.routes.ts`) apart from every other failure (403, 404, a
+   * dropped connection) to decide whether to offer the local agent bridge.
+   * The status code is the reliable signal; the message text is copy and
+   * could change under it.
+   */
+  | { ok: false; error: string; status: number };
 
 /**
  * Ask the advisor to classify what nothing cheaper could.
@@ -40,6 +48,6 @@ export async function runFocusClassification(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ config }),
   });
-  if (!res.ok) return { ok: false, error: await readApiError(res) };
+  if (!res.ok) return { ok: false, error: await readApiError(res), status: res.status };
   return { ok: true, result: (await res.json()) as FocusClassificationRun };
 }

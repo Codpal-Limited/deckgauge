@@ -81,6 +81,47 @@ else
   subst PUBLIC_ORIGIN "http://localhost:3000"
 fi
 
+# Where sign-out lands, which is a SEPARATE allowlist from the one above.
+#
+# Keycloak validates `post_logout_redirect_uri` against
+# `post.logout.redirect.uris`, not against `redirectUris`. `+` means "the same
+# as the valid redirect URIs" and is all a stack needs while sign-out returns to
+# the app's own /login — which is every stack except the demo, where it returns
+# to the commercial site, a DIFFERENT origin that `+` can never cover.
+#
+# This duplicates scripts/post-logout-redirect-uris.sh, deliberately: that one
+# runs on the host to converge an already-running Keycloak (`--import-realm`
+# only ever CREATES a realm, it never modifies one), and this container can
+# source nothing from the host. apps/web/__tests__/keycloak-post-logout.test.ts
+# executes both and fails if they disagree, so read that file before editing
+# either. Keep POST_LOGOUT_REDIRECT_URL identical to the web container's.
+#
+# `##` is Keycloak's Constants.CFG_DELIMITER. The origin gets both a bare entry
+# and a wildcard one because Keycloak matches literally without the wildcard, so
+# a destination that later grows a path would stop matching.
+POST_LOGOUT_URL="$(printf '%s' "${POST_LOGOUT_REDIRECT_URL:-}" \
+  | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+if [ -n "$POST_LOGOUT_URL" ]; then
+  # VALIDATE BEFORE EXTRACTING. Byte-for-byte the same rule as the host script's
+  # — see the commentary there for what each rejected shape does if allowed. It
+  # matters MORE here: the host script's caller assigns its output under
+  # `set -euo pipefail`, so a bad value aborts there anyway, whereas this copy
+  # would otherwise write whatever it was handed straight into the allowlist of
+  # a realm about to be created. Failing the container start is the correct loud
+  # failure; a realm imported with a nonsense allowlist is a silent one.
+  if ! printf '%s' "$POST_LOGOUT_URL" \
+    | grep -qE '^https?://[A-Za-z0-9.-]+(:[0-9]+)?([/?#]|$)'; then
+    echo "ERROR: POST_LOGOUT_REDIRECT_URL must be http(s)://host[:port][/path] — got: $POST_LOGOUT_URL" >&2
+    exit 1
+  fi
+  POST_LOGOUT_ORIGIN="$(printf '%s' "$POST_LOGOUT_URL" \
+    | sed -E 's#^(https?://[^/?#]+).*#\1#')"
+  echo "Allowing post-logout redirect to: ${POST_LOGOUT_ORIGIN}"
+  subst POST_LOGOUT_REDIRECT_URIS "+##${POST_LOGOUT_ORIGIN}##${POST_LOGOUT_ORIGIN}/*"
+else
+  subst POST_LOGOUT_REDIRECT_URIS "+"
+fi
+
 # ---------------------------------------------------------------------------
 # SMTP — required for the forgot-password flow.
 #
@@ -100,6 +141,18 @@ if [ -z "${SMTP_AUTH:-}" ]; then
 fi
 
 echo "Configuring SMTP: host=${SMTP_HOST:-mailpit} port=${SMTP_PORT:-1025} auth=${SMTP_AUTH}"
+# The deckgauge-web client secret. Placeholder rather than a literal in the
+# export so that demo/.env.demo (or .env) is the SINGLE SOURCE OF TRUTH: a fresh
+# realm import takes the operator's value, so wiping keycloak_db_data is
+# self-healing instead of silently re-importing a default that no longer matches
+# what the web container presents. Before this, a volume wipe left the realm on
+# the published default while the env file held a rotated value, and login broke
+# with nothing to point at.
+#
+# The default keeps a community clone working with no configuration — `docker
+# compose up` must produce a realm you can log into. It is the same value the
+# export used to hardcode, so nothing changes for an existing localhost install.
+subst CLIENT_SECRET          "${KEYCLOAK_CLIENT_SECRET:-deckgauge-secret}"
 subst SMTP_HOST              "${SMTP_HOST:-mailpit}"
 subst SMTP_PORT              "${SMTP_PORT:-1025}"
 subst SMTP_FROM              "${SMTP_FROM:-no-reply@deckgauge.com}"

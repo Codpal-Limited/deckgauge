@@ -364,6 +364,39 @@ export type TimesheetStatusRule = Prisma.TimesheetStatusRuleModel
  */
 export type OrgTreeTimesheetConfig = Prisma.OrgTreeTimesheetConfigModel
 /**
+ * Model SourceStatusBucket
+ * One decision: for this issue source, this status name means this bucket.
+ * 
+ * **Keyed on the SOURCE, not on a board or an org tree.** A status belongs to
+ * a workflow and a workflow belongs to a project, so the source is where the
+ * fact lives — and it is the only key both consumers can reach. The timesheet
+ * is scoped per org tree (a set of people) and Team Focus per board (a set of
+ * work); neither contains the other, and neither is where a status comes from.
+ * 
+ * **`sourceId` has no foreign key, deliberately.** It names a row in one of
+ * three tables — `JiraProjectSync`, `AzureDevOpsProjectSync` or
+ * `GitHubRepoSync` — discriminated by `provider`. Prisma cannot express a
+ * polymorphic FK, and the alternatives were worse: three near-identical tables
+ * for one fact, or three nullable FKs plus a CHECK that exactly one is set.
+ * The cost is that a deleted sync leaves rows behind. They are unreachable
+ * rather than harmful — but "inert" would understate it, because sync ids are
+ * uuids: deleting and re-adding the same Jira project yields a NEW `sourceId`,
+ * so a curator's hand-edited buckets are silently lost and the re-added source
+ * starts unmapped. Same shape as the orphan-database corollary in CLAUDE.md
+ * § Testing. Cheap to sweep, worth a warning before anyone relies on a re-add.
+ * 
+ * **`organizationId` is carried directly AND is part of the unique key.**
+ * Carried, because every tenant-scoped read in this schema does the same —
+ * `RetiredJiraProject`, `TimesheetStatusRule` and `DeveloperIdentity` all do —
+ * and TENANCY-PROGRAMME §5a exists because those reads were once unfiltered.
+ * In the KEY, because there is no foreign key to constrain `sourceId` against
+ * a tenant, so without it nothing could catch a row written under the wrong
+ * organization: the upsert would succeed and report a row while the
+ * tenant-scoped read returned nothing, leaving a status the panel shows as
+ * unmapped and cannot map. With it, that is a constraint violation instead.
+ */
+export type SourceStatusBucket = Prisma.SourceStatusBucketModel
+/**
  * Model RetiredJiraProject
  * 
  */

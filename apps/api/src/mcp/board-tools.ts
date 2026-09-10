@@ -7,10 +7,30 @@ import { ChangeSetService } from '../advisor/change-set/change-set.service.js';
 import { AccessService } from '../access/access.service.js';
 import { getBoardScope } from '../intelligence/board-scope.js';
 import type { ClickhouseIntelligenceService } from '../intelligence/clickhouse-intelligence.service.js';
+import type { ChReadClient } from '../analytics/ch-read-scope.js';
+import type { WidgetCache } from '../widgets/widget-cache.js';
+
+/**
+ * The MCP surface is always a user's own local coding agent — never a
+ * configured server-side provider — so unlike `advisor.routes.ts` there is no
+ * per-organization config to read a label from. Fixed here rather than
+ * threaded through `BoardToolDeps` because it does not vary per request, per
+ * caller, or per organization: every write this surface makes has the same
+ * author. See `AdvisorToolDeps.verdictModelLabel`'s comment for the other half.
+ */
+const VERDICT_MODEL_LABEL = 'claude-code (local bridge)';
 
 export interface BoardToolDeps {
   prisma: PrismaClient;
   intel: ClickhouseIntelligenceService;
+  /**
+   * The raw ClickHouse reader `focus-tools.service.ts`'s functions need
+   * directly (`FocusDataDeps.clickhouse`) — they read ClickHouse themselves
+   * rather than through `ClickhouseIntelligenceService`, so this cannot be
+   * recovered from `intel` above. `mcp.routes.ts` threads through the SAME
+   * request-scoped reader `intel` is built from.
+   */
+  clickhouse: ChReadClient;
   getUserId: () => string | null;
   /**
    * The caller's organization standing, or `null` for the membership-less
@@ -23,6 +43,14 @@ export interface BoardToolDeps {
    * across.
    */
   membership: { organizationId: string; role: OrgRoleValue } | null;
+  /**
+   * The widget-data plugin's own cache instance (Task 3-12) — the SAME one
+   * `widgetDataRoutes` holds. `mcp.routes.ts` threads through the SAME
+   * instance the `AdvisorToolDeps.cache` comment describes; passed here so
+   * `set_focus_verdicts` (below) can evict a board's cached widget payload
+   * after writing to it.
+   */
+  cache: WidgetCache;
 }
 
 // Minimal shape we rely on from McpServer — adapted from the installed SDK's
@@ -136,6 +164,18 @@ export function registerBoardTools(server: ToolRegistrar, deps: BoardToolDeps): 
           membership: deps.membership
             ? { organizationId: deps.membership.organizationId }
             : UNREACHABLE_MEMBERSHIP,
+          // Same request-scoped reader and organization standing as above —
+          // `set_focus_verdicts` writes into this organization's
+          // `focus_verdicts`, so a membership-less caller has nowhere to write,
+          // exactly like `propose_board_changes` above (`organizationId: null`
+          // makes `setVerdicts` a no-op rather than fabricate a tenant).
+          focusTools: {
+            prisma: deps.prisma,
+            clickhouse: deps.clickhouse,
+            organizationId: deps.membership?.organizationId ?? null,
+          },
+          verdictModelLabel: VERDICT_MODEL_LABEL,
+          cache: deps.cache,
         });
         return textResult(result);
       },

@@ -2,8 +2,10 @@ import { tool, type ToolSet } from 'ai';
 import { z } from 'zod';
 import {
   listBoardRowsInputSchema,
+  listUnclassifiedTasksInputSchema,
   meetsBoardRole,
   proposeBoardChangesInputSchema,
+  setFocusVerdictsInputSchema,
   type AccessRoleValue,
   type EffectiveBoardRole,
   type ProposeBoardChangesInput,
@@ -13,6 +15,9 @@ import type { ClickhouseIntelligenceService } from '../intelligence/clickhouse-i
 import type { BoardScope } from '../intelligence/board-scope.js';
 import type { BoardReadsService } from './board-reads.service.js';
 import type { ChangeSetService } from './change-set/change-set.service.js';
+import { EMPTY_SNAPSHOT_REASON, type FocusDataDeps } from '../focus/focus-data.service.js';
+import { listResidue, setVerdicts } from '../focus/focus-tools.service.js';
+import type { WidgetCache } from '../widgets/widget-cache.js';
 
 export interface AdvisorToolDeps {
   intel: ClickhouseIntelligenceService;
@@ -22,6 +27,48 @@ export interface AdvisorToolDeps {
   userId: string;
   /** The caller's organization, from `request.membership` — never from tool input. */
   membership: { organizationId: string };
+  /**
+   * What `list_unclassified_tasks` and `set_focus_verdicts`
+   * (`focus/focus-tools.service.ts`'s `listResidue` and `setVerdicts`) need to
+   * read and write Focus verdicts for the board these tools are scoped to.
+   * Both surfaces that build an `AdvisorToolDeps` — `advisor.routes.ts` and
+   * `mcp/board-tools.ts` — already resolve a request-scoped
+   * `prisma`/`clickhouse`/organization for their own tools, so this is the
+   * same values, reused rather than re-derived.
+   */
+  focusTools: FocusDataDeps;
+  /**
+   * The label `set_focus_verdicts` stamps onto the `focus_verdicts.model`
+   * column — provenance for who actually authored a MODEL verdict.
+   *
+   * Required, not optional, for the same reason `AdvisorToolContext.role` is:
+   * `setVerdicts` takes this as a caller-supplied parameter rather than
+   * hardcoding it precisely because BOTH surfaces register the same write tool
+   * with a DIFFERENT author. The MCP surface (`mcp/board-tools.ts`) is always a
+   * user's own local coding agent, so it supplies the fixed literal
+   * `'claude-code (local bridge)'`. The conversational surface
+   * (`advisor.routes.ts`) is always a configured server-side provider, so it
+   * supplies that org's resolved `AdvisorProviderConfig.model` instead. A call
+   * site that forgot this field would have to invent a value — and the one
+   * value a future author would reach for first, a hardcoded literal, is
+   * correct for exactly one of the two surfaces and a false provenance claim on
+   * the other. There is no default that is honest on both, so there is no
+   * default at all.
+   */
+  verdictModelLabel: string;
+  /**
+   * The widget-data plugin's own cache instance (Task 3-12) — the SAME one
+   * `widgetDataRoutes` holds, threaded through by both surfaces that build an
+   * `AdvisorToolDeps` (`advisor.routes.ts` and `mcp/board-tools.ts`), exactly
+   * like `focusTools` above. `set_focus_verdicts` calls `cache.invalidateBoard`
+   * after writing, or the board it just wrote to keeps serving a stale cached
+   * payload for up to the cache's TTL — the same failure
+   * `focus-classify.routes.ts:103` already prevents for the button. A second,
+   * independently-constructed `WidgetCache` here would compile and run fine
+   * while evicting nothing real, which is why both call sites are pinned by an
+   * identity assertion rather than a "was this called" one.
+   */
+  cache: WidgetCache;
 }
 
 /**
@@ -85,11 +132,16 @@ function daysAgo(n: number): Date {
   return new Date(Date.now() - n * 24 * 60 * 60 * 1000);
 }
 
-// The single source of truth for the board-scoped advisor tools — seven reads
-// and one proposal writer, each carrying its own `minRole`, ENFORCED on both
-// surfaces (`buildAdvisorTools` by composition, `registerBoardTools` by refusal).
-// Both the AI-SDK loop (buildAdvisorTools) and the MCP server derive from this.
-// `scope` is deliberately NOT part of any inputSchema — the model cannot widen it.
+// The single source of truth for the board-scoped advisor tools — eight reads
+// (seven analytics/board reads plus `list_unclassified_tasks`, which reads
+// only despite driving the classification pipeline — see its own comment
+// below) and two mutating tools: `propose_board_changes`, which proposes, and
+// `set_focus_verdicts`, the one stated exception that writes directly (see
+// the comment beside each). Each spec carries its own `minRole`, ENFORCED on
+// both surfaces (`buildAdvisorTools` by composition, `registerBoardTools` by
+// refusal). Both the AI-SDK loop (buildAdvisorTools) and the MCP server
+// derive from this. `scope` is deliberately NOT part of any inputSchema — the
+// model cannot widen it.
 export const ADVISOR_TOOL_SPECS: AdvisorToolSpec[] = [
   {
     name: 'get_team_overview',
@@ -159,6 +211,19 @@ export const ADVISOR_TOOL_SPECS: AdvisorToolSpec[] = [
     inputSchema: z.object({}),
     handler: (_input, { boardId }, { boardReads }) => boardReads.listExcluded(boardId),
   },
+  /**
+   * THE RULE for a mutating tool in this catalogue: PROPOSE, never write
+   * directly. `propose_board_changes` below persists a row (an
+   * `AdvisorChangeSet`) but does not touch the board's own content — its
+   * description tells the model, in the strongest terms, that there is no
+   * apply tool and it must not claim the change is made.
+   *
+   * `set_focus_verdicts`, at the end of this array, is the ONE STATED
+   * EXCEPTION to that rule — the first `mutates: true` tool in this repo that
+   * writes directly. Read its comment before adding a THIRD mutating tool: the
+   * rule and its exception belong together, and an undocumented exception is
+   * how a rule quietly stops being one.
+   */
   {
     name: 'propose_board_changes',
     minRole: 'EDITOR',
@@ -205,6 +270,117 @@ export const ADVISOR_TOOL_SPECS: AdvisorToolSpec[] = [
           'Nothing has changed yet. Report this preview to the user and tell them it is ' +
           'waiting for their approval in Deckgauge. You cannot apply it — there is no tool for that.',
       };
+    },
+  },
+  /**
+   * Task 3-9. Runs the classification pipeline's cheap tiers (cache, board
+   * CAPEX/OPEX flags — own and inherited — and keyword rules) against this
+   * board and hands back exactly what none of them could answer: the genuine
+   * residue, never every unclassified row. See `focus-tools.service.ts`'s
+   * `listResidue` for what "genuine residue" means and why a naive query for
+   * "no verdict row" would answer wrongly (it would re-offer tasks the rule
+   * tier would resolve for free on the next render).
+   *
+   * **`mutates: false`, deliberately, even though this drives the real
+   * classification pipeline.** That looks like it should persist something —
+   * `classifyTasks` normally saves what it decides — but the classifier
+   * `listResidue` hands it always answers `[]`, so no MODEL verdict is ever
+   * produced along this path, and RULE/CAPEX verdicts were never persisted to
+   * begin with: `classification.service.ts`'s `CACHEABLE` set admits only
+   * HUMAN and MODEL (a person's decision, or an expensive call worth
+   * remembering — RULE and CAPEX are cheap to recompute and would go stale in
+   * a cache the instant the board or the rules changed). So this tool reads
+   * the board, runs real cheap-tier logic against it, and writes nothing at
+   * all — a reader who assumes "runs the pipeline" implies "persists
+   * something" would be wrong here specifically, which is exactly why this
+   * comment exists.
+   */
+  {
+    name: 'list_unclassified_tasks',
+    minRole: 'VIEWER',
+    mutates: false,
+    description:
+      'List Focus board tasks that no cached verdict, board CAPEX/OPEX flag (own or inherited from a parent), or keyword rule could classify — ' +
+      'the genuine unresolved residue, never every unclassified row. ' +
+      "Use this when no advisor LLM provider is configured for this organization, so an operator's own local coding agent classifies Focus tasks instead. " +
+      'For each task returned, decide class "A" (roadmap/CAPEX — delivers one of the listed epics or a named programme), "B" (OPEX — a customer-visible bug, ' +
+      'performance defect, or one-off operational request), or "C" (internal technical — refactoring, tooling, test debt, CI, no roadmap outcome stated); ' +
+      'a one-sentence reason under 400 characters; and an epicKey from the epics list ONLY when the task clearly advances one of them (null otherwise — never invent one). ' +
+      'Then call set_focus_verdicts with your verdicts. remaining > 0 means call this again (the same or a larger limit) to keep paging through what is left. ' +
+      'An emptyReason field in the response means this board has no issue source configured — say so rather than reporting nothing to classify; ' +
+      'an empty tasks list WITHOUT emptyReason means the board genuinely has nothing left for you to classify. ' +
+      "The response's window field states the date range this call actually scanned (days, from, to) — it is a fixed lookback, not necessarily the range the operator has the board's period picker set to. " +
+      'State that window when you report your findings (e.g. "scanned the last N days"), so the operator can see whether it matches what they are looking at.',
+    inputSchema: listUnclassifiedTasksInputSchema,
+    handler: async ({ limit }, { boardId }, { focusTools }) => {
+      const result = await listResidue(focusTools, boardId, limit);
+      // No issue source on this board — distinct from "nothing left to
+      // classify" (an empty `tasks` array with `remaining: 0`), exactly as
+      // `listResidue`'s own header requires. Mirrors the
+      // `{ emptyReason: EMPTY_SNAPSHOT_REASON }` shape `widget-data.service.ts`
+      // reports for the same null, so the two surfaces agree on what an
+      // unconfigured issue source looks like.
+      if (!result) {
+        return { tasks: [], epics: [], remaining: 0, emptyReason: EMPTY_SNAPSHOT_REASON };
+      }
+      return result;
+    },
+  },
+  /**
+   * Task 3-10. THE STATED EXCEPTION to "a mutating tool proposes, it never
+   * writes directly" (see the comment beside `propose_board_changes` above).
+   * This is the first `mutates: true` tool in this repo that writes DIRECTLY,
+   * and the exception is deliberate, not a shortcut — three properties that
+   * are all true of a class verdict and none of which are true of a board
+   * change set:
+   *
+   *   - REVERSIBLE: a verdict is one row in `focus_verdicts`, freely
+   *     overwritable by a later call, human or agent.
+   *   - INDIVIDUALLY OVERRIDABLE through the human verdict path: a HUMAN
+   *     verdict always outranks a MODEL one at read time (`resolveVerdict`'s
+   *     precedence), and `setVerdicts` refuses to even touch a fingerprint
+   *     already holding a HUMAN row — so nothing this tool writes can survive
+   *     a person's disagreement with it.
+   *   - SCOPED to one column-triple (class, epicKey, reason) on rows that
+   *     ALREADY EXIST: it cannot create, delete, move, or rename anything, and
+   *     it cannot touch any row outside the fingerprint set the board's
+   *     current window resolved to (`captureFingerprintsAndEpics` in
+   *     `focus-tools.service.ts`).
+   *
+   * `propose_board_changes` restructures data other people depend on — groups,
+   * statuses, ownership — which is expensive to undo and easy to misattribute,
+   * and that is exactly why it stops at a preview a human must approve. None
+   * of that is true here. The NEXT mutating tool added to this catalogue
+   * should default to PROPOSING, and should have to argue for an exception
+   * this explicit if it wants to write directly.
+   *
+   * The tool description below has its own, separate job: telling the model
+   * to report the COUNTS THIS TOOL RETURNED (`written`/`rejected`) rather than
+   * the model's own tally of what it sent — the same narration failure
+   * `propose_board_changes`'s description (`nextStep`, above) already exists
+   * to prevent, applied here to a tool that actually did write something
+   * instead of one that didn't.
+   */
+  {
+    name: 'set_focus_verdicts',
+    minRole: 'EDITOR',
+    mutates: true,
+    description:
+      "Write your classification verdicts for Focus board tasks obtained from list_unclassified_tasks. " +
+      "This DOES change the board's stored verdicts directly — unlike every other write in this catalogue, there is no proposal step and no separate apply. " +
+      'Each verdict is { id, class, epicKey, reason }; id must be a task id returned by list_unclassified_tasks — a made-up or stale id is rejected, not silently ignored. ' +
+      'A verdict for a task a human has already classified is refused, not overwritten, and reported per-id in rejected rather than as an error. ' +
+      'After calling this, report back exactly the written and rejected counts this tool returned — never your own tally of how many verdicts you sent or believe you classified. ' +
+      "A rejected entry can usually be corrected and resent (e.g. call list_unclassified_tasks again if a task id looks stale); read each one's reason before retrying.",
+    inputSchema: setFocusVerdictsInputSchema,
+    handler: async ({ verdicts }, { boardId }, { focusTools, userId, verdictModelLabel, cache }) => {
+      const result = await setVerdicts(focusTools, boardId, verdicts, userId, verdictModelLabel);
+      // After the write, so a call that resolved to nothing written still
+      // evicts — same ordering `focus-verdict.routes.ts` uses, and the same
+      // reason: a fully-rejected batch is a normal outcome, not a no-op, and
+      // there is no cheaper way to know in advance that nothing would change.
+      cache.invalidateBoard(boardId);
+      return result;
     },
   },
 ];

@@ -4,7 +4,11 @@ import type { BuilderInputs, BuiltSql } from './types.js';
 import { formatDateTime, resolveDays } from '../../widgets/widget-helpers.js';
 import { resolvePeriod } from './period.js';
 
-const DEFAULT_DAYS = 90;
+// Exported so `focus-tools.service.ts`'s `listResidue` can report the exact
+// window it falls back to when run with an empty config — see that
+// function's own header for why the agent-bridge path always hits this
+// default rather than the board's on-screen period.
+export const DEFAULT_DAYS = 90;
 
 /**
  * One row per task in scope: identity, raw state, assignee, epic, origin.

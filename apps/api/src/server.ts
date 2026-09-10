@@ -292,12 +292,15 @@ export function buildServer(prisma: PrismaClient) {
     protectedApp.register(focusVerdictRoutes({ prisma, cache: widgetCache }));
     protectedApp.register(presetsRoutes, { prisma });
     protectedApp.register(intelligenceQueryRoutes, { prisma });
-    protectedApp.register(advisorRoutes({ prisma, clickhouse }));
+    // The SAME cache instance again: both surfaces below can invoke
+    // set_focus_verdicts, and a verdict write that evicts a private cache
+    // leaves the board showing the old class for the rest of the 60s TTL.
+    protectedApp.register(advisorRoutes({ prisma, clickhouse, cache: widgetCache }));
     protectedApp.register(advisorHelpRoutes({ prisma }));
     protectedApp.register(advisorConfigRoutes({ prisma }));
     protectedApp.register(advisorSessionRoutes({ prisma }));
     protectedApp.register(advisorChangeSetRoutes(prisma));
-    protectedApp.register(mcpRoutes({ prisma, clickhouse }));
+    protectedApp.register(mcpRoutes({ prisma, clickhouse, cache: widgetCache }));
     protectedApp.register(roadmapRoutes, { prisma });
     protectedApp.register(roadmapsRoutes, { prisma });
     protectedApp.register(comparisonRoutes, { prisma });

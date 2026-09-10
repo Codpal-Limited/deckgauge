@@ -105,34 +105,52 @@ git clone https://github.com/Codpal-Limited/deckgauge
 cd deckgauge
 cp .env.example .env
 docker compose up -d
-# create the schema, then open http://localhost:3000
+# create the schema
 docker compose run --rm api sh -c "cd /app/packages/db && npx prisma db push"
+# create a signed-in-and-populated demo account
+./scripts/test-account.sh
 ```
 
-Then open `http://localhost:3000`, sign in, and create your organization —
-only the first person to sign in can, and the demo below attaches to it. It
-never creates one for you.
+Then open `http://localhost:3000` and sign in with **`test@test.com`** /
+**`test`**. You land on a working product: two boards carrying 240 items, a
+roadmap, a Platform-vs-Mobile comparison dashboard, a 25-person org chart,
+timesheets, and six months of engineering history behind the Engineering
+Intelligence and Team Focus dashboards. The org-tree sync that fills the
+per-engineer views runs as part of that command, so nothing is left to press.
 
-**Want something to look at?** One command fills your organization with a
-fictional company: two boards carrying 240 items, a roadmap, a
-Platform-vs-Mobile comparison dashboard, a 25-person org chart, timesheets,
-and six months of engineering history behind the intelligence dashboards.
+> **Before you expose this install to anything.** `test@test.com` has a
+> password everybody knows, and `docker-compose.yml` publishes its ports on all
+> interfaces by default (`BIND_HOST` is unset). That is fine on a laptop and not
+> fine anywhere else: remove the account (below) and set `BIND_HOST=127.0.0.1:`
+> in `.env` — note the trailing colon — before the machine is reachable by
+> anyone but you.
+
+**The account and the data are removed separately** — removing one leaves the
+other exactly as it was. Remove the account and its grants, keeping the seeded
+content and anything you have built beside it:
 
 ```bash
-docker compose run --rm api node /app/packages/db/dist/demo/seed-demo.js
+./scripts/test-account.sh --remove
 ```
 
-One more step to see the per-engineer views: open the demo org chart and press
-**Sync**. The org tree, roles, locations and timesheets are there as soon as
-the seed finishes, but the per-engineer leaderboard, the heat strip and the
-per-employee board list are computed by the org-tree sync from the seeded
-activity — they stay empty until it has run once.
-
-Remove it whenever you like, and only it — your own boards, connections, and
-data are untouched:
+Remove the demo *data*, keeping your own boards, connections and account:
 
 ```bash
-docker compose run --rm api node /app/packages/db/dist/demo/seed-demo.js --remove
+docker compose run --rm api npx tsx /app/packages/db/src/demo/seed-demo.ts --remove
+```
+
+**Prefer to start empty and register your own account?** Skip
+`scripts/test-account.sh` entirely. Open `http://localhost:3000`, sign in, and
+create your organization — only the first person to sign in can, and Deckgauge
+never creates one for you. You can still seed the demo content into it
+afterwards:
+
+```bash
+docker compose run --rm api npx tsx /app/packages/db/src/demo/seed-demo.ts
+# fills the per-engineer leaderboard, heat strip and per-employee board lists,
+# which are computed by the org-tree sync rather than written by the seeder
+docker compose run --rm -e DECKGAUGE_ORG_SLUG=your-org-slug \
+  worker npx tsx src/scripts/trigger-org-sync.ts
 ```
 
 Full setup — connecting sources, SSO, access control — is in the [docs](https://deckgauge.com/docs).
