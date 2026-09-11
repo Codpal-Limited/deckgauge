@@ -154,16 +154,38 @@ export function seedBucket({ status, provider, statusCategory }: SeedBucketInput
   // 1 — abandonment, which no category can state.
   if (curated === 'CANCELLED') return 'ABORTED';
 
-  // 2 — the customer's own category, for the three it covers.
+  // 2 — a curated PARKED reading, which no category can express either.
+  //
+  // Above the customer's category, and that ordering is the whole reason this
+  // bucket exists at all. Jira has three categories — To Do, In Progress, Done
+  // — so `CATEGORY_TO_BUCKET` has no `WAITING_TO_SHIP` member, and while rule 3
+  // ran first NO Jira status carrying a real category could ever seed parked.
+  // On the reference data that is every one of them: `Client Review`,
+  // `Ready to Deploy` and `Live Testing` report `In Progress`, `QA Ready`
+  // reports `To Do`, and the stage emptied from 821 tasks to zero the moment
+  // anything consumed it. The owner asked for this bucket precisely to see "how
+  // much time things are parked"; a category cannot answer that question, so it
+  // does not get to overrule an answer that can.
+  //
+  // `Done` is the direction that matters most: it would file
+  // finished-but-not-shipped work into the DELIVERED denominator, which is a
+  // stronger claim than merely relabelling it.
+  if (curated === 'WAITING_TO_SHIP') {
+    // Except for the one the owner moved by name: "QA goes to in progress for
+    // now." Inside this branch rather than after it, so the decision survives a
+    // category as well as its absence.
+    return QA_IN_PROGRESS_OVERRIDES.has(status) ? 'IN_PROGRESS' : 'WAITING_TO_SHIP';
+  }
+
+  // 3 — the customer's own category, for the three it covers. Still ahead of the
+  // rest of the curated map: for every stage a category CAN express, the
+  // customer knows their workflow better than a default written for everyone.
   const fromCategory = statusCategory === null ? undefined : CATEGORY_TO_BUCKET[statusCategory];
   if (fromCategory !== undefined) return fromCategory;
 
-  // 2.5 — the QA decision, which outranks the curated map's parked reading.
-  if (curated === 'WAITING_TO_SHIP' && QA_IN_PROGRESS_OVERRIDES.has(status)) return 'IN_PROGRESS';
-
-  // 3 — the curated map, the only source of WAITING_TO_SHIP.
+  // 4 — the rest of the curated map.
   if (curated !== undefined) return STAGE_TO_BUCKET[curated];
 
-  // 4 — the name rule, so counted-ness does not move.
+  // 5 — the name rule, so counted-ness does not move.
   return isInProgressByStatusName(status) ? 'IN_PROGRESS' : 'TODO';
 }

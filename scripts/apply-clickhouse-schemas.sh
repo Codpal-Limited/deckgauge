@@ -6,8 +6,8 @@
 # apply correctly. Schemas use IF NOT EXISTS, so re-running is safe (idempotent).
 #
 # Environment overrides:
-#   CLICKHOUSE_USER      (default: cockpit)
-#   CLICKHOUSE_PASSWORD  (default: cockpit)
+#   CLICKHOUSE_USER      (default: cockpit — an identifier, not a credential)
+#   CLICKHOUSE_PASSWORD  (required; read from .env when not exported)
 
 set -euo pipefail
 
@@ -15,8 +15,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
+# shellcheck source=lib/env-file.sh
+DG_PROJECT_ROOT="$PROJECT_ROOT"
+source "$PROJECT_ROOT/scripts/lib/env-file.sh"
 CLICKHOUSE_USER="${CLICKHOUSE_USER:-cockpit}"
-CLICKHOUSE_PASSWORD="${CLICKHOUSE_PASSWORD:-cockpit}"
+CLICKHOUSE_PASSWORD="$(dg_require_env CLICKHOUSE_PASSWORD)" || exit 1
 SCHEMA_DIR="$PROJECT_ROOT/clickhouse/schemas"
 
 if [ ! -d "$SCHEMA_DIR" ]; then

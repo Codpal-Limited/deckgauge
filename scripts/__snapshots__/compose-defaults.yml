@@ -23,8 +23,8 @@ services:
           memory: "1610612736"
     environment:
       CLICKHOUSE_READ_URL: ""
-      CLICKHOUSE_URL: http://cockpit:cockpit@clickhouse:8123/cockpit
-      DATABASE_URL: postgresql://cockpit:cockpit@postgres:5432/cockpit
+      CLICKHOUSE_URL: http://cockpit:__required_not_a_credential__@clickhouse:8123/cockpit
+      DATABASE_URL: postgresql://cockpit:__required_not_a_credential__@postgres:5432/cockpit
       DECKGAUGE_EDITION: community
       DECKGAUGE_ENTERPRISE_MODULE: ""
       DECKGAUGE_LICENSE_FILE: ""
@@ -69,12 +69,13 @@ services:
     environment:
       CLICKHOUSE_DB: cockpit
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
-      CLICKHOUSE_PASSWORD: cockpit
+      CLICKHOUSE_PASSWORD: __required_not_a_credential__
       CLICKHOUSE_USER: cockpit
     healthcheck:
       test:
         - CMD-SHELL
-        - clickhouse-client --user cockpit --password cockpit --query 'SELECT 1'
+        - clickhouse-client --user cockpit --password __required_not_a_credential__
+          --query 'SELECT 1'
       timeout: 5s
       interval: 10s
       retries: 12
@@ -125,16 +126,16 @@ services:
       - /opt/keycloak/configure-microsoft-idp.sh
     environment:
       JAVA_OPTS_APPEND: -Xms128m -Xmx384m
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: __required_not_a_credential__
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_DB: postgres
-      KC_DB_PASSWORD: keycloak
+      KC_DB_PASSWORD: __required_not_a_credential__
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_HOSTNAME: http://localhost:8080
       KC_HOSTNAME_STRICT: "false"
-      KEYCLOAK_CLIENT_SECRET: deckgauge-secret
-      KEYCLOAK_PUBLIC_ORIGIN: ""
+      KEYCLOAK_CLIENT_SECRET: __required_not_a_credential__
+      KEYCLOAK_PUBLIC_ORIGIN: http://localhost:3000
       MICROSOFT_CLIENT_ID: ""
       MICROSOFT_CLIENT_SECRET: ""
       MICROSOFT_TENANT_ID: ""
@@ -182,7 +183,7 @@ services:
           memory: "134217728"
     environment:
       POSTGRES_DB: keycloak
-      POSTGRES_PASSWORD: keycloak
+      POSTGRES_PASSWORD: __required_not_a_credential__
       POSTGRES_USER: keycloak
     healthcheck:
       test:
@@ -236,7 +237,7 @@ services:
           memory: "268435456"
     environment:
       POSTGRES_DB: cockpit
-      POSTGRES_PASSWORD: cockpit
+      POSTGRES_PASSWORD: __required_not_a_credential__
       POSTGRES_USER: cockpit
     healthcheck:
       test:
@@ -313,14 +314,14 @@ services:
       API_URL: http://api:3001
       AUTH_TRUST_HOST: "true"
       KEYCLOAK_CLIENT_ID: deckgauge-web
-      KEYCLOAK_CLIENT_SECRET: deckgauge-secret
+      KEYCLOAK_CLIENT_SECRET: __required_not_a_credential__
       KEYCLOAK_INTERNAL_URL: http://keycloak:8080/realms/deckgauge
       KEYCLOAK_ISSUER: http://localhost:8080/realms/deckgauge
       MICROSOFT_CLIENT_ID: ""
       MICROSOFT_CLIENT_SECRET: ""
       MICROSOFT_TENANT_ID: ""
       NEXT_PUBLIC_API_URL: http://localhost:3001
-      NEXTAUTH_SECRET: deckgauge-nextauth-secret
+      NEXTAUTH_SECRET: __required_not_a_credential__
       NEXTAUTH_URL: http://localhost:3000
       NODE_OPTIONS: --max-old-space-size=1280
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
@@ -362,8 +363,8 @@ services:
       ADO_CRON_INTERVAL: ""
       ADO_REPO_INTEL_TIMEOUT_MS: ""
       CLICKHOUSE_READ_URL: ""
-      CLICKHOUSE_URL: http://cockpit:cockpit@clickhouse:8123/cockpit
-      DATABASE_URL: postgresql://cockpit:cockpit@postgres:5432/cockpit
+      CLICKHOUSE_URL: http://cockpit:__required_not_a_credential__@clickhouse:8123/cockpit
+      DATABASE_URL: postgresql://cockpit:__required_not_a_credential__@postgres:5432/cockpit
       DECKGAUGE_EDITION: community
       DECKGAUGE_ENTERPRISE_MODULE: ""
       DECKGAUGE_LICENSE_FILE: ""

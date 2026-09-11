@@ -5,6 +5,7 @@ import {
   chExecutorFromClient,
   type ChCoverageReport,
 } from './ch-provisioning.js';
+import { ORPHANED_SYSTEM_LOG_QUERY, orphanedSystemLogDropDdl } from './ch-system-logs.js';
 import { dirnameOf, isMainModule } from './esm-main.js';
 
 export interface ClickhouseExecClient {
@@ -33,6 +34,18 @@ export interface ClickhouseMigrationResult {
    * until it runs, and an uncovered ClickHouse object is world-readable.
    */
   rowPolicies: ChCoverageReport;
+  /**
+   * Renamed-aside system log tables dropped by the closing sweep (`query_log_0`
+   * and friends). Empty on a clean server — and empty, rather than absent, when
+   * the sweep itself failed, because it is deliberately non-fatal.
+   */
+  orphanedLogsDropped: string[];
+  /**
+   * Why the sweep stopped, when it did. Absent on success — including the
+   * success of finding nothing. Present WITH a non-empty `orphanedLogsDropped`
+   * when it failed part-way, which is the case a single boolean would lose.
+   */
+  orphanedLogSweepError?: string;
 }
 
 const ENSURE_DATABASE_DDL = 'CREATE DATABASE IF NOT EXISTS cockpit';
@@ -148,7 +161,42 @@ export async function runClickhouseMigrations(
     );
   }
 
-  return { applied, skipped, rowPolicies };
+  // Sweep ClickHouse's own abandoned log tables.
+  //
+  // AFTER the policy pass, and NON-FATAL — the opposite of the pass above, and
+  // deliberately so. An uncovered object is a tenancy hole and must fail the
+  // migration; a leftover `query_log_0` is only wasted disk, and a sweep that
+  // could abort a deploy would be a worse bug than the thing it cleans.
+  //
+  // Here because this is the ONE code path that reaches every ClickHouse server
+  // this repo owns — staging on deploy, the test server on setup — and the
+  // cleanup cannot live in `clickhouse/config`: there is no config node for a
+  // table that no longer has a config entry. See `ch-system-logs.ts` for the
+  // measurements and for why the DROP guard lives in the DDL builder rather
+  // than in the query.
+  const orphanedLogsDropped: string[] = [];
+  let orphanedLogSweepError: string | undefined;
+  try {
+    const found = await client.query({ query: ORPHANED_SYSTEM_LOG_QUERY, format: 'JSONEachRow' });
+    const names = ((await found.json()) as { name: string }[]).map((r) => r.name);
+    const statements = orphanedSystemLogDropDdl(names);
+    for (const [i, statement] of statements.entries()) {
+      await client.exec({ query: statement });
+      // Recorded AS IT GOES, not after the loop. Assigning the whole list at
+      // the end reports ZERO when a later statement fails, which hides
+      // destructive work that already happened — a lie in the worse direction.
+      orphanedLogsDropped.push(names[i]!);
+    }
+  } catch (error) {
+    // Non-fatal, but NOT silent. `catch {}` discarded the reason entirely, so
+    // the guard's deliberate refusal — the thing `ch-system-logs.ts` chose over
+    // filtering precisely so it could not pass unnoticed — became
+    // indistinguishable from a clean server. Kept on the result so the CLI can
+    // print it.
+    orphanedLogSweepError = error instanceof Error ? error.message : String(error);
+  }
+
+  return { applied, skipped, rowPolicies, orphanedLogsDropped, orphanedLogSweepError };
 }
 
 async function runFromCli(): Promise<void> {
@@ -164,6 +212,19 @@ async function runFromCli(): Promise<void> {
 
   console.log(`Applying ClickHouse migrations from ${schemasDir}`);
   const result = await runClickhouseMigrations({ client: clickhouse, schemasDir });
+
+  // Printed in BOTH outcomes. The sweep issues `DROP TABLE` on every staging
+  // deploy, and it used to print nothing whether it dropped eight tables or
+  // refused on the first — which made a destructive step invisible and a
+  // deliberate refusal indistinguishable from a clean server.
+  if (result.orphanedLogsDropped.length > 0) {
+    console.log(`  • dropped ${result.orphanedLogsDropped.length} abandoned system log table(s): ${result.orphanedLogsDropped.join(', ')}`);
+  } else {
+    console.log('  • no abandoned system log tables to drop');
+  }
+  if (result.orphanedLogSweepError) {
+    console.warn(`  ! system-log sweep stopped early (migration NOT failed): ${result.orphanedLogSweepError}`);
+  }
 
   for (const filename of result.skipped) {
     console.log(`  • skipped ${filename} (already applied)`);

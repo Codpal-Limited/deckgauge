@@ -124,7 +124,12 @@ function FragmentRow({ epic, rank, open, onToggle }: FragmentRowProps) {
               ev.stopPropagation();
               onToggle();
             }}
-            className="inline-flex items-center gap-1.5"
+            // 26x20 measured. Floored on both axes — but verify the page
+            // does not overflow afterwards: the same change on
+            // `TimesheetGrid`'s chevron widened a sticky column and tore the
+            // page by 18px, and was reverted. This cell is `text-right` and
+            // not sticky, so it has room the other did not.
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 md:min-h-0 md:min-w-0"
           >
             <Chevron open={open} />
             {rank}

@@ -117,9 +117,12 @@ function DraggableNode({ employee, childMap, employees, orgTreeId, onRefresh, on
 
   const children = childMap.get(employee.id) ?? [];
 
+  // 38px of inset per level (26 + 12) is desktop arithmetic: at 390px a depth-6 node
+  // had 228px of its 358px content box spent on indentation. 16px keeps the connector
+  // line legible and the card usable; `md:` restores the original.
   const childrenNodes =
     !collapsed && children.length > 0 ? (
-      <div className="ml-[26px] border-l border-slate-200 pl-3">
+      <div className="ml-2 border-l border-slate-200 pl-2 md:ml-[26px] md:pl-3">
         {children.map((child) => (
           <DraggableNode
             key={child.id}
@@ -143,10 +146,10 @@ function DraggableNode({ employee, childMap, employees, orgTreeId, onRefresh, on
           setCollapsed((c) => !c);
         }}
         aria-label={collapsed ? 'Expand' : 'Collapse'}
-        className="grid h-5 w-5 place-items-center rounded-md text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600"
+        className="grid h-11 w-11 place-items-center rounded-md text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600 md:h-5 md:w-5"
       >
         <svg
-          className={`h-3.5 w-3.5 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+          className={`h-4 w-4 transition-transform md:h-3.5 md:w-3.5 ${collapsed ? '-rotate-90' : ''}`}
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

@@ -36,6 +36,7 @@ export {
   FocusStageSchema,
   StageMapOverridesSchema,
   mergeStageMap,
+  type BucketStageLayer,
   parseStageMapOverrides,
   stageMapOverrideCount,
   unmappedObservedStates,

@@ -48,25 +48,53 @@ function readStringArray(value: unknown): string[] | null {
  * counts", which is the right reading for a figure the widget presents as waste.
  * Falling through to a default there would overrule a decision.
  */
-export async function resolveWorkingStates(
+export async function loadOrgBucketRows(
   prisma: PrismaClient,
   organizationId: string | null,
-  legacyBoardWorkingStates: unknown,
-): Promise<readonly string[]> {
-  const legacy = readStringArray(legacyBoardWorkingStates);
-
+): Promise<Array<{ provider: string; status: string; bucket: string }>> {
   // No tenant, no scoped query. An unscoped read would return every
   // organization's decisions: `SourceStatusBucket.sourceId` has no foreign key,
   // so `organizationId` is the only thing scoping that table
   // (TENANCY-PROGRAMME §5a).
-  if (organizationId === null) return legacy ?? DEFAULT_WORKING_STATES;
-
-  const rows = await prisma.sourceStatusBucket.findMany({
+  if (organizationId === null) return [];
+  return prisma.sourceStatusBucket.findMany({
     where: { organizationId },
-    select: { status: true, bucket: true },
+    select: { provider: true, status: true, bucket: true },
   });
-  if (rows.length === 0) return legacy ?? DEFAULT_WORKING_STATES;
+}
 
+/**
+ * Which source states count as "being worked", from rows already loaded.
+ *
+ * A PRIORITY CHAIN, and the order is the content of slice 3:
+ *
+ * 1. **The organization's `IN_PROGRESS` bucket decisions.** An operator who
+ *    moved `QA` into In progress in the Time rules drawer has said what they
+ *    mean; Focus reads the same answer rather than needing to be told again.
+ * 2. **The legacy per-board `FocusConfig.workingStates`.** No editor has ever
+ *    written it — `focus-config.routes.ts` only accepts `stageMap` — so for
+ *    every real board it is `{}` and never speaks. Its one writer is the demo
+ *    seeder, and the demo needs it: `DEFAULT_WORKING_STATES` overlaps the demo's
+ *    statuses by one.
+ * 3. **`DEFAULT_WORKING_STATES`.**
+ *
+ * EMPTY is not ABSENT. Buckets configured with none of them `IN_PROGRESS`
+ * answers `[]` and stops there — the operator decided that nothing counts as
+ * being worked, and `everEnteredWorkingState`, `attentionDaysInWindow` and
+ * `verifyApprovedIsNotDone` all read an empty vocabulary as "no answer" rather
+ * than "everything counts". Falling through to a default would overrule a
+ * decision.
+ *
+ * Takes ROWS rather than fetching, so the stage-map layer can share one read —
+ * two consumers of the same decisions, and a second query would be a second
+ * chance for them to disagree.
+ */
+export function workingStatesFrom(
+  rows: readonly { status: string; bucket: string }[],
+  legacyBoardWorkingStates: unknown,
+): readonly string[] {
+  const legacy = readStringArray(legacyBoardWorkingStates);
+  if (rows.length === 0) return legacy ?? DEFAULT_WORKING_STATES;
   // Deduplicated: decisions are stored per SOURCE, so one status name is many
   // rows. Focus wants the vocabulary, not the row count. Sorted with
   // `localeCompare` so the answer does not depend on row order and a mixed-case

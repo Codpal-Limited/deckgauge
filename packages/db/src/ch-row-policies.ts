@@ -312,6 +312,47 @@ export function organizationPolicyDdl(
 }
 
 /**
+ * Remove one organization's isolation entirely — the counterpart
+ * `organizationPolicyDdl` never had.
+ *
+ * Provisioning creates a role and one `iso_` policy per object, and nothing
+ * removed either. On the shared test ClickHouse that reached 1,852 policies and
+ * 75 roles, ~75 organizations' worth; 1,848 of them point at LIVE tables, so it
+ * is a missing lifecycle rather than a dropped-table problem.
+ *
+ * ORDER IS LOAD-BEARING: policies first, role last — but NOT for the reason the
+ * first version of this comment gave. It claimed ClickHouse refuses to drop a
+ * role its policies still reference. MEASURED on 25.8.33.6, it does not: the
+ * `DROP ROLE` succeeds and the policy SURVIVES with an empty `apply_to_list`.
+ *
+ * Which is the real reason, and a worse one. Role-first leaves a policy applying
+ * to nobody — precisely the dangling category measured at 4 of 1,852 on the test
+ * server — and a dangling `iso_` policy is invisible to
+ * `isoPolicyObjectsForOrganizationQuery`, so reprovisioning will not notice it
+ * either. Policies first leaves nothing behind at any interruption point.
+ *
+ * Every statement is `IF EXISTS`. This runs against a server whose state nobody
+ * knows — a half-provisioned organization, or one already swept — and a bare
+ * DROP would abort on the first object that was never created, leaving the rest
+ * behind.
+ *
+ * The policy name is derived from `roleNameFor`, the same function the creator
+ * uses, so the two cannot drift: a rename there renames both sides at once.
+ */
+export function organizationPolicyDropDdl(
+  organizationId: string,
+  objects: readonly string[],
+): string[] {
+  const role = roleNameFor(organizationId);
+  const quotedRole = quoteIdent(role, 'role name');
+  const policy = quoteIdent(`iso_${role}`, 'policy name');
+  return [
+    ...objects.map((object) => `DROP ROW POLICY IF EXISTS ${policy} ON ${qualified(object)}`),
+    `DROP ROLE IF EXISTS ${quotedRole}`,
+  ];
+}
+
+/**
  * The objects ONE organization currently holds an `iso_` predicate policy on.
  *
  * The read counterpart of organizationPolicyDdl, and it exists because role

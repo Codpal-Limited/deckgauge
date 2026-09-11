@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 /**
  * Open/close state for the mobile nav drawer, shared between the trigger (which
@@ -29,6 +29,7 @@ const MobileNavContext = createContext<MobileNavState | null>(null);
 export function MobileNavProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
@@ -37,9 +38,23 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
   // Navigating closes the drawer. Without this, tapping a board in the drawer
   // loads the board BEHIND a drawer that is still covering it — the navigation
   // is client-side, so nothing unmounts the drawer on its own.
+  //
+  // The QUERY STRING is part of "navigating", and leaving it out made this
+  // effect miss the exact case its own comment describes. Selecting a board
+  // goes to `/?boardId=<id>` — same pathname, different board — so on a phone
+  // the drawer stayed open over the board the user had just chosen, with the
+  // body scroll lock still engaged. Measured at 390px before the fix: after
+  // tapping a row the URL was `/?boardId=...`, the drawer was still visible and
+  // `body` was still `overflow: hidden`.
+  //
+  // Every jsdom test passed throughout, and the drawer e2e spec passed too —
+  // it opened and closed the drawer without ever selecting a board.
+  // `e2e/mobile-touch.spec.ts` found it only because a swipe cannot scroll a
+  // locked body.
+  const search = searchParams?.toString() ?? '';
   useEffect(() => {
     setIsOpen(false);
-  }, [pathname]);
+  }, [pathname, search]);
 
   const value = useMemo(() => ({ isOpen, open, close, toggle }), [isOpen, open, close, toggle]);
 

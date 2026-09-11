@@ -14,11 +14,20 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 SNAPSHOT="$SCRIPT_DIR/__snapshots__/compose-defaults.yml"
 cd "$PROJECT_ROOT"
 
-# Render with an EMPTY env file so a developer's own .env cannot leak in and
-# make the snapshot machine-specific. `docker compose config` resolves
-# ${VAR:-default} substitutions, which is exactly what we want to pin.
+# Render with an env file carrying NOTHING but the required variables, so a
+# developer's own .env cannot leak in and make the snapshot machine-specific.
+# `docker compose config` resolves ${VAR:-default} substitutions, which is
+# exactly what we want to pin.
+#
+# It used to be literally empty. Every credential is `${VAR:?...}` now — see
+# scripts/lib/compose-required-env.sh for why the alternative was worse than a
+# failing check: an empty file makes the render FAIL, and a failed render is
+# empty output, which `--update` would have recorded as the blessed snapshot.
 EMPTY_ENV="$(mktemp)"
 trap 'rm -f "$EMPTY_ENV"' EXIT
+# shellcheck source=lib/compose-required-env.sh
+source "$SCRIPT_DIR/lib/compose-required-env.sh"
+write_compose_required_env "$EMPTY_ENV"
 
 # Compose derives the project name from the checkout's directory basename, and
 # then prefixes it onto every network and volume name. Normalising only the
@@ -66,8 +75,18 @@ sys.stdout.write(text)
 '
 }
 
+# stderr is kept, and the exit status is checked, precisely because the snapshot
+# is written from this function. A silently-failing render records an empty file.
 render() {
-  docker compose --env-file "$EMPTY_ENV" -f docker-compose.yml config 2>/dev/null | canonicalise
+  local rendered
+  if ! rendered="$(docker compose --env-file "$EMPTY_ENV" -f docker-compose.yml config)"; then
+    echo "✗ 'docker compose config' failed — see the error above." >&2
+    echo "  Nothing was written. If a new \${VAR:?} was added, it is picked up" >&2
+    echo "  automatically by scripts/lib/compose-required-env.sh; a failure here" >&2
+    echo "  means the compose file itself does not parse." >&2
+    exit 1
+  fi
+  printf '%s\n' "$rendered" | canonicalise
 }
 
 mkdir -p "$(dirname "$SNAPSHOT")"

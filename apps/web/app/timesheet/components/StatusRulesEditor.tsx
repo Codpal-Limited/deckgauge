@@ -115,7 +115,16 @@ export function StatusRulesEditor({ initialRules, roles, employees }: StatusRule
                   />
                 </td>
                 <td className="px-2 py-1">
-                  <button type="button" aria-label="Remove rule" onClick={() => remove(i)} className="text-slate-400 hover:text-red-500">
+                  <button
+                    type="button"
+                    aria-label="Remove rule"
+                    onClick={() => remove(i)}
+                    // 52x20 measured — a bare text button in a table cell. The
+                    // whole row's other controls are inputs, which the touch
+                    // invariant does not measure, so this is the only control
+                    // here and has no sibling to strand.
+                    className="min-h-11 text-slate-400 hover:text-red-500 md:min-h-0"
+                  >
                     Remove
                   </button>
                 </td>
@@ -128,17 +137,28 @@ export function StatusRulesEditor({ initialRules, roles, employees }: StatusRule
           390px phone on one line, and the row was clipping rather than
           scrolling. `ml-auto` on Save still right-aligns it once wrapped. */}
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={addRole} className="rounded border border-slate-200 px-3 py-1 text-sm">
+        <button
+          type="button"
+          onClick={addRole}
+          // All three buttons in this wrapping row are floored together — the
+          // recurring defect on this plan is flooring one and stranding its
+          // row-mates.
+          className="min-h-11 rounded border border-slate-200 px-3 py-1 text-sm md:min-h-0"
+        >
           Add role rule
         </button>
-        <button type="button" onClick={addEmployee} className="rounded border border-slate-200 px-3 py-1 text-sm">
+        <button
+          type="button"
+          onClick={addEmployee}
+          className="min-h-11 rounded border border-slate-200 px-3 py-1 text-sm md:min-h-0"
+        >
           Add employee override
         </button>
         <button
           type="button"
           onClick={onSave}
           disabled={saving}
-          className="ml-auto rounded bg-indigo-500 px-4 py-1 text-sm text-white disabled:opacity-50"
+          className="ml-auto min-h-11 rounded bg-indigo-500 px-4 py-1 text-sm text-white disabled:opacity-50 md:min-h-0"
         >
           {saving ? 'Saving…' : 'Save'}
         </button>

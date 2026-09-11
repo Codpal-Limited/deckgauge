@@ -19,7 +19,8 @@ import {
   type FocusTaskRow,
   type FocusTransitionRow,
 } from './focus-snapshot.js';
-import { resolveWorkingStates } from './working-states.js';
+import { loadOrgBucketRows, workingStatesFrom } from './working-states.js';
+import { bucketStageLayerFrom } from './bucket-stage-layer.js';
 
 export const EMPTY_SNAPSHOT_REASON = 'no_issue_source';
 
@@ -59,15 +60,17 @@ async function loadClassificationInputs(
 
   const focusConfig = await deps.prisma.focusConfig.findUnique({ where: { boardId } });
 
-  // Derived from the organization's bucket decisions, with the legacy per-board
-  // column and the shipped default behind it — see `resolveWorkingStates` for
-  // why it is a chain rather than a replacement.
-  const workingStates = await resolveWorkingStates(
-    deps.prisma,
-    deps.organizationId,
-    focusConfig?.workingStates,
-  );
-  const stageMap = mergeStageMap(focusConfig?.stageMap);
+  // ONE read, two consumers. The same decisions define both what counts as
+  // "being worked" and where a state sits in the funnel, so reading them twice
+  // would be a second round trip AND a second chance for the two answers to
+  // disagree — which is the whole thing this feature exists to prevent.
+  const bucketRows = await loadOrgBucketRows(deps.prisma, deps.organizationId);
+  // Chain, not replacement: bucket decisions, then the legacy per-board column,
+  // then the shipped default. See `workingStatesFrom`.
+  const workingStates = workingStatesFrom(bucketRows, focusConfig?.workingStates);
+  // Three layers, narrowest last: shipped default, the organization's bucket
+  // decisions, this board's own overrides.
+  const stageMap = mergeStageMap(focusConfig?.stageMap, bucketStageLayerFrom(bucketRows));
 
   const tasks = castRows<FocusTaskRow>(
     await (

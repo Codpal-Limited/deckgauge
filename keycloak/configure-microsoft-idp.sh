@@ -149,10 +149,16 @@ echo "Configuring SMTP: host=${SMTP_HOST:-mailpit} port=${SMTP_PORT:-1025} auth=
 # the published default while the env file held a rotated value, and login broke
 # with nothing to point at.
 #
-# The default keeps a community clone working with no configuration — `docker
-# compose up` must produce a realm you can log into. It is the same value the
-# export used to hardcode, so nothing changes for an existing localhost install.
-subst CLIENT_SECRET          "${KEYCLOAK_CLIENT_SECRET:-deckgauge-secret}"
+# There is NO DEFAULT, and that is the point. This line used to read
+# `${KEYCLOAK_CLIENT_SECRET:-deckgauge-secret}` "so a community clone works with
+# no configuration" — which meant every clone that did not configure one got the
+# secret printed in this public repository, stamped into its realm at import,
+# silently. docker-compose.yml requires the variable now (`${VAR:?…}`), so the
+# container always receives one and this fallback could only ever fire on a path
+# where something else is already wrong. Failing there is strictly better than
+# quietly publishing a known secret into a fresh realm.
+: "${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET is unset. docker-compose.yml requires it; run ./scripts/init-env.sh to generate one.}"
+subst CLIENT_SECRET          "${KEYCLOAK_CLIENT_SECRET}"
 subst SMTP_HOST              "${SMTP_HOST:-mailpit}"
 subst SMTP_PORT              "${SMTP_PORT:-1025}"
 subst SMTP_FROM              "${SMTP_FROM:-no-reply@deckgauge.com}"

@@ -47,6 +47,41 @@
   -->
   <query_views_log remove="1"/>
 
+  <!--
+    The server's own text log, mirrored into a table. MEASURED on the shared test
+    ClickHouse at 472 MiB across 11.7 MILLION rows — the largest system table
+    there by a factor of four, against 65 KiB of actual `cockpit` data, and the
+    only one left with nothing bounding it after the cache caps landed.
+    Nothing reads it — repo-wide, `system.text_log` appears only in comments and
+    in STATE.md prose — and the table is a queryable MIRROR of a log that also
+    exists as a file.
+
+    WHAT THIS GIVES UP, stated because the first version of this comment got it
+    backwards. The server's own log is at
+    `/var/log/clickhouse-server/clickhouse-server.log` inside the container
+    (plus `…err.log`), read with `docker exec … tail`, NOT with `docker logs` —
+    measured on staging, `docker logs` yields **8 lines** of entrypoint output
+    while the file had **1,019,243**. And `/var/log/clickhouse-server` is not a
+    volume (`docker inspect` shows only `/var/lib/clickhouse`), so the file log
+    is LOST on a container recreate, where `system.text_log` lived in the data
+    volume and survived one. That is the real trade, and it is still worth
+    making: 472 MiB across 11.7M rows, against 65 KiB of actual `cockpit` data,
+    on a server capped at 2.5 GiB.
+  -->
+  <text_log remove="1"/>
+
+  <!--
+    Per-query metric snapshots — the same high-frequency family as `metric_log`
+    above, and disabled for the same reason.
+
+    `error_log` is deliberately NOT in this list. It is small (72 KiB observed)
+    and it is the one system log whose contents someone would actually want
+    during an incident, so the omission is a decision rather than a gap. This
+    enumeration is otherwise complete as of ClickHouse 25.8; a later version
+    adding a new `*_log` will not appear here until someone looks.
+  -->
+  <query_metric_log remove="1"/>
+
   <!-- Keep query_log (useful for debugging slow/failed queries) but bound it. -->
   <query_log>
     <database>system</database>

@@ -35,6 +35,15 @@ function messageFor(code: string): string {
  * through the shared `ShareDialog` (D-4) rather than a bespoke owner picker, so
  * the ceiling and last-owner rules are enforced in exactly one implementation.
  */
+/*
+ * Every action in this screen's per-board rows is a bare `text-sm` button —
+ * measured 42-52px wide by 20px tall, so all of them failed the touch floor on
+ * the SAME axis. They are floored together rather than one at a time, because
+ * these rows are exactly the shape this plan keeps getting wrong: Rename, Make
+ * me owner, Yes-delete, Keep it, Save, Cancel and the access link all sit in
+ * one row, and flooring a subset strands the rest at 20px beside a 44px
+ * neighbour.
+ */
 export function OrgBoardsScreen({
   boards,
   currentUserId,
@@ -112,7 +121,7 @@ export function OrgBoardsScreen({
                       />
                       <button
                         type="button"
-                        className="text-sm font-medium text-teal-700"
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm font-medium text-teal-700 md:min-h-0 md:min-w-0"
                         onClick={async () => {
                           const name = draftName.trim();
                           if (!name) return;
@@ -123,7 +132,7 @@ export function OrgBoardsScreen({
                       </button>
                       <button
                         type="button"
-                        className="text-sm text-slate-500"
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm text-slate-500 md:min-h-0 md:min-w-0"
                         onClick={() => setEditing(null)}
                       >
                         Cancel
@@ -143,7 +152,7 @@ export function OrgBoardsScreen({
                   {board.access.length === 0 ? (
                     <button
                       type="button"
-                      className="text-sm text-slate-500 underline"
+                      className="inline-flex min-h-11 items-center text-sm text-slate-500 underline md:min-h-0"
                       onClick={() => setSharing(board)}
                     >
                       Nobody yet
@@ -155,7 +164,7 @@ export function OrgBoardsScreen({
                   <button
                     type="button"
                     aria-label={`Rename ${board.name}`}
-                    className="text-sm text-slate-700"
+                    className="inline-flex min-h-11 items-center text-sm text-slate-700 md:min-h-0"
                     onClick={() => {
                       setEditing(board.id);
                       setDraftName(board.name);
@@ -167,7 +176,7 @@ export function OrgBoardsScreen({
                     <button
                       type="button"
                       aria-label={`Make me owner of ${board.name}`}
-                      className="text-sm text-slate-700"
+                      className="inline-flex min-h-11 items-center text-sm text-slate-700 md:min-h-0"
                       onClick={() =>
                         run(async () => {
                           const result = await grantAccess('board', board.id, currentUserId, 'OWNER');
@@ -182,7 +191,7 @@ export function OrgBoardsScreen({
                     <>
                       <button
                         type="button"
-                        className="text-sm font-medium text-red-600"
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm font-medium text-red-600 md:min-h-0 md:min-w-0"
                         onClick={async () => {
                           if (await run(() => onDelete(board.id))) setConfirming(null);
                         }}
@@ -191,7 +200,7 @@ export function OrgBoardsScreen({
                       </button>
                       <button
                         type="button"
-                        className="text-sm text-slate-500"
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm text-slate-500 md:min-h-0 md:min-w-0"
                         onClick={() => setConfirming(null)}
                       >
                         Keep it
@@ -201,7 +210,11 @@ export function OrgBoardsScreen({
                     <button
                       type="button"
                       aria-label={`Delete ${board.name}`}
-                      className="text-sm text-red-600"
+                      // `min-w-11` as well: the word "Delete" is 42px wide, so
+                      // this one missed on the other axis after the height
+                      // floor. Its row-mates are wider words and already clear
+                      // 44.
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm text-red-600 md:min-h-0 md:min-w-0"
                       onClick={() => setConfirming(board.id)}
                     >
                       Delete

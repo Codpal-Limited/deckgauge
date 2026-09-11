@@ -14,7 +14,11 @@ export function PeriodNavigator({ label, onPrev, onNext }: PeriodNavigatorProps)
         type="button"
         aria-label="previous period"
         onClick={onPrev}
-        className="rounded-l-lg px-2.5 py-1.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+        // Measured 27x36 — under on BOTH axes, so this needs `min-w-11` as
+        // well as `min-h-11`. A chevron glyph gives the button almost no
+        // intrinsic width. The label between the two is a `<span>`, not a
+        // control, and `items-center` keeps it centred as they grow.
+        className="min-h-11 min-w-11 rounded-l-lg px-2.5 py-1.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 md:min-h-0 md:min-w-0"
       >
         ‹
       </button>
@@ -25,7 +29,7 @@ export function PeriodNavigator({ label, onPrev, onNext }: PeriodNavigatorProps)
         type="button"
         aria-label="next period"
         onClick={onNext}
-        className="rounded-r-lg px-2.5 py-1.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+        className="min-h-11 min-w-11 rounded-r-lg px-2.5 py-1.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 md:min-h-0 md:min-w-0"
       >
         ›
       </button>

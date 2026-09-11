@@ -50,7 +50,7 @@ export function TokenRefreshBox({ onRefresh, note, autoFocus, onSuccess }: Props
         <button
           onClick={save}
           disabled={!token || submitting}
-          className="rounded bg-indigo-600 px-3 py-1 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="inline-flex min-h-11 items-center rounded bg-indigo-600 px-3 py-1 text-sm text-white hover:bg-indigo-700 disabled:opacity-50 md:min-h-0"
         >
           {submitting ? 'Validating…' : 'Save'}
         </button>

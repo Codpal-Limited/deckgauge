@@ -93,6 +93,7 @@ export type { ChTenantTable } from "./ch-tenancy-tables.js";
 export {
   catchAllDenyDdl,
   organizationPolicyDdl,
+  organizationPolicyDropDdl,
   ingestIdentityDdl,
   readIdentityDefaultRoleDdl,
   readIdentityPermissivePolicyQuery,

@@ -91,6 +91,16 @@ export function TimesheetGrid({ data, onTaskClick }: TimesheetGridProps) {
                       type="button"
                       aria-label={`expand ${employee.name}`}
                       onClick={() => toggle(employee.employeeId)}
+                      // 16x16, and DELIBERATELY still 16x16 — see plan Task
+                      // 3.0e. Flooring it to 44x44 was tried and reverted: the
+                      // row is 57px tall so the height was free, but the 44px
+                      // WIDTH widened this `sticky left-0` cell enough to push
+                      // the page into an 18px horizontal overflow. Measured
+                      // before revert: `documentElement.scrollWidth -
+                      // clientWidth` went 0 -> 18 at 390px. Tearing the page to
+                      // satisfy a touch metric is a worse defect than the one
+                      // being fixed, so this needs the column rework, not a
+                      // bigger button.
                       className="mr-1.5 inline-flex h-4 w-4 items-center justify-center text-slate-400 transition-colors hover:text-slate-600"
                     >
                       <span

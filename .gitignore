@@ -12,6 +12,29 @@ coverage/
 # Per-developer test overrides. apps/api/.env.test is TRACKED and must stay so;
 # this is where you point a run at a different database without dirtying it.
 .env.test.local
+#
+# BACKUPS OF .env, which the two rules above do NOT cover — they match those two
+# names EXACTLY. `.env.bak-before-clickhouse-keys` and `.env.bak-mailpitport` both
+# existed untracked in the primary checkout, each holding the complete live
+# credential set in cleartext, each offered by `git status` as a staging
+# candidate. Copying `.env` aside before editing it is what the upgrade
+# instructions in README.md tell an operator to do, so the pattern recurs.
+#
+# Listed rather than written as `.env.*` with negations, deliberately: `.env.*`
+# matches `apps/api/.env.test`, `deploy/env.hosted.example`, `.env.example` and
+# `demo/env.demo.example`, all of which are TRACKED. Both halves of that — these
+# ignored, those not — are asserted by
+# apps/api/src/__isolation__/default-credentials.test.ts through
+# `git check-ignore`, so a later widening fails the gate rather than silently
+# untracking four templates.
+#
+# scripts/init-env.sh --force writes its own backup as `.env.bak-<timestamp>`,
+# which the first rule covers by construction rather than by convention.
+.env.bak*
+.env.backup*
+.env.orig
+.env.save
+.env~
 .DS_Store
 .worktrees/
 .claude/

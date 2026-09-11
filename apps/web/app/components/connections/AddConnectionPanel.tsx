@@ -86,7 +86,9 @@ export function AddConnectionPanel() {
             key={p}
             type="button"
             onClick={() => choose(p)}
-            className={`rounded-md border px-3 py-1.5 text-sm ${
+            // The four provider choices are one wrapping row, so they are
+            // floored together. Measured 38px tall before.
+            className={`inline-flex min-h-11 items-center rounded-md border px-3 py-1.5 text-sm md:min-h-0 ${
               provider === p
                 ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                 : 'border-slate-200 text-slate-700 hover:border-indigo-300'
@@ -141,7 +143,7 @@ export function AddConnectionPanel() {
           <div className="flex gap-2 pt-1">
             <button
               type="button"
-              className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs text-white disabled:opacity-50"
+              className="inline-flex min-h-11 items-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs text-white disabled:opacity-50 md:min-h-0"
               disabled={!complete || busy}
               onClick={submit}
             >
@@ -149,7 +151,7 @@ export function AddConnectionPanel() {
             </button>
             <button
               type="button"
-              className="rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
+              className="inline-flex min-h-11 items-center rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-600 md:min-h-0"
               onClick={() => {
                 setProvider(null);
                 setError(null);

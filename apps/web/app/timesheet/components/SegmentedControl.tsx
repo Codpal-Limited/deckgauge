@@ -34,7 +34,14 @@ export function SegmentedControl<T extends string>({
             type="button"
             aria-pressed={active}
             onClick={() => onChange(opt.value)}
-            className={`rounded-md px-3 py-1 text-sm transition-all duration-150 ${
+            // `min-h-11` below `md`: measured 28px (`px-3 py-1 text-sm`), and
+            // this one component renders Week/Month/Year, Normalized/Raw and
+            // Team/Role/Person across the timesheet and its report — so the
+            // floor lands on three controls per page from one line. The group
+            // wrapper has no fixed height, so it grows to match rather than
+            // letting the buttons protrude, which is the trap `ToolbarGroup`
+            // fell into.
+            className={`min-h-11 rounded-md px-3 py-1 text-sm transition-all duration-150 md:min-h-0 ${
               active
                 ? 'bg-white font-medium text-indigo-600 shadow-sm'
                 : 'text-slate-500 hover:text-slate-700'

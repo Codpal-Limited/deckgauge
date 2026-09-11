@@ -163,14 +163,14 @@ export function GitLabConnectionsPanel({ initialSyncs }: Props) {
                           <button
                             onClick={() => saveEdit(s.id)}
                             disabled={isPending}
-                            className="text-indigo-600 hover:underline disabled:opacity-50"
+                            className="inline-flex min-h-11 min-w-11 items-center justify-center text-indigo-600 hover:underline disabled:opacity-50 md:min-h-0 md:min-w-0"
                           >
                             Save
                           </button>
                           <button
                             onClick={cancelEdit}
                             disabled={isPending}
-                            className="text-slate-500 hover:underline disabled:opacity-50"
+                            className="inline-flex min-h-11 min-w-11 items-center justify-center text-slate-500 hover:underline disabled:opacity-50 md:min-h-0 md:min-w-0"
                           >
                             Cancel
                           </button>
@@ -180,14 +180,14 @@ export function GitLabConnectionsPanel({ initialSyncs }: Props) {
                           <button
                             onClick={() => startEdit(s)}
                             disabled={isPending || editingId !== null}
-                            className="text-indigo-600 hover:underline disabled:opacity-50"
+                            className="inline-flex min-h-11 min-w-11 items-center justify-center text-indigo-600 hover:underline disabled:opacity-50 md:min-h-0 md:min-w-0"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => remove(s.id)}
                             disabled={isPending || editingId !== null}
-                            className="text-rose-600 hover:underline disabled:opacity-50"
+                            className="inline-flex min-h-11 min-w-11 items-center justify-center text-rose-600 hover:underline disabled:opacity-50 md:min-h-0 md:min-w-0"
                           >
                             Delete
                           </button>
@@ -233,7 +233,7 @@ export function GitLabConnectionsPanel({ initialSyncs }: Props) {
         <button
           onClick={add}
           disabled={!instanceId || !projectPath || isPending}
-          className="rounded bg-indigo-600 px-3 py-1 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="inline-flex min-h-11 items-center rounded bg-indigo-600 px-3 py-1 text-sm text-white hover:bg-indigo-700 disabled:opacity-50 md:min-h-0"
         >
           {isPending ? 'Adding…' : 'Add'}
         </button>

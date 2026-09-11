@@ -322,7 +322,12 @@ export function ReportView({
           />
         </div>
 
-        <div className="ml-auto flex items-center gap-3">
+        {/* `flex-wrap` because the 44px touch floor widened this row past 390px:
+            the period arrows went 27px -> 44px each, taking the row to 408px
+            against a 390px viewport and tearing the page by 18px (measured).
+            Wrapping is the same remedy `StatusRulesEditor` already uses for
+            its action row. `ml-auto` still right-aligns it when it fits. */}
+        <div className="ml-auto flex flex-wrap items-center gap-3">
           <div
             className="flex items-center gap-2"
             title="Normalized spreads each ticket's time evenly across its in-progress span. Raw counts logged time as-is."

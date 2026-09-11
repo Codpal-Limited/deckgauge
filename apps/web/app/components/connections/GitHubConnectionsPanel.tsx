@@ -97,7 +97,7 @@ export function GitHubConnectionsPanel({ initialSyncs }: Props) {
                     <button
                       onClick={() => remove(s.id)}
                       disabled={isPending}
-                      className="text-rose-600 hover:underline disabled:opacity-50"
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-rose-600 hover:underline disabled:opacity-50 md:min-h-0 md:min-w-0"
                     >
                       Delete
                     </button>
@@ -124,7 +124,7 @@ export function GitHubConnectionsPanel({ initialSyncs }: Props) {
         <button
           onClick={add}
           disabled={!instanceId || !repoFullName || isPending}
-          className="rounded bg-indigo-600 px-3 py-1 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="inline-flex min-h-11 items-center rounded bg-indigo-600 px-3 py-1 text-sm text-white hover:bg-indigo-700 disabled:opacity-50 md:min-h-0"
         >
           {isPending ? 'Adding…' : 'Add'}
         </button>

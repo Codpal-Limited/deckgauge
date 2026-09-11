@@ -16,13 +16,19 @@ Deckgauge is a **pnpm + Turborepo monorepo** (Next.js web, Fastify API, BullMQ w
 ```bash
 git clone https://github.com/Codpal-Limited/deckgauge
 cd deckgauge
-cp .env.example .env
+./scripts/init-env.sh          # writes .env, generating every credential
 docker compose up -d
 # create the database schema
 docker compose run --rm -T api sh -c "cd /app/packages/db && npx prisma db push"
 # create the ClickHouse analytics tables
 bash scripts/apply-clickhouse-schemas.sh
 ```
+
+`./scripts/init-env.sh` replaces the old `cp .env.example .env`, which no longer
+produces a usable file: every credential in the template is empty and
+`docker-compose.yml` declares each one required, so a hand-copied `.env` stops at
+`docker compose up` with the variable named. The script refuses to overwrite an
+existing `.env` — use `./scripts/init-env.sh --check` to see what one is missing.
 
 Keep the `-T`: it makes `db push` non-interactive. On a database that already holds tables the
 Prisma schema does not declare **and that are not empty**, the command then fails with exit 1

@@ -102,13 +102,19 @@ esac
 export COMPOSE_PROJECT_NAME
 
 # ─── Credentials ────────────────────────────────────────────────────────────
+# Passwords come from .env; names and database names keep their compose
+# defaults. See scripts/lib/env-file.sh for why a `${VAR:-cockpit}` fallback was
+# never a fallback here — nothing in this script read .env for credentials, so
+# the "default" was the value it always used.
+# shellcheck source=lib/env-file.sh
+source "$PROJECT_ROOT/scripts/lib/env-file.sh"
 PG_USER="${POSTGRES_USER:-cockpit}"
-PG_PASS="${POSTGRES_PASSWORD:-cockpit}"
+PG_PASS="$(dg_require_env POSTGRES_PASSWORD)" || exit 1
 PG_DB="${POSTGRES_DB:-cockpit}"
 KC_DB_USER="${KEYCLOAK_DB_USER:-keycloak}"
 KC_DB_NAME="${KEYCLOAK_DB_NAME:-keycloak}"
 CH_USER="${CLICKHOUSE_USER:-cockpit}"
-CH_PASS="${CLICKHOUSE_PASSWORD:-cockpit}"
+CH_PASS="$(dg_require_env CLICKHOUSE_PASSWORD)" || exit 1
 CH_HOST="localhost"
 CH_DB="cockpit"
 

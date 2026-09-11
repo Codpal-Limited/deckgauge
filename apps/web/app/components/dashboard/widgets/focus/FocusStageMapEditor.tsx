@@ -303,7 +303,18 @@ export function FocusStageMapEditor({ open, boardId, onClose, onSaved }: Props) 
                     <tbody>
                       {rows.map((state) => {
                         const chosen = draft[provider][state];
-                        const fallback = settings.defaults[provider][state];
+                        // What this row ACTUALLY falls back to with no board
+                        // override — which is `effective`, not `defaults`, since
+                        // the organization's Time rules decisions sit between
+                        // the two. Reading `defaults` printed "Default · Waiting
+                        // to ship" for a state the funnel was counting as In
+                        // development.
+                        const fallback = settings.effective[provider][state];
+                        // Named differently when it did NOT come from the
+                        // shipped map, so an operator can tell a product default
+                        // from a decision their organization made — and knows
+                        // there is somewhere else to change it.
+                        const fromTimeRules = fallback !== settings.defaults[provider][state];
                         const isUnmapped = unmappedByProvider[provider].has(state);
                         return (
                           <tr key={state} className="border-t border-slate-100">
@@ -316,7 +327,7 @@ export function FocusStageMapEditor({ open, boardId, onClose, onSaved }: Props) 
                               )}
                               {!isUnmapped && !chosen && fallback && (
                                 <span className="block text-[11px] text-slate-400">
-                                  Default · {STAGE_LABEL[fallback]}
+                                  {fromTimeRules ? 'Time rules' : 'Default'} · {STAGE_LABEL[fallback]}
                                 </span>
                               )}
                             </td>

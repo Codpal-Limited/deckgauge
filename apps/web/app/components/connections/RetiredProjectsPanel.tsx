@@ -107,7 +107,7 @@ export function RetiredProjectsPanel({ initial, knownProjectKeys }: RetiredProje
         <button
           onClick={onAdd}
           disabled={busy || !projectKey || !cutoffDate}
-          className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="inline-flex min-h-11 items-center rounded bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-700 disabled:opacity-50 md:min-h-0"
         >
           {busy ? 'Retiring…' : 'Retire project'}
         </button>
@@ -145,11 +145,11 @@ export function RetiredProjectsPanel({ initial, knownProjectKeys }: RetiredProje
                       onUpdateCutoff(r.projectKey, e.target.value);
                     }
                   }}
-                  className="rounded border border-slate-300 px-2 py-1 text-sm"
+                  className="inline-flex min-h-11 items-center rounded border border-slate-300 px-2 py-1 text-sm md:min-h-0"
                 />
                 <button
                   onClick={() => onDelete(r.projectKey)}
-                  className="text-sm text-rose-600 hover:underline"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm text-rose-600 hover:underline md:min-h-0 md:min-w-0"
                 >
                   Remove
                 </button>

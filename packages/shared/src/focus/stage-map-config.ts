@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { DEFAULT_STAGE_MAP, type FocusProvider, type StageMap } from './delivery-stage.js';
+import {
+  DEFAULT_STAGE_MAP,
+  type FocusProvider,
+  type FocusStage,
+  type StageMap,
+} from './delivery-stage.js';
 
 /**
  * The per-board OVERRIDE, which is not the same shape as a `StageMap`.
@@ -89,17 +94,38 @@ export function parseStageMapOverrides(value: unknown): StageMapOverrides {
 }
 
 /**
- * Layer a partial override over the shipped default, per provider.
- *
- * Defaults are the base and the override wins per STATE, so a board can disagree
- * about `Client Review` without inheriting nothing else.
+ * What an organization's bucket decisions say about delivery stages, per
+ * provider. Partial — only statuses somebody has actually decided.
  */
-export function mergeStageMap(overrides: unknown): StageMap {
+export type BucketStageLayer = Partial<Record<FocusProvider, Record<string, FocusStage>>>;
+
+/**
+ * Layer the shipped default, the organization's bucket decisions, and the
+ * board's own overrides — in that order, per provider.
+ *
+ * THREE layers, narrowest last. The default is a guess made for everyone; a
+ * bucket decision is what this organization said in the Time rules drawer, so it
+ * outranks the guess; a board override is what this board said about itself, so
+ * it outranks both. Each wins per STATE, so a board can disagree about `Client
+ * Review` without inheriting nothing else.
+ *
+ * `buckets` is OPTIONAL and an organization that has decided nothing passes
+ * nothing — the map is then byte-identical to the shipped default. That is the
+ * same opt-in rule `activeStatuses` and the Focus working states follow, and it
+ * is why this slice owes no migration: no board's funnel moves until its
+ * organization decides something.
+ *
+ * Per PROVIDER, and that is load-bearing rather than symmetric-looking:
+ * `DEFAULT_STAGE_MAP` is provider-keyed because `QA` mapped on Jira says nothing
+ * about `QA` on ADO, and collapsing that here would reintroduce the defect slice
+ * 2b-ii shipped — one tracker's opinion applied to another tracker's state.
+ */
+export function mergeStageMap(overrides: unknown, buckets?: BucketStageLayer): StageMap {
   const parsed = parseStageMapOverrides(overrides);
 
   return {
-    jira: { ...DEFAULT_STAGE_MAP.jira, ...parsed.jira },
-    ado: { ...DEFAULT_STAGE_MAP.ado, ...parsed.ado },
+    jira: { ...DEFAULT_STAGE_MAP.jira, ...buckets?.jira, ...parsed.jira },
+    ado: { ...DEFAULT_STAGE_MAP.ado, ...buckets?.ado, ...parsed.ado },
   };
 }
 

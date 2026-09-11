@@ -33,7 +33,9 @@ export function IntelligenceSyncTrigger() {
         <button
           onClick={() => fire('all')}
           disabled={isPending}
-          className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          // "Sync All Now" and the four per-source buttons share one wrapping row,
+          // so they are floored together — measured 38px tall.
+          className="inline-flex min-h-11 items-center rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 md:min-h-0"
         >
           {isPending ? 'Enqueueing…' : 'Sync All Now'}
         </button>
@@ -42,7 +44,7 @@ export function IntelligenceSyncTrigger() {
             key={s}
             onClick={() => fire(s)}
             disabled={isPending}
-            className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 md:min-h-0"
           >
             {s === 'ado' ? 'ADO' : s.charAt(0).toUpperCase() + s.slice(1)}
           </button>

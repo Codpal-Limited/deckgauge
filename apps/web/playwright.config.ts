@@ -18,7 +18,24 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    // Overridable so the suite can be pointed at the local staging stack
+    // (web is published on :3100 there, not :3000) without editing a tracked
+    // file. Defaults to the dev server, which is what `pnpm dev` serves.
+    baseURL: process.env.DECKGAUGE_E2E_BASE_URL ?? 'http://localhost:3000',
+    // An authenticated session, if one has been captured. Playwright launches a
+    // CLEAN browser profile, so being logged in to the app in your own browser
+    // does NOT carry over — without this every board-dependent spec skips.
+    //
+    // Capture one (you log in by hand; no credential passes through the repo):
+    //   pnpm --filter @deckgauge/web exec playwright codegen \
+    //     http://localhost:3000 --save-storage=/tmp/dg-auth.json
+    // then run with:
+    //   DECKGAUGE_E2E_STORAGE_STATE=/tmp/dg-auth.json \
+    //     pnpm --filter @deckgauge/web exec playwright test --project=mobile
+    //
+    // Keep the file OUT of the repo: it is a live session token. `/tmp` is the
+    // suggestion for exactly that reason.
+    storageState: process.env.DECKGAUGE_E2E_STORAGE_STATE || undefined,
     headless: true,
     trace: 'on-first-retry',
   },
@@ -34,7 +51,31 @@ export default defineConfig({
       // `testDir` and `testMatch` as `chromium`: select it with
       // `--project=mobile`.
       name: 'mobile',
-      use: { ...devices['iPhone 13'] },
+      use: {
+        ...devices['iPhone 13'],
+        // `devices['iPhone 13']` sets `defaultBrowserType: 'webkit'`, and this
+        // project was NEVER RUNNABLE here as a result: only Chromium is
+        // installed, so every invocation died on a missing webkit binary. It
+        // was added in Slice 1 and the failure was never seen, because nothing
+        // ran it.
+        //
+        // Pinned to Chromium rather than installing webkit, because the touch
+        // spec needs `Input.dispatchTouchEvent` over CDP — Chromium-only — and
+        // that is the only way to produce a real touch swipe with NATIVE
+        // scrolling. Playwright's `Touchscreen` offers `tap()` alone, and
+        // synthetic DOM touch events do not scroll the page, so under webkit
+        // the central "a swipe scrolls instead of dragging" assertion cannot be
+        // written at all.
+        //
+        // What this therefore does NOT cover: real iOS Safari. That matters
+        // here specifically, because `TouchSensor.setup()` installs a
+        // non-passive `touchmove` listener the library marks as required for
+        // iOS Safari. A webkit project would cover it and is worth adding —
+        // filed rather than done, since it needs a browser install and a
+        // different gesture mechanism.
+        defaultBrowserType: 'chromium',
+        browserName: 'chromium',
+      },
     },
   ],
 });

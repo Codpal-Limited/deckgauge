@@ -36,6 +36,7 @@ import {
 import { CreateEntityDialog } from './CreateEntityDialog';
 import { createRoadmap, updateRoadmapPref, deleteRoadmap } from '../../actions/roadmap';
 import type { FolderHandlers } from './FolderNode';
+import { useMobileNav } from '../MobileNavProvider';
 
 /** Recursive name-filter over the board tree, keeping folders that still match. */
 function filterNodes(nodes: SidebarNode[], q: string): SidebarNode[] {
@@ -213,12 +214,23 @@ export function BoardSidebar({
     activeRoadmapId ?? activeBoardPathId ?? searchParams.get('boardId') ?? activeBoardId;
   const activeOrgTreeId = pathname === '/timesheet' ? searchParams.get('orgTreeId') : null;
 
+  // Closing the drawer here as well as in `MobileNavProvider`'s
+  // close-on-navigate effect is not belt-and-braces for its own sake: this push
+  // is UNCONDITIONAL, so re-tapping the board already open produces a
+  // byte-identical URL, the effect never re-fires, and the drawer would stay
+  // open over the board with the body scroll lock engaged. Closing imperatively
+  // makes it independent of whether the location actually changed. The drawer's
+  // own nav links already work this way (`ResponsiveSidebar`'s `onDismiss`).
+  const mobileNav = useMobileNav();
+  const closeMobileNav = mobileNav?.close;
+
   const openBoard = useCallback(
     (id: string) => {
       setLastBoardCookie(id);
+      closeMobileNav?.();
       router.push(`/?boardId=${id}`);
     },
-    [router],
+    [router, closeMobileNav],
   );
 
   const after = useCallback(() => router.refresh(), [router]);

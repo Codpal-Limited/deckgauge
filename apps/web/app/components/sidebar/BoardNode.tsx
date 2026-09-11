@@ -39,6 +39,15 @@ export function BoardNode({
       <button
         type="button"
         onClick={() => onOpen(board.id)}
+        // A stable hook for e2e, because there is no robust generic locator for
+        // this row: it is a `<button>` rather than a link, its only text is the
+        // board name, and navigation is imperative
+        // (`BoardSidebar.tsx` calls `router.push`). Four specs tried
+        // `a[href^="/?boardId="]` instead and hard-failed on timeout — no
+        // such anchor exists in the sidebar or on `/` (the only ones are on
+        // `OrgEmployeeNode` and the two insights pages). See
+        // `e2e/helpers/board.ts`.
+        data-testid="sidebar-board-row"
         className="flex flex-1 items-center gap-2 text-left"
         aria-current={active ? 'page' : undefined}
       >

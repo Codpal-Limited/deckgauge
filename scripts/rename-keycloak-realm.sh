@@ -39,7 +39,13 @@ OLD_SECRET_DEFAULT="vp-cockpit-secret"
 NEW_THEME="deckgauge"
 
 ADMIN_USER="${KEYCLOAK_ADMIN_USER:-admin}"
-ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD:-admin}"
+ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD:-}"
+if [[ -z "${ADMIN_PASS:-}" ]]; then
+  echo "ERROR: KEYCLOAK_ADMIN_PASSWORD is not set (checked the environment and .env)." >&2
+  echo "       It used to default to \`admin\`, the value every install shared." >&2
+  echo "       Run ./scripts/init-env.sh --check, or export it for this command." >&2
+  exit 1
+fi
 
 # NOT pinned to a project name. Compose derives it from the directory, which for
 # a self-hosted clone is whatever the operator called it — `deckgauge` if they
@@ -55,9 +61,11 @@ COMPOSE=(docker compose)
 kcadm() { "${COMPOSE[@]}" exec -T keycloak /opt/keycloak/bin/kcadm.sh "$@"; }
 
 # ─── Preflight A: a stale .env silently outranks everything below ────────────
-# .env.example ASSIGNS these (it does not merely comment them), and the
-# documented setup is `cp .env.example .env`, so essentially every existing
-# install has the old literals in a gitignored file that no upgrade can reach.
+# .env.example ASSIGNS these (it does not merely comment them), and every install
+# gets them copied verbatim into .env — by `cp .env.example .env` when these were
+# written, by `./scripts/init-env.sh` now, which generates only the credential
+# lines. So essentially every existing install has the old literals in a
+# gitignored file that no upgrade can reach.
 # docker-compose.yml interpolates both — `${KEYCLOAK_ISSUER:-...}` and
 # `${KEYCLOAK_CLIENT_SECRET:-...}` — so the stale value WINS over the renamed
 # default. Migrate Keycloak without fixing them and discovery 404s, then
@@ -201,9 +209,10 @@ fi
 # ─── Step 4: the client secret is deliberately NOT touched ───────────────────
 # An earlier version of this script rotated the secret when it was still the old
 # compose default, reasoning that the default had moved. That was backwards:
-# .env.example ASSIGNS KEYCLOAK_CLIENT_SECRET, and the documented setup is
-# `cp .env.example .env`, so almost every install carries an explicit value that
-# outranks the compose default entirely. Rotating in Keycloak would desync it
+# every install carries an explicit KEYCLOAK_CLIENT_SECRET in .env — assigned by
+# .env.example when these installs were built, generated per-install by
+# ./scripts/init-env.sh now — and it outranked the compose default entirely.
+# (There is no compose default any more; the variable is required.) Rotating in Keycloak would desync it
 # from that file and break exactly the installs it meant to help.
 #
 # So: report, never write. Preflight A above already refused if .env still names

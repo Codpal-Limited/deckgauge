@@ -44,11 +44,10 @@ for arg in "$@"; do
 done
 
 # THE CALLER WINS. See scripts/apply-realm-post-logout.sh for the full account:
-# .env.example ASSIGNS KEYCLOAK_ADMIN_PASSWORD=admin and CLAUDE.md's first-time
-# setup says to `cp .env.example .env`, so sourcing .env over an exported value
-# would put `admin` back and fail the LAST step of a long deploy on an auth error
-# pointing nowhere. Capture what the caller gave us, source .env for anything it
-# did NOT set, then restore.
+# sourcing .env over an exported value puts the LOCAL install's admin password
+# back and fails the LAST step of a long deploy on an auth error pointing
+# nowhere. Capture what the caller gave us, source .env for anything it did NOT
+# set, then restore.
 CALLER_REALM="${KEYCLOAK_REALM:-}"
 CALLER_ADMIN_USER="${KEYCLOAK_ADMIN_USER:-}"
 CALLER_ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD:-}"
@@ -60,7 +59,13 @@ fi
 
 REALM="${CALLER_REALM:-${KEYCLOAK_REALM:-deckgauge}}"
 ADMIN_USER="${CALLER_ADMIN_USER:-${KEYCLOAK_ADMIN_USER:-admin}}"
-ADMIN_PASS="${CALLER_ADMIN_PASS:-${KEYCLOAK_ADMIN_PASSWORD:-admin}}"
+ADMIN_PASS="${CALLER_ADMIN_PASS:-${KEYCLOAK_ADMIN_PASSWORD:-}}"
+if [[ -z "${ADMIN_PASS:-}" ]]; then
+  echo "ERROR: KEYCLOAK_ADMIN_PASSWORD is not set (checked the environment and .env)." >&2
+  echo "       It used to default to \`admin\`, the value every install shared." >&2
+  echo "       Run ./scripts/init-env.sh --check, or export it for this command." >&2
+  exit 1
+fi
 ORG_SLUG="${CALLER_ORG_SLUG:-${DECKGAUGE_ORG_SLUG:-deckgauge}}"
 ACCOUNT_EMAIL="test@test.com"
 ACCOUNT_PASSWORD="test"

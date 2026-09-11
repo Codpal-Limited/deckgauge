@@ -81,14 +81,26 @@ export function MembersScreen({
           setError(messageFor(result.error));
         }}
       >
-        <div>
+        {/* `min-w-0` on the flex child and `w-full` on the input, so the email
+            field shrinks with the row instead of holding its intrinsic ~20
+            character width. Kept on its merits: a flex item will not shrink
+            below that width without `min-w-0`, which is the `min-width: auto`
+            default behind most overflows on this plan.
+
+            NOT, however, the cause of the "342px in a 326px section" this was
+            first written to explain. Review found the better account: the
+            SECTION's +16px came from `TableScroller`'s deliberate `-mx-4 px-4`
+            edge-bleed, which is why the identical figure appeared on
+            `/settings/organization/boards`, a page with no invite form at all.
+            The helper now exempts that shape. */}
+        <div className="min-w-0 flex-1">
           <label htmlFor="invite-email" className="block text-sm font-medium">Email</label>
           <input
             id="invite-email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="person@company.com"
-            className="rounded border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
           />
         </div>
         <div>
@@ -102,7 +114,12 @@ export function MembersScreen({
             {ORG_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
         </div>
-        <button type="submit" className="rounded bg-teal-600 px-4 py-2 text-sm text-white">
+        <button
+          type="submit"
+          // 103x36 measured; the form's other controls are inputs and a
+          // select, which the touch invariant does not measure.
+          className="min-h-11 rounded bg-teal-600 px-4 py-2 text-sm text-white md:min-h-0"
+        >
           Send invite
         </button>
       </form>
@@ -158,7 +175,11 @@ export function MembersScreen({
                             setError(messageFor('CLIPBOARD_ERROR'));
                           }
                         }}
-                        className="text-teal-700 underline"
+                        // All four actions in this cell are floored together
+                        // — Copy invite link, Suspend, Reactivate, Remove.
+                        // Flooring one and leaving its row-mates short is the
+                        // recurring defect on this plan.
+                        className="inline-flex min-h-11 items-center text-teal-700 underline md:min-h-0"
                       >
                         Copy invite link
                       </button>
@@ -171,7 +192,7 @@ export function MembersScreen({
                     <button
                       type="button"
                       onClick={() => run(() => updateMemberStatus(m.id, 'SUSPENDED'))}
-                      className="text-slate-600 underline"
+                      className="inline-flex min-h-11 items-center text-slate-600 underline md:min-h-0"
                     >
                       Suspend
                     </button>
@@ -180,7 +201,7 @@ export function MembersScreen({
                     <button
                       type="button"
                       onClick={() => run(() => updateMemberStatus(m.id, 'ACTIVE'))}
-                      className="text-slate-600 underline"
+                      className="inline-flex min-h-11 items-center text-slate-600 underline md:min-h-0"
                     >
                       Reactivate
                     </button>
@@ -188,7 +209,7 @@ export function MembersScreen({
                   <button
                     type="button"
                     onClick={() => run(() => removeMember(m.id))}
-                    className="text-red-600 underline"
+                    className="inline-flex min-h-11 items-center text-red-600 underline md:min-h-0"
                   >
                     Remove
                   </button>

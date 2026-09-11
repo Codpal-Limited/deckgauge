@@ -16,6 +16,13 @@ import { resolveOrganization, resolveOwner } from './resolve-target.js';
 export interface SeedDemoOptions {
   remove: boolean;
   org: string | undefined;
+  /**
+   * Who the seeded content belongs to, by email. Undefined leaves the owner to
+   * `resolveOwner`'s earliest-activated-admin inference — right for an install
+   * with one admin, and the guess that failed in demo deploy #12 when there
+   * were two. `demo/deploy-demo.sh` passes `DEMO_SEED_OWNER_EMAIL`.
+   */
+  ownerEmail: string | undefined;
   seed: number;
 }
 
@@ -48,12 +55,29 @@ export function parseSeedDemoArgs(argv: readonly string[]): ParsedSeedDemoArgs {
     // A value that is itself a flag is a missing value, not a value: `--org
     // --seed 5` must refuse rather than seed into an organization called
     // "--seed".
-    return { given: true, value: next === undefined || next.startsWith('--') ? undefined : next };
+    //
+    // So is an EMPTY or whitespace-only one, which used to slip through both
+    // checks. On `--owner-email` that was not cosmetic: the empty string skipped
+    // the named-owner block in `resolveOwner` and fell through to the inferred
+    // earliest admin — deploy #12's mechanism, reached through the very flag
+    // added to remove it (round-1 review; reproduced by execution). `--org ""`
+    // happened to be caught later by `resolveOrganization`, which was luck
+    // rather than design, so this holds for every flag.
+    const missing = next === undefined || next.startsWith('--') || next.trim() === '';
+    return { given: true, value: missing ? undefined : next };
   };
 
   const orgArg = valueOf('org');
   if (orgArg.given && orgArg.value === undefined) {
     return { ok: false, message: '--org needs an organization slug, e.g. --org acme.' };
+  }
+
+  const ownerArg = valueOf('owner-email');
+  if (ownerArg.given && ownerArg.value === undefined) {
+    return {
+      ok: false,
+      message: '--owner-email needs an email, e.g. --owner-email demo-seed@deckgauge.local.',
+    };
   }
 
   const seedArg = valueOf('seed');
@@ -77,6 +101,7 @@ export function parseSeedDemoArgs(argv: readonly string[]): ParsedSeedDemoArgs {
     options: {
       remove: argv.includes('--remove'),
       org: orgArg.given ? orgArg.value : undefined,
+      ownerEmail: ownerArg.given ? ownerArg.value : undefined,
       seed,
     },
   };
@@ -122,9 +147,9 @@ export async function seedDemo(
 
   const memberships = await prisma.orgMembership.findMany({
     where: { organizationId: organization.id },
-    select: { userId: true, role: true, status: true, activatedAt: true },
+    select: { userId: true, email: true, role: true, status: true, activatedAt: true },
   });
-  const ownerResult = resolveOwner(memberships, organization);
+  const ownerResult = resolveOwner(memberships, organization, options.ownerEmail);
   if (!ownerResult.ok) {
     return { ok: false, message: ownerResult.message };
   }

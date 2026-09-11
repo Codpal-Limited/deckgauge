@@ -62,14 +62,36 @@ if command -v docker >/dev/null 2>&1; then
   BIND_ENV="$(mktemp)"
   trap 'rm -f "$BIND_ENV"' EXIT
   printf 'BIND_HOST=127.0.0.1:\n' > "$BIND_ENV"
+  # Every credential in docker-compose.yml is `${VAR:?...}`, so a file holding
+  # only BIND_HOST makes the render FAIL. See scripts/lib/compose-required-env.sh
+  # — the names are DERIVED from the compose file so the set cannot go stale.
+  # shellcheck source=lib/compose-required-env.sh
+  source "$SCRIPT_DIR/lib/compose-required-env.sh"
+  if ! write_compose_required_env "$BIND_ENV"; then
+    echo "✗ could not derive the required variables for the render (see above)." >&2
+    exit 1
+  fi
 
   # `env -u` clears any BIND_HOST the caller exported: the shell environment
   # takes precedence over --env-file, which would silently invalidate this.
-  rendered="$(env -u BIND_HOST docker compose --env-file "$BIND_ENV" \
-                -f docker-compose.yml config 2>/dev/null || true)"
+  #
+  # NOT `2>/dev/null || true`, which is what this was. An empty render then took
+  # the "skipped" branch below and the script still exited 0 — a guard that
+  # downgrades itself to a no-op and reports success. Removing the specific
+  # trigger (the empty env file) was not enough, because this change ADDS a
+  # dependency: the render now needs every `${VAR:?}` name to come back out of
+  # `compose-required-env.sh`'s regex, so under-deriving ONE would land here.
+  # Same hardening as scripts/check-compose-defaults.sh.
+  if ! rendered="$(env -u BIND_HOST docker compose --env-file "$BIND_ENV" \
+                     -f docker-compose.yml config)"; then
+    echo "✗ 'docker compose config' failed — see the error above." >&2
+    echo "  This half of the guard cannot run, which is a failure, not a skip." >&2
+    exit 1
+  fi
 
   if [[ -z "$rendered" ]]; then
-    echo "! skipped rendered check: 'docker compose config' produced nothing" >&2
+    echo "✗ 'docker compose config' succeeded but produced nothing." >&2
+    exit 1
   else
     published="$(grep -c 'mode: ingress' <<< "$rendered" || true)"
     bound="$(grep -c 'host_ip: 127.0.0.1' <<< "$rendered" || true)"

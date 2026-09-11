@@ -252,7 +252,12 @@ export function TimesheetView({
           ]}
         />
 
-        <div className="ml-auto flex items-center gap-3">
+        {/* `flex-wrap` because the 44px touch floor widened this row past 390px:
+            the period arrows went 27px -> 44px each, taking the row to 408px
+            against a 390px viewport and tearing the page by 18px (measured).
+            Wrapping is the same remedy `StatusRulesEditor` already uses for
+            its action row. `ml-auto` still right-aligns it when it fits. */}
+        <div className="ml-auto flex flex-wrap items-center gap-3">
           <div
             className="flex items-center gap-2"
             title="Normalized spreads each ticket's time evenly across its in-progress span. Raw counts logged time as-is."
@@ -274,8 +279,12 @@ export function TimesheetView({
 
           <button
             type="button"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700
-                       transition-colors hover:border-slate-300"
+            // 93x34 measured. Its row-mate below is a `.btn-primary`, which
+            // Task 3.0's shared-class floor already took to 44px — so leaving
+            // this one at 34px is precisely the paired-sibling mismatch this
+            // plan keeps producing.
+            className="inline-flex min-h-11 items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700
+                       transition-colors hover:border-slate-300 md:min-h-0"
             disabled={rulesLoading}
             onClick={() => void openRules()}
           >

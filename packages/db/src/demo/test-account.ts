@@ -216,6 +216,9 @@ export async function ensureTestAccount(
   if (!opts.skipSeed) {
     const seeded = await seeder(prisma, ch, {
       remove: false,
+      // Inference, deliberately: an OSS install has exactly one admin, and this
+      // account IS it. The demo VM names its owner instead (deploy-demo.sh).
+      ownerEmail: undefined,
       org: opts.orgSlug,
       seed: opts.seed,
     });

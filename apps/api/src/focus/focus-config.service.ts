@@ -10,6 +10,9 @@ import {
   type FocusStageMapSettings,
   type UnmappedState,
 } from '@deckgauge/shared';
+import type { BucketStageLayer } from '@deckgauge/shared';
+import { loadOrgBucketRows } from './working-states.js';
+import { bucketStageLayerFrom } from './bucket-stage-layer.js';
 import type { ChReadClient } from '../analytics/ch-read-scope.js';
 import { getWidgetBoardScope } from '../widgets/widget-board-scope.js';
 import { adoScopeFilter } from '../widgets/unions.js';
@@ -117,8 +120,13 @@ async function readObservedStates(
 function settingsFrom(
   observed: ObservedStates,
   overrides: StageMapOverrides,
+  buckets: BucketStageLayer,
 ): FocusStageMapSettings {
-  const effective = mergeStageMap(overrides);
+  // The same three layers the widgets read. `defaults` still reports what
+  // SHIPS — a bucket decision is not a default and must not be shown as one —
+  // and `overrides` stays the board's own, so the editor does not offer a
+  // delete for a decision made elsewhere.
+  const effective = mergeStageMap(overrides, buckets);
   return {
     observed,
     overrides,
@@ -133,15 +141,20 @@ export async function getFocusStageMapSettings(
   deps: FocusConfigDeps,
   boardId: string,
 ): Promise<FocusStageMapSettings> {
-  const [observed, row] = await Promise.all([
+  const [observed, row, bucketRows] = await Promise.all([
     readObservedStates(deps, boardId),
     deps.prisma.focusConfig.findUnique({ where: { boardId } }),
+    loadOrgBucketRows(deps.prisma, deps.organizationId),
   ]);
 
   // A row that does not parse falls back to the shipped default rather than
   // failing the request: the widget's job is to report the team, and the
   // fallback is visible — the unmapped-states caveat simply reappears.
-  return settingsFrom(observed, parseStageMapOverrides(row?.stageMap));
+  return settingsFrom(
+    observed,
+    parseStageMapOverrides(row?.stageMap),
+    bucketStageLayerFrom(bucketRows),
+  );
 }
 
 /**
@@ -161,9 +174,10 @@ export async function saveFocusStageMapOverrides(
   boardId: string,
   overrides: StageMapOverrides,
 ): Promise<FocusStageMapSettings> {
-  const [observed, row] = await Promise.all([
+  const [observed, row, bucketRows] = await Promise.all([
     readObservedStates(deps, boardId),
     deps.prisma.focusConfig.findUnique({ where: { boardId } }),
+    loadOrgBucketRows(deps.prisma, deps.organizationId),
   ]);
   const stored = parseStageMapOverrides(row?.stageMap);
 
@@ -192,5 +206,10 @@ export async function saveFocusStageMapOverrides(
     create: { boardId, stageMap },
   });
 
-  return settingsFrom(observed, overrides);
+  // The bucket layer here too, or the settings this returns after a save differ
+  // from the settings a fresh read produces — the editor would appear to change
+  // the effective map simply by being saved. From the rows ALREADY loaded
+  // above: re-fetching would be a second query for the same answer, which is
+  // exactly what the funnel path has a test against.
+  return settingsFrom(observed, overrides, bucketStageLayerFrom(bucketRows));
 }

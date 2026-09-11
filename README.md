@@ -26,7 +26,7 @@ first thing a visitor sees.
 
 # Deckgauge
 
-### Open-source development intelligence — one board across all your dev tools.
+### Source-available development intelligence — one board across all your dev tools.
 
 *See how your software really gets built.*
 
@@ -103,7 +103,7 @@ That’s it — the agent clones the repo, starts the stack, sets up the databas
 ```bash
 git clone https://github.com/Codpal-Limited/deckgauge
 cd deckgauge
-cp .env.example .env
+./scripts/init-env.sh
 docker compose up -d
 # create the schema (-T keeps it non-interactive; if it fails, see CONTRIBUTING.md
 # — do NOT add --accept-data-loss, it drops tables)
@@ -118,6 +118,15 @@ roadmap, a Platform-vs-Mobile comparison dashboard, a 25-person org chart,
 timesheets, and six months of engineering history behind the Engineering
 Intelligence and Team Focus dashboards. The org-tree sync that fills the
 per-engineer views runs as part of that command, so nothing is left to press.
+
+`./scripts/init-env.sh` writes `.env` and generates a random password for
+Postgres, ClickHouse, Keycloak's database, the Keycloak admin console, the OIDC
+client and the session-signing key — this install's own, not one shared with
+every other clone. It refuses to overwrite an existing `.env`; use
+`./scripts/init-env.sh --check` on one. There is no `cp .env.example .env` step
+any more, and copying that file by hand does not work: every credential in it is
+empty and `docker-compose.yml` requires them, so the stack stops at `up` with the
+variable named rather than booting on a password published in this repository.
 
 > **Before you expose this install to anything.** `test@test.com` has a
 > password everybody knows, and `docker-compose.yml` publishes its ports on all
@@ -205,8 +214,61 @@ reversible if something about your install is unusual.
 
 Your existing `.env` keeps working across ordinary upgrades. The compose file
 passes only the variables it names, so keys that later releases stop using are
-ignored rather than breaking startup. (The one release that does need an `.env`
-edit is the `deckgauge` rename, immediately below.)
+ignored rather than breaking startup. (Two releases do need an `.env` edit: the
+default-credential change immediately below, and the `deckgauge` rename after
+it.)
+
+#### One-time step when upgrading past the default-credential change
+
+`docker-compose.yml` used to default every credential — `POSTGRES_PASSWORD` to
+`cockpit`, `KEYCLOAK_ADMIN_PASSWORD` to `admin`, and so on — so an install could
+run without ever setting them. Those fallbacks are gone: each is now
+`${VAR:?…}`, and compose refuses to start while one is missing. Nothing is
+rotated and no data moves; the values simply have to be written down.
+
+Run `./scripts/init-env.sh --check`. It lists exactly what your `.env` is
+missing and changes nothing. In practice that is `CLICKHOUSE_USER` and
+`CLICKHOUSE_PASSWORD`, which existed only inside `docker-compose.yml` before, and
+possibly `KEYCLOAK_CLIENT_SECRET` and `NEXTAUTH_SECRET`.
+
+**Set them to the values your install is already using, not to fresh ones.**
+
+```
+CLICKHOUSE_USER=cockpit
+CLICKHOUSE_PASSWORD=cockpit
+KEYCLOAK_DB_PASSWORD=keycloak
+KEYCLOAK_CLIENT_SECRET=deckgauge-secret
+NEXTAUTH_SECRET=change-me-in-production
+```
+
+Postgres, ClickHouse and Keycloak's database each read their password only on
+**first** start, so a new one here does not rotate anything — it locks the stack
+out of its own volume, and the failure that follows is an authentication error
+pointing at nothing. Rotating for real means `ALTER USER` on the running server
+(or `docker compose down -v`, which deletes the data). A fresh
+`NEXTAUTH_SECRET` is safe and signs everyone out once.
+
+**Two of the five are rotatable, and you should rotate both — just not by
+editing this file alone.** Writing `KEYCLOAK_CLIENT_SECRET=deckgauge-secret`
+above is correct *today*, because that is what your realm already holds and
+`--import-realm` will not change a realm that exists. But it is a value
+published in this repository, so leaving it there permanently re-pins your
+install to a secret anyone can read. Rotate it on the RUNNING Keycloak and put
+the new value in `.env`:
+
+```bash
+NEW=$(openssl rand -hex 32)
+CID=$(docker compose exec -T keycloak /opt/keycloak/bin/kcadm.sh get clients \
+        -r deckgauge -q clientId=deckgauge-web --fields id --format csv --noquotes)
+docker compose exec -T keycloak /opt/keycloak/bin/kcadm.sh update "clients/$CID" \
+        -r deckgauge -s secret="$NEW"
+# then set KEYCLOAK_CLIENT_SECRET=$NEW in .env and: docker compose up -d web keycloak
+```
+
+(`kcadm.sh` needs `config credentials` first — the block further up shows the
+form.) `NEXTAUTH_SECRET` is the other one, and it needs nothing but a new value.
+The remaining three are volume-initialisation passwords and are not rotatable
+this way.
 
 #### One-time step when upgrading past the `deckgauge` rename
 
@@ -216,7 +278,7 @@ client have all moved to `deckgauge`. Fresh installs get the new names and need
 nothing. An **existing** install needs two things after `git pull`.
 
 **First, edit `.env`.** This matters more than it looks. `.env.example` *assigns*
-these keys rather than commenting them, and the documented setup is
+these keys rather than commenting them, and the setup step at the time was
 `cp .env.example .env` — so your `.env` almost certainly names the old realm, and
 compose interpolates it, meaning your stale value overrides the new default.
 Change the realm segment in these, wherever they appear:
@@ -269,7 +331,7 @@ it and does not care what the archive is called.
 - **💰 CapEx / OpEx for finance** — audit-ready software capitalization, inferred from activity, no manual timesheets.
 - **👥 Team management & reviews** — dated, private notes so 1:1s and performance reviews are grounded in real examples.
 
-Open source. Multi-tool. No lock-in. Read the queries, run it yourself, trust the numbers.
+Source-available. Multi-tool. No lock-in. Read the queries, run it yourself, trust the numbers.
 
 ---
 
@@ -304,12 +366,14 @@ and [`docs/advisor-mcp.md`](docs/advisor-mcp.md).
 
 ## Editions
 
-- **Community** — free and open source, **uncapped** (analyze any number of developers), under the license below.
-- **Enterprise** — SSO, advanced access control, aggregate-only (works-council) mode, audit logs, and support — as a managed **SaaS** or in your own environment with a commercial license. → [deckgauge.com/enterprise](https://deckgauge.com/enterprise) · **support@codpal.com**
+- **Community** — free and source-available, **uncapped** (analyze any number of developers), under the license below. This is the whole product: no metric, board, dashboard or connector is held back for a paid tier.
+- **Enterprise** — we host and operate it for you, or you take a commercial license for your own environment, with support attached. Published price, no sales call: [deckgauge.com/pricing](https://deckgauge.com/pricing) · **support@codpal.com**
+
+  What that adds is hosting, support and a commercial license — **not** features taken out of the free core. SSO through Keycloak and the salary / manager-note visibility rules are in the Community edition and stay there. Aggregate-only (works-council) mode, audit logs and SCIM are **designed and not built**: we build them for the customer whose rollout needs one, on an agreed timeline. [deckgauge.com/enterprise](https://deckgauge.com/enterprise) says which is which.
 
 ## Advisory & support
 
-Deckgauge is built and maintained by **[CodPal](https://codpal.com)** — fractional CTO-as-a-service for startups and scale-ups. The platform is fully open source and stands on its own. If you want help acting on what it surfaces — reading your DORA metrics, clearing delivery bottlenecks, or standing up engineering leadership — CodPal offers a **[Deckgauge Engineering Health Check](https://deckgauge.com/health-check)**: a fractional CTO reviews your dashboard and hands you a one-page assessment plus your top three fixes. → **support@codpal.com**
+Deckgauge is built and maintained by **[CodPal](https://codpal.com)** — fractional CTO-as-a-service for startups and scale-ups. The platform is source-available under the FSL (see [License](#license)) and stands on its own. If you want help acting on what it surfaces — reading your DORA metrics, clearing delivery bottlenecks, or standing up engineering leadership — CodPal offers a **[Deckgauge Engineering Health Check](https://deckgauge.com/health-check)**: a fractional CTO reviews your dashboard and hands you a one-page assessment plus your top three fixes. → **support@codpal.com**
 
 ## Contributing
 
@@ -317,4 +381,19 @@ Contributions welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md). Contributors
 
 ## License
 
-**Functional Source License (FSL-1.1-Apache-2.0)** — free to use, run, and modify for any purpose except offering it as a competing hosted service; each release converts to Apache-2.0 two years later. See [`LICENSE`](LICENSE).
+**Functional Source License (FSL-1.1-Apache-2.0)**, SPDX id `FSL-1.1-ALv2`. The short
+version, because it is the first thing people ask:
+
+**Free to run, at any size, forever.** No developer cap, no seat count, no feature gate on
+metrics, no expiry, no license key to run it, nothing that phones home. Running it commercially is fine — including
+inside a company that competes with us. Read it, change it, fork it, redistribute it. The one
+thing you may not do is offer Deckgauge to other people as a commercial product or service
+that substitutes for it, which is to say: do not resell it as a competing hosted service.
+
+**And it converts.** Every release carries an irrevocable Apache-2.0 grant that takes effect
+on its second anniversary. `v2.0.0` was published on 11 September 2026, so it is Apache-2.0
+licensed from **11 September 2028**. Later releases convert on their own dates.
+
+Why not Apache-2.0 today, what the choice costs us, and the cases people assume are forbidden
+and are not: **<https://deckgauge.com/license/>**. The licence itself governs and is in
+[`LICENSE`](LICENSE).

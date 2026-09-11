@@ -41,8 +41,9 @@ done
 # REDIS_URL cannot join PINNED: a deployment with an authenticated Redis has to
 # supply the credential, and Compose cannot assemble one conditionally. So the
 # override stays — and the danger moves to what .env.example ships, because
-# `cp .env.example .env` is the documented first step of every install and that
-# file's value is then injected straight into the containers.
+# `./scripts/init-env.sh` copies that file's values into every install's .env
+# verbatim (only the credential lines are generated), and they are then injected
+# straight into the containers.
 #
 # THE SET IS DERIVED, NOT LISTED. An earlier version of this check named
 # REDIS_URL by hand, which would have missed the next variable of the same
@@ -80,8 +81,8 @@ if (( fail )); then
 These values are fetched from inside a container, so the compose service name is
 the only correct value and an override is never needed. Interpolating one lets a
 stale .env win — and .env.example ships the host-dev localhost form, so
-`cp .env.example .env` (which CLAUDE.md tells every self-hoster to run) is enough
-to break the auth path silently.
+`./scripts/init-env.sh` (which every self-hoster runs, and which copies
+non-credential lines verbatim) is enough to break the auth path silently.
 
 Revert to the hardcoded value. If you genuinely need an override, remove the
 variable from PINNED in this script and say why in the commit message.

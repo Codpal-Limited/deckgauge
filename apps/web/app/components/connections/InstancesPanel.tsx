@@ -152,13 +152,13 @@ export function InstancesPanel({
                     <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClass[h]}`}>{badgeLabel[h]}</span>
                     <button
                       onClick={() => toggle(inst.id, 'refresh')}
-                      className="text-sm text-indigo-600 hover:underline"
+                      className="inline-flex min-h-11 items-center text-sm text-indigo-600 hover:underline md:min-h-0"
                     >
                       Refresh token
                     </button>
                     <button
                       onClick={() => toggle(inst.id, 'delete')}
-                      className="text-sm text-rose-600 hover:underline"
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm text-rose-600 hover:underline md:min-h-0 md:min-w-0"
                     >
                       Delete
                     </button>
@@ -183,13 +183,13 @@ export function InstancesPanel({
                       <button
                         onClick={() => confirmDelete(inst.id)}
                         disabled={deletingId === inst.id}
-                        className="rounded bg-rose-600 px-3 py-1 text-sm text-white hover:bg-rose-700 disabled:opacity-50"
+                        className="inline-flex min-h-11 items-center rounded bg-rose-600 px-3 py-1 text-sm text-white hover:bg-rose-700 disabled:opacity-50 md:min-h-0"
                       >
                         {deletingId === inst.id ? 'Deleting…' : 'Delete connection'}
                       </button>
                       <button
                         onClick={() => setOpen(null)}
-                        className="rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50"
+                        className="inline-flex min-h-11 items-center rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50 md:min-h-0"
                       >
                         Cancel
                       </button>

@@ -83,12 +83,18 @@ esac
 export COMPOSE_PROJECT_NAME
 
 # ─── Credentials ────────────────────────────────────────────────────────────
+# Names and database names keep their compose defaults — they are identifiers,
+# and they are what the volumes were created with. The PASSWORD is read from
+# .env, because every install generates its own now and a guess is wrong by
+# construction. See scripts/lib/env-file.sh.
+# shellcheck source=lib/env-file.sh
+source "$PROJECT_ROOT/scripts/lib/env-file.sh"
 PG_USER="${POSTGRES_USER:-cockpit}"
 PG_DB="${POSTGRES_DB:-cockpit}"
 KC_DB_USER="${KEYCLOAK_DB_USER:-keycloak}"
 KC_DB_NAME="${KEYCLOAK_DB_NAME:-keycloak}"
 CH_USER="${CLICKHOUSE_USER:-cockpit}"
-CH_PASS="${CLICKHOUSE_PASSWORD:-cockpit}"
+CH_PASS="$(dg_require_env CLICKHOUSE_PASSWORD)" || exit 1
 # 127.0.0.1, not "localhost": a hosted box sets BIND_HOST=127.0.0.1: which
 # publishes IPv4 loopback ONLY — [::1] is not published at all. On a dual-stack
 # host "localhost" can resolve ::1 first, and while curl should walk the address

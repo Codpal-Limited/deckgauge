@@ -24,6 +24,8 @@ export interface TargetOrg {
 
 export interface TargetMembership {
   userId: string | null;
+  /** Lowercased invite key. Only read when an owner is named by email. */
+  email: string;
   role: 'ADMIN' | 'MEMBER' | 'VIEWER';
   status: 'PENDING' | 'ACTIVE' | 'SUSPENDED';
   activatedAt: Date | null;
@@ -87,8 +89,19 @@ export function resolveOrganization(
 
 /**
  * Picks the user the demo boards, roadmap, comparison and org tree are
- * granted OWNER access under: the earliest-activated ACTIVE ADMIN of the
- * already-resolved `organization`.
+ * granted OWNER access under.
+ *
+ * `ownerEmail` NAMES that user, and is the path every automated caller should
+ * take: `demo/deploy-demo.sh` has always known who the owner is
+ * (`DEMO_SEED_OWNER_EMAIL`), so it can state it instead of leaving it to be
+ * re-derived. A named owner that cannot be used is a REFUSAL, never a fall
+ * back — see the body.
+ *
+ * Without it, the owner is the earliest-activated ACTIVE ADMIN of the
+ * already-resolved `organization`. That inference is kept for callers with
+ * nobody to name — an OSS install has exactly one admin, so it is right there
+ * by construction — but it is a guess, and deploy #12 is what the guess cost
+ * when two admins existed and one had its `activatedAt` re-stamped.
  *
  * Takes the resolved organization (not just its id) purely so the refusal
  * message can name it — the same reason `resolveOrganization`'s refusals name
@@ -97,6 +110,11 @@ export function resolveOrganization(
 export function resolveOwner(
   memberships: readonly TargetMembership[],
   organization: TargetOrg,
+  // REQUIRED, not optional. `SeedDemoOptions.ownerEmail` is a required key for
+  // the same reason: an omitted argument means "guess", and silence meaning
+  // guess is the shape of the bug this parameter exists to remove. Callers that
+  // genuinely have nobody to name pass `undefined` and say so.
+  ownerEmail: string | undefined,
 ): OwnerResult {
   const admins = memberships
     .filter(
@@ -104,6 +122,48 @@ export function resolveOwner(
         m.role === 'ADMIN' && m.status === 'ACTIVE' && m.userId !== null,
     )
     .sort((a, b) => (a.activatedAt?.getTime() ?? 0) - (b.activatedAt?.getTime() ?? 0));
+
+  // A NAMED owner short-circuits the ordering entirely — that is the point.
+  // `OrgMembership.email` is stored lowercase (the invite key), and the callers
+  // that supply this read it from an operator-set environment variable, so
+  // compare lowercased rather than trusting the caller's casing.
+  // `!== undefined` ONLY. An empty or whitespace-only value is a caller that
+  // meant to name an owner and failed to, which must refuse — treating it as
+  // "nobody named" is what let the inference back in. The parser refuses it too;
+  // this is the boundary a programmatic caller crosses.
+  if (ownerEmail !== undefined) {
+    const wanted = ownerEmail.trim().toLowerCase();
+    const named = admins.find((m) => m.email.toLowerCase() === wanted);
+    if (named !== undefined) return { ok: true, ownerUserId: named.userId };
+
+    // NO fall back to `admins[0]`. Guessing is what this parameter exists to
+    // replace, and a caller that named an owner and got a different one would
+    // be back in deploy #12: the seed writes under an identity nobody chose,
+    // and the failure surfaces later as a primary-key collision rather than
+    // here as a refusal. See planning/STATE.md, 2026-09-11.
+    const present = memberships.find((m) => m.email.toLowerCase() === wanted);
+    // An ADMIN/ACTIVE membership with no bound `userId` gets its own branch: the
+    // combined sentence read "is a member but not an active administrator (role
+    // ADMIN, status ACTIVE, not yet bound to a user)", whose parenthetical
+    // contradicts the clause it follows. This is read mid-incident.
+    const why =
+      present === undefined
+        ? 'is not a member of it'
+        : present.role === 'ADMIN' && present.status === 'ACTIVE' && present.userId === null
+          ? 'is an administrator of it but has never signed in, so no user record is bound ' +
+            'to that membership yet'
+          : `is a member but not an active administrator (role ${present.role}, status ` +
+            `${present.status})`;
+    return {
+      ok: false,
+      message:
+        `The demo owner was named as "${ownerEmail}", but that account ${why} in ` +
+        `organization "${organization.slug}". Refusing rather than falling back to another ` +
+        'administrator — the owner decides who every seeded board, roadmap and org tree ' +
+        'belongs to.\n' +
+        '  Fix the account (or correct DEMO_SEED_OWNER_EMAIL) and re-run.',
+    };
+  }
 
   if (admins.length === 0) {
     return {

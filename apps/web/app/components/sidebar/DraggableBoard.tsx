@@ -21,7 +21,18 @@ export function DraggableBoard({
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `board:${board.id}` });
   return (
-    <div ref={setNodeRef} {...attributes} {...listeners} className={isDragging ? 'opacity-40' : ''}>
+    // The DRAGGABLE is this wrapper, not the row inside it: `attributes` and
+    // `listeners` are spread here, so dnd-kit's `aria-pressed` (set while
+    // dragging, `useDraggable` → `:3433`) and the `opacity-40` drag affordance
+    // both land on this element. `e2e/mobile-touch.spec.ts` asserts on it; the
+    // row's own `sidebar-board-row` id is for navigation and is one level in.
+    <div
+      ref={setNodeRef}
+      data-testid="sidebar-board-draggable"
+      {...attributes}
+      {...listeners}
+      className={isDragging ? 'opacity-40' : ''}
+    >
       <BoardNode
         board={board}
         depth={depth}

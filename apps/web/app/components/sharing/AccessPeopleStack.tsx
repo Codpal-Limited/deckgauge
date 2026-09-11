@@ -32,7 +32,11 @@ export function AccessPeopleStack({
       type="button"
       onClick={onOpen}
       aria-label={`${nounLabel} access: ${entries.length} ${entries.length === 1 ? 'person' : 'people'}`}
-      className="flex items-center -space-x-2 rounded-full p-0.5 hover:ring-2 hover:ring-teal-500/30 focus:outline-none focus:ring-2 focus:ring-teal-500"
+      // 32x32 measured (a single 28px avatar plus `p-0.5`). The avatars
+      // themselves stay `h-7 w-7` — only the button's hit box grows, so the
+      // stack looks identical and just becomes reachable. With two or more
+      // avatars the width already clears 44; the height never did.
+      className="flex min-h-11 min-w-11 items-center justify-center -space-x-2 rounded-full p-0.5 hover:ring-2 hover:ring-teal-500/30 focus:outline-none focus:ring-2 focus:ring-teal-500 md:min-h-0 md:min-w-0"
     >
       {shown.map((entry) => (
         <span
