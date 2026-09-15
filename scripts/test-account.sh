@@ -73,7 +73,17 @@ ACCOUNT_PASSWORD="test"
 ADMIN_ROLE="${COCKPIT_ADMIN_ROLE:-cockpit-admin}"
 WEB_URL="http://localhost:${WEB_PORT:-3000}"
 
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-deckgauge}"
+# NO COMPOSE_PROJECT_NAME DEFAULT. Docker Compose derives the project name from
+# the checkout's directory name, and a hard-coded `deckgauge` made the script
+# target a project that does not exist in any clone not named exactly that —
+# a GitHub ZIP download arrives as `deckgauge-main` — failing with
+# `service "keycloak" is not running` while keycloak is up. The demo deploy
+# (demo/deploy-demo.sh) sets COMPOSE_FILE/COMPOSE_ENV_FILE and runs from the same
+# checkout its own compose commands use, so the derived name aligns there too;
+# anyone who needs a different project sets COMPOSE_PROJECT_NAME and wins.
+if [[ -n "${COMPOSE_PROJECT_NAME:-}" ]]; then
+  export COMPOSE_PROJECT_NAME
+fi
 # Compose reads COMPOSE_FILE from the environment and splits it on ':' itself,
 # which is what lets the demo stack pass both of its files. Forwarding it through
 # a single -f would break on the colon.
