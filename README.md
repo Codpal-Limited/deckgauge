@@ -36,9 +36,16 @@ rankings, and roadmaps engineering leaders use to see what’s really going on.
 [![License: FSL-1.1](https://img.shields.io/badge/license-FSL--1.1-0c8f83)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/Codpal-Limited/deckgauge?style=social)](https://github.com/Codpal-Limited/deckgauge)
 
-[**Live demo**](https://demo.deckgauge.com) · [**Website**](https://deckgauge.com) · [**Docs**](https://deckgauge.com/docs) · [**Enterprise**](https://deckgauge.com/enterprise)
+[**Live demo**](https://demo.deckgauge.com) · [**Website**](https://deckgauge.com) · [**Quickstart**](https://deckgauge.com/docs/quickstart) · [**Docs**](https://deckgauge.com/docs) · [**Enterprise**](https://deckgauge.com/enterprise)
 
 </div>
+
+> **The open-source alternative to Jellyfish and LinearB.** Read the code, run it
+> yourself, own your data. Comparing against Jellyfish, LinearB, or DevLake?
+> [The honest comparison](https://deckgauge.com/compare/) covers where we win and
+> where we don't.
+
+**⭐ If Deckgauge is useful to you, star the repo — it helps other teams find it.**
 
 ---
 
