@@ -40,7 +40,7 @@ rankings, and roadmaps engineering leaders use to see what’s really going on.
 
 </div>
 
-> **The open-source alternative to Jellyfish and LinearB.** Read the code, run it
+> **The source-available alternative to Jellyfish and LinearB.** Read the code, run it
 > yourself, own your data. Comparing against Jellyfish, LinearB, or DevLake?
 > [The honest comparison](https://deckgauge.com/compare/) covers where we win and
 > where we don't.
