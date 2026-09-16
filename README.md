@@ -1,5 +1,5 @@
 <!--
-PUBLIC-FACING README for the open-source Deckgauge repo (published as README.md).
+PUBLIC-FACING README for the source-available Deckgauge repo (published as README.md).
 Separate from the private repo's own README. Keep it public-appropriate.
 
 The demo credentials in "Try it live" are THE published copy, and this channel is
