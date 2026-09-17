@@ -17,14 +17,16 @@ Deckgauge is a **pnpm + Turborepo monorepo** (Next.js web, Fastify API, BullMQ w
 git clone https://github.com/Codpal-Limited/deckgauge
 cd deckgauge
 ./scripts/init-env.sh
-docker compose up -d
+docker compose up -d postgres redis clickhouse keycloak-db keycloak mailpit
 ```
 
-`./scripts/init-env.sh` writes `.env`, generating every credential. With the
-stack up, create the database schema:
+`./scripts/init-env.sh` writes `.env`, generating every credential. The first
+`up -d` starts the infrastructure only; with it up, create the database
+schema, then start the app itself:
 
 ```bash
 docker compose run --rm -T api sh -c "cd /app/packages/db && npx prisma migrate deploy"
+docker compose up -d
 ```
 
 Then create the ClickHouse analytics tables:

@@ -245,8 +245,9 @@ image versions that commit pins, and two of those upgrade your data in place:
 ```bash
 ./scripts/backup.sh
 git pull
-docker compose up -d
+docker compose up -d postgres redis clickhouse keycloak-db keycloak mailpit
 docker compose run --rm -T api sh -c "cd /app/packages/db && npx prisma migrate deploy"
+docker compose up -d
 ```
 
 `./scripts/backup.sh` covers Postgres, Keycloak, ClickHouse and the uploads.
@@ -266,10 +267,11 @@ reversible if something about your install is unusual.
 > only on such an install:
 >
 > ```bash
-> for m in $(ls packages/db/prisma/migrations | grep -v migration_lock.toml); do
->   docker compose run --rm -T api sh -c \
->     "cd /app/packages/db && npx prisma migrate resolve --applied $m"
-> done
+> docker compose run --rm -T api sh -c '
+>   cd /app/packages/db
+>   for m in prisma/migrations/*/; do
+>     npx prisma migrate resolve --applied "$(basename "$m")"
+>   done'
 > ```
 >
 > Then run the `migrate deploy` line above. A fresh install needs none of this.
