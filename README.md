@@ -107,14 +107,41 @@ That’s it — the agent clones the repo, starts the stack, sets up the databas
 
 ## Install it yourself (Docker)
 
+Docker is all you need for the install itself. Node 24+ and pnpm 9+ are
+needed only for `pnpm deckgauge:advisor` (near the end of this file) and
+for the host-side fallback if the schema step cannot download from inside
+the container (see the note after the install block).
+
 ```bash
 git clone https://github.com/Codpal-Limited/deckgauge
 cd deckgauge
 ./scripts/init-env.sh
+docker compose up -d postgres redis clickhouse keycloak-db keycloak mailpit
+docker compose run --rm -T api sh -c "cd /app/packages/db && npx prisma migrate deploy"
 docker compose up -d
-docker compose run --rm -T api sh -c "cd /app/packages/db && npx prisma db push"
 ./scripts/test-account.sh
 ```
+
+The first `up -d` starts only Postgres, Redis, ClickHouse and Keycloak; the
+schema step runs against them, and the second `up -d` starts the app itself,
+so nothing crash-loops waiting for a schema that does not exist yet.
+
+Keycloak takes up to a minute to become available on a cold start, and
+`./scripts/test-account.sh` talks to it immediately — `docker compose ps`
+should show it running before you run that last command.
+
+The schema step downloads the Prisma CLI and its schema engine from inside
+the container. On a proxied, TLS-inspecting or air-gapped network it fails
+with `Error: aborted` / `ECONNRESET` and no schema is created. Run the
+migration from your host instead — it needs Node 24+ and pnpm 9+:
+
+```bash
+pnpm install
+pnpm --filter @deckgauge/db migrate:deploy
+```
+
+`migrate:deploy` reads `DATABASE_URL` from the `.env` that `init-env.sh`
+wrote, so it needs no further configuration.
 
 Open `http://localhost:3000` and sign in with **`test@test.com`** /
 **`test`**. You land on a working product: two boards carrying 240 items, a
@@ -131,6 +158,10 @@ every other clone. It refuses to overwrite an existing `.env`; use
 any more, and copying that file by hand does not work: every credential in it is
 empty and `docker-compose.yml` requires them, so the stack stops at `up` with the
 variable named rather than booting on a password published in this repository.
+Running a second Deckgauge install on the same machine? The compose project
+name comes from the directory name while container names stay pinned — see
+the `COMPOSE_PROJECT_NAME` / `CONTAINER_PREFIX` block in `.env.example`
+before starting another stack.
 
 > **Before you expose this install to anything.** `test@test.com` has a
 > password everybody knows, and `docker-compose.yml` publishes its ports on all
@@ -213,16 +244,35 @@ image versions that commit pins, and two of those upgrade your data in place:
 
 ```bash
 ./scripts/backup.sh
-git pull && docker compose up -d
+git pull
+docker compose up -d
+docker compose run --rm -T api sh -c "cd /app/packages/db && npx prisma migrate deploy"
 ```
 
 `./scripts/backup.sh` covers Postgres, Keycloak, ClickHouse and the uploads.
+The last line applies any new Deckgauge schema migrations and is required on
+every upgrade — nothing applies them automatically.
 
 Keycloak migrates its own database schema on first start of a new version and
 that migration is **one-way** — rolling the image back does not roll the schema
 back. ClickHouse likewise upgrades its data directory in place. Both are
 routine and neither needs manual steps; the backup is what makes them
 reversible if something about your install is unusual.
+
+> **One-time step if you installed before this release.** Earlier versions
+> created the schema with `prisma db push`, which records no migration history,
+> so `migrate deploy` above will stop with `P3005: The database schema is not
+> empty`. Tell Prisma the existing migrations are already applied — once, and
+> only on such an install:
+>
+> ```bash
+> for m in $(ls packages/db/prisma/migrations | grep -v migration_lock.toml); do
+>   docker compose run --rm -T api sh -c \
+>     "cd /app/packages/db && npx prisma migrate resolve --applied $m"
+> done
+> ```
+>
+> Then run the `migrate deploy` line above. A fresh install needs none of this.
 
 Your existing `.env` keeps working across ordinary upgrades. The compose file
 passes only the variables it names, so keys that later releases stop using are

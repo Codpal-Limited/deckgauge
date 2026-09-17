@@ -24,7 +24,7 @@ docker compose up -d
 stack up, create the database schema:
 
 ```bash
-docker compose run --rm -T api sh -c "cd /app/packages/db && npx prisma db push"
+docker compose run --rm -T api sh -c "cd /app/packages/db && npx prisma migrate deploy"
 ```
 
 Then create the ClickHouse analytics tables:
@@ -39,10 +39,23 @@ produces a usable file: every credential in the template is empty and
 `docker compose up` with the variable named. The script refuses to overwrite an
 existing `.env` — use `./scripts/init-env.sh --check` to see what one is missing.
 
-Keep the `-T`: it makes `db push` non-interactive. On a database that already holds tables the
-Prisma schema does not declare **and that are not empty**, the command then fails with exit 1
-instead of blocking on a `(y/N)` data-loss prompt. Do not answer that by adding `--accept-data-loss` — it drops those
-tables. It means the database is not a fresh install.
+Keep the `-T`: it keeps the Prisma command non-interactive, so it never blocks
+on a prompt inside `docker compose run`. (If you ever fall back to
+`prisma db push` by hand, do not add `--accept-data-loss` — it drops tables.
+It means the database is not a fresh install.)
+
+The schema command downloads the Prisma CLI and its schema engine from inside
+the container. On a proxied, TLS-inspecting or air-gapped network it fails
+with `Error: aborted` / `ECONNRESET` and no schema is created. Run the
+migration from your host instead — it needs Node 24+ and pnpm 9+:
+
+```bash
+pnpm install
+pnpm --filter @deckgauge/db migrate:deploy
+```
+
+`migrate:deploy` reads `DATABASE_URL` from the `.env` that `init-env.sh`
+wrote, so it needs no further configuration.
 
 Then open **http://localhost:3000**. Full setup — connecting sources, SSO, access control — is in the [docs](https://deckgauge.com/docs).
 
