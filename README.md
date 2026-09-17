@@ -112,10 +112,18 @@ git clone https://github.com/Codpal-Limited/deckgauge
 cd deckgauge
 ./scripts/init-env.sh
 docker compose up -d
-# create the schema (-T keeps it non-interactive; if it fails, see CONTRIBUTING.md
-# — do NOT add --accept-data-loss, it drops tables)
+```
+
+Create the schema (`-T` keeps it non-interactive; if it fails, see
+CONTRIBUTING.md — do **not** add `--accept-data-loss`, it drops tables):
+
+```bash
 docker compose run --rm -T api sh -c "cd /app/packages/db && npx prisma db push"
-# create a signed-in-and-populated demo account
+```
+
+Then create a signed-in-and-populated demo account:
+
+```bash
 ./scripts/test-account.sh
 ```
 
@@ -145,11 +153,15 @@ variable named rather than booting on a password published in this repository.
 **Remove them in this order — data first, then the account.** Neither touches a
 board you made yourself, but the sequence matters:
 
-```bash
-# 1. the demo data, keeping the account
-docker compose run --rm api npx tsx /app/packages/db/src/demo/seed-demo.ts --remove
+First the demo data, keeping the account:
 
-# 2. then the account and its grants
+```bash
+docker compose run --rm api npx tsx /app/packages/db/src/demo/seed-demo.ts --remove
+```
+
+Then the account and its grants:
+
+```bash
 ./scripts/test-account.sh --remove
 ```
 
@@ -168,11 +180,13 @@ afterwards:
 
 ```bash
 docker compose run --rm api npx tsx /app/packages/db/src/demo/seed-demo.ts
-# fills the per-engineer leaderboard, heat strip and per-employee board lists,
-# which are computed by the org-tree sync rather than written by the seeder
 docker compose run --rm -e DECKGAUGE_ORG_SLUG=your-org-slug \
   worker npx tsx /app/apps/worker/src/scripts/trigger-org-sync.ts
 ```
+
+The second command fills the per-engineer leaderboard, heat strip and
+per-employee board lists, which are computed by the org-tree sync rather than
+written by the seeder.
 
 You need nothing further on a fresh install: the first account to sign in is
 granted admin automatically, which is the same grant that lets you create the
@@ -209,9 +223,11 @@ Full setup — connecting sources, SSO, access control — is in the [docs](http
 image versions that commit pins, and two of those upgrade your data in place:
 
 ```bash
-./scripts/backup.sh      # Postgres, Keycloak, ClickHouse, uploads
+./scripts/backup.sh
 git pull && docker compose up -d
 ```
+
+`./scripts/backup.sh` covers Postgres, Keycloak, ClickHouse and the uploads.
 
 Keycloak migrates its own database schema on first start of a new version and
 that migration is **one-way** — rolling the image back does not roll the schema
@@ -269,8 +285,10 @@ CID=$(docker compose exec -T keycloak /opt/keycloak/bin/kcadm.sh get clients \
         -r deckgauge -q clientId=deckgauge-web --fields id --format csv --noquotes)
 docker compose exec -T keycloak /opt/keycloak/bin/kcadm.sh update "clients/$CID" \
         -r deckgauge -s secret="$NEW"
-# then set KEYCLOAK_CLIENT_SECRET=$NEW in .env and: docker compose up -d web keycloak
 ```
+
+Then set `KEYCLOAK_CLIENT_SECRET=$NEW` in `.env` and run
+`docker compose up -d web keycloak`.
 
 (`kcadm.sh` needs `config credentials` first — the block further up shows the
 form.) `NEXTAUTH_SECRET` is the other one, and it needs nothing but a new value.
@@ -306,10 +324,13 @@ change the client secret, so whatever you have now stays correct.
 an empty database and so never sees the rename on its own:
 
 ```bash
-docker compose up -d                    # bring the stack up on the new names
-./scripts/rename-keycloak-realm.sh      # rename the realm, client and theme
+docker compose up -d
+./scripts/rename-keycloak-realm.sh
 docker compose up -d --force-recreate api web
 ```
+
+The first command brings the stack up on the new names; the script renames the
+realm, client and theme.
 
 The script refuses to run until that `.env` edit is done, and names the exact
 lines if you skipped it. It is idempotent, reads the running Keycloak rather
@@ -351,8 +372,10 @@ or [Codex](https://github.com/openai/codex) installed and signed in, it runs on
 and your model credentials never touch Deckgauge.
 
 ```bash
-pnpm deckgauge:advisor   # detects your local agent and connects the panel to it
+pnpm deckgauge:advisor
 ```
+
+The command detects your local agent and connects the panel to it.
 
 Open a board's Advisor panel while signed in and it authenticates itself with
 your existing session. The agent reads board data only through Deckgauge's

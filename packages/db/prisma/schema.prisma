@@ -1513,8 +1513,10 @@ model OrgTreeSource {
   status           String    @default("idle")
   lastSyncedAt     DateTime? @map("last_synced_at")
   lastSyncSummary  Json?     @map("last_sync_summary")
-  // Microsoft Graph connection tokens (plaintext, matching the repo's existing
-  // Jira/GitHub/ADO/GitLab token convention; localhost-only). msAccessToken is a
+  // Microsoft Graph connection tokens. ENCRYPTED AT REST with AES-256-GCM before
+  // they reach this column — see packages/db/src/credential-encryption/. This
+  // comment used to read "plaintext ... localhost-only", which was the stale
+  // justification hosting deleted. msAccessToken is a
   // user-pasted Graph token (no app registration — the primary path); msRefreshToken
   // is a delegated offline token (device-code path). The worker prefers msAccessToken.
   msAccessToken    String?   @map("ms_access_token")
@@ -1535,8 +1537,8 @@ model BoardCalendarSource {
   provider         String    @default("microsoft")
   // Whose calendar to read interviews from (email / UPN).
   calendarUpn      String    @default("") @map("calendar_upn")
-  // Microsoft Graph connection tokens (plaintext, matching the repo's existing
-  // Jira/GitHub/ADO/GitLab/OrgTreeSource token convention; localhost-only).
+  // Microsoft Graph connection tokens. ENCRYPTED AT REST with AES-256-GCM before
+  // they reach this column — see packages/db/src/credential-encryption/.
   // msAccessToken is a user-pasted Graph token (no app registration — the primary
   // path); msRefreshToken is a delegated offline token (device-code path).
   msAccessToken    String?   @map("ms_access_token")

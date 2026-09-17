@@ -5,9 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
   DndContext,
   DragOverlay,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
   pointerWithin,
   rectIntersection,
   useDraggable,
@@ -23,6 +20,7 @@ import { wouldCreateCycle } from '@deckgauge/shared';
 import { OrgEmployeeNode } from './OrgEmployeeNode';
 import { moveEmployee } from '../../actions/org-trees';
 import { MOUSE_DRAG_ACTIVATION, TOUCH_DRAG_ACTIVATION } from '../../lib/dnd-activation';
+import { DragKeyboardSensor, DragMouseSensor, DragTouchSensor } from '../../lib/dnd-sensors';
 
 // ---------------------------------------------------------------------------
 // Pure DnD helper (exported for testing)
@@ -211,9 +209,9 @@ export function OrgTreeView({ tree, onRefresh, onSelectEmployee }: OrgTreeViewPr
   const roots = childMap.get(null) ?? [];
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
-    useSensor(TouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
-    useSensor(KeyboardSensor),
+    useSensor(DragMouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
+    useSensor(DragTouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
+    useSensor(DragKeyboardSensor),
   );
 
   const onDragStart = (e: DragStartEvent) => {

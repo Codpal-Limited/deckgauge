@@ -4,9 +4,6 @@ import { useState, useTransition, useMemo, useEffect, useRef, useCallback } from
 import {
   DndContext,
   DragOverlay,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
   closestCorners,
   useDroppable,
   useSensor,
@@ -60,6 +57,7 @@ import { makeEmployeeShellRow } from './EmployeeShellRow';
 import { EmployeeBulkActionBar } from './EmployeeBulkActionBar';
 import { resolveBulkTargets } from '../../utils/bulk-selection';
 import { MOUSE_DRAG_ACTIVATION, TOUCH_DRAG_ACTIVATION } from '../../lib/dnd-activation';
+import { DragKeyboardSensor, DragMouseSensor, DragTouchSensor } from '../../lib/dnd-sensors';
 
 type BoardMember = EmployeeBoardDetailDto['groups'][number]['members'][number];
 
@@ -742,9 +740,9 @@ export function EmployeeBoardCanvas({ board, allEmployees, canSeeSalary, onChang
   };
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
-    useSensor(TouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
-    useSensor(KeyboardSensor)
+    useSensor(DragMouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
+    useSensor(DragTouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
+    useSensor(DragKeyboardSensor)
   );
 
   // Id of the member being dragged, for the DragOverlay ghost.

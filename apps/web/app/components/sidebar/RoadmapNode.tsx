@@ -49,6 +49,8 @@ export function RoadmapNode({
         href={`/roadmap/${node.id}`}
         className="flex flex-1 items-center gap-1.5 truncate text-left"
         aria-current={active ? 'page' : undefined}
+        // Fills the row, which is itself the drag source — see BoardNode.
+        data-dnd-handle="true"
       >
         <span
           aria-label="roadmap"

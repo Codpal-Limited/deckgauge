@@ -406,6 +406,7 @@ services:
       # Pin V8's heap below the cgroup cap so it GCs hard instead of cgroup-OOM-killing (mirrors the web service). ~256M headroom for non-heap.
       NODE_OPTIONS: "--max-old-space-size=1280"
       DATABASE_URL: "postgresql://${POSTGRES_USER:-cockpit}:${POSTGRES_PASSWORD:?run ./scripts/init-env.sh to generate one, or set it in .env}@postgres:5432/${POSTGRES_DB:-cockpit}"
+      CREDENTIAL_ENCRYPTION_KEY: "${CREDENTIAL_ENCRYPTION_KEY:?run ./scripts/init-env.sh to generate one, or set it in .env}"
       # Overridable so a deployment with an authenticated Redis can supply the
       # credential as one complete URL. Compose cannot build it conditionally — it
       # cannot nest an interpolation inside a `${VAR:+...}` replacement (see the
@@ -584,6 +585,7 @@ services:
           memory: 768M   # BullMQ host for 6+ queue+worker pairs (jira/gitlab/ado/github/sync-run-prune/roadmap-slip). The ADO processor streams large projects (azure-devops-sync.processor → streamWorkItems → promoteProjectStream): work items are fetched, dual-written to ClickHouse, and promoted one batch at a time. Bumped 384M→768M (2026-07-31): after one org's ADO source list grew to 17 projects, transition-write peaks (two projects at ~9.2k and ~32k work items) crossed 384M and the container was cgroup-killed ~every 20-30min (RestartCount climbing). Each kill rewinds the sequential per-project run to the top of the list, permanently starving the tail projects, which never got stamped. 768M absorbs the peaks while leaving VM headroom (~5.9GiB total; 1024M was too aggressive with ~840MiB free).
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-cockpit}:${POSTGRES_PASSWORD:?run ./scripts/init-env.sh to generate one, or set it in .env}@postgres:5432/${POSTGRES_DB:-cockpit}"
+      CREDENTIAL_ENCRYPTION_KEY: "${CREDENTIAL_ENCRYPTION_KEY:?run ./scripts/init-env.sh to generate one, or set it in .env}"
       # Overridable so a deployment with an authenticated Redis can supply the
       # credential as one complete URL. Compose cannot build it conditionally — it
       # cannot nest an interpolation inside a `${VAR:+...}` replacement (see the

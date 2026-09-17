@@ -10,9 +10,6 @@ import { useState } from 'react';
 import {
   DndContext,
   DragOverlay,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
   pointerWithin,
   rectIntersection,
   useDroppable,
@@ -28,6 +25,7 @@ import { DraggableBoard } from './DraggableBoard';
 import { DraggableRoadmap } from './DraggableRoadmap';
 import { findBoardById, findRoadmapById, preferFolderCollision, resolveDropTarget } from './sidebar-dnd';
 import { MOUSE_DRAG_ACTIVATION, TOUCH_DRAG_ACTIVATION } from '../../lib/dnd-activation';
+import { DragKeyboardSensor, DragMouseSensor, DragTouchSensor } from '../../lib/dnd-sensors';
 
 interface SidebarTreeProps {
   nodes: SidebarNode[];
@@ -61,9 +59,9 @@ export function SidebarTree({ nodes, handlers }: SidebarTreeProps) {
   // row does not open on a long press. A tap opens it, because a tap never
   // reaches the 200ms delay. See `app/lib/dnd-activation.ts`.
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
-    useSensor(TouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
-    useSensor(KeyboardSensor),
+    useSensor(DragMouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
+    useSensor(DragTouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
+    useSensor(DragKeyboardSensor),
   );
 
   const onDragStart = (e: DragStartEvent) => {

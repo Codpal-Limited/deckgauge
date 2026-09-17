@@ -50,6 +50,10 @@ export function BoardNode({
         data-testid="sidebar-board-row"
         className="flex flex-1 items-center gap-2 text-left"
         aria-current={active ? 'page' : undefined}
+        // This button fills the row, and the row is the drag source for moving a
+        // board into or out of a folder. Without the opt-in the drag guard would
+        // leave only the row's padding grabbable.
+        data-dnd-handle="true"
       >
         <span className={`h-2 w-2 shrink-0 rounded-sm ${active ? 'bg-white/80' : 'bg-slate-400'}`} />
         <span className="truncate">{board.name}</span>

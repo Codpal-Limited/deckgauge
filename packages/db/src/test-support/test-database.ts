@@ -71,6 +71,15 @@ export const DERIVED_DATABASE_PREFIX = 'cockpit_wt_';
  */
 export const NEVER_TEST_DATABASES = ['cockpit'] as const;
 
+/**
+ * The credential-encryption key every test run uses. Fixed and in the clear on
+ * purpose — see the comment at its use site below. Not valid for anything but a
+ * disposable test database, and `assertSafeTestDatabaseUrl` is what keeps a run
+ * off a real one.
+ */
+export const TEST_CREDENTIAL_KEY =
+  '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff';
+
 /** Opt-in for a non-derived database. Set it in the untracked `.env.test.local`. */
 export const ALLOW_NON_DERIVED_ENV = 'DECKGAUGE_TEST_DB_ALLOW_SHARED';
 
@@ -464,6 +473,17 @@ export function resolveTestDatabase(options: {
       // any suite that creates a fixed-name throwaway database: both are
       // server-global and therefore collide across worktrees by default.
       DECKGAUGE_TEST_WORKTREE_TOKEN: token,
+      // Provider credentials are encrypted at rest, so `createPrismaClient()`
+      // refuses to build a client without a key — by design, since a store that
+      // falls back to "no encryption" is the defect that mechanism removes.
+      // Every suite that opens a client therefore needs one.
+      //
+      // A FIXED, PUBLISHED test key, not a generated one: a key that differed per
+      // run would make a fixture written by one suite unreadable by the next, and
+      // the resulting failure would read as data corruption rather than as
+      // configuration. It protects nothing and is not a secret — it seals rows in a
+      // disposable per-checkout database. An environment that sets its own wins.
+      CREDENTIAL_ENCRYPTION_KEY: merged.CREDENTIAL_ENCRYPTION_KEY ?? TEST_CREDENTIAL_KEY,
     },
   };
 }

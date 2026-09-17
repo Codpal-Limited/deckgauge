@@ -93,7 +93,11 @@ async function main(): Promise<void> {
   // NOTE: `maintenanceUrl` follows TEST_POSTGRES_SERVER_URL, never a DATABASE_URL
   // override — otherwise an override would redirect `DROP … WITH (FORCE)` at
   // whatever server it names.
-  const admin = createPrismaClient(resolution.maintenanceUrl);
+  // Bypass: maintenance connection (DROP/CREATE DATABASE). Reads no
+  // credential column, and must work without an encryption key configured.
+  const admin = createPrismaClient(resolution.maintenanceUrl, {
+    credentialEncryption: "bypass",
+  });
 
   try {
     if (process.argv.includes('--list-orphans')) {

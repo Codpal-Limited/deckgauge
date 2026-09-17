@@ -113,7 +113,13 @@ function unreachable(url: string): Error {
 }
 
 function defaultOpenClient(url: string): TestDatabaseClient {
-  return createPrismaClient(url) as unknown as TestDatabaseClient;
+  // Bypass: this client creates databases and applies migrations. It never
+  // reads a credential column, and it runs in vitest's MAIN process, which
+  // does not receive `test.env` — so requiring the encryption key here would
+  // fail every run for a capability the setup path does not use.
+  return createPrismaClient(url, {
+    credentialEncryption: "bypass",
+  }) as unknown as TestDatabaseClient;
 }
 
 function migrationDirNames(migrationsDir: string): string[] {

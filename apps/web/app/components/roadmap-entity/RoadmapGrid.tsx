@@ -5,9 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
   DndContext,
   DragOverlay,
-  MouseSensor,
-  TouchSensor,
-  KeyboardSensor,
   useSensor,
   useSensors,
   useDroppable,
@@ -24,6 +21,7 @@ import { ItemDetailPanel } from '../ItemDetailPanel';
 import { loadBoardColumns } from '../../actions/roadmap';
 import { createRoadmapAdapter } from './roadmap-entity-adapter';
 import { MOUSE_DRAG_ACTIVATION, TOUCH_DRAG_ACTIVATION } from '../../lib/dnd-activation';
+import { DragKeyboardSensor, DragMouseSensor, DragTouchSensor } from '../../lib/dnd-sensors';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -283,9 +281,9 @@ export function RoadmapGrid({ roadmap }: RoadmapGridProps) {
   });
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
-    useSensor(TouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
-    useSensor(KeyboardSensor),
+    useSensor(DragMouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
+    useSensor(DragTouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
+    useSensor(DragKeyboardSensor),
   );
 
   // Sorted by position (roadmap-local order)

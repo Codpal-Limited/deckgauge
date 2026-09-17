@@ -313,6 +313,11 @@ export function OrgEmployeeNode({
                   type="button"
                   onClick={() => onSelectEmployee?.(employee.id)}
                   className="flex min-h-11 w-full items-center text-left text-[14.5px] font-semibold tracking-tight md:min-h-0 md:w-auto md:min-w-0"
+                  // The name is the natural place to grab a card, and this node
+                  // is draggable by its whole body. Without the opt-in the drag
+                  // guard excludes the one target a user reaches for first — and
+                  // on a phone this button is now the FULL WIDTH of the row.
+                  data-dnd-handle="true"
                 >
                   {/* `md:min-w-0` is not tidiness. `truncate` carries
                       `white-space: nowrap`, so moving it to the span made the

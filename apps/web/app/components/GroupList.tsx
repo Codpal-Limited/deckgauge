@@ -8,16 +8,10 @@ import {
   useEffect,
   useRef,
   useDeferredValue,
-  type MouseEvent as ReactMouseEvent,
-  type TouchEvent as ReactTouchEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import {
   DndContext,
   closestCorners,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -99,72 +93,7 @@ import {
 } from '../utils/optimistic-mutators';
 import { resolveBulkTargets } from '../utils/bulk-selection';
 import { MOUSE_DRAG_ACTIVATION, TOUCH_DRAG_ACTIVATION } from '../lib/dnd-activation';
-
-/** `MouseEvent.button` for the right button; dnd-kit's own MouseSensor declines it. */
-const RIGHT_MOUSE_BUTTON = 2;
-
-const DRAG_BLOCK_SELECTOR =
-  'input,textarea,select,button,a,[contenteditable="true"],[data-no-dnd="true"]';
-
-export function shouldStartPointerDrag(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return true;
-  return target.closest(DRAG_BLOCK_SELECTOR) === null;
-}
-
-/**
- * Two sensors rather than one `PointerSensor`, because mouse and touch need
- * opposite activation constraints — see `app/lib/dnd-activation.ts` for why a
- * shared delay constraint breaks mouse dragging outright.
- *
- * Each subclass keeps its base sensor's own refusal alongside our
- * `shouldStartPointerDrag` guard: `MouseSensor` declines right-click and
- * `TouchSensor` declines a second finger, and dropping either would be a
- * regression that no test on this branch would have caught.
- */
-class BoardMouseSensor extends MouseSensor {
-  static activators = [
-    {
-      eventName: 'onMouseDown' as const,
-      handler: ({ nativeEvent }: ReactMouseEvent) =>
-        nativeEvent.button !== RIGHT_MOUSE_BUTTON && shouldStartPointerDrag(nativeEvent.target),
-    },
-  ];
-}
-
-class BoardTouchSensor extends TouchSensor {
-  static activators = [
-    {
-      eventName: 'onTouchStart' as const,
-      handler: ({ nativeEvent }: ReactTouchEvent) =>
-        // `<= 1` mirrors dnd-kit's own refusal, which is `touches.length > 1`
-        // (`core.cjs.development.js:1745`). `=== 1` would additionally refuse a
-        // zero-touch event — behaviourally identical, since no real
-        // `touchstart` has none, but this is the faithful form.
-        nativeEvent.touches.length <= 1 && shouldStartPointerDrag(nativeEvent.target),
-    },
-  ];
-}
-
-// dnd-kit's KeyboardSensor normally refuses to start a drag unless the keydown
-// fires on the draggable's activator node. We never set an activator node ref
-// (only setNodeRef), so that guard is bypassed and Enter/Space inside the inline
-// name <input> would start a keyboard drag. Refuse activation when the keydown
-// comes from an editable/interactive element so Enter saves the edit instead.
-export class BoardKeyboardSensor extends KeyboardSensor {
-  static activators = [
-    {
-      eventName: 'onKeyDown' as const,
-      handler: (
-        event: ReactKeyboardEvent,
-        options: Parameters<(typeof KeyboardSensor.activators)[0]['handler']>[1],
-        context: Parameters<(typeof KeyboardSensor.activators)[0]['handler']>[2]
-      ): boolean => {
-        if (!shouldStartPointerDrag(event.target)) return false;
-        return KeyboardSensor.activators[0].handler(event, options, context) ?? false;
-      },
-    },
-  ];
-}
+import { DragKeyboardSensor, DragMouseSensor, DragTouchSensor } from '../lib/dnd-sensors';
 
 // Fixed, non-resizable structural tracks.
 const STRIPE_WIDTH = 6;
@@ -544,9 +473,9 @@ export function GroupList({
   const isSorted = !!sortConfig;
 
   const sensors = useSensors(
-    useSensor(BoardMouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
-    useSensor(BoardTouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
-    useSensor(BoardKeyboardSensor, {
+    useSensor(DragMouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
+    useSensor(DragTouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
+    useSensor(DragKeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );

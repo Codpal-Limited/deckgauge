@@ -3,9 +3,6 @@
 import { useMemo, useState } from 'react';
 import {
   DndContext,
-  MouseSensor,
-  TouchSensor,
-  KeyboardSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -37,6 +34,7 @@ import { ItemDetailPanel } from '../ItemDetailPanel';
 import type { RoadmapPersistenceAdapter } from './roadmap-adapter';
 import { DragDateOverlay } from './DragDateOverlay';
 import { MOUSE_DRAG_ACTIVATION, TOUCH_DRAG_ACTIVATION } from '../../lib/dnd-activation';
+import { DragKeyboardSensor, DragMouseSensor, DragTouchSensor } from '../../lib/dnd-sensors';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -181,9 +179,9 @@ export function RoadmapCanvas({
   // ---------------------------------------------------------------------------
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
-    useSensor(TouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
-    useSensor(KeyboardSensor),
+    useSensor(DragMouseSensor, { activationConstraint: MOUSE_DRAG_ACTIVATION }),
+    useSensor(DragTouchSensor, { activationConstraint: TOUCH_DRAG_ACTIVATION }),
+    useSensor(DragKeyboardSensor),
   );
 
   // ---------------------------------------------------------------------------

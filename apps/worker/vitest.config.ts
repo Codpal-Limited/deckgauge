@@ -35,6 +35,12 @@ export default defineConfig({
       DECKGAUGE_TEST_DB: testDatabase.database,
       DECKGAUGE_TEST_DB_EXCLUSIVE: testDatabase.exclusive ? '1' : '0',
       DECKGAUGE_TEST_WORKTREE_TOKEN: testDatabase.token,
+      // Provider credentials are encrypted at rest, so `createPrismaClient()`
+      // refuses to build a client without a key. Named explicitly rather than
+      // spread, matching the rest of this block; the value is the fixed test key
+      // from `resolveCheckoutTestDatabase`, which is deliberately NOT per-run so
+      // a fixture one suite writes stays readable by the next.
+      CREDENTIAL_ENCRYPTION_KEY: testDatabase.env.CREDENTIAL_ENCRYPTION_KEY,
       /**
        * The ClickHouse the three `*-dual-writer.int.test.ts` suites write to.
        *

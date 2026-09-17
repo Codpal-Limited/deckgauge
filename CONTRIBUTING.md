@@ -16,11 +16,20 @@ Deckgauge is a **pnpm + Turborepo monorepo** (Next.js web, Fastify API, BullMQ w
 ```bash
 git clone https://github.com/Codpal-Limited/deckgauge
 cd deckgauge
-./scripts/init-env.sh          # writes .env, generating every credential
+./scripts/init-env.sh
 docker compose up -d
-# create the database schema
+```
+
+`./scripts/init-env.sh` writes `.env`, generating every credential. With the
+stack up, create the database schema:
+
+```bash
 docker compose run --rm -T api sh -c "cd /app/packages/db && npx prisma db push"
-# create the ClickHouse analytics tables
+```
+
+Then create the ClickHouse analytics tables:
+
+```bash
 bash scripts/apply-clickhouse-schemas.sh
 ```
 
