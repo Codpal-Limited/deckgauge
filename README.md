@@ -112,22 +112,11 @@ git clone https://github.com/Codpal-Limited/deckgauge
 cd deckgauge
 ./scripts/init-env.sh
 docker compose up -d
-```
-
-Create the schema (`-T` keeps it non-interactive; if it fails, see
-CONTRIBUTING.md — do **not** add `--accept-data-loss`, it drops tables):
-
-```bash
 docker compose run --rm -T api sh -c "cd /app/packages/db && npx prisma db push"
-```
-
-Then create a signed-in-and-populated demo account:
-
-```bash
 ./scripts/test-account.sh
 ```
 
-Then open `http://localhost:3000` and sign in with **`test@test.com`** /
+Open `http://localhost:3000` and sign in with **`test@test.com`** /
 **`test`**. You land on a working product: two boards carrying 240 items, a
 roadmap, a Platform-vs-Mobile comparison dashboard, a 25-person org chart,
 timesheets, and six months of engineering history behind the Engineering
