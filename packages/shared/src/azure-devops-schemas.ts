@@ -67,72 +67,9 @@ export const UpdateAzureDevOpsInstanceInputSchema = z
 
 export type UpdateAzureDevOpsInstanceInput = z.infer<typeof UpdateAzureDevOpsInstanceInputSchema>;
 
-// ── Sync Config ─────────────────────────────────────────────────────────────
-
-export const FieldMappingSchema = z.record(z.string(), z.string());
-export type FieldMapping = z.infer<typeof FieldMappingSchema>;
-
-export const StatusMappingSchema = z.record(z.string(), z.string());
-export type StatusMapping = z.infer<typeof StatusMappingSchema>;
-
-/** Default Azure DevOps state → board status label mapping. */
-export const ADO_DEFAULT_STATUS_MAPPING: StatusMapping = {
-  New: 'Not Started',
-  'To Do': 'Not Started',
-  Active: 'In Progress',
-  Resolved: 'In Progress',
-  Closed: 'Done',
-  Removed: 'Done',
-};
-
-export const AzureDevOpsSyncConfigSchema = z.object({
-  id: z.string().uuid(),
-  azureDevOpsInstanceId: z.string().uuid(),
-  adoProject: z.string().min(1),
-  boardId: z.string().uuid(),
-  targetGroupId: z.string().uuid().nullable(),
-  allowedWorkItemTypes: z.array(z.string()),
-  wiqlFilter: z.string().nullable(),
-  fieldMappings: FieldMappingSchema,
-  statusMapping: StatusMappingSchema,
-  defaultSyncedFields: z.array(z.string()),
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
-});
-
-export type AzureDevOpsSyncConfig = z.infer<typeof AzureDevOpsSyncConfigSchema>;
-
-export const CreateAzureDevOpsSyncConfigInputSchema = z.object({
-  azureDevOpsInstanceId: z.string().uuid(),
-  adoProject: z.string().min(1),
-  boardId: z.string().uuid(),
-  targetGroupId: z.string().uuid().nullable().optional(),
-  allowedWorkItemTypes: z.array(z.string()).min(1),
-  wiqlFilter: z.string().nullable().optional(),
-  fieldMappings: FieldMappingSchema.default({}),
-  statusMapping: StatusMappingSchema.default(ADO_DEFAULT_STATUS_MAPPING),
-  defaultSyncedFields: z.array(z.string()).default(['name', 'status', 'owner']),
-});
-
-export type CreateAzureDevOpsSyncConfigInput = z.infer<
-  typeof CreateAzureDevOpsSyncConfigInputSchema
->;
-
-export const UpdateAzureDevOpsSyncConfigInputSchema = z
-  .object({
-    allowedWorkItemTypes: z.array(z.string()).min(1).optional(),
-    wiqlFilter: z.string().nullable().optional(),
-    fieldMappings: FieldMappingSchema.optional(),
-    statusMapping: StatusMappingSchema.optional(),
-    defaultSyncedFields: z.array(z.string()).optional(),
-  })
-  .refine((data) => Object.values(data).some((v) => v !== undefined), {
-    message: 'At least one field must be provided',
-  });
-
-export type UpdateAzureDevOpsSyncConfigInput = z.infer<
-  typeof UpdateAzureDevOpsSyncConfigInputSchema
->;
+// The AzureDevOpsSyncConfig schemas (and ADO_DEFAULT_STATUS_MAPPING) are gone
+// with the legacy model and its `/azure-devops/sync-configs` routes (p9
+// cleanup, 1fbe7f3f); nothing imported them.
 
 // ── Phase 3 Project Sync (intelligence pipeline) ───────────────────────────
 

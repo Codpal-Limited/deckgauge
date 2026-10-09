@@ -221,11 +221,11 @@ export async function githubRoutes(
   // is not ORG_MEMBER — the other twenty either write, or read connection
   // configuration (hosts, PATs' metadata, project and repo inventories). This one
   // only reads, and what it reads is now confined to the caller's own tenant. VIEWER
-  // exists to be read-only, and the response is rendered on the board itself, by
-  // GitHubGroupSection via BoardView.tsx, which a VIEWER can see — gating it on
-  // MEMBER would blank that panel for the role whose whole purpose is reading.
-  // (That panel was removed with the legacy sync-config UI in issue #5, so the
-  // web app no longer calls this route; the read-only reasoning still holds.)
+  // exists to be read-only, and a sync status is exactly the kind of thing a
+  // VIEWER is there to read — gating it on MEMBER would deny the role whose whole
+  // purpose is reading. (The board panel that used to render it was removed with
+  // the legacy sync-config UI in issue #5, so the web app no longer calls this
+  // route; the read-only reasoning does not depend on that caller.)
   //
   // The no-membership arm below is therefore unreachable through the policy
   // plugin and kept as belt-and-braces. It is not dead: the route-level tests
@@ -249,9 +249,10 @@ export async function githubRoutes(
   // ORG_MEMBER, not AUTHENTICATED: enqueuing this job makes the worker call
   // GitHub with every stored credential it can reach, so `authenticated` — which
   // resolves no membership and no tenant — gated a credential-spending capability
-  // on nothing beyond holding an account. MEMBER rather than ADMIN because the
-  // button that calls it is on the board screen (GitHubGroupSection's "Sync"),
-  // refreshing boards a member configured; that matches the rest of the
+  // on nothing beyond holding an account. MEMBER rather than ADMIN because it
+  // refreshes boards a member configured (the board-screen "Sync" button that
+  // called it went with the legacy sync-config UI in issue #5; the web app's
+  // board refresh is now POST /boards/:boardId/sync); that matches the rest of the
   // credential-spending family (see sync-config-authz.test.ts) and the scoped
   // per-board equivalent, POST /boards/:boardId/sync = board(EDITOR).
   //

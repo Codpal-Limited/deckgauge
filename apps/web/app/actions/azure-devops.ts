@@ -97,72 +97,11 @@ export async function fetchWorkItemTypes(
   }
 }
 
-// --- Azure DevOps Sync Configs ---
-
-export async function fetchAzureDevOpsSyncConfigs() {
-  try {
-    const res = await authFetch('/azure-devops/sync-configs', { cache: 'no-store' });
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
-  }
-}
-
-export async function createAzureDevOpsSyncConfig(
-  instanceId: string,
-  data: {
-    adoProject: string;
-    boardId: string;
-    allowedWorkItemTypes: string[];
-    targetGroupId?: string | null;
-  },
-) {
-  const res = await authFetch(`/azure-devops/instances/${instanceId}/sync-configs`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...data, azureDevOpsInstanceId: instanceId }),
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Failed to create Azure DevOps sync config: ${res.status} ${body}`);
-  }
-  return await res.json();
-}
-
-export async function updateAzureDevOpsSyncConfig(
-  id: string,
-  data: {
-    allowedWorkItemTypes?: string[];
-    statusMapping?: Record<string, string>;
-    defaultSyncedFields?: string[];
-  },
-) {
-  const res = await authFetch(`/azure-devops/sync-configs/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Failed to update Azure DevOps sync config: ${res.status} ${body}`);
-  }
-  return await res.json();
-}
-
-export async function deleteAzureDevOpsSyncConfig(id: string): Promise<boolean> {
-  try {
-    const res = await authFetch(`/azure-devops/sync-configs/${id}`, {
-      method: 'DELETE',
-      cache: 'no-store',
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
+// The legacy `/azure-devops/sync-configs` and
+// `/azure-devops/instances/:id/sync-configs` callers are gone: the API removed
+// those routes with the AzureDevOpsSyncConfig model in the p9 cleanup
+// (1fbe7f3f), and nothing in the app called them any more. Per-project sync is
+// `/project-syncs/ado` — see actions/board-sources.ts.
 
 // --- Azure DevOps Sync ---
 
@@ -188,72 +127,11 @@ export async function triggerAzureDevOpsSync(): Promise<boolean> {
   }
 }
 
-// --- Phase 3 project syncs (intelligence) ---
-
-export interface AdoRepoSummary {
-  id: string;
-  name: string;
-  defaultBranch: string | null;
-  webUrl: string | null;
-}
-
-export async function fetchAzureDevOpsRepositories(
-  instanceId: string,
-  project: string,
-): Promise<AdoRepoSummary[]> {
-  try {
-    const res = await authFetch(
-      `/azure-devops/instances/${instanceId}/repositories?project=${encodeURIComponent(project)}`,
-      { cache: 'no-store' },
-    );
-    if (!res.ok) return [];
-    const json = (await res.json()) as { repositories?: AdoRepoSummary[] };
-    return json.repositories ?? [];
-  } catch { return []; }
-}
-
-export interface AzureDevOpsProjectSyncDto {
-  id: string;
-  azureDevOpsInstanceId: string;
-  adoProject: string;
-  syncPrs: boolean;
-  syncCommits: boolean;
-  syncRepos: string[];
-  lastSyncedAt: string | null;
-}
-
-export async function fetchAzureDevOpsProjectSyncs(instanceId?: string): Promise<AzureDevOpsProjectSyncDto[]> {
-  try {
-    const url = instanceId ? `/azure-devops/instances/${instanceId}/project-syncs` : '/azure-devops/project-syncs';
-    const res = await authFetch(url, { cache: 'no-store' });
-    if (!res.ok) return [];
-    return await res.json();
-  } catch { return []; }
-}
-
-export async function upsertAzureDevOpsProjectSync(
-  instanceId: string,
-  data: { adoProject: string; syncPrs: boolean; syncCommits: boolean; syncRepos: string[] },
-): Promise<AzureDevOpsProjectSyncDto> {
-  const res = await authFetch(`/azure-devops/instances/${instanceId}/project-syncs`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Failed to save ADO project sync: ${res.status} ${body}`);
-  }
-  return await res.json();
-}
-
-export async function deleteAzureDevOpsProjectSync(id: string): Promise<boolean> {
-  try {
-    const res = await authFetch(`/azure-devops/project-syncs/${id}`, { method: 'DELETE', cache: 'no-store' });
-    return res.ok;
-  } catch { return false; }
-}
+// The `/azure-devops/project-syncs`, `/azure-devops/instances/:id/project-syncs`
+// and `/azure-devops/instances/:id/repositories` callers are gone too: no API
+// route ever served them, and nothing in the app called them. Project syncs are
+// `/project-syncs/ado`; a board source's repository scope is
+// `/boards/:id/sources/ado/...` (actions/board-sources.ts).
 
 export async function listAzureDevOpsRemoteProjects(
   instanceId: string,

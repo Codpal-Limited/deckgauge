@@ -156,13 +156,12 @@ export async function fetchBoards() {
   }
 }
 
-// --- Sync Configs ---
-
-export async function fetchAllSyncConfigs() {
-  const res = await authFetch('/sync-configs', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to fetch sync configs');
-  return res.json();
-}
+// The legacy `/sync-configs` and `/boards/:id/sync-configs` callers
+// (fetchAllSyncConfigs, fetchSyncConfigs, create/update/deleteSyncConfig) are
+// gone: the API removed those routes with the JiraSyncConfig model in the p9
+// cleanup (eb4ddc10), and nothing in the app called them any more. Per-project
+// sync is `/project-syncs/jira` — see actions/connections.ts and
+// actions/board-sources.ts.
 
 export async function fetchIssueTypes(
   instanceId: string,
@@ -177,53 +176,6 @@ export async function fetchIssueTypes(
   } catch {
     return [];
   }
-}
-
-export async function fetchSyncConfigs(boardId: string) {
-  const res = await authFetch(`/boards/${boardId}/sync-configs`, {
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error('Failed to fetch sync configs');
-  return res.json();
-}
-
-export async function createSyncConfig(data: {
-  boardId: string;
-  jiraInstanceId: string;
-  jiraProjectKey: string;
-  allowedIssueTypes: string[];
-  statusMapping?: Record<string, string>;
-}): Promise<{ syncConfig: Record<string, unknown>; syncJobId: string | undefined }> {
-  const res = await authFetch('/sync-configs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error('Failed to create sync config');
-  return res.json();
-}
-
-export async function updateSyncConfig(
-  id: string,
-  data: {
-    allowedIssueTypes?: string[];
-    fieldMappings?: Record<string, string>;
-    defaultSyncedFields?: string[];
-    statusMapping?: Record<string, string>;
-  },
-) {
-  const res = await authFetch(`/sync-configs/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error('Failed to update sync config');
-  return res.json();
-}
-
-export async function deleteSyncConfig(id: string) {
-  const res = await authFetch(`/sync-configs/${id}`, { method: 'DELETE' });
-  if (!res.ok) throw new Error('Failed to delete sync config');
 }
 
 // --- Jira field mapping (Task 11) ---

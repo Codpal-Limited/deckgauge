@@ -215,13 +215,6 @@ export {
 } from "./notification-digest.js";
 
 export {
-  JiraSyncConfigSchema,
-  CreateJiraSyncConfigInputSchema,
-  UpdateJiraSyncConfigInputSchema,
-  type JiraSyncConfig,
-  type CreateJiraSyncConfigInput,
-  type UpdateJiraSyncConfigInput,
-  DEFAULT_STATUS_MAPPING,
   LEGACY_STATUS_LABELS,
   CURATED_JIRA_FIELDS,
 } from "./jira-sync-config-schemas.js";
@@ -308,18 +301,11 @@ export {
   AzureDevOpsInstanceSchema,
   CreateAzureDevOpsInstanceInputSchema,
   UpdateAzureDevOpsInstanceInputSchema,
-  AzureDevOpsSyncConfigSchema,
-  CreateAzureDevOpsSyncConfigInputSchema,
-  UpdateAzureDevOpsSyncConfigInputSchema,
-  ADO_DEFAULT_STATUS_MAPPING,
   type AzureDevOpsAuthMethod,
   type AzureDevOpsWorkItem,
   type AzureDevOpsInstance,
   type CreateAzureDevOpsInstanceInput,
   type UpdateAzureDevOpsInstanceInput,
-  type AzureDevOpsSyncConfig,
-  type CreateAzureDevOpsSyncConfigInput,
-  type UpdateAzureDevOpsSyncConfigInput,
   type AzureDevOpsProjectSync,
   type UpsertAzureDevOpsProjectSyncInput,
   type UpdateAzureDevOpsProjectSyncInput,
