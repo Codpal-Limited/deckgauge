@@ -120,12 +120,17 @@ async function fetchJiraLinks(boardId: string): Promise<JiraSourceLinks> {
   }
 }
 
-async function fetchHasGitHubIntegration(): Promise<boolean> {
+// Whether THIS board has a GitHub source attached. It used to read
+// `GET /github/sync-configs` — a route the API removed along with the legacy
+// GitHubSyncConfig model — so every board load logged a 404 and the flag was
+// always false (issue #5). Per board, like the Jira and ADO maps beside it, and
+// `no-store` for the same reason: attaching a source revalidates no cache tag.
+async function fetchHasGitHubIntegration(boardId: string): Promise<boolean> {
   try {
-    const res = await authFetch('/github/sync-configs', { cache: 'no-store' });
+    const res = await authFetch(`/boards/${boardId}/sources/github`, { cache: 'no-store' });
     if (!res.ok) return false;
-    const configs = await res.json();
-    return configs.length > 0;
+    const sources: unknown = await res.json();
+    return Array.isArray(sources) && sources.length > 0;
   } catch {
     return false;
   }
@@ -274,7 +279,7 @@ export default async function BoardPage(props: PageProps) {
     fetchColumns(selectedBoardId),
     fetchBoard(selectedBoardId),
     fetchJiraLinks(selectedBoardId),
-    fetchHasGitHubIntegration(),
+    fetchHasGitHubIntegration(selectedBoardId),
     fetchAdoOrgUrlsByProject(selectedBoardId),
     fetchBoardOwners(selectedBoardId),
     fetchBoardStatuses(selectedBoardId),

@@ -14,7 +14,8 @@
 # and `KEYCLOAK_ADMIN_PASSWORD=admin` while docker-compose.yml carried the same
 # values a second time as `${POSTGRES_PASSWORD:-cockpit}` fallbacks. Every
 # install on earth therefore shared one password, published in a public
-# repository, on ports that bind 0.0.0.0 unless BIND_HOST is set.
+# repository, on ports that bound 0.0.0.0 unless BIND_HOST was set (they bind
+# loopback by default now — GitHub issue #7).
 #
 # Deleting the literals alone would have broken the one-command install, which
 # is the other thing a public launch cannot afford. So the literals are gone AND
@@ -125,6 +126,12 @@ OUTPUT=""
 pending_kind=""
 pending_arg=""
 generated_keys=()
+# The `generate` half of generated_keys — the raw secrets — and, per derived key,
+# the template it was derived from. `--check` uses both to catch a derived URL
+# that no longer carries the secret it was built from (REDIS_URL without
+# REDIS_PASSWORD is the case that motivated it).
+secret_keys=""
+derived_keys=""
 # Keys the template assigns a LITERAL value — usernames, database names, URLs.
 # Not credentials, so `--check` reports them as a notice rather than a failure,
 # but a key the template declares and an existing .env has never heard of is
@@ -160,10 +167,13 @@ while IFS= read -r line || [[ -n "$line" ]]; do
         fi
         value="$(rand_hex "$pending_arg")"
         generated_keys+=("$key")
+        secret_keys="$secret_keys $key"
         ;;
       derive)
         value="$(expand "$pending_arg")"
         generated_keys+=("$key")
+        derived_keys="$derived_keys $key"
+        eval "DG_TEMPLATE_$key=\$pending_arg"
         ;;
     esac
     if [[ -z "$pending_kind_used" && -n "${value// /}" ]]; then
@@ -239,11 +249,75 @@ if [[ "$MODE" == "check" ]]; then
     echo "  the whole answer."
   fi
 
-  if [[ ${#unset_keys[@]} -gt 0 ]]; then
-    echo "✗ $OUT leaves these unset: ${unset_keys[*]}" >&2
+  # A derived value must still CARRY every secret it was derived from. Not
+  # "equal the template": DATABASE_URL is derived with localhost:5433, and moving
+  # the port is documented, so an exact comparison would fail every install that
+  # did. What must not happen is a URL that has lost its password — REDIS_URL
+  # left at the old `redis://redis:6379` beside a REDIS_PASSWORD makes the server
+  # demand a password its clients never send, and BullMQ then retries NOAUTH
+  # forever without crashing anything.
+  file_value() {
+    local v
+    v="$(grep -E "^$1=" "$OUT" | tail -n1 | cut -d= -f2- || true)"
+    v="${v%\"}"; v="${v#\"}"; v="${v%\'}"; v="${v#\'}"
+    printf '%s' "$v"
+  }
+  inconsistent=()
+  for key in $derived_keys; do
+    derived="$(file_value "$key")"
+    [[ -n "$derived" ]] || continue          # already reported as unset below
+    template="$(eval "printf '%s' \"\${DG_TEMPLATE_$key-}\"")"
+    rest="$template"
+    while [[ "$rest" =~ \$\{([A-Z][A-Z0-9_]*)\}(.*)$ ]]; do
+      ref="${BASH_REMATCH[1]}"; rest="${BASH_REMATCH[2]}"
+      case " $secret_keys " in *" $ref "*) ;; *) continue ;; esac
+      secret="$(file_value "$ref")"
+      [[ -n "$secret" ]] || continue         # reported as unset below
+      [[ "$derived" == *"$secret"* ]] || inconsistent+=("$key (does not contain $ref)")
+    done
+  done
+
+  # Which unset keys docker-compose.yml actually REQUIRES (`${KEY:?`). The rest
+  # — REDIS_PASSWORD — are generated for a new install but optional in compose,
+  # so an older .env keeps booting; saying "compose refuses to render" about
+  # those would be false.
+  COMPOSE_FILE="$PROJECT_ROOT/docker-compose.yml"
+  required_unset=(); optional_unset=()
+  for key in ${unset_keys[@]+"${unset_keys[@]}"}; do
+    if [[ -f "$COMPOSE_FILE" ]] && grep -q "\${$key:?" "$COMPOSE_FILE"; then
+      required_unset+=("$key")
+    else
+      optional_unset+=("$key")
+    fi
+  done
+
+  if [[ ${#required_unset[@]} -gt 0 ]]; then
+    echo "✗ $OUT leaves these unset: ${required_unset[*]}" >&2
     echo "  Every one is REQUIRED — docker-compose.yml refuses to render without" >&2
     echo "  it. Set each to the value your existing volumes were created with, or" >&2
     echo "  start over from the template with --force." >&2
+  fi
+  if [[ ${#optional_unset[@]} -gt 0 ]]; then
+    echo "✗ $OUT leaves these unset: ${optional_unset[*]}" >&2
+    echo "  The stack still boots without them, but a new install generates each" >&2
+    echo "  one, and without it that protection is off." >&2
+    case " ${optional_unset[*]} " in
+      *" REDIS_PASSWORD "*)
+        echo "  REDIS_PASSWORD: any fresh value works — Redis reads it at every start," >&2
+        echo "  not from its volume. Add BOTH lines, then 'docker compose up -d':" >&2
+        echo "      REDIS_PASSWORD=<openssl rand -hex 32>" >&2
+        echo "      REDIS_URL=\"redis://:<the same value>@redis:6379\"" >&2
+        ;;
+    esac
+  fi
+  if [[ ${#inconsistent[@]} -gt 0 ]]; then
+    echo "✗ $OUT has derived values that no longer carry their secret:" >&2
+    for item in "${inconsistent[@]}"; do echo "      $item" >&2; done
+    echo "  Put the secret back into each URL. For REDIS_URL the form is" >&2
+    echo "  redis://:<REDIS_PASSWORD>@redis:6379 — without it the api and worker" >&2
+    echo "  are refused by Redis and queues stop silently." >&2
+  fi
+  if [[ ${#unset_keys[@]} -gt 0 || ${#inconsistent[@]} -gt 0 ]]; then
     exit 1
   fi
   echo "✓ $OUT sets every credential the stack requires"

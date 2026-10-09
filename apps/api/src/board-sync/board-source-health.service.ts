@@ -98,7 +98,11 @@ export class BoardSourceHealthService {
       add(
         'github',
         r.gitHubRepoSync.githubInstance.id,
-        r.gitHubRepoSync.githubInstance.org ?? r.gitHubRepoSync.githubInstance.baseUrl ?? 'GitHub',
+        // `||`, not `??`: "no org" is stored as '' (the column default), which
+        // `??` passes straight through as an empty label.
+        r.gitHubRepoSync.githubInstance.org?.trim() ||
+          r.gitHubRepoSync.githubInstance.baseUrl ||
+          'GitHub',
       );
     }
     for (const r of ado) {

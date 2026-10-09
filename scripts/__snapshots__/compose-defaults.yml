@@ -6,6 +6,7 @@ services:
       dockerfile: apps/api/Dockerfile
       args:
         EDITION: community
+        NODE_TLS_REJECT_UNAUTHORIZED: "1"
     container_name: deckgauge-api
     depends_on:
       clickhouse:
@@ -24,16 +25,20 @@ services:
     environment:
       CLICKHOUSE_READ_URL: ""
       CLICKHOUSE_URL: http://cockpit:__required_not_a_credential__@clickhouse:8123/cockpit
+      CREDENTIAL_ENCRYPTION_KEY: __required_not_a_credential__
       DATABASE_URL: postgresql://cockpit:__required_not_a_credential__@postgres:5432/cockpit
       DECKGAUGE_EDITION: community
       DECKGAUGE_ENTERPRISE_MODULE: ""
       DECKGAUGE_LICENSE_FILE: ""
       DECKGAUGE_MULTI_ORG: "false"
       JIRA_CONFIG_PATH: /app/config/jira.yaml
+      JIRA_TLS_INSECURE: ""
       KEYCLOAK_ISSUER: http://localhost:8080/realms/deckgauge
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/deckgauge/protocol/openid-connect/certs
+      NODE_EXTRA_CA_CERTS: ""
       NODE_OPTIONS: --max-old-space-size=1280
-      REDIS_URL: redis://redis:6379
+      NODE_TLS_REJECT_UNAUTHORIZED: "1"
+      REDIS_URL: redis://:@redis:6379
     healthcheck:
       test:
         - CMD-SHELL
@@ -46,6 +51,7 @@ services:
       default: null
     ports:
       - mode: ingress
+        host_ip: 127.0.0.1
         target: 3001
         published: "3001"
         protocol: tcp
@@ -74,8 +80,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - clickhouse-client --user cockpit --password __required_not_a_credential__
-          --query 'SELECT 1'
+        - clickhouse-client --user cockpit --password __required_not_a_credential__ --query 'SELECT 1'
       timeout: 5s
       interval: 10s
       retries: 12
@@ -85,10 +90,12 @@ services:
       default: null
     ports:
       - mode: ingress
+        host_ip: 127.0.0.1
         target: 8123
         published: "8123"
         protocol: tcp
       - mode: ingress
+        host_ip: 127.0.0.1
         target: 9000
         published: "9000"
         protocol: tcp
@@ -155,6 +162,7 @@ services:
       default: null
     ports:
       - mode: ingress
+        host_ip: 127.0.0.1
         target: 8080
         published: "8080"
         protocol: tcp
@@ -217,6 +225,7 @@ services:
       default: null
     ports:
       - mode: ingress
+        host_ip: 127.0.0.1
         target: 8025
         published: "8025"
         protocol: tcp
@@ -252,6 +261,7 @@ services:
       default: null
     ports:
       - mode: ingress
+        host_ip: 127.0.0.1
         target: 5432
         published: "5433"
         protocol: tcp
@@ -265,8 +275,7 @@ services:
     command:
       - sh
       - -c
-      - exec redis-server --save 60 1 --maxmemory 384mb --maxmemory-policy noeviction
-        --loglevel warning $${REDIS_PASSWORD:+--requirepass "$$REDIS_PASSWORD"}
+      - exec redis-server --save 60 1 --maxmemory 384mb --maxmemory-policy noeviction --loglevel warning $${REDIS_PASSWORD:+--requirepass "$$REDIS_PASSWORD"}
     container_name: deckgauge-redis
     deploy:
       resources:
@@ -277,8 +286,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - redis-cli $${REDIS_PASSWORD:+--no-auth-warning -a "$$REDIS_PASSWORD"} ping
-          | grep -q PONG
+        - redis-cli $${REDIS_PASSWORD:+--no-auth-warning -a "$$REDIS_PASSWORD"} ping | grep -q PONG
       timeout: 5s
       interval: 5s
       retries: 6
@@ -288,6 +296,7 @@ services:
       default: null
     ports:
       - mode: ingress
+        host_ip: 127.0.0.1
         target: 6379
         published: "6379"
         protocol: tcp
@@ -301,6 +310,8 @@ services:
     build:
       context: __PROJECT_ROOT__
       dockerfile: apps/web/Dockerfile
+      args:
+        NODE_TLS_REJECT_UNAUTHORIZED: "1"
     container_name: deckgauge-web
     depends_on:
       api:
@@ -321,15 +332,18 @@ services:
       MICROSOFT_CLIENT_SECRET: ""
       MICROSOFT_TENANT_ID: ""
       NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_TELEMETRY_DISABLED: "1"
       NEXTAUTH_SECRET: __required_not_a_credential__
       NEXTAUTH_URL: http://localhost:3000
+      NODE_EXTRA_CA_CERTS: ""
       NODE_OPTIONS: --max-old-space-size=1280
-      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      NODE_TLS_REJECT_UNAUTHORIZED: "1"
       POST_LOGOUT_REDIRECT_URL: ""
     networks:
       default: null
     ports:
       - mode: ingress
+        host_ip: 127.0.0.1
         target: 3000
         published: "3000"
         protocol: tcp
@@ -340,6 +354,7 @@ services:
       dockerfile: apps/worker/Dockerfile
       args:
         EDITION: community
+        NODE_TLS_REJECT_UNAUTHORIZED: "1"
     container_name: deckgauge-worker
     depends_on:
       clickhouse:
@@ -364,6 +379,7 @@ services:
       ADO_REPO_INTEL_TIMEOUT_MS: ""
       CLICKHOUSE_READ_URL: ""
       CLICKHOUSE_URL: http://cockpit:__required_not_a_credential__@clickhouse:8123/cockpit
+      CREDENTIAL_ENCRYPTION_KEY: __required_not_a_credential__
       DATABASE_URL: postgresql://cockpit:__required_not_a_credential__@postgres:5432/cockpit
       DECKGAUGE_EDITION: community
       DECKGAUGE_ENTERPRISE_MODULE: ""
@@ -373,8 +389,9 @@ services:
       MICROSOFT_CLIENT_ID: ""
       MICROSOFT_CLIENT_SECRET: ""
       MICROSOFT_TENANT_ID: ""
-      NODE_TLS_REJECT_UNAUTHORIZED: "0"
-      REDIS_URL: redis://redis:6379
+      NODE_EXTRA_CA_CERTS: ""
+      NODE_TLS_REJECT_UNAUTHORIZED: "1"
+      REDIS_URL: redis://:@redis:6379
       WORKER_MAX_CONCURRENT_JOBS_PER_ORG: ""
     networks:
       default: null

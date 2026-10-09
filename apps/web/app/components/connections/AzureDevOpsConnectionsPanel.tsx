@@ -6,11 +6,19 @@ import {
   updateAdoProjectSync,
   saveAdoProductionConfig,
   type AdoProjectSyncRow,
+  type SourceInstanceRow,
 } from '../../actions/connections';
+import { ConnectionSelect, connectionLabel, defaultConnectionId } from './ConnectionSelect';
 import { TableScroller } from '../TableScroller';
 
 interface Props {
   initialSyncs: AdoProjectSyncRow[];
+  /**
+   * The connections the caller can see — the same list InstancesPanel shows. The
+   * add form picks from these (issue #4: it used to take a typed connection id the
+   * UI displays nowhere), and the table names each sync's connection by them.
+   */
+  instances: SourceInstanceRow[];
   /**
    * Whether the caller may manage connections — organization ADMIN.
    *
@@ -106,6 +114,7 @@ function ProductionDeploysSummary({ sync }: { sync: AdoProjectSyncRow }) {
 
 export function AzureDevOpsConnectionsPanel({
   initialSyncs,
+  instances,
   canManageConnections = true,
 }: Props) {
   // `withProdLists` (from main) normalises rows whose production allow-lists are
@@ -115,7 +124,7 @@ export function AzureDevOpsConnectionsPanel({
   // had been hiding it in the suite. Dropping either one loses a real fix.
   const [syncs, setSyncs] = useState(() => initialSyncs.map((s) => withProdLists(s)));
   const [isPending, startTransition] = useTransition();
-  const [instanceId, setInstanceId] = useState('');
+  const [instanceId, setInstanceId] = useState(() => defaultConnectionId(instances));
   const [adoProject, setAdoProject] = useState('');
   const [reposText, setReposText] = useState('');
   const [syncPrs, setSyncPrs] = useState(true);
@@ -139,7 +148,7 @@ export function AzureDevOpsConnectionsPanel({
           syncAllRepos,
         });
         setSyncs((prev) => [withProdLists({ ...row, boardCount: 0 }), ...prev]);
-        setInstanceId('');
+        setInstanceId(defaultConnectionId(instances));
         setAdoProject('');
         setReposText('');
         setSyncPrs(true);
@@ -262,8 +271,8 @@ export function AzureDevOpsConnectionsPanel({
                 const isEditing = editingId === s.id && editDraft !== null;
                 return (
                   <tr key={s.id} className="border-t border-slate-100 align-top">
-                    <td className="py-2 font-mono text-xs text-slate-600">
-                      {s.azureDevOpsInstanceId.slice(0, 8)}
+                    <td className="py-2 text-xs text-slate-600">
+                      {connectionLabel(instances, s.azureDevOpsInstanceId)}
                     </td>
                     <td className="py-2 font-mono">{s.adoProject}</td>
                     <td className="py-2">
@@ -413,11 +422,11 @@ export function AzureDevOpsConnectionsPanel({
         </TableScroller>
       )}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <input
+        <ConnectionSelect
+          label="Azure DevOps connection"
+          instances={instances}
           value={instanceId}
-          onChange={(e) => setInstanceId(e.target.value)}
-          placeholder="instance uuid"
-          className="rounded border border-slate-300 px-2 py-1 text-sm"
+          onChange={setInstanceId}
         />
         <input
           value={adoProject}

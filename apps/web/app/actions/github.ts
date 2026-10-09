@@ -18,6 +18,7 @@ export async function createGitHubInstance(data: {
   baseUrl?: string;
   accessToken: string;
   repos?: string[];
+  org?: string;
 }) {
   const res = await authFetch('/github/instances', {
     method: 'POST',
@@ -34,7 +35,7 @@ export async function createGitHubInstance(data: {
 
 export async function updateGitHubInstance(
   instanceId: string,
-  data: { repos?: string[]; accessToken?: string; baseUrl?: string },
+  data: { repos?: string[]; accessToken?: string; baseUrl?: string; org?: string },
 ) {
   const res = await authFetch(`/github/instances/${instanceId}`, {
     method: 'PATCH',
@@ -93,134 +94,11 @@ export async function discoverGitHubRepos(instanceId: string): Promise<string[]>
   }
 }
 
-// --- GitHub Sync Configs ---
-
-export async function fetchGitHubSyncConfigs() {
-  try {
-    const res = await authFetch('/github/sync-configs', { cache: 'no-store' });
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
-  }
-}
-
-export async function createGitHubSyncConfig(data: {
-  githubInstanceId: string;
-  repoFullName: string;
-  boardId: string;
-  targetGroupId?: string | null;
-  allowedLabels?: string[];
-  allowedTypes?: string[];
-  includeClosedIssues?: boolean;
-  defaultSyncedFields?: string[];
-  projectNodeId?: string | null;
-  projectOwner?: string | null;
-  projectNumber?: number | null;
-  noStatusBoardStatusId?: string | null;
-}) {
-  const res = await authFetch('/github/sync-configs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Failed to create GitHub sync config: ${res.status} ${body}`);
-  }
-  return await res.json();
-}
-
-export async function updateGitHubSyncConfig(
-  id: string,
-  data: {
-    allowedLabels?: string[];
-    includeClosedIssues?: boolean;
-    defaultSyncedFields?: string[];
-    statusMapping?: Record<string, string>;
-    projectNodeId?: string | null;
-    projectOwner?: string | null;
-    projectNumber?: number | null;
-    noStatusBoardStatusId?: string | null;
-  },
-) {
-  const res = await authFetch(`/github/sync-configs/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Failed to update GitHub sync config: ${res.status} ${body}`);
-  }
-  return await res.json();
-}
-
-export async function deleteGitHubSyncConfig(id: string): Promise<boolean> {
-  try {
-    const res = await authFetch(`/github/sync-configs/${id}`, {
-      method: 'DELETE',
-      cache: 'no-store',
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-// --- GitHub Data ---
-
-export async function fetchGitHubMilestones(repoFullName: string) {
-  try {
-    const res = await authFetch(
-      `/github/milestones?repoFullName=${encodeURIComponent(repoFullName)}`,
-      { cache: 'no-store' },
-    );
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
-  }
-}
-
-export async function fetchGitHubIssues(milestoneId: string) {
-  try {
-    const res = await authFetch(
-      `/github/issues?milestoneId=${encodeURIComponent(milestoneId)}`,
-      { cache: 'no-store' },
-    );
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
-  }
-}
-
-// --- GitHub Sync ---
-
-export async function fetchGitHubSyncStatus() {
-  try {
-    const res = await authFetch('/github/sync/status', { cache: 'no-store' });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
-
-export async function triggerGitHubSync(): Promise<boolean> {
-  try {
-    const res = await authFetch('/github/sync', {
-      method: 'POST',
-      cache: 'no-store',
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
+// The legacy `/github/sync-configs`, `/github/milestones` and `/github/issues`
+// callers, and the `/github/sync` / `/github/sync/status` ones whose only user
+// was the removed GitHubGroupSection, are gone (issue #5). The first three
+// routes were removed from the API in 4099a5a9 / 62ec09dc; per-repo sync is
+// GitHubRepoSync now — see actions/board-sources.ts and actions/connections.ts.
 
 // --- GitHub Projects v2 ---
 
@@ -243,19 +121,4 @@ export async function listGitHubProjectsAction(instanceId: string) {
     title: string;
     ownerType: 'org' | 'user';
   }>;
-}
-
-export async function getProjectStatusOptionsAction(syncConfigId: string) {
-  const res = await authFetch(`/github/sync-configs/${syncConfigId}/project/status-options`, {
-    method: 'GET',
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    if (res.status === 502 || res.status === 400 || res.status === 404) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? `Failed to load Project status options: ${res.status}`);
-    }
-    throw new Error(`Failed to load Project status options: ${res.status}`);
-  }
-  return (await res.json()) as Array<{ optionId: string; name: string }>;
 }

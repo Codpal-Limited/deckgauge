@@ -4,17 +4,25 @@ import {
   createGitHubRepoSync,
   deleteGitHubRepoSync,
   type GitHubRepoSyncRow,
+  type SourceInstanceRow,
 } from '../../actions/connections';
+import { ConnectionSelect, connectionLabel, defaultConnectionId } from './ConnectionSelect';
 import { TableScroller } from '../TableScroller';
 
 interface Props {
   initialSyncs: GitHubRepoSyncRow[];
+  /**
+   * The connections the caller can see — the same list InstancesPanel shows. The
+   * add form picks from these (issue #4: it used to take a typed connection id the
+   * UI displays nowhere), and the table names each sync's connection by them.
+   */
+  instances: SourceInstanceRow[];
 }
 
-export function GitHubConnectionsPanel({ initialSyncs }: Props) {
+export function GitHubConnectionsPanel({ initialSyncs, instances }: Props) {
   const [syncs, setSyncs] = useState(initialSyncs);
   const [isPending, startTransition] = useTransition();
-  const [instanceId, setInstanceId] = useState('');
+  const [instanceId, setInstanceId] = useState(() => defaultConnectionId(instances));
   const [repoFullName, setRepoFullName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +35,7 @@ export function GitHubConnectionsPanel({ initialSyncs }: Props) {
           repoFullName,
         });
         setSyncs((prev) => [{ ...row, boardCount: 0 }, ...prev]);
-        setInstanceId('');
+        setInstanceId(defaultConnectionId(instances));
         setRepoFullName('');
       } catch (e) {
         setError(e instanceof Error ? e.message : 'failed to create');
@@ -73,8 +81,8 @@ export function GitHubConnectionsPanel({ initialSyncs }: Props) {
             <tbody>
               {syncs.map((s) => (
                 <tr key={s.id} className="border-t border-slate-100 align-top">
-                  <td className="py-2 font-mono text-xs text-slate-600">
-                    {s.githubInstanceId.slice(0, 8)}
+                  <td className="py-2 text-xs text-slate-600">
+                    {connectionLabel(instances, s.githubInstanceId)}
                   </td>
                   <td className="py-2 font-mono">{s.repoFullName}</td>
                   <td className="py-2">
@@ -109,11 +117,11 @@ export function GitHubConnectionsPanel({ initialSyncs }: Props) {
         </TableScroller>
       )}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <input
+        <ConnectionSelect
+          label="GitHub connection"
+          instances={instances}
           value={instanceId}
-          onChange={(e) => setInstanceId(e.target.value)}
-          placeholder="instance uuid"
-          className="rounded border border-slate-300 px-2 py-1 text-sm"
+          onChange={setInstanceId}
         />
         <input
           value={repoFullName}

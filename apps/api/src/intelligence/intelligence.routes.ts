@@ -10,6 +10,7 @@ import { ClickhouseIntelligenceService } from './clickhouse-intelligence.service
 import { getBoardScope, type BoardScope } from './board-scope.js';
 import { ANALYTICS, ADMIN, all, orgRole } from '../auth/policy.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
+import { SYNC_SOURCES, type SyncSource, type SyncableScope } from './syncable-scope.js';
 
 /**
  * The six routes that accept a caller-supplied `?boardId=`.
@@ -58,10 +59,18 @@ export interface IntelligenceRoutesDeps {
    * spending their Atlassian/GitHub/ADO/GitLab credentials. Required rather than
    * optional so a future caller cannot silently restore that.
    */
-  enqueueSync?: (
-    source: 'jira' | 'github' | 'ado' | 'gitlab' | 'all',
-    organizationId: string,
-  ) => Promise<void>;
+  /**
+   * Called once PER SOURCE — `source: 'all'` is expanded by the route, so that a
+   * source with nothing attached can be skipped rather than enqueued as a no-op.
+   */
+  enqueueSync?: (source: SyncSource, organizationId: string) => Promise<void>;
+  /**
+   * Issue #8 — how many projects/repos each source's worker would fetch for this
+   * organization (`countSyncableScope` in server.ts). Required whenever
+   * `enqueueSync` is wired: without it the route answers 503 rather than
+   * enqueueing a sync it cannot tell is empty.
+   */
+  syncableScope?: (organizationId: string) => Promise<SyncableScope>;
 }
 
 export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
@@ -316,7 +325,7 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
         .object({ source: z.enum(['jira', 'github', 'ado', 'gitlab', 'all']) })
         .safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
-      if (!deps.enqueueSync) {
+      if (!deps.enqueueSync || !deps.syncableScope) {
         return reply
           .code(503)
           .send({ error: 'manual sync enqueue not configured on this server' });
@@ -331,8 +340,20 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
       // organization has no connections to sync.
       const organizationId = req.membership?.organizationId ?? null;
       if (!organizationId) return reply.status(403).send({ error: 'NO_ORGANIZATION' });
-      await deps.enqueueSync(body.data.source, organizationId);
-      return reply.code(202).send({ accepted: body.data.source });
+      // Issue #8 — refuse a sync that would fetch nothing. Before this, a source
+      // with no project/repo attached answered 202, the worker found nothing to do,
+      // and the UI reported "Sync enqueued." for a no-op. Counted for THIS caller's
+      // organization only, mirroring the worker's own filters (syncable-scope.ts).
+      const scope = await deps.syncableScope(organizationId);
+      const requested: readonly SyncSource[] =
+        body.data.source === 'all' ? SYNC_SOURCES : [body.data.source];
+      const enqueued = requested.filter((s) => scope[s] > 0);
+      const skipped = requested.filter((s) => scope[s] === 0);
+      if (enqueued.length === 0) {
+        return reply.code(409).send({ error: 'NOTHING_TO_SYNC', sources: skipped });
+      }
+      for (const source of enqueued) await deps.enqueueSync(source, organizationId);
+      return reply.code(202).send({ accepted: body.data.source, enqueued, skipped });
     });
   };
 }

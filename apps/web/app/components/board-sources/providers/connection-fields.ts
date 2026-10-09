@@ -20,6 +20,9 @@ export const PROVIDER_CONNECTION_FIELDS: Record<Provider, ConnectionField[]> = {
   github: [
     { key: 'baseUrl', label: 'API base URL (optional)', type: 'url', required: false, placeholder: 'https://api.github.com' },
     { key: 'accessToken', label: 'Personal access token', type: 'password', required: true },
+    // Which org the board repo picker lists. Empty lists every repo the token
+    // can see — the only behaviour before this field existed (issue #3).
+    { key: 'org', label: 'Organization (optional)', type: 'text', required: false, placeholder: 'acme — empty lists every repo the token can see' },
   ],
   ado: [
     { key: 'name', label: 'Name', type: 'text', required: true },

@@ -16,7 +16,68 @@ operator to do something before upgrading is a major one.
 
 ## [Unreleased]
 
-Nothing yet.
+### Security
+
+- **TLS certificates are verified by default** (GitHub issue #6). All three
+  images used to bake `NODE_TLS_REJECT_UNAUTHORIZED=0` into the running
+  container and `docker-compose.yml` defaulted it to `0` again, so every install
+  accepted a forged certificate for Jira, GitHub, GitLab, Azure DevOps and
+  Microsoft Graph while holding the tokens for all of them. The images now carry
+  it only as a build ARG (default `1`, never in the image), compose defaults
+  api, web and worker to `1`, and `NODE_EXTRA_CA_CERTS` is passed through so a
+  network behind a TLS-intercepting proxy can trust its CA instead of switching
+  verification off. The Jira project and issue-type discovery routes no longer
+  set `NODE_TLS_REJECT_UNAUTHORIZED=0` process-wide for the length of a request;
+  Jira certificate leniency is now an explicit, Jira-only opt-in,
+  `JIRA_TLS_INSECURE=1`.
+- **Published ports bind `127.0.0.1` by default** (GitHub issue #7). Every port
+  in `docker-compose.yml` used to bind all interfaces unless `BIND_HOST` was set.
+  They now bind loopback unless `.env` says otherwise; `BIND_HOST=` (explicitly
+  empty) restores all interfaces.
+- **Redis is password-protected on new installs** (GitHub issue #7).
+  `./scripts/init-env.sh` generates `REDIS_PASSWORD` and derives `REDIS_URL`
+  from it, and compose's default `REDIS_URL` now carries `REDIS_PASSWORD`, so
+  server and clients cannot disagree.
+- **Next.js telemetry is disabled** (GitHub issue #9): `NEXT_TELEMETRY_DISABLED=1`
+  in the web image's build and runtime stages and in the web service.
+
+### Upgrading
+
+Nothing here stops an existing install from starting, but three things change
+under it:
+
+1. **Outbound TLS is verified now.** If your network intercepts TLS (a corporate
+   proxy), outbound syncs will fail with `self-signed certificate in certificate
+   chain` or `unable to get local issuer certificate`, and so will
+   `docker compose build` (pnpm install inside the image).
+   - **Runtime** — preferred fix: mount the proxy's CA and set
+     `NODE_EXTRA_CA_CERTS` (see "Outbound TLS" in `.env.example`).
+   - **Image build** — `NODE_EXTRA_CA_CERTS` does not reach the build (no CA is
+     wired into it). Build with `NODE_TLS_REJECT_UNAUTHORIZED=0 docker compose build`
+     (or `--build-arg NODE_TLS_REJECT_UNAUTHORIZED=0`); the images never bake
+     the value in, so the running containers still verify.
+   - Last resort: `NODE_TLS_REJECT_UNAUTHORIZED=0` in `.env` restores the old
+     behaviour for both the build and the runtime. An on-prem
+   Jira with a self-signed certificate is the same case: trust its CA with
+   `NODE_EXTRA_CA_CERTS`. (`JIRA_TLS_INSECURE=1` relaxes only the api's
+   connection test and project discovery; the worker's sync still verifies.)
+2. **Your ports move to loopback.** If you reach this install from another
+   machine by IP, add `BIND_HOST=` (or `BIND_HOST=<address>:`, trailing colon
+   included) to `.env` before `docker compose up -d`. Reaching it through a
+   reverse proxy or tunnel on the same host needs nothing.
+3. **Add a Redis password.** Run `./scripts/init-env.sh --check`; it now names
+   `REDIS_PASSWORD`. Any fresh value works — Redis reads it at every start, not
+   from its volume — so add both lines and `docker compose up -d`:
+
+   ```bash
+   REDIS_PASSWORD=<output of: openssl rand -hex 32>
+   REDIS_URL="redis://:<the same value>@redis:6379"
+   ```
+
+   `--check` also fails if `REDIS_URL` does not carry `REDIS_PASSWORD`, which is
+   the half-done upgrade: the server demands a password the api and worker never
+   send, and queues stop without an error. Leaving both out keeps Redis
+   unauthenticated, as before, but on loopback.
 
 ## [v2.0.0] — 2026-09-11 — Public launch
 

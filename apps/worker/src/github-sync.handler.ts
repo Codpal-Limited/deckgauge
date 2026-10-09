@@ -128,6 +128,15 @@ export async function handleGitHubSyncJob(
       repos = sourceRepos.map(normalizeRepoFullName);
     }
 
+    // Issue #8 — nothing attached to this connection. Running the processor with
+    // `repos: []` wrote an empty, SUCCESSFUL SyncRun, which the UI then showed as a
+    // sync that worked. Skip it, before any adapter (and so any credential) is used.
+    if (repos.length === 0) {
+      console.log(`[GitHub sync] skipping instance ${instance.id}: no repos attached`);
+      results.push({ instance: instance.id, skipped: true, trigger, status: 'nothing_to_sync' });
+      continue;
+    }
+
     try {
       // Bind ClickHouse to the organization that owns THIS connection. Inside
       // the loop, never outside it: two instances here can belong to two

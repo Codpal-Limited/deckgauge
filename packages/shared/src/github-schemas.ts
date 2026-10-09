@@ -54,95 +54,50 @@ export const GitHubInstanceSchema = z.object({
   baseUrl: z.string().url(),
   accessToken: z.string().min(1),
   repos: z.array(z.string()),
-  // The org this connection reads. Nullable because instances created before
-  // org scoping existed have none — health probing falls back to `/user` there.
-  org: z.string().nullable(),
+  // The org this connection reads. `''` — the column's default — means "none":
+  // the picker then lists the token's own repositories and the health probe
+  // falls back to `/user`. A non-null string because the column is one
+  // (`org String @default("")`); this used to say `.nullable()`, which described
+  // a value the database can never return.
+  org: z.string(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 });
 
 export type GitHubInstance = z.infer<typeof GitHubInstanceSchema>;
 
+/**
+ * A GitHub organization login, as a connection stores it. Trimmed, and empty
+ * means "no org". Deliberately permissive about the characters a login may hold
+ * (GitHub Enterprise Server is not bound by github.com's rules); it refuses only
+ * what can never be a login — whitespace and `/` — because the commonest
+ * mistake is pasting `github.com/acme`, which would otherwise be stored and
+ * surface later as a picker 404.
+ */
+const GitHubOrgLoginSchema = z
+  .string()
+  .trim()
+  .max(100)
+  .regex(/^[^\s/]*$/, 'Organization must be a GitHub organization login, e.g. "acme" — not a URL or path.');
+
 export const CreateGitHubInstanceInputSchema = z.object({
   baseUrl: z.string().url().default('https://api.github.com'),
   accessToken: z.string().min(1),
   repos: z.array(z.string()).default([]),
+  org: GitHubOrgLoginSchema.optional(),
 });
 
 export type CreateGitHubInstanceInput = z.infer<typeof CreateGitHubInstanceInputSchema>;
-
-export const GitHubStatusMappingSchema = z.record(z.string(), z.string());
-export type GitHubStatusMapping = z.infer<typeof GitHubStatusMappingSchema>;
-
-export const DEFAULT_GITHUB_STATUS_MAPPING: GitHubStatusMapping = {
-  open: 'In Progress',
-  closed: 'Done',
-};
-
-export const GitHubSyncConfigSchema = z.object({
-  id: z.string().uuid(),
-  githubInstanceId: z.string().uuid(),
-  repoFullName: z.string(),
-  boardId: z.string().uuid(),
-  targetGroupId: z.string().uuid().nullable(),
-  allowedLabels: z.array(z.string()),
-  allowedTypes: z.array(z.string()),
-  includeClosedIssues: z.boolean(),
-  defaultSyncedFields: z.array(z.string()),
-  statusMapping: z.record(z.string(), z.string()).default({}),
-  projectOwner: z.string().nullable(),
-  projectNumber: z.int().nullable(),
-  projectNodeId: z.string().nullable(),
-  noStatusBoardStatusId: z.string().uuid().nullable(),
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
-});
-
-export type GitHubSyncConfig = z.infer<typeof GitHubSyncConfigSchema>;
-
-export const CreateGitHubSyncConfigInputSchema = z.object({
-  githubInstanceId: z.string().uuid(),
-  repoFullName: z.string().min(1),
-  boardId: z.string().uuid(),
-  targetGroupId: z.string().uuid().nullable().optional(),
-  allowedLabels: z.array(z.string()).default([]),
-  allowedTypes: z.array(z.string()).default([]),
-  includeClosedIssues: z.boolean().default(false),
-  defaultSyncedFields: z.array(z.string()).default(['name', 'description', 'status', 'owner']),
-  statusMapping: GitHubStatusMappingSchema.default(DEFAULT_GITHUB_STATUS_MAPPING),
-  projectOwner: z.string().nullable().optional(),
-  projectNumber: z.int().nullable().optional(),
-  projectNodeId: z.string().nullable().optional(),
-  noStatusBoardStatusId: z.string().uuid().nullable().optional(),
-});
-
-export type CreateGitHubSyncConfigInput = z.infer<typeof CreateGitHubSyncConfigInputSchema>;
 
 export const UpdateGitHubInstanceInputSchema = z.object({
   baseUrl: z.string().url().optional(),
   accessToken: z.string().min(1).optional(),
   repos: z.array(z.string()).optional(),
+  /** `''` clears the org, returning the connection to token-wide listing. */
+  org: GitHubOrgLoginSchema.optional(),
 });
 
 export type UpdateGitHubInstanceInput = z.infer<typeof UpdateGitHubInstanceInputSchema>;
-
-export const UpdateGitHubSyncConfigInputSchema = z
-  .object({
-    allowedLabels: z.array(z.string()).optional(),
-    allowedTypes: z.array(z.string()).optional(),
-    includeClosedIssues: z.boolean().optional(),
-    defaultSyncedFields: z.array(z.string()).optional(),
-    statusMapping: GitHubStatusMappingSchema.optional(),
-    projectOwner: z.string().nullable().optional(),
-    projectNumber: z.int().nullable().optional(),
-    projectNodeId: z.string().nullable().optional(),
-    noStatusBoardStatusId: z.string().uuid().nullable().optional(),
-  })
-  .refine((data) => Object.values(data).some((v) => v !== undefined), {
-    message: 'At least one field must be provided',
-  });
-
-export type UpdateGitHubSyncConfigInput = z.infer<typeof UpdateGitHubSyncConfigInputSchema>;
 
 export const GitHubProjectSchema = z.object({
   nodeId: z.string(),

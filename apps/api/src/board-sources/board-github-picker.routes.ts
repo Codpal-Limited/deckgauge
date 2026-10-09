@@ -10,7 +10,8 @@ import { visibleConnectionWhere } from '../connections/connection-visibility.js'
 /**
  * GET /api/boards/:boardId/github/picker
  *
- * Lists repos under an org for a given GitHubInstance, with glob filtering,
+ * Lists repos for a given GitHubInstance — its org's when one is configured,
+ * otherwise every repo the token can see — with glob filtering,
  * archived filter, pagination, and enabled-flag derived from BoardGitHubSource.
  *
  * Repo convention diverges from the plan in two places:
@@ -60,6 +61,9 @@ export function boardGitHubPickerRoutes(deps: {
         // filters here, unlike the post-attach reads where the board owns the
         // source it was already given.
         const caller = connectionCaller(req);
+        // Captured for the error mapping below, which runs outside the block
+        // where `instance` is in scope.
+        let instanceOrg = '';
 
         try {
           // Scoped, and `findFirst` rather than `findUniqueOrThrow`: `instanceId`
@@ -87,6 +91,7 @@ export function boardGitHubPickerRoutes(deps: {
               message: 'GitHub connection not found.',
             });
           }
+          instanceOrg = instance.org ?? '';
           const octokit = deps.octokitFor(instance);
 
           const result: PickerResponse = await listRepos({
@@ -111,6 +116,32 @@ export function boardGitHubPickerRoutes(deps: {
               message: `GitHub rejected the connection token (${status}). It may be expired or revoked — replace the token and retry.`,
             });
           }
+          // A 404 is permanent: GitHub answers it for an org that does not exist
+          // AND for one the token cannot see (it never confirms a private org to
+          // an outsider), so the message names both. Telling the user to "try
+          // again shortly" here — which is what issue #3 showed for every
+          // org-less connection — sent them retrying something that could not
+          // succeed.
+          if (status === 404) {
+            const org = instanceOrg.trim();
+            return reply.code(404).send({
+              error: 'github_org_not_found',
+              message:
+                org.length > 0
+                  ? `Organization '${org}' not found or not visible to this token.`
+                  : 'GitHub could not find the repositories for this connection.',
+            });
+          }
+          // Any other 4xx is GitHub refusing THIS request, not being briefly
+          // unavailable, so it does not get the transient wording either.
+          if (status !== undefined && status >= 400 && status < 500) {
+            req.log.warn({ err }, 'github picker listRepos rejected');
+            return reply.code(502).send({
+              error: 'github_request_rejected',
+              message: `GitHub rejected the repository listing (${status}).`,
+            });
+          }
+          // 5xx and network failures (no status at all) are the transient case.
           req.log.error({ err }, 'github picker listRepos failed');
           return reply.code(502).send({
             error: 'github_error',

@@ -191,18 +191,19 @@ export default async function SourcesPage() {
         </p>
       )}
 
-      <JiraConnectionsPanel initialSyncs={jiraSyncs} />
+      <JiraConnectionsPanel initialSyncs={jiraSyncs} instances={jiraInstances} />
       <RetiredProjectsPanel initial={retiredProjects} knownProjectKeys={knownProjectKeys} />
-      <GitHubConnectionsPanel initialSyncs={githubSyncs} />
+      <GitHubConnectionsPanel initialSyncs={githubSyncs} instances={githubInstances} />
       {/* canManageConnections: this panel manages project syncs (member-level),
           but one cell of it — the production-deploy allow-lists — writes through
           an orgRole(ADMIN) endpoint. Passing the role stops a member being shown
           inputs whose save is refused halfway through. */}
       <AzureDevOpsConnectionsPanel
         initialSyncs={adoSyncs}
+        instances={adoInstances}
         canManageConnections={canManageConnections}
       />
-      <GitLabConnectionsPanel initialSyncs={gitlabSyncs} />
+      <GitLabConnectionsPanel initialSyncs={gitlabSyncs} instances={gitlabInstances} />
     </div>
   );
 }

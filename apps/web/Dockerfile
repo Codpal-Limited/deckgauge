@@ -1,7 +1,24 @@
 FROM node:24-slim AS base
+# Certificate verification during the BUILD. A build ARG, never an ENV: it is
+# visible to the RUN steps of this stage and every stage derived from it
+# (corepack, pnpm install, the builds) and is NOT baked into the image, so the
+# running container verifies TLS unless its runtime environment says otherwise
+# (docker-compose.yml, `${NODE_TLS_REJECT_UNAUTHORIZED:-1}`).
+#
+# Default 1. To BUILD on a network behind a TLS-intercepting proxy, run
+# `NODE_TLS_REJECT_UNAUTHORIZED=0 docker compose build` (compose forwards the
+# variable as this build arg) or pass `--build-arg NODE_TLS_REJECT_UNAUTHORIZED=0`.
+# NODE_EXTRA_CA_CERTS is NOT wired into the build — no CA file is in the build
+# context — so it is the preferred fix at RUNTIME only (see .env.example).
+# It used to be `ENV NODE_TLS_REJECT_UNAUTHORIZED=0`, which shipped every image
+# accepting a forged certificate for every provider it holds a token for.
+ARG NODE_TLS_REJECT_UNAUTHORIZED=1
 RUN npm i -g corepack && corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+# Next.js collects anonymous usage telemetry unless told not to, and `next
+# build` (below) is where it reports. Off for every stage derived from this one;
+# the runner stage starts from a fresh image and repeats it.
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Install deps
 FROM base AS deps
@@ -80,6 +97,10 @@ RUN cp -R apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
 # Production — Next.js standalone
 FROM node:24-slim AS runner
 WORKDIR /app
+# Fresh stage: nothing from `base` carries over, so telemetry is disabled again
+# for the running server. Deliberately NO NODE_TLS_REJECT_UNAUTHORIZED here —
+# the runtime value comes from docker-compose.yml, default 1.
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # ONE COPY, deliberately — do not split the client assets back out.
 #

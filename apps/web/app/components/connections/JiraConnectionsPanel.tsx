@@ -4,18 +4,26 @@ import {
   createJiraProjectSync,
   deleteJiraProjectSync,
   type JiraProjectSyncRow,
+  type SourceInstanceRow,
 } from '../../actions/connections';
+import { ConnectionSelect, connectionLabel, defaultConnectionId } from './ConnectionSelect';
 import { TableScroller } from '../TableScroller';
 
 interface Props {
   initialSyncs: JiraProjectSyncRow[];
+  /**
+   * The connections the caller can see — the same list InstancesPanel shows. The
+   * add form picks from these (issue #4: it used to take a typed connection id the
+   * UI displays nowhere), and the table names each sync's connection by them.
+   */
+  instances: SourceInstanceRow[];
 }
 
-export function JiraConnectionsPanel({ initialSyncs }: Props) {
+export function JiraConnectionsPanel({ initialSyncs, instances }: Props) {
   const [syncs, setSyncs] = useState(initialSyncs);
   const [isPending, startTransition] = useTransition();
   const [newKey, setNewKey] = useState('');
-  const [instanceId, setInstanceId] = useState('');
+  const [instanceId, setInstanceId] = useState(() => defaultConnectionId(instances));
   const [error, setError] = useState<string | null>(null);
 
   function add() {
@@ -30,7 +38,7 @@ export function JiraConnectionsPanel({ initialSyncs }: Props) {
         });
         setSyncs((prev) => [{ ...row, boardCount: 0 }, ...prev]);
         setNewKey('');
-        setInstanceId('');
+        setInstanceId(defaultConnectionId(instances));
       } catch (e) {
         setError(e instanceof Error ? e.message : 'failed to create');
       }
@@ -69,8 +77,8 @@ export function JiraConnectionsPanel({ initialSyncs }: Props) {
             <tbody>
               {syncs.map((s) => (
                 <tr key={s.id} className="border-t border-slate-100">
-                  <td className="py-2 font-mono text-xs text-slate-600">
-                    {s.jiraInstanceId.slice(0, 8)}
+                  <td className="py-2 text-xs text-slate-600">
+                    {connectionLabel(instances, s.jiraInstanceId)}
                   </td>
                   <td className="py-2 font-mono">{s.jiraProjectKey}</td>
                   <td className="py-2">
@@ -95,11 +103,11 @@ export function JiraConnectionsPanel({ initialSyncs }: Props) {
         </TableScroller>
       )}
       <div className="mt-4 flex flex-wrap gap-2">
-        <input
+        <ConnectionSelect
+          label="Jira connection"
+          instances={instances}
           value={instanceId}
-          onChange={(e) => setInstanceId(e.target.value)}
-          placeholder="instance uuid"
-          className="rounded border border-slate-300 px-2 py-1 text-sm"
+          onChange={setInstanceId}
         />
         <input
           value={newKey}

@@ -66,6 +66,9 @@ export class GitHubService {
         baseUrl: input.baseUrl,
         accessToken: input.accessToken,
         repos: (input.repos ?? []).map(normalizeRepoFullName),
+        // Omitted rather than written as '' so the column default stays the one
+        // source of "no org". The schema has already trimmed it.
+        ...(input.org !== undefined && { org: input.org }),
         // Stamped from the creator's role and never re-derived: promoting or
         // demoting somebody must not move a connection across the visibility
         // boundary. An admin creates for the organization (null); a member creates
@@ -90,6 +93,24 @@ export class GitHubService {
     id: string,
     repos: string[],
   ): Promise<GitHubInstancePublic | null> {
+    return this.updateInstanceSettings(caller, id, { repos });
+  }
+
+  /**
+   * Update the non-credential settings of a connection: its repo list and/or
+   * its org. Only the fields given are written.
+   *
+   * Changing the org is deliberately NOT recorded the way a host repoint is
+   * (`logHostRepoint`). That signal exists because a new host receives the
+   * stored token; a new org is read from the SAME host with the same token, and
+   * can only ever surface repositories that token could already list through
+   * `/user/repos`. It moves no credential anywhere.
+   */
+  async updateInstanceSettings(
+    caller: ConnectionCaller,
+    id: string,
+    data: { repos?: string[]; org?: string },
+  ): Promise<GitHubInstancePublic | null> {
     const existing = await this.prisma.gitHubInstance.findFirst({
       where: { id, organizationId: caller.organizationId, ...visibleConnectionWhere(caller) },
     });
@@ -100,7 +121,10 @@ export class GitHubService {
     // who did not add it. Ownership lives in `ownerUserId` now.
     const row = await this.prisma.gitHubInstance.update({
       where: { id },
-      data: { repos: repos.map(normalizeRepoFullName) },
+      data: {
+        ...(data.repos !== undefined && { repos: data.repos.map(normalizeRepoFullName) }),
+        ...(data.org !== undefined && { org: data.org }),
+      },
     });
     return mask(row as GitHubInstance);
   }
@@ -112,7 +136,7 @@ export class GitHubService {
   async updateInstanceToken(
     caller: ConnectionCaller,
     id: string,
-    data: { accessToken: string; baseUrl?: string },
+    data: { accessToken: string; baseUrl?: string; org?: string },
     actingUserId?: string,
     log?: ConnectionAuditLog,
   ): Promise<GitHubInstancePublic | null> {
@@ -133,6 +157,7 @@ export class GitHubService {
       data: {
         accessToken: data.accessToken,
         ...(data.baseUrl !== undefined ? { baseUrl: data.baseUrl } : {}),
+        ...(data.org !== undefined ? { org: data.org } : {}),
       },
     });
     // After the write, so a rejected update is not recorded as a repoint. Note

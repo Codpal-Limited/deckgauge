@@ -131,9 +131,13 @@ Keycloak takes up to a minute to become available on a cold start, and
 should show it running before you run that last command.
 
 The schema step downloads the Prisma CLI and its schema engine from inside
-the container. On a proxied, TLS-inspecting or air-gapped network it fails
-with `Error: aborted` / `ECONNRESET` and no schema is created. Run the
-migration from your host instead — it needs Node 24+ and pnpm 9+:
+the container, and the containers VERIFY TLS certificates (they did not before
+— see `CHANGELOG.md`). Behind a TLS-inspecting proxy that download needs the
+proxy's CA: set `NODE_EXTRA_CA_CERTS` and mount the certificate as described
+under "Outbound TLS" in `.env.example`. On an air-gapped network, or where
+that is not possible, it fails with `Error: aborted` / `ECONNRESET` /
+`self-signed certificate in certificate chain` and no schema is created. Run
+the migration from your host instead — it needs Node 24+ and pnpm 9+:
 
 ```bash
 pnpm install
@@ -164,11 +168,13 @@ the `COMPOSE_PROJECT_NAME` / `CONTAINER_PREFIX` block in `.env.example`
 before starting another stack.
 
 > **Before you expose this install to anything.** `test@test.com` has a
-> password everybody knows, and `docker-compose.yml` publishes its ports on all
-> interfaces by default (`BIND_HOST` is unset). That is fine on a laptop and not
-> fine anywhere else: remove the account (below) and set `BIND_HOST=127.0.0.1:`
-> in `.env` — note the trailing colon — before the machine is reachable by
-> anyone but you.
+> password everybody knows. `docker-compose.yml` publishes its ports on
+> `127.0.0.1` only by default, so out of the box nothing but this machine can
+> reach them. To reach the install from other machines you set `BIND_HOST=` (all
+> interfaces) or `BIND_HOST=<address>:` — note the trailing colon — in `.env`;
+> remove the account (below) before you do, and put a firewall in front: that
+> publishes Postgres, Redis, ClickHouse and the Keycloak admin console along
+> with the app.
 
 **Remove them in this order — data first, then the account.** Neither touches a
 board you made yourself, but the sequence matters:

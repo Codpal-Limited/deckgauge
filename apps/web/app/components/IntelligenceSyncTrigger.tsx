@@ -2,13 +2,19 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { triggerIntelligenceSync } from '../actions/intelligence';
+import { triggerIntelligenceSync, type SyncTriggerResult } from '../actions/intelligence';
 
 type Source = 'jira' | 'github' | 'ado' | 'gitlab' | 'all';
 
+const TONE_CLASS: Record<SyncTriggerResult['tone'], string> = {
+  success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  notice: 'border-amber-200 bg-amber-50 text-amber-800',
+  error: 'border-rose-200 bg-rose-50 text-rose-800',
+};
+
 export function IntelligenceSyncTrigger() {
   const [isPending, startTransition] = useTransition();
-  const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null);
+  const [status, setStatus] = useState<SyncTriggerResult | null>(null);
 
   function fire(source: Source) {
     setStatus(null);
@@ -52,12 +58,11 @@ export function IntelligenceSyncTrigger() {
       </div>
 
       {status ? (
+        // `notice` is issue #8's "nothing attached to sync" — guidance rather than a
+        // failure, so it is a polite status in amber, not an alert in red.
         <div
-          className={`rounded border px-3 py-2 text-sm ${
-            status.ok
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-              : 'border-rose-200 bg-rose-50 text-rose-800'
-          }`}
+          role={status.tone === 'error' ? 'alert' : 'status'}
+          className={`rounded border px-3 py-2 text-sm ${TONE_CLASS[status.tone]}`}
         >
           {status.message}
         </div>

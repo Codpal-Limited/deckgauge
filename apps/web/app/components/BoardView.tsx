@@ -14,7 +14,6 @@ import { BoardSharePill } from "./board-header/BoardSharePill";
 import { AskAdvisorButton } from "../../components/advisor/AskAdvisorButton";
 import { GroupList } from "./GroupList";
 import { ProjectModal } from "./ProjectModal";
-import { GitHubGroupSection } from "./GitHubGroupSection";
 import { BoardColumnsPanel } from "./BoardColumnsPanel";
 import { ColumnManager } from "./ColumnManager";
 import { setBoardColumnLayout } from "../actions/roadmap";
@@ -274,9 +273,6 @@ export function BoardView({ board, groups, columns, boardId, jiraLinks, hasGitHu
           onNavItemsChange={setNavItems}
           onGroupsChange={onGroupsChange}
         />
-
-        {/* GitHub groups (read-only, below manual groups) */}
-        <GitHubGroupSection searchQuery={searchQuery} />
 
         {/* Project edit modal */}
         {editingProject && (

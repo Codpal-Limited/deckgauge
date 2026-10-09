@@ -145,63 +145,21 @@ export async function jiraInstanceRoutes(
     },
   );
 
-  // POST /jira/instances/:id/projects — discover accessible Jira projects
+  // POST /jira/instances/:id/projects — discover accessible Jira projects.
+  // Delegates to the service for the same reason /test does: the inline copy
+  // set NODE_TLS_REJECT_UNAUTHORIZED="0" process-wide for the request's
+  // duration, disabling certificate validation for every concurrent fetch.
   app.post<{ Params: { id: string } }>(
     "/jira/instances/:id/projects",
     { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
-      const instance = await service.getRawById(
-        connectionCaller(req),
-        req.params.id,
-      );
-      if (!instance)
-        return reply.status(404).send({ error: "Instance not found" });
-
-      const origTls = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-      process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
-      try {
-        const credentials = `${instance.email}:${instance.apiToken}`;
-        const encoded = Buffer.from(credentials).toString("base64");
-        const baseUrl = instance.atlassianUrl.replace(/\/+$/, "");
-        const response = await fetch(`${baseUrl}/rest/api/3/project`, {
-          headers: {
-            Authorization: `Basic ${encoded}`,
-            Accept: "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          const text = await response.text();
-          return reply
-            .status(422)
-            .send({ error: `Jira API error: ${response.status} ${text}` });
-        }
-
-        const projects = (await response.json()) as Array<{
-          key: string;
-          name: string;
-        }>;
-        return reply.send(
-          projects.map((p) => ({ key: p.key, name: p.name })),
-        );
-      } catch (err: unknown) {
-        let message = "Unknown error";
-        if (err instanceof Error) {
-          message = err.message;
-          const cause = (err as Error & { cause?: Error }).cause;
-          if (cause) message += ` — ${cause.message}`;
-        }
-        return reply
-          .status(422)
-          .send({ error: `Failed to fetch projects: ${message}` });
-      } finally {
-        if (origTls !== undefined) {
-          process.env.NODE_TLS_REJECT_UNAUTHORIZED = origTls;
-        } else {
-          delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-        }
+      const result = await service.listProjects(connectionCaller(req), req.params.id);
+      if (!result.ok) {
+        if (result.notFound)
+          return reply.status(404).send({ error: "Instance not found" });
+        return reply.status(422).send({ error: result.error });
       }
+      return reply.send(result.data);
     },
   );
 
@@ -211,63 +169,17 @@ export async function jiraInstanceRoutes(
     "/jira/instances/:id/projects/:projectKey/issue-types",
     { config: { policy: ORG_MEMBER } },
     async (req, reply) => {
-      const instance = await service.getRawById(
+      const result = await service.listIssueTypes(
         connectionCaller(req),
         req.params.id,
+        req.params.projectKey,
       );
-      if (!instance)
-        return reply.status(404).send({ error: "Instance not found" });
-
-      const origTls = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-      process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
-      try {
-        const credentials = `${instance.email}:${instance.apiToken}`;
-        const encoded = Buffer.from(credentials).toString("base64");
-        const baseUrl = instance.atlassianUrl.replace(/\/+$/, "");
-        const response = await fetch(
-          `${baseUrl}/rest/api/3/project/${req.params.projectKey}`,
-          {
-            headers: {
-              Authorization: `Basic ${encoded}`,
-              Accept: "application/json",
-            },
-          },
-        );
-
-        if (!response.ok) {
-          const text = await response.text();
-          return reply
-            .status(422)
-            .send({ error: `Jira API error: ${response.status} ${text}` });
-        }
-
-        const project = (await response.json()) as {
-          issueTypes?: Array<{ name: string; subtask?: boolean }>;
-        };
-
-        const types = (project.issueTypes ?? [])
-          .filter((t) => t.name && !t.subtask) // exclude Sub-task by default
-          .map((t) => t.name)
-          .sort();
-
-        return reply.send(types);
-      } catch (err: unknown) {
-        let message = "Unknown error";
-        if (err instanceof Error) {
-          const cause = (err as Error & { cause?: Error }).cause;
-          message = cause ? `${err.message} — ${cause.message}` : err.message;
-        }
-        return reply
-          .status(422)
-          .send({ error: `Failed to fetch issue types: ${message}` });
-      } finally {
-        if (origTls !== undefined) {
-          process.env.NODE_TLS_REJECT_UNAUTHORIZED = origTls;
-        } else {
-          delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-        }
+      if (!result.ok) {
+        if (result.notFound)
+          return reply.status(404).send({ error: "Instance not found" });
+        return reply.status(422).send({ error: result.error });
       }
+      return reply.send(result.data);
     },
   );
 }

@@ -27,12 +27,33 @@ interface OrgRepo {
   open_issues_count: number;
 }
 
-export async function listRepos(args: ListReposArgs): Promise<PickerResponse> {
-  const all = (await args.octokit.paginate('GET /orgs/{org}/repos', {
-    org: args.org,
+/**
+ * The repositories the picker offers.
+ *
+ * A connection with an org lists that org's repositories. A connection WITHOUT
+ * one — the default, since `GitHubInstance.org` is `@default("")` and until
+ * issue #3 nothing could set it — lists what the token itself can see, which is
+ * the same answer `GitHubService.discoverRepos` gives. Interpolating the empty
+ * org produced `GET /orgs//repos`, a 404 that the route reported as a transient
+ * "try again shortly" failure on every attempt.
+ */
+async function fetchCandidateRepos(octokit: Octokit, org: string): Promise<OrgRepo[]> {
+  const trimmed = org.trim();
+  if (trimmed.length === 0) {
+    return (await octokit.paginate('GET /user/repos', {
+      affiliation: 'owner,collaborator,organization_member',
+      per_page: 100,
+    } as never)) as OrgRepo[];
+  }
+  return (await octokit.paginate('GET /orgs/{org}/repos', {
+    org: trimmed,
     per_page: 100,
     type: 'all',
   } as never)) as OrgRepo[];
+}
+
+export async function listRepos(args: ListReposArgs): Promise<PickerResponse> {
+  const all = await fetchCandidateRepos(args.octokit, args.org);
 
   const sources = (await args.prisma.boardGitHubSource.findMany({
     where: { boardId: args.boardId },

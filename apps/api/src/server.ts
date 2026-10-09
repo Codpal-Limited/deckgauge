@@ -9,6 +9,7 @@ import { ClickhouseIntelligenceService } from "./intelligence/clickhouse-intelli
 import { buildChReadIdentity } from "./analytics/ch-read-client.js";
 import { buildChReadPlugin } from "./analytics/ch-read.plugin.js";
 import { intelligenceRoutes } from "./intelligence/intelligence.routes.js";
+import { countSyncableScope, type SyncSource } from "./intelligence/syncable-scope.js";
 import { buildIntelligenceQueues } from "./intelligence/queues.js";
 import { boardRoutes } from "./boards/board.routes.js";
 import { recruitmentRoutes } from "./recruitment/recruitment.routes.js";
@@ -357,10 +358,7 @@ export function buildServer(prisma: PrismaClient) {
     // set we leave enqueueSync undefined and the route returns 503 (graceful).
     const queues = buildIntelligenceQueues(process.env.REDIS_URL);
     const enqueueSync = queues
-      ? async (
-          source: 'jira' | 'github' | 'ado' | 'gitlab' | 'all',
-          organizationId: string,
-        ) => {
+      ? async (source: SyncSource, organizationId: string) => {
           // Built by the shared helper, not inline. This is the enqueue site that was
           // MISSED when the others were scoped: it sent
           // `{ trigger: 'manual' }` with no tenant, which the (now fail-closed) worker
@@ -368,21 +366,22 @@ export function buildServer(prisma: PrismaClient) {
           // successful sync while nothing synced. `manualSyncJobPayload` takes the
           // organization as its only argument, so an enqueue site cannot compile
           // without one.
-          const payload = manualSyncJobPayload(organizationId);
-          if (source === 'all') {
-            await Promise.all([
-              queues.jira.add('manual', payload),
-              queues.github.add('manual', payload),
-              queues.ado.add('manual', payload),
-              queues.gitlab.add('manual', payload),
-            ]);
-            return;
-          }
-          await queues[source].add('manual', payload);
+          //
+          // One source per call: the route expands `source: 'all'` itself, so it can
+          // skip a source with nothing attached (issue #8) instead of enqueueing a
+          // job the worker will finish having synced nothing.
+          await queues[source].add('manual', manualSyncJobPayload(organizationId));
         }
       : undefined;
 
-    protectedApp.register(intelligenceRoutes({ service: intelligenceService, prisma, enqueueSync }));
+    protectedApp.register(
+      intelligenceRoutes({
+        service: intelligenceService,
+        prisma,
+        enqueueSync,
+        syncableScope: (organizationId) => countSyncableScope(prisma, organizationId),
+      }),
+    );
     protectedApp.register(boardSyncRoutes({ prisma, queues }));
 
     // One TimesheetService — its TtlCache is per-instance and the timesheet

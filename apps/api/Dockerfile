@@ -15,10 +15,23 @@
 ARG EDITION=community
 
 FROM node:24-slim AS base
+# Certificate verification during the BUILD. A build ARG, never an ENV: it is
+# visible to the RUN steps of this stage and every stage derived from it
+# (corepack, pnpm install, the builds) and is NOT baked into the image, so the
+# running container verifies TLS unless its runtime environment says otherwise
+# (docker-compose.yml, `${NODE_TLS_REJECT_UNAUTHORIZED:-1}`).
+#
+# Default 1. To BUILD on a network behind a TLS-intercepting proxy, run
+# `NODE_TLS_REJECT_UNAUTHORIZED=0 docker compose build` (compose forwards the
+# variable as this build arg) or pass `--build-arg NODE_TLS_REJECT_UNAUTHORIZED=0`.
+# NODE_EXTRA_CA_CERTS is NOT wired into the build — no CA file is in the build
+# context — so it is the preferred fix at RUNTIME only (see .env.example).
+# It used to be `ENV NODE_TLS_REJECT_UNAUTHORIZED=0`, which shipped every image
+# accepting a forged certificate for every provider it holds a token for.
+ARG NODE_TLS_REJECT_UNAUTHORIZED=1
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN npm i -g corepack && corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
 # ── deps ────────────────────────────────────────────────────────────────────────
 # Manifests only, so a source edit does not invalidate the install layer.
@@ -92,7 +105,6 @@ RUN pnpm --filter @deckgauge/db build
 
 # ── runner ──────────────────────────────────────────────────────────────────────
 FROM build AS runner-common
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 COPY packages/ui/ packages/ui/
 COPY packages/notifications/ packages/notifications/
 COPY packages/automations/ packages/automations/

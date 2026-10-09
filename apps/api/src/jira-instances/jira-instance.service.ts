@@ -11,12 +11,47 @@ import { Agent } from "undici";
 import { logHostRepoint, type ConnectionAuditLog } from '../connections/host-repoint-audit.js';
 import { visibleConnectionWhere, type ConnectionCaller } from '../connections/connection-visibility.js';
 
-// Some corporate Jira instances sit behind self-signed/lenient TLS. Scope the
-// leniency to this single request via an undici dispatcher — never mutate
-// process.env.NODE_TLS_REJECT_UNAUTHORIZED, which would disable certificate
-// validation process-wide for every other in-flight fetch (GitHub/GitLab/ADO
-// health probes now run concurrently alongside this one via Promise.all).
-const insecureDispatcher = new Agent({ connect: { rejectUnauthorized: false } });
+// Certificate verification is ON for every Jira request unless the operator
+// opts out with JIRA_TLS_INSECURE=1. The opt-out exists for an on-prem Jira
+// behind a self-signed certificate on a network that cannot supply its CA; the
+// right fix there is NODE_EXTRA_CA_CERTS (see .env.example), and this switch is
+// the last resort. It is SCOPED to this module's requests via an undici
+// dispatcher — never by mutating process.env.NODE_TLS_REJECT_UNAUTHORIZED,
+// which would disable certificate validation process-wide for every other
+// in-flight fetch (GitHub/GitLab/ADO health probes run concurrently with this).
+//
+// Read per call, not at import, so the switch is what the environment says NOW
+// (and so tests can stub it); the Agent itself is built once.
+let insecureDispatcher: Agent | undefined;
+export function jiraTlsDispatcher(): Agent | undefined {
+  if (process.env.JIRA_TLS_INSECURE !== "1") return undefined;
+  insecureDispatcher ??= new Agent({ connect: { rejectUnauthorized: false } });
+  return insecureDispatcher;
+}
+
+/** Spread into a fetch init: adds `dispatcher` only when leniency is opted in. */
+function tlsInit(): { dispatcher?: Agent } {
+  const dispatcher = jiraTlsDispatcher();
+  return dispatcher ? { dispatcher } : {};
+}
+
+function describeError(err: unknown): string {
+  let message = "Unknown error";
+  if (err instanceof Error) {
+    message = err.message;
+    const cause = (err as Error & { cause?: Error }).cause;
+    if (cause) message += ` — ${cause.message}`;
+  }
+  return message;
+}
+
+function basicAuth(instance: { email: string; apiToken: string }): string {
+  return `Basic ${Buffer.from(`${instance.email}:${instance.apiToken}`).toString("base64")}`;
+}
+
+export type DiscoveryResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; notFound?: boolean };
 
 function mask(instance: JiraInstance): JiraInstancePublic {
   return { ...instance, apiToken: "***" as const };
@@ -182,12 +217,10 @@ export class JiraInstanceService {
       const res = await fetchFn(`${baseUrl}/rest/api/3/myself`, {
         headers: { Authorization: `Basic ${encoded}`, Accept: "application/json" },
         signal: AbortSignal.timeout(10000),
-        // Scoped per-request TLS leniency (self-signed/corporate certs on
-        // some Jira instances) — see `insecureDispatcher` above. Only the
-        // real global `fetch` honors `dispatcher`; injected test fetches
-        // ignore the extra init field.
-        dispatcher: insecureDispatcher,
-      } as RequestInit & { dispatcher: Agent });
+        // Opt-in, per-request TLS leniency — see `jiraTlsDispatcher` above.
+        // Only the real global `fetch` honors `dispatcher`.
+        ...tlsInit(),
+      } as RequestInit);
       if (!res.ok) {
         const text = await res.text();
         return {
@@ -198,13 +231,7 @@ export class JiraInstanceService {
       }
       return { ok: true };
     } catch (err: unknown) {
-      let message = "Unknown error";
-      if (err instanceof Error) {
-        message = err.message;
-        const cause = (err as Error & { cause?: Error }).cause;
-        if (cause) message += ` — ${cause.message}`;
-      }
-      return { ok: false, error: message };
+      return { ok: false, error: describeError(err) };
     }
   }
 
@@ -229,8 +256,8 @@ export class JiraInstanceService {
       const res = await fetchFn(`${base}/rest/api/2/serverInfo`, {
         headers: { Accept: "application/json" },
         signal: AbortSignal.timeout(5000),
-        dispatcher: insecureDispatcher,
-      } as RequestInit & { dispatcher: Agent });
+        ...tlsInit(),
+      } as RequestInit);
       if (!res.ok) return undefined;
       const body = (await res.json()) as { baseUrl?: unknown };
       if (typeof body.baseUrl !== "string") return undefined;
@@ -289,5 +316,66 @@ export class JiraInstanceService {
     const updated = await this.update(caller, id, { apiToken: newToken }, actingUserId);
     if (!updated) return { ok: false, notFound: true, error: "Instance not found" };
     return { ok: true };
+  }
+
+  /**
+   * Lists the Jira projects the stored credential can see. Lives here, not in
+   * the route, so it shares the scoped TLS handling above — the route's inline
+   * copy flipped NODE_TLS_REJECT_UNAUTHORIZED process-wide for its duration.
+   */
+  async listProjects(
+    caller: ConnectionCaller,
+    id: string,
+    fetchFn: FetchFn = fetch,
+  ): Promise<DiscoveryResult<Array<{ key: string; name: string }>>> {
+    const instance = await this.getRawById(caller, id);
+    if (!instance) return { ok: false, notFound: true, error: "Instance not found" };
+    try {
+      const baseUrl = instance.atlassianUrl.replace(/\/+$/, "");
+      const response = await fetchFn(`${baseUrl}/rest/api/3/project`, {
+        headers: { Authorization: basicAuth(instance), Accept: "application/json" },
+        ...tlsInit(),
+      } as RequestInit);
+      if (!response.ok) {
+        const text = await response.text();
+        return { ok: false, error: `Jira API error: ${response.status} ${text}` };
+      }
+      const projects = (await response.json()) as Array<{ key: string; name: string }>;
+      return { ok: true, data: projects.map((p) => ({ key: p.key, name: p.name })) };
+    } catch (err: unknown) {
+      return { ok: false, error: `Failed to fetch projects: ${describeError(err)}` };
+    }
+  }
+
+  /** Alphabetically sorted issue-type names of one project, sub-tasks excluded. */
+  async listIssueTypes(
+    caller: ConnectionCaller,
+    id: string,
+    projectKey: string,
+    fetchFn: FetchFn = fetch,
+  ): Promise<DiscoveryResult<string[]>> {
+    const instance = await this.getRawById(caller, id);
+    if (!instance) return { ok: false, notFound: true, error: "Instance not found" };
+    try {
+      const baseUrl = instance.atlassianUrl.replace(/\/+$/, "");
+      const response = await fetchFn(`${baseUrl}/rest/api/3/project/${encodeURIComponent(projectKey)}`, {
+        headers: { Authorization: basicAuth(instance), Accept: "application/json" },
+        ...tlsInit(),
+      } as RequestInit);
+      if (!response.ok) {
+        const text = await response.text();
+        return { ok: false, error: `Jira API error: ${response.status} ${text}` };
+      }
+      const project = (await response.json()) as {
+        issueTypes?: Array<{ name: string; subtask?: boolean }>;
+      };
+      const types = (project.issueTypes ?? [])
+        .filter((t) => t.name && !t.subtask) // exclude Sub-task by default
+        .map((t) => t.name)
+        .sort();
+      return { ok: true, data: types };
+    } catch (err: unknown) {
+      return { ok: false, error: `Failed to fetch issue types: ${describeError(err)}` };
+    }
   }
 }

@@ -12,6 +12,7 @@ import { GitHubService } from './github.service.js';
 import { ORG_MEMBER, ORG_VIEWER } from '../auth/policy.js';
 import { connectionCaller } from '../connections/connection-caller.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
+import { countGitHubBasicSyncScope } from '../intelligence/syncable-scope.js';
 
   // ORG_MEMBER, not ORG_ADMIN: any member may manage THEIR OWN connections, and
   // the row-level predicate in the service is what decides whose. Loosening this
@@ -45,7 +46,7 @@ export async function githubRoutes(
     return reply.status(201).send(instance);
   });
 
-  // PATCH /github/instances/:id — replace the access token, and/or update the repos list
+  // PATCH /github/instances/:id — replace the access token, and/or update the repos list / org
   //
   // ORG_ADMIN replaces the per-row `connectionOwner` check. That gives up the
   // guard which withheld `baseUrl` on an unclaimed row — repointing the host
@@ -69,28 +70,31 @@ export async function githubRoutes(
       if (!parsed.success) {
         return reply.status(400).send({ error: parsed.error.flatten() });
       }
-      const { repos, accessToken, baseUrl } = parsed.data;
+      const { repos, accessToken, baseUrl, org } = parsed.data;
       // Token replacement takes precedence — the recovery path for an expired PAT.
+      // An org sent alongside is written in the same update.
       if (accessToken !== undefined) {
         const instance = await service.updateInstanceToken(
           connectionCaller(req),
           req.params.id,
-          { accessToken, baseUrl },
+          { accessToken, baseUrl, org },
           req.user?.id,
           req.log,
         );
         if (!instance) return reply.status(404).send({ error: 'Instance not found' });
         return reply.send(instance);
       }
-      if (repos === undefined) {
-        return reply.status(400).send({ error: 'repos or accessToken field is required' });
+      if (repos === undefined && org === undefined) {
+        return reply.status(400).send({ error: 'repos, org or accessToken field is required' });
       }
       // No acting user: this path no longer records one. `createdById` is stamped
       // at creation and never touched by an edit, since claim-on-first-edit went.
-      const instance = await service.updateInstanceRepos(
+      // An org change is not audited like a host repoint — see
+      // `updateInstanceSettings` for why it moves no credential.
+      const instance = await service.updateInstanceSettings(
         connectionCaller(req),
         req.params.id,
-        repos,
+        { repos, org },
       );
       if (!instance) return reply.status(404).send({ error: 'Instance not found' });
       return reply.send(instance);
@@ -220,6 +224,8 @@ export async function githubRoutes(
   // exists to be read-only, and the response is rendered on the board itself, by
   // GitHubGroupSection via BoardView.tsx, which a VIEWER can see — gating it on
   // MEMBER would blank that panel for the role whose whole purpose is reading.
+  // (That panel was removed with the legacy sync-config UI in issue #5, so the
+  // web app no longer calls this route; the read-only reasoning still holds.)
   //
   // The no-membership arm below is therefore unreachable through the policy
   // plugin and kept as belt-and-braces. It is not dead: the route-level tests
@@ -257,12 +263,21 @@ export async function githubRoutes(
   // provider rate limit. `requireOrganizationId` is safe here precisely because
   // `ORG_MEMBER` guarantees the membership it reads.
   app.post('/github/sync', { config: { policy: ORG_MEMBER } }, async (req, reply) => {
+    // Issue #8 — refuse a sync that would fetch nothing. The worker's github-sync
+    // handler ran even with no repo attached and recorded an empty, successful
+    // SyncRun, so the button reported success for a no-op. The count mirrors that
+    // handler's repo resolution for this organization (repo-sync rows, else
+    // instance.repos, non-demo connections only).
+    const organizationId = requireOrganizationId(req);
+    if ((await countGitHubBasicSyncScope(prisma, organizationId)) === 0) {
+      return reply.status(409).send({ error: 'NOTHING_TO_SYNC', sources: ['github'] });
+    }
     const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
     const queue = new Queue('github-sync', { connection: { url: redisUrl } });
     try {
       // Built by the shared helper so every manual enqueue site emits one shape;
       // see `manualSyncJobPayload`'s note on why that is in @deckgauge/shared.
-      await queue.add('sync', manualSyncJobPayload(requireOrganizationId(req)));
+      await queue.add('sync', manualSyncJobPayload(organizationId));
       return reply.status(202).send({ ok: true, message: 'GitHub sync job enqueued' });
     } finally {
       await queue.close();

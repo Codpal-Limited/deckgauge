@@ -36,6 +36,12 @@ export interface GithubIntelligenceJobData {
 export interface GithubIntelligenceResult {
   reposProcessed: number;
   errors: Array<{ repoFullName: string; message: string }>;
+  /**
+   * Set when the job resolved to NO enabled repo sync at all (issue #8), so an
+   * empty run is distinguishable from one whose repos were simply up to date.
+   * Absent otherwise.
+   */
+  nothingToSync?: true;
 }
 
 // Builds a per-instance Octokit-like client. Real Octokit is constructed in the
@@ -92,6 +98,11 @@ export async function handleGithubIntelligenceSync(
   }
 
   const syncs = await db.gitHubRepoSync.findMany({ where, include: { githubInstance: true } });
+  if (syncs.length === 0) {
+    console.log('[GitHub intel fan-out] no enabled repo syncs matched — nothing to sync');
+    result.nothingToSync = true;
+    return result;
+  }
 
   // A manual sync may overlap a scheduled tier job for the same repo (the
   // unscoped POST /intelligence/sync path fans out over every active repo).

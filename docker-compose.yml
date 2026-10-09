@@ -1,26 +1,34 @@
 # BIND_HOST — the host interface every published port below binds to.
 #
-# Unset (self-host / OSS / local dev) it expands to the empty string, so each
-# mapping stays exactly `"5433:5432"` and Docker binds 0.0.0.0 as it always
-# has. scripts/check-compose-defaults.sh pins that: the rendered default config
-# is byte-identical with this variable absent.
+# DEFAULT: LOOPBACK. Unset, every mapping renders as `127.0.0.1:5433:5432`, so
+# Postgres, ClickHouse, Redis, Keycloak, the api and the web app are reachable
+# from this machine and from nothing else. That is the right default for a
+# laptop and the only safe one for anything else: these ports used to bind
+# 0.0.0.0 out of the box, in front of the database holding every provider
+# token. (GitHub issue #7.)
 #
-# A HOSTED box sets `BIND_HOST=127.0.0.1:` in deploy/.env.hosted, which reaches
-# Compose via the `--env-file` that deploy/deploy-hosted.sh already requires.
-# That script will not deploy unless the RENDERED config binds every published
-# port to loopback — it asserts `docker compose config` rather than the env
-# file, because an exported BIND_HOST in the operator's shell takes precedence
-# over --env-file. scripts/check-bind-host.sh enforces the prefix below in CI.
-# Nothing then reaches these ports from off
-# the box: the Cloudflare Tunnel resolves `web`, `api` and `keycloak` by service
-# name on the Compose network (deploy/cloudflared/config.example.yml), so it
-# never needs a published port at all, and the host firewall stops being the
-# only thing between the internet and an unauthenticated Redis and a Postgres
-# full of customer provider credentials.
+# To publish on every interface — a LAN demo, a VM you reach by IP — set it
+# EXPLICITLY EMPTY in .env:
+#     BIND_HOST=
+# To pick one interface: `BIND_HOST=192.168.1.10:` (trailing colon included).
 #
-# NOTE the single dash: `-` substitutes only when the variable is UNSET. Here the default is empty either way, so `-` and
-# `:-` behave identically — the single dash is used for consistency with the
-# convention this repo already established for hosted-clearable values.
+# A HOSTED box sets `BIND_HOST=127.0.0.1:` in deploy/.env.hosted anyway, which
+# reaches Compose via the `--env-file` that deploy/deploy-hosted.sh already
+# requires. That script will not deploy unless the RENDERED config binds every
+# published port to loopback — it asserts `docker compose config` rather than
+# the env file, because an exported BIND_HOST in the operator's shell (an empty
+# one included) takes precedence over --env-file.
+# scripts/check-bind-host.sh enforces the prefix below in CI. Nothing then
+# reaches these ports from off the box: the Cloudflare Tunnel resolves `web`,
+# `api` and `keycloak` by service name on the Compose network
+# (deploy/cloudflared/config.example.yml), so it never needs a published port
+# at all.
+#
+# NOTE the single dash, and here it is LOAD-BEARING: `-` substitutes only when
+# the variable is UNSET, so `BIND_HOST=` (set, empty) still means "all
+# interfaces". `:-` would quietly turn that documented opt-out back into
+# loopback. scripts/check-bind-host.sh and
+# apps/api/src/__isolation__/secure-defaults.test.ts both pin the form.
 #
 # NOTE the trailing colon is part of the VALUE, because Compose cannot nest an
 # interpolation inside a `${VAR:+...}` replacement. `BIND_HOST=127.0.0.1` with
@@ -72,9 +80,8 @@
 #
 # `:?` is the only form that fails. Compose refuses to render at all and names
 # the variable, so the stack does not come up on a guessable credential — which
-# matters here because ${BIND_HOST-} is EMPTY by default, i.e. Postgres,
-# ClickHouse, Redis and the Keycloak admin console are published on 0.0.0.0 on a
-# stock install.
+# mattered most while every port bound 0.0.0.0 by default, and still matters for
+# any install that sets `BIND_HOST=` to publish on every interface.
 #
 #   ./scripts/init-env.sh        writes .env with a fresh secret for each of them
 #
@@ -114,7 +121,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run ./scripts/init-env.sh to generate one, or set it in .env}
       POSTGRES_DB: ${POSTGRES_DB:-cockpit}
     ports:
-      - "${BIND_HOST-}${POSTGRES_PORT:-5433}:5432"
+      - "${BIND_HOST-127.0.0.1:}${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -133,8 +140,8 @@ services:
         limits:
           memory: 3G   # server-side cap in clickhouse/config/memory.xml is 2.5 GiB (~500 MiB headroom for kernel/page cache and process overhead)
     ports:
-      - "${BIND_HOST-}${CLICKHOUSE_HTTP_PORT:-8123}:8123"   # HTTP interface (used by @clickhouse/client and backup scripts)
-      - "${BIND_HOST-}${CLICKHOUSE_NATIVE_PORT:-9000}:9000"   # Native TCP (optional, for CLI)
+      - "${BIND_HOST-127.0.0.1:}${CLICKHOUSE_HTTP_PORT:-8123}:8123"   # HTTP interface (used by @clickhouse/client and backup scripts)
+      - "${BIND_HOST-127.0.0.1:}${CLICKHOUSE_NATIVE_PORT:-9000}:9000"   # Native TCP (optional, for CLI)
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./clickhouse/config:/etc/clickhouse-server/config.d:ro
@@ -170,11 +177,16 @@ services:
         limits:
           memory: 512M   # BullMQ queue state outgrew the previous 64M cap; BGSAVE fork was OOM-killed, blocking writes via stop-writes-on-bgsave-error
     environment:
-      # Empty for self-host / OSS / local dev, where Redis is on loopback behind
-      # the same trust boundary it always was — so the default stack is unchanged.
-      # Set it on ANY deployment reachable by more than localhost: BullMQ job data
-      # carries board and sync payloads, and an unauthenticated Redis is a write
-      # into the job stream, not merely a read of it.
+      # ./scripts/init-env.sh GENERATES this (and derives REDIS_URL from it), so
+      # a new install has an authenticated Redis. BullMQ job data carries board
+      # and sync payloads, and an unauthenticated Redis is a write into the job
+      # stream, not merely a read of it. (GitHub issue #7.)
+      #
+      # Deliberately `:-` and NOT `:?` like the other credentials: an install
+      # whose .env predates it keeps booting exactly as before — unauthenticated,
+      # and on loopback now that BIND_HOST defaults there. `init-env.sh --check`
+      # is what names the missing key. Unlike the database passwords, adding one
+      # later needs no volume surgery: Redis reads it on every start.
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     command:
       - "sh"
@@ -202,7 +214,7 @@ services:
         --loglevel warning
         $${REDIS_PASSWORD:+--requirepass "$$REDIS_PASSWORD"}
     ports:
-      - "${BIND_HOST-}${REDIS_PORT:-6379}:6379"
+      - "${BIND_HOST-127.0.0.1:}${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -349,7 +361,7 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
     ports:
-      - "${BIND_HOST-}${KEYCLOAK_PORT:-8080}:8080"
+      - "${BIND_HOST-127.0.0.1:}${KEYCLOAK_PORT:-8080}:8080"
     volumes:
       # Read-only, and NOT at the import path: the entrypoint processes this into
       # /opt/keycloak/data/import/realm.json inside the container. Mounting it at
@@ -384,7 +396,7 @@ services:
       MP_SMTP_AUTH_ACCEPT_ANY: "true"
       MP_SMTP_AUTH_ALLOW_INSECURE: "true"
     ports:
-      - "${BIND_HOST-}${MAILPIT_PORT:-8025}:8025"
+      - "${BIND_HOST-127.0.0.1:}${MAILPIT_PORT:-8025}:8025"
   api:
     build:
       context: .
@@ -394,6 +406,10 @@ services:
         # variable as the runtime edition below, so an image cannot be built as one
         # edition and run as the other — which would fall back to Community silently.
         EDITION: "${DECKGAUGE_EDITION:-community}"
+        # Build-time only (pnpm install, corepack): the image never bakes it in.
+        # Set NODE_TLS_REJECT_UNAUTHORIZED=0 in .env to BUILD behind a
+        # TLS-intercepting proxy; the same variable then also governs runtime.
+        NODE_TLS_REJECT_UNAUTHORIZED: "${NODE_TLS_REJECT_UNAUTHORIZED:-1}"
     container_name: ${CONTAINER_PREFIX:-deckgauge}-api
     restart: unless-stopped
     deploy:
@@ -401,18 +417,33 @@ services:
         limits:
           memory: 1536M   # Fastify API; 256M->768M->1536M. Bumped after the timesheet engine OOM'd Node ("JS heap out of memory") on a large org (~95k ADO items / ~42k with transitions): the report page now runs two engine passes — the month CapEx report AND the year-window epic breakdown — and computeTimesheet slices every span per-day, so the annual pass allocates ~12x the monthly one; several of these cached in the 60s TtlCache crossed the 768M cap. Follow-up cure: bound fetchTransitions by the window `from` and/or cap TtlCache size instead of loading all history each pass.
     ports:
-      - "${BIND_HOST-}${API_PORT:-3001}:3001"
+      - "${BIND_HOST-127.0.0.1:}${API_PORT:-3001}:3001"
     environment:
       # Pin V8's heap below the cgroup cap so it GCs hard instead of cgroup-OOM-killing (mirrors the web service). ~256M headroom for non-heap.
       NODE_OPTIONS: "--max-old-space-size=1280"
+      # Certificate verification ON by default (GitHub issue #6). Behind a
+      # TLS-intercepting proxy, point NODE_EXTRA_CA_CERTS at the proxy's CA
+      # (mounted into the container — see .env.example) rather than turning
+      # verification off. NODE_TLS_REJECT_UNAUTHORIZED=0 is the last resort: it
+      # makes this process accept a forged certificate for every provider it
+      # holds a token for.
+      NODE_TLS_REJECT_UNAUTHORIZED: "${NODE_TLS_REJECT_UNAUTHORIZED:-1}"
+      NODE_EXTRA_CA_CERTS: "${NODE_EXTRA_CA_CERTS:-}"
+      # Jira only: scope certificate leniency to Jira requests (an on-prem Jira
+      # with a self-signed certificate) without touching anything else in the
+      # process. Off unless exactly "1". Prefer NODE_EXTRA_CA_CERTS.
+      JIRA_TLS_INSECURE: "${JIRA_TLS_INSECURE:-}"
       DATABASE_URL: "postgresql://${POSTGRES_USER:-cockpit}:${POSTGRES_PASSWORD:?run ./scripts/init-env.sh to generate one, or set it in .env}@postgres:5432/${POSTGRES_DB:-cockpit}"
       CREDENTIAL_ENCRYPTION_KEY: "${CREDENTIAL_ENCRYPTION_KEY:?run ./scripts/init-env.sh to generate one, or set it in .env}"
-      # Overridable so a deployment with an authenticated Redis can supply the
-      # credential as one complete URL. Compose cannot build it conditionally — it
-      # cannot nest an interpolation inside a `${VAR:+...}` replacement (see the
-      # BIND_HOST note at the top of this file) — so the operator sets the whole
-      # value, exactly as deploy/env.hosted.example does for the public URLs.
-      REDIS_URL: "${REDIS_URL:-redis://redis:6379}"
+      # Defaults to a URL built from REDIS_PASSWORD, so the server and its
+      # clients cannot disagree: a server that requires a password the clients do
+      # not send makes BullMQ retry NOAUTH forever, and queues go quiet rather
+      # than fail. With REDIS_PASSWORD unset this renders `redis://:@redis:6379`,
+      # which ioredis reads as "no password" and sends no AUTH — verified against
+      # ioredis 5.10.1 and redis 7.4 — so an unauthenticated install still works.
+      # Still overridable as one complete URL (init-env.sh writes it to .env,
+      # and deploy/env.hosted.example sets it).
+      REDIS_URL: "${REDIS_URL:-redis://:${REDIS_PASSWORD:-}@redis:6379}"
       CLICKHOUSE_URL: "http://${CLICKHOUSE_USER:-cockpit}:${CLICKHOUSE_PASSWORD:?run ./scripts/init-env.sh to generate one, or set it in .env}@clickhouse:8123/cockpit"
       # The SEPARATE login the API scopes per-organization reads through, activating
       # one ClickHouse role per query (design doc D3). Empty by default, which means
@@ -520,6 +551,11 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        # Build-time only (pnpm install, corepack): the image never bakes it in.
+        # Set NODE_TLS_REJECT_UNAUTHORIZED=0 in .env to BUILD behind a
+        # TLS-intercepting proxy; the same variable then also governs runtime.
+        NODE_TLS_REJECT_UNAUTHORIZED: "${NODE_TLS_REJECT_UNAUTHORIZED:-1}"
     container_name: ${CONTAINER_PREFIX:-deckgauge}-web
     restart: unless-stopped
     deploy:
@@ -527,14 +563,17 @@ services:
         limits:
           memory: 1500M   # Next.js production server; bumped 384M -> 768M -> 1500M as Phase 3 widget load + board RSC payload grew. The real cure is reducing per-mutation over-fetch (see projects.ts revalidate cleanup + page.tsx fetchAllProjects caching); this cap is the headroom band-aid.
     ports:
-      - "${BIND_HOST-}${WEB_PORT:-3000}:3000"
+      - "${BIND_HOST-127.0.0.1:}${WEB_PORT:-3000}:3000"
     environment:
       NODE_OPTIONS: "--max-old-space-size=1280"
-      # Corporate networks MITM outbound TLS; the worker already runs with cert
-      # verification disabled (apps/worker/Dockerfile). The web server now also makes
-      # an outbound call to graph.microsoft.com (saveGraphToken validates the pasted
-      # token via /me), so it needs the same, or that fetch fails ("token not accepted").
-      NODE_TLS_REJECT_UNAUTHORIZED: "${NODE_TLS_REJECT_UNAUTHORIZED:-0}"
+      # The web server makes outbound HTTPS calls too (saveGraphToken validates a
+      # pasted token against graph.microsoft.com/me), so it takes the same TLS
+      # settings as api and worker — see the note on the api service.
+      NODE_TLS_REJECT_UNAUTHORIZED: "${NODE_TLS_REJECT_UNAUTHORIZED:-1}"
+      NODE_EXTRA_CA_CERTS: "${NODE_EXTRA_CA_CERTS:-}"
+      # Next.js anonymous usage telemetry: off. Also set in apps/web/Dockerfile
+      # (build and runner stages); here so an image built elsewhere is covered.
+      NEXT_TELEMETRY_DISABLED: "1"
       # Server-side (RSC / server actions) — container network, unchanged when hosted.
       API_URL: "${API_URL:-http://api:3001}"
       # BROWSER-FACING. apps/web/next.config.ts defines no rewrites, so this must
@@ -577,6 +616,10 @@ services:
       dockerfile: apps/worker/Dockerfile
       args:
         EDITION: "${DECKGAUGE_EDITION:-community}"
+        # Build-time only (pnpm install, corepack): the image never bakes it in.
+        # Set NODE_TLS_REJECT_UNAUTHORIZED=0 in .env to BUILD behind a
+        # TLS-intercepting proxy; the same variable then also governs runtime.
+        NODE_TLS_REJECT_UNAUTHORIZED: "${NODE_TLS_REJECT_UNAUTHORIZED:-1}"
     container_name: ${CONTAINER_PREFIX:-deckgauge}-worker
     restart: unless-stopped
     deploy:
@@ -586,12 +629,15 @@ services:
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-cockpit}:${POSTGRES_PASSWORD:?run ./scripts/init-env.sh to generate one, or set it in .env}@postgres:5432/${POSTGRES_DB:-cockpit}"
       CREDENTIAL_ENCRYPTION_KEY: "${CREDENTIAL_ENCRYPTION_KEY:?run ./scripts/init-env.sh to generate one, or set it in .env}"
-      # Overridable so a deployment with an authenticated Redis can supply the
-      # credential as one complete URL. Compose cannot build it conditionally — it
-      # cannot nest an interpolation inside a `${VAR:+...}` replacement (see the
-      # BIND_HOST note at the top of this file) — so the operator sets the whole
-      # value, exactly as deploy/env.hosted.example does for the public URLs.
-      REDIS_URL: "${REDIS_URL:-redis://redis:6379}"
+      # Defaults to a URL built from REDIS_PASSWORD, so the server and its
+      # clients cannot disagree: a server that requires a password the clients do
+      # not send makes BullMQ retry NOAUTH forever, and queues go quiet rather
+      # than fail. With REDIS_PASSWORD unset this renders `redis://:@redis:6379`,
+      # which ioredis reads as "no password" and sends no AUTH — verified against
+      # ioredis 5.10.1 and redis 7.4 — so an unauthenticated install still works.
+      # Still overridable as one complete URL (init-env.sh writes it to .env,
+      # and deploy/env.hosted.example sets it).
+      REDIS_URL: "${REDIS_URL:-redis://:${REDIS_PASSWORD:-}@redis:6379}"
       CLICKHOUSE_URL: "http://${CLICKHOUSE_USER:-cockpit}:${CLICKHOUSE_PASSWORD:?run ./scripts/init-env.sh to generate one, or set it in .env}@clickhouse:8123/cockpit"
       # The SEPARATE login the worker scopes its READS through — the same identity
       # the api uses, deliberately not a fourth one: `ch-provisioning.ts` grants
@@ -645,11 +691,11 @@ services:
       # drains a genuine bulk deletion, then put it back — a container that
       # leaves it on has no cap at all.
       JIRA_ALLOW_MASS_DELETION: "${JIRA_ALLOW_MASS_DELETION:-0}"
-      # Overrides the image's build-time default (apps/worker/Dockerfile) without
-      # a rebuild. Default 0 for corporate-MITM local dev; hosted sets 1, because
-      # a public box has no MITM proxy and 0 would accept a forged certificate
-      # for any provider while the worker holds customer tokens.
-      NODE_TLS_REJECT_UNAUTHORIZED: "${NODE_TLS_REJECT_UNAUTHORIZED:-0}"
+      # The container that makes every outbound HTTPS call to Jira, GitHub,
+      # GitLab, ADO and Microsoft Graph while holding the tokens for all of them.
+      # See the note on the api service.
+      NODE_TLS_REJECT_UNAUTHORIZED: "${NODE_TLS_REJECT_UNAUTHORIZED:-1}"
+      NODE_EXTRA_CA_CERTS: "${NODE_EXTRA_CA_CERTS:-}"
       # Microsoft Graph app-registration creds — used to redeem each tree's stored
       # per-user refresh token for a Graph access token during org-source sync.
       MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-}

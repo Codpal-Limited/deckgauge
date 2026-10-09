@@ -5,10 +5,10 @@
 # WHY A COMMAND AND NOT THE REALM EXPORT. Adding the user to
 # keycloak/realm-export.json would need no command at all — `--import-realm`
 # would create it on first boot. It is deliberately NOT done: the community
-# docker-compose.yml leaves `${BIND_HOST-}` unset, so a default install
-# publishes Postgres, Redis and Keycloak on 0.0.0.0, and a known-password
-# cockpit-admin in a file every clone imports is a backdoor in installs that
-# never asked for one. keycloak/ is on the OSS allowlist, so that file is public.
+# docker-compose.yml binds loopback by default now, but one `BIND_HOST=` in .env
+# publishes Keycloak on 0.0.0.0 (and it did by default until GitHub issue #7),
+# and a known-password cockpit-admin in a file every clone imports is a backdoor
+# in installs that never asked for one. keycloak/ is on the OSS allowlist, so that file is public.
 #
 # WHY cockpit-admin. The cross-cutting people-analytics reads carry no board or
 # org-tree id, so they are gated on a Keycloak REALM ROLE rather than a row

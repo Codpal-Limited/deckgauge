@@ -38,7 +38,14 @@ export interface ChClient {
 export type ChClientFactory = (organizationId: string) => ChClient;
 
 export interface JiraIntelligenceResult {
+  /** Instances that had at least one project to fetch, and were fetched. */
   instancesProcessed: number;
+  /**
+   * Instances with NO project picked anywhere (no jira_project_syncs rows and an
+   * empty instance.projectKeys). Issue #8: these used to be counted as processed,
+   * so a sync that fetched nothing reported work done.
+   */
+  instancesSkipped: number;
   issuesWritten: number;
   transitionsWritten: number;
   worklogsWritten: number;
@@ -73,6 +80,7 @@ export async function handleJiraIntelligenceSync(
 ): Promise<JiraIntelligenceResult> {
   const result: JiraIntelligenceResult = {
     instancesProcessed: 0,
+    instancesSkipped: 0,
     issuesWritten: 0,
     transitionsWritten: 0,
     worklogsWritten: 0,
@@ -93,8 +101,15 @@ export async function handleJiraIntelligenceSync(
   const instances = await db.jiraInstance.findMany({ where });
 
   for (const instance of instances) {
-    result.instancesProcessed++;
     try {
+      const keys = job.projectKeys ?? (await resolveInstanceProjectKeys(db, instance));
+      // Nothing picked for this connection: skip it BEFORE building an adapter, and
+      // count it as skipped rather than processed (issue #8).
+      if (keys.length === 0) {
+        result.instancesSkipped++;
+        continue;
+      }
+      result.instancesProcessed++;
       // Bind ClickHouse to the organization that owns THIS connection — inside
       // the loop, so a second instance on another tenant gets its own client.
       const ch = chClientFor(instance.organizationId);
@@ -104,8 +119,6 @@ export async function handleJiraIntelligenceSync(
         email: instance.email,
         apiToken: instance.apiToken,
       });
-      const keys = job.projectKeys ?? (await resolveInstanceProjectKeys(db, instance));
-      if (keys.length === 0) continue;
       // Stream page-by-page: insert each page into ClickHouse as it arrives so
       // peak memory stays bounded to one page. Buffering the full result set
       // OOM-killed the worker (384M cap) on real-sized projects and tripped
