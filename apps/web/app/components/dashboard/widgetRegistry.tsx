@@ -541,7 +541,7 @@ export const WIDGET_CATALOG: WidgetDefinition[] = [
   {
     type: 'LEAD_TIME_FOR_CHANGES',
     label: 'Lead Time for Changes',
-    description: 'Weekly p50 hours: first commit → PR merged. DX Core 4 Speed metric.',
+    description: 'Weekly p50 hours: PR opened → production deploy (→ merge where no deploys are recorded). DORA speed metric.',
     timeAware: true,
     category: 'speed', subject: 'pull_requests',
     sources: ['github', 'gitlab', 'ado'],
@@ -879,7 +879,7 @@ export const WIDGET_CATALOG: WidgetDefinition[] = [
   },
   {
     type: 'DORA_METRICS', label: 'DORA Metrics',
-    description: 'The four DORA metrics (lead time, deploy frequency, change failure rate, time to restore) with Elite/High/Medium/Low tiers. DF/CFR/MTTR are proxies — no deployment/incident source yet.',
+    description: 'The four DORA metrics (lead time, deploy frequency, change failure rate, time to restore) with Elite/High/Medium/Low tiers. Lead time, deploy frequency and change failure rate are measured from production deployment records where they exist and labelled as proxies where not; time to restore is always a proxy.',
     timeAware: true,
     category: 'flow', subject: 'pull_requests',
     sources: ['github', 'gitlab', 'ado', 'jira'],

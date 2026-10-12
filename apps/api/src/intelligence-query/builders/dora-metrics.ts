@@ -8,6 +8,7 @@ import { registerBuilder } from './registry.js';
 import type { BuilderInputs, BuiltSql } from './types.js';
 import { formatDateTime, resolveWeeks } from '../../widgets/widget-helpers.js';
 import { resolvePeriod } from './period.js';
+import { leadTimePerChangeSql } from './lead-time-per-change.js';
 
 const DEFAULT_WEEKS = 12;
 
@@ -46,8 +47,11 @@ const CORRECTIVE_RE =
 // reports which one it used via `deploy_source` so the widget can label a proxied
 // number instead of passing it off as observed.
 //
+// Lead time is measured to the production deploy that shipped each PR where the
+// repository has deploy records, and to merge elsewhere (lead-time-per-change.ts).
+// lead_time_changes / lead_time_changes_to_deploy let the service say which.
+//
 // Still PROXIES (no incident source exists):
-//   lead_time_hours    = p50 cycle time of merged PRs
 //   corrective/total   = corrective-commit ratio → Change Failure Rate
 //   ttr_hours          = p50 hours a bug-issue was open → closed. issuesUnion
 //                        coalesces Jira closed_at with the first done transition
@@ -63,11 +67,25 @@ export function buildDoraMetricsSql({ config, scope }: BuilderInputs): BuiltSql 
   const weeks = resolveWeeks((config as { weeks?: unknown }).weeks, DEFAULT_WEEKS);
   const { from, to } = resolvePeriod(config, Date.now, weeks * 7);
 
-  const leadTimeCol = prs.sql
-    ? `(SELECT quantile(0.5)(cycle_time_hours) FROM (${prs.sql})
-         WHERE merged_at IS NOT NULL AND merged_at >= {from:DateTime} AND merged_at < {to:DateTime}
-           AND cycle_time_hours IS NOT NULL AND state = 'merged')`
+  // One aggregate yields the median AND its coverage as a tuple. The subquery
+  // text appears three times below, but ClickHouse evaluates identical scalar
+  // subqueries once per query, so the PR/deploy pairing is not repeated.
+  const changes = leadTimePerChangeSql(scope);
+  const leadTimeTuple = changes.sql
+    ? `(SELECT tuple(quantile(0.5)(lead_time_hours), count(), countIf(measured_to = 'deploy'))
+         FROM (${changes.sql})
+         WHERE merged_at >= {from:DateTime} AND merged_at < {to:DateTime}
+           AND lead_time_hours IS NOT NULL)`
+    : null;
+  const leadTimeCol = leadTimeTuple
+    ? `tupleElement(${leadTimeTuple}, 1)`
     : `CAST(NULL AS Nullable(Float64))`;
+  const leadTimeChangesCol = leadTimeTuple
+    ? `tupleElement(${leadTimeTuple}, 2)`
+    : `CAST(NULL AS Nullable(UInt64))`;
+  const leadTimeToDeployCol = leadTimeTuple
+    ? `tupleElement(${leadTimeTuple}, 3)`
+    : `CAST(NULL AS Nullable(UInt64))`;
 
   // Real deploys: SUCCESSFUL and PRODUCTION only. A failed deploy did not ship,
   // and counting every pre-production stage of a multi-stage pipeline would
@@ -140,6 +158,8 @@ export function buildDoraMetricsSql({ config, scope }: BuilderInputs): BuiltSql 
   return {
     sql: `SELECT
         ${leadTimeCol}      AS lead_time_hours,
+        ${leadTimeChangesCol} AS lead_time_changes,
+        ${leadTimeToDeployCol} AS lead_time_changes_to_deploy,
         ${deploysRealCol}   AS deploys_real,
         ${deploysProxyCol}  AS deploys_proxy,
         ${correctiveCol}    AS corrective_commits,
@@ -149,8 +169,11 @@ export function buildDoraMetricsSql({ config, scope }: BuilderInputs): BuiltSql 
         ${totalReleasesCol} AS total_releases`,
     // Union params share identical keys+values (same scope arrays), so merging
     // is safe — e.g. {ghRepos} appears in the PR, commit and issue subqueries.
+    // The one union that filters a SUBSET of projects (deploymentsUnion's
+    // heuristic ADO leg) names its keys deploy* for exactly this reason.
     params: {
       ...prs.params,
+      ...changes.params,
       ...commits.params,
       ...issues.params,
       ...deployments.params,

@@ -676,8 +676,8 @@ export type {
   InvestmentAllocation,
 } from './investment-allocation.js';
 
-export { DORA_BENCHMARKS, DORA_METRIC_LABELS, classifyDora, buildDoraScorecard } from './dora.js';
-export type { DoraMetricKey, DoraMetric, DoraInputs } from './dora.js';
+export { DORA_BENCHMARKS, DORA_METRIC_LABELS, classifyDora, buildDoraScorecard, leadTimeSourceFor } from './dora.js';
+export type { DoraMetricKey, DoraMetric, DoraInputs, LeadTimeSource } from './dora.js';
 
 export {
   computeDelta,

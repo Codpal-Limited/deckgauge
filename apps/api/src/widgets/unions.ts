@@ -598,7 +598,16 @@ export function developerCommitsUnion(scope: BoardScope): UnionResult {
   return { sql: legs.length ? legs.join(' UNION ALL ') : null, params };
 }
 
-// Canonical deployment shape: deployed_at, is_success, is_production, release_key, source.
+// Canonical deployment shape: deployed_at, is_success, is_production, release_key,
+// repo, sha, source.
+//
+// `repo` / `sha` exist for lead time to production, which pairs a merged PR with
+// the next production deploy of the SAME repository. GitHub names the repository
+// outright. ado_deployments has no repo column — one release pipeline may deploy
+// any repository in its project — so its legs emit an empty repo plus the commit
+// the release was built from, and the lead-time builder resolves the repository
+// through ado_commits. A deploy whose repository cannot be resolved is simply not
+// paired with anything; it still counts for deploy frequency.
 //
 // Real deployment records, so DORA's deploy frequency can stop proxying it from
 // merged-PR count (see packages/shared/src/dora.ts and dora-metrics.ts).
@@ -663,7 +672,9 @@ const ADO_DEPLOYMENT_COLUMNS = `
   -- Callers count DISTINCT release_key so a release reaching production once
   -- counts once. Falls back to the deployment id when release_id is absent, so
   -- those rows stay distinct instead of collapsing into a single bucket.
-  concat('ado#', toString(if(release_id > 0, release_id, deployment_id))) AS release_key
+  concat('ado#', toString(if(release_id > 0, release_id, deployment_id))) AS release_key,
+  ''                                          AS repo,
+  coalesce(source_sha, '')                    AS sha
 `;
 
 // GitHub needs no name guessing and no branch corroboration: `production` is an
@@ -674,7 +685,9 @@ const GITHUB_DEPLOYMENT_COLUMNS = `
   coalesce(latest_status_at, created_at)      AS deployed_at,
   latest_status = 'success'                   AS is_success,
   production                                  AS is_production,
-  concat('gh#', toString(deployment_id))      AS release_key
+  concat('gh#', toString(deployment_id))      AS release_key,
+  repo_full_name                              AS repo,
+  sha                                         AS sha
 `;
 
 export function deploymentsUnion(scope: BoardScope): UnionResult {
@@ -706,6 +719,8 @@ export function deploymentsUnion(scope: BoardScope): UnionResult {
         (has({${defsKey}:Array(String)}, definition_name)
          OR has({${stagesKey}:Array(String)}, environment))    AS is_production,
         concat('ado#', toString(if(release_id > 0, release_id, deployment_id))) AS release_key,
+        ''                                                     AS repo,
+        coalesce(source_sha, '')                               AS sha,
         'ado' AS source
       FROM cockpit.ado_deployments FINAL
       WHERE org_url = {${orgKey}:String} AND project = {${projKey}:String}`);
@@ -726,8 +741,20 @@ export function deploymentsUnion(scope: BoardScope): UnionResult {
       scope.adoProjectRefs === undefined || scope.adoProjectRefs.length === 0
         ? scope
         : { ...scope, adoProjectRefs: heuristicRefs };
+    // The heuristic leg filters a SUBSET of the board's projects, so its params
+    // get their own names: builders merge every union's params into one map, and
+    // the shared adoProjects/adoOrgs/adoRefs keys would otherwise let this subset
+    // re-scope the PR and commit unions (or let theirs re-admit configured
+    // projects here), depending only on spread order.
+    const local: Record<string, unknown> = {};
+    let filter = adoScopeFilter(heuristicScope, local);
+    for (const [key, value] of Object.entries(local)) {
+      const renamed = `deploy${key[0]!.toUpperCase()}${key.slice(1)}`;
+      filter = filter.split(`{${key}:`).join(`{${renamed}:`);
+      params[renamed] = value;
+    }
     legs.push(`SELECT ${ADO_DEPLOYMENT_COLUMNS}, 'ado' AS source
-      FROM cockpit.ado_deployments FINAL WHERE ${adoScopeFilter(heuristicScope, params)}`);
+      FROM cockpit.ado_deployments FINAL WHERE ${filter}`);
   }
   if (scope.githubRepoFullNames.length) {
     legs.push(`SELECT ${GITHUB_DEPLOYMENT_COLUMNS}, 'github' AS source

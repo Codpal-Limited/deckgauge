@@ -61,7 +61,7 @@ export const WIDGET_HELP: Record<string, WidgetHelp> = {
   },
   LEAD_TIME_FOR_CHANGES: {
     howToRead:
-      'Each point is the median (p50) hours from a change’s first commit to its PR being merged, plotted weekly. Lower is better; the shaded bands mark the Elite/High/Medium/Low benchmark thresholds.',
+      'Each point is the median (p50) hours from a PR being opened to the production deploy that shipped it, plotted by merge week. Repositories with no production deployment records are measured to merge instead — the caption above the chart says which, and a merge-measured line leaves out any release queue. Lower is better; the shaded bands mark the Elite/High/Medium/Low benchmark thresholds.',
     whatToLookFor: [
       'The trend direction — a line drifting upward week over week means changes take longer to land.',
       'Which benchmark band the recent weeks sit in.',

@@ -17,6 +17,8 @@ import {
   buildPeriodComparison,
   type PeriodComparisonMetric,
   type PeriodMetricKey,
+  leadTimeSourceFor,
+  type LeadTimeSource,
 } from '@deckgauge/shared';
 import { getWidgetBoardScope } from './widget-board-scope.js';
 import { getFocusSnapshot, EMPTY_SNAPSHOT_REASON } from '../focus/focus-data.service.js';
@@ -106,6 +108,13 @@ export interface DoraMetricsResult {
    * {@link deploySource}.
    */
   changeFailureSource?: 'deployments' | 'commit_proxy';
+  /**
+   * Where Lead Time ends: 'deployments' = every change was traced to the
+   * production deploy that shipped it; 'merge_proxy' = none were, so it stops at
+   * merge and leaves out any release queue; 'mixed' = some of each. Either way
+   * it starts at PR open, not first commit — see lead-time-per-change.ts.
+   */
+  leadTimeSource?: LeadTimeSource;
   emptyReason?: 'no_source';
 }
 
@@ -127,6 +136,8 @@ export interface PeriodComparisonResult {
 
 export interface LeadTimeForChangesResult {
   weeks: Array<{ week_start: string; p50_hours: number; tier: Tier }>;
+  /** Which endpoint the line measures over the whole window — see DoraMetricsResult. */
+  leadTimeSource?: LeadTimeSource;
   emptyReason?: 'no_pr_source';
 }
 
@@ -871,15 +882,23 @@ export class WidgetDataService {
       query_params: built.params,
       format: 'JSONEachRow',
     });
-    const rows = castRows<{ week_start: string; p50_hours: number | string | null }>(
-      await result.json()
-    );
+    const rows = castRows<{
+      week_start: string;
+      p50_hours: number | string | null;
+      changes?: number | string | null;
+      changes_to_deploy?: number | string | null;
+    }>(await result.json());
     const cfg = BENCHMARKS_V1.LEAD_TIME_FOR_CHANGES!;
+    // Labelled over the whole window, not per week: the chart has one line, and
+    // a caption that changed meaning point by point would be unreadable.
+    const changes = rows.reduce((n, r) => n + Number(r.changes ?? 0), 0);
+    const toDeploy = rows.reduce((n, r) => n + Number(r.changes_to_deploy ?? 0), 0);
     return {
       weeks: rows.map((r) => {
         const p50 = Math.round(Number(r.p50_hours ?? 0) * 10) / 10;
         return { week_start: r.week_start, p50_hours: p50, tier: tierFor(p50, cfg) };
       }),
+      leadTimeSource: leadTimeSourceFor(toDeploy, changes),
     };
   }
 
@@ -1270,6 +1289,8 @@ export class WidgetDataService {
     });
     const rows = castRows<{
       lead_time_hours: number | string | null;
+      lead_time_changes?: number | string | null;
+      lead_time_changes_to_deploy?: number | string | null;
       deploys_real: number | string | null;
       deploys_proxy: number | string | null;
       corrective_commits: number | string | null;
@@ -1325,7 +1346,12 @@ export class WidgetDataService {
       timeToRestoreHours: num(r?.ttr_hours),
     });
 
-    return { metrics, weeks, deploySource, changeFailureSource };
+    const leadTimeSource = leadTimeSourceFor(
+      num(r?.lead_time_changes_to_deploy) ?? 0,
+      num(r?.lead_time_changes) ?? 0,
+    );
+
+    return { metrics, weeks, deploySource, changeFailureSource, leadTimeSource };
   }
 
   // Period-over-Period scorecard. Runs the two-window builder in one round-trip,

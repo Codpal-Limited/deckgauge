@@ -4,8 +4,18 @@
 // sub-metrics are NOT widget types (BENCHMARKS_V1 is keyed by widget type).
 //
 // Which of these are measured and which are proxied:
-//   - Lead Time         : p50 cycle time (first commit → merge) of merged PRs.
-//                         Measured.
+//   - Lead Time         : p50 hours from PR OPENED to the change running in
+//                         production — the first successful production deploy of
+//                         the same repository at or after the merge. Measured for
+//                         repositories that have production deployment records
+//                         (cockpit.github_deployments; cockpit.ado_deployments
+//                         whose source commit resolves to a repository). PROXIED
+//                         as PR opened → merged for everything else, and
+//                         DoraMetricsResult / LeadTimeForChangesResult report
+//                         which via leadTimeSource ('mixed' when a board has
+//                         both). Neither endpoint starts at the FIRST COMMIT, as
+//                         DORA's definition does: nothing ingested links a PR to
+//                         its commits, so PR open is the earliest observed event.
 //   - Deploy Frequency  : successful PRODUCTION deployments per week, from real
 //                         deployment records (cockpit.ado_deployments — classic
 //                         Release pipelines — and cockpit.github_deployments).
@@ -13,10 +23,9 @@
 //                         scope has no deployment source; DoraMetricsResult
 //                         reports which via deploySource, and the widget labels
 //                         a proxied number.
-//   - Change Failure Rate: PROXY — corrective-commit ratio (fix/revert/hotfix
-//                          message match), the same signal Rework Rate uses.
-//                          Could move to failed-vs-total deployments now that
-//                          deployment records carry a status, but has not.
+//   - Change Failure Rate: failed / total production releases where release
+//                          outcomes exist; otherwise PROXIED as the
+//                          corrective-commit ratio (changeFailureSource).
 //   - Time to Restore   : PROXY — p50 hours from bug-issue opened → closed;
 //                         there is no incident source.
 // Thresholds follow the commonly-cited DORA state-of-DevOps bands.
@@ -108,4 +117,17 @@ export function buildDoraScorecard(inputs: DoraInputs): DoraMetric[] {
       tier: classifyDora(key, value),
     };
   });
+}
+
+/**
+ * Where a lead-time figure ends. `deployments`: every change in it was traced to
+ * a production deploy. `merge_proxy`: none were, so it stops at merge — which
+ * excludes any release queue and reads shorter than DORA's definition. `mixed`:
+ * some of each, so the median blends two endpoints and must be labelled as such.
+ */
+export type LeadTimeSource = 'deployments' | 'merge_proxy' | 'mixed';
+
+export function leadTimeSourceFor(toDeploy: number, total: number): LeadTimeSource {
+  if (toDeploy <= 0) return 'merge_proxy';
+  return toDeploy >= total ? 'deployments' : 'mixed';
 }

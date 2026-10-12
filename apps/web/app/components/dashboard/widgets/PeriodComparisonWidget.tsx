@@ -45,7 +45,7 @@ const GRADE_STYLE: Record<TrajectoryGrade, { cls: string; word: string }> = {
 // widget (not in the shared help map) because it is specific to these five rows.
 const METRIC_HELP: Record<PeriodMetricKey, { measures: string; meaning: string }> = {
   cycle_time: {
-    measures: "Median time from a change's first commit to its pull request being merged.",
+    measures: 'Median time from a pull request being opened to it being merged.',
     meaning:
       'How fast the team turns started work into merged code. Rising cycle time usually means reviews are slow or PRs are too large — the biggest lever on delivery speed. Lower is better.',
   },

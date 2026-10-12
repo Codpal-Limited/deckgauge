@@ -1,6 +1,6 @@
 'use client';
 
-import type { DoraMetric } from '@deckgauge/shared';
+import type { DoraMetric, LeadTimeSource } from '@deckgauge/shared';
 import { useWidgetConfigWithBoardPeriod } from '../useWidgetConfigWithBoardPeriod';
 import { useWidgetData } from './useWidgetData';
 import { WidgetErrorState } from './WidgetErrorState';
@@ -16,24 +16,48 @@ interface Data {
   weeks: number;
   deploySource?: 'deployments' | 'merge_proxy';
   changeFailureSource?: 'deployments' | 'commit_proxy';
+  leadTimeSource?: LeadTimeSource;
   emptyReason?: string;
 }
 
-// Two of the four DORA metrics can be either measured or estimated, and each has
-// its own source and its own reason for falling back — so they are labelled
+// Three of the four DORA metrics can be either measured or estimated, and each
+// has its own source and its own reason for falling back — so they are labelled
 // independently. An unlabelled proxy reads as an observed number and gets quoted
 // in board decks as one; a blanket caveat over the whole card would be the
 // opposite error, discrediting the metrics that ARE observed.
-function proxyNoteFor(metricKey: string, data: Data): string | null {
+interface ProxyMark {
+  marker: string;
+  note: string;
+}
+
+function proxyMarkFor(metricKey: string, data: Data): ProxyMark | null {
+  if (metricKey === 'lead_time') {
+    if (data.leadTimeSource === 'deployments') return null;
+    return data.leadTimeSource === 'mixed'
+      ? {
+          marker: '(partly proxied)',
+          note: 'PR opened → production deploy for repositories with deployment records; PR opened → merge for the rest, which leaves out any release queue.',
+        }
+      : {
+          marker: '(proxy)',
+          note: 'PR opened → merge. No production deployment on this board could be traced to these changes, so any wait between merge and release is not included.',
+        };
+  }
   if (metricKey === 'deploy_frequency') {
     return data.deploySource === 'deployments'
       ? null
-      : 'Proxied from merged-PR count — no deployment source on this board, or none of its release stages could be identified as production.';
+      : {
+          marker: '(proxy)',
+          note: 'Proxied from merged-PR count — no deployment source on this board, or none of its release stages could be identified as production.',
+        };
   }
   if (metricKey === 'change_failure_rate') {
     return data.changeFailureSource === 'deployments'
       ? null
-      : 'Proxied from the share of commits whose message looks corrective — no production release on this board carried a pass/fail outcome.';
+      : {
+          marker: '(proxy)',
+          note: 'Proxied from the share of commits whose message looks corrective — no production release on this board carried a pass/fail outcome.',
+        };
   }
   return null;
 }
@@ -70,7 +94,7 @@ export default function DoraMetricsWidget({ boardId, config }: Props) {
     <div className="grid grid-cols-2 gap-2 p-1">
       {data.metrics.map((m) => {
         const tier = m.tier ? TIER_STYLE[m.tier] : null;
-        const proxyNote = proxyNoteFor(m.key, data);
+        const proxyMark = proxyMarkFor(m.key, data);
         return (
           <div
             key={m.key}
@@ -78,9 +102,9 @@ export default function DoraMetricsWidget({ boardId, config }: Props) {
           >
             <div className="text-xs font-medium text-slate-500">
               {m.label}
-              {proxyNote ? (
-                <span className="ml-1 cursor-help text-slate-400" title={proxyNote}>
-                  (proxy)
+              {proxyMark ? (
+                <span className="ml-1 cursor-help text-slate-400" title={proxyMark.note}>
+                  {proxyMark.marker}
                 </span>
               ) : null}
             </div>
