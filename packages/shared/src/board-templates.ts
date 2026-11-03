@@ -64,6 +64,12 @@ export interface BoardTemplateExplainer {
 export interface TemplateViews {
   /** Dashboard preset to seed, or null for no dashboard (statistics). */
   dashboard: 'engineering-intelligence' | null;
+  /**
+   * Whether to seed the Team Focus view. Only delivery boards have the
+   * tracker data it reads, so it is seeded — and its opt-in banner offered —
+   * on development boards alone.
+   */
+  focus: boolean;
   /** Whether to seed a ROADMAP view + its config. */
   roadmap: boolean;
 }
@@ -111,7 +117,7 @@ const BLANK_TEMPLATE: BoardTemplate = {
   includeSizeColumn: true,
   groups: [],
   extraColumns: [],
-  views: { dashboard: null, roadmap: false },
+  views: { dashboard: null, focus: false, roadmap: false },
 };
 
 const DEVELOPMENT_TEMPLATE: BoardTemplate = {
@@ -131,7 +137,7 @@ const DEVELOPMENT_TEMPLATE: BoardTemplate = {
   includeSizeColumn: true,
   groups: [],
   extraColumns: [],
-  views: { dashboard: 'engineering-intelligence', roadmap: true },
+  views: { dashboard: 'engineering-intelligence', focus: true, roadmap: true },
 };
 
 const RECRUITMENT_TEMPLATE: BoardTemplate = {
@@ -161,7 +167,7 @@ const RECRUITMENT_TEMPLATE: BoardTemplate = {
     { name: 'Target start', type: 'DATE' },
     { name: 'Decision', type: 'STATUS', config: RECRUITMENT_DECISION_CONFIG },
   ],
-  views: { dashboard: null, roadmap: false },
+  views: { dashboard: null, focus: false, roadmap: false },
 };
 
 const TEMPLATES: Record<BoardKind, BoardTemplate> = {

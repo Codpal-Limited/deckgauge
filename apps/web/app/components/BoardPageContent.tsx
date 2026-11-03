@@ -251,7 +251,13 @@ export default function BoardPageContent({
           <ApplyPresetBanner
             boardId={boardId}
             presetKey="team-focus-v1"
-            alreadyApplied={views.some((v) => v.presetKey === 'team-focus-v1')}
+            // Team Focus reads tracker data, so it is only offered on
+            // development boards. New ones are seeded with the tab already
+            // (BoardService.create); this banner is for boards that predate it.
+            alreadyApplied={
+              boardViewProps.board?.kind !== 'development' ||
+              views.some((v) => v.presetKey === 'team-focus-v1')
+            }
             onApplied={(viewId) => setActiveViewId(viewId)}
           />
         <BoardView

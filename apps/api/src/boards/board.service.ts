@@ -11,7 +11,10 @@ import {
   DEFAULT_BOARD_KIND,
   type ColumnLayout,
 } from '@deckgauge/shared';
-import { ENGINEERING_INTELLIGENCE_PRESET_V1 } from '../widgets/presets.service.js';
+import {
+  ENGINEERING_INTELLIGENCE_PRESET_V1,
+  TEAM_FOCUS_PRESET_V1,
+} from '../widgets/presets.service.js';
 
 export const CreateBoardInputSchema = z.object({
   name: z.string().trim().min(1),
@@ -147,6 +150,30 @@ export class BoardService {
         await tx.dashboardWidget.createMany({
           data: ENGINEERING_INTELLIGENCE_PRESET_V1.widgets.map((w) => ({
             boardViewId: dashView.id,
+            widgetType: w.type,
+            title: w.title,
+            config: w.config as Prisma.InputJsonValue,
+            layout: w.layout as unknown as Prisma.InputJsonValue,
+          })),
+        });
+      }
+
+      // Team Focus — seeded up front on development boards so a new board opens
+      // with the tab already there, instead of an "Apply preset" banner.
+      if (template.views.focus) {
+        const focusView = await tx.boardView.create({
+          data: {
+            boardId: board.id,
+            type: TEAM_FOCUS_PRESET_V1.viewType ?? 'DASHBOARD',
+            name: TEAM_FOCUS_PRESET_V1.viewName,
+            position: 2,
+            presetKey: TEAM_FOCUS_PRESET_V1.presetKey,
+          },
+        });
+
+        await tx.dashboardWidget.createMany({
+          data: TEAM_FOCUS_PRESET_V1.widgets.map((w) => ({
+            boardViewId: focusView.id,
             widgetType: w.type,
             title: w.title,
             config: w.config as Prisma.InputJsonValue,
