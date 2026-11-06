@@ -3,6 +3,7 @@ import { JiraConnectionsPanel } from '../components/connections/JiraConnectionsP
 import { GitHubConnectionsPanel } from '../components/connections/GitHubConnectionsPanel';
 import { AzureDevOpsConnectionsPanel } from '../components/connections/AzureDevOpsConnectionsPanel';
 import { GitLabConnectionsPanel } from '../components/connections/GitLabConnectionsPanel';
+import { BitbucketConnectionsPanel } from '../components/connections/BitbucketConnectionsPanel';
 import { InstancesPanel } from '../components/connections/InstancesPanel';
 import { AddConnectionPanel } from '../components/connections/AddConnectionPanel';
 import { RetiredProjectsPanel } from '../components/connections/RetiredProjectsPanel';
@@ -11,22 +12,27 @@ import {
   listGitHubRepoSyncs,
   listAdoProjectSyncs,
   listGitLabProjectSyncs,
+  listBitbucketRepoSyncs,
   listJiraInstances,
   listGitHubInstances,
   listAdoInstances,
   listGitLabInstances,
+  listBitbucketInstances,
   refreshJiraToken,
   refreshGitHubToken,
   refreshAdoToken,
   refreshGitLabToken,
+  refreshBitbucketToken,
   testJiraConnection,
   testGitHubConnection,
   testAdoConnection,
   testGitLabConnection,
+  testBitbucketConnection,
   deleteJiraInstance,
   deleteGitHubInstance,
   deleteAdoInstance,
   deleteGitLabInstance,
+  deleteBitbucketInstance,
 } from '../actions/connections';
 import { listRetiredProjects } from '../actions/retired-projects';
 import { getBootstrapState } from '../actions/organization';
@@ -101,11 +107,12 @@ export default async function SourcesPage() {
   // why this cannot read `state.membership`.
   const canAddConnections = canManageOwnConnections(state);
 
-  const [jiraSyncs, githubSyncs, adoSyncs, gitlabSyncs, retiredProjects] = await Promise.all([
+  const [jiraSyncs, githubSyncs, adoSyncs, gitlabSyncs, bitbucketSyncs, retiredProjects] = await Promise.all([
     listJiraProjectSyncs().catch(() => []),
     listGitHubRepoSyncs().catch(() => []),
     listAdoProjectSyncs().catch(() => []),
     listGitLabProjectSyncs().catch(() => []),
+    listBitbucketRepoSyncs().catch(() => []),
     listRetiredProjects().catch(() => []),
   ]);
 
@@ -115,11 +122,12 @@ export default async function SourcesPage() {
   // entitled to see and manage. The API filters the list — organization-wide plus
   // the caller's own, everything for an admin — so this page does not decide who
   // sees what, which is the only place that decision belongs.
-  const [jiraInstances, githubInstances, adoInstances, gitlabInstances] = await Promise.all([
+  const [jiraInstances, githubInstances, adoInstances, gitlabInstances, bitbucketInstances] = await Promise.all([
     listJiraInstances().catch(() => []),
     listGitHubInstances().catch(() => []),
     listAdoInstances().catch(() => []),
     listGitLabInstances().catch(() => []),
+    listBitbucketInstances().catch(() => []),
   ]);
 
   const knownProjectKeys = Array.from(
@@ -184,6 +192,15 @@ export default async function SourcesPage() {
             onRefresh={refreshGitLabToken}
             onDelete={deleteGitLabInstance}
           />
+          <InstancesPanel
+            provider="bitbucket"
+            title="Bitbucket"
+            instances={bitbucketInstances}
+            syncCount={countByInstance(bitbucketSyncs, 'bitbucketInstanceId')}
+            onTest={testBitbucketConnection}
+            onRefresh={refreshBitbucketToken}
+            onDelete={deleteBitbucketInstance}
+          />
         </>
       ) : (
         <p className="rounded-lg border border-slate-200 bg-white px-6 py-4 text-sm text-slate-600">
@@ -204,6 +221,7 @@ export default async function SourcesPage() {
         canManageConnections={canManageConnections}
       />
       <GitLabConnectionsPanel initialSyncs={gitlabSyncs} instances={gitlabInstances} />
+      <BitbucketConnectionsPanel initialSyncs={bitbucketSyncs} instances={bitbucketInstances} />
     </div>
   );
 }

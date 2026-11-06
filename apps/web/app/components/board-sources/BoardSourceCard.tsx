@@ -5,6 +5,7 @@ import { GitHubBoardZone, type GitHubZoneValue } from './zone-board/GitHubBoardZ
 import { AdoBoardZone, type AdoZoneValue } from './zone-board/AdoBoardZone';
 import { JiraBoardZone, type JiraZoneValue } from './zone-board/JiraBoardZone';
 import { GitLabBoardZone, type GitLabZoneValue } from './zone-board/GitLabBoardZone';
+import { BitbucketBoardZone, type BitbucketZoneValue } from './zone-board/BitbucketBoardZone';
 import type { BoardStatusOption } from './StatusMappingEditor';
 import { FieldMappingEditor } from './FieldMappingEditor';
 import { TokenRefreshBox } from '../connections/TokenRefreshBox';
@@ -15,6 +16,7 @@ import {
   refreshGitHubToken,
   refreshAdoToken,
   refreshGitLabToken,
+  refreshBitbucketToken,
 } from '../../actions/connections';
 import { ORG_ADMIN_REQUIRED_TO_RECONNECT } from '../../lib/connection-permission';
 import type { SourceHealth } from '../../actions/board-sync';
@@ -33,9 +35,10 @@ const REFRESH_BY_PROVIDER = {
   github: refreshGitHubToken,
   ado: refreshAdoToken,
   gitlab: refreshGitLabToken,
+  bitbucket: refreshBitbucketToken,
 } as const;
 
-export type ProviderName = 'jira' | 'github' | 'ado' | 'gitlab';
+export type ProviderName = 'jira' | 'github' | 'ado' | 'gitlab' | 'bitbucket';
 
 type SourceCommon = {
   id: string;
@@ -73,7 +76,16 @@ export type SourceShape =
       zoneValue: AdoZoneValue;
       connection: ConnectionState;
     })
-  | (SourceCommon & { provider: 'gitlab'; zoneValue: GitLabZoneValue });
+  | (SourceCommon & { provider: 'gitlab'; zoneValue: GitLabZoneValue })
+  | (SourceCommon & {
+      provider: 'bitbucket';
+      // The shared BitbucketRepoSync — the PATCH target for the ingest switches,
+      // which live there rather than on the board source.
+      bitbucketRepoSyncId: string;
+      projectKey: string | null;
+      lastDeploymentSyncAt: string | null;
+      zoneValue: BitbucketZoneValue;
+    });
 
 // The ADO code-sync scope lives on the shared project sync, not the board
 // source, so it is persisted through a separate patch than the board-source fields.
@@ -140,6 +152,7 @@ function BadgeFor({ provider }: { provider: ProviderName }) {
     github: { bg: 'bg-[#0f172a]', label: 'GH' },
     ado: { bg: 'bg-sky-600', label: 'A' },
     gitlab: { bg: 'bg-orange-600', label: 'GL' },
+    bitbucket: { bg: 'bg-[#0052cc]', label: 'BB' },
   };
   const { bg, label } = map[provider];
   return (
@@ -181,6 +194,14 @@ function CollapsedChips({ source }: { source: SourceShape }) {
     case 'gitlab':
       chips.push({ label: 'gitlab items', tone: 'on' });
       break;
+    case 'bitbucket': {
+      const v = source.zoneValue;
+      const on = [v.syncPrs && 'PRs', v.syncCommits && 'commits', v.syncDeployments && 'deploys']
+        .filter(Boolean)
+        .join(' + ');
+      chips.push({ label: on ? `code: ${on}` : 'code skipped', tone: on ? 'intel' : 'off' });
+      break;
+    }
   }
   return (
     <div className="flex gap-1 ml-auto">
@@ -258,12 +279,18 @@ export function BoardSourceCard({
       ((draft as GitLabZoneValue).syncIssuesToBoard || (draft as GitLabZoneValue).syncMrsToBoard));
 
   const codeOn =
-    (source.provider === 'github' || source.provider === 'ado') && draftUseForIntelligence;
+    ((source.provider === 'github' || source.provider === 'ado') && draftUseForIntelligence) ||
+    (source.provider === 'bitbucket' &&
+      ((draft as BitbucketZoneValue).syncPrs ||
+        (draft as BitbucketZoneValue).syncCommits ||
+        (draft as BitbucketZoneValue).syncDeployments));
 
   async function handleSave() {
     if (!issuesOn && !codeOn) {
       setError(
-        'At least one of issues/code must be enabled. Detach the source if you do not want either.'
+        source.provider === 'bitbucket'
+          ? 'Turn on at least one of pull requests, commits or deployments — or detach the repository.'
+          : 'At least one of issues/code must be enabled. Detach the source if you do not want either.'
       );
       return;
     }
@@ -468,11 +495,23 @@ export function BoardSourceCard({
               previewCount={null}
             />
           )}
+          {source.provider === 'bitbucket' && (
+            <BitbucketBoardZone
+              value={draft as BitbucketZoneValue}
+              onChange={(v) => setDraft(v)}
+              projectKey={source.projectKey}
+              lastSyncedAt={source.lastSyncedAt}
+              lastDeploymentSyncAt={source.lastDeploymentSyncAt}
+            />
+          )}
 
-          {/* Rendered for every provider: exclusions are recorded the same way
-              whichever source the deleted row came from. Hides itself when the
-              board has nothing excluded for this provider. */}
-          <ExcludedItemsBlock boardId={boardId} provider={source.provider} />
+          {/* Rendered for every provider that writes board rows: exclusions are
+              recorded the same way whichever source the deleted row came from.
+              Hides itself when the board has nothing excluded for this provider.
+              Bitbucket writes no rows, so it can have no exclusions. */}
+          {source.provider !== 'bitbucket' && (
+            <ExcludedItemsBlock boardId={boardId} provider={source.provider} />
+          )}
 
           {error && (
             <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-3 py-2">

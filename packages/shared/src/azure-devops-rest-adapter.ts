@@ -325,6 +325,17 @@ export class AzureDevOpsRestAdapter implements AzureDevOpsPort {
     return ids;
   }
 
+  async fetchWorkItem(
+    id: number,
+  ): Promise<{ item: AzureDevOpsWorkItem; project: string } | null> {
+    const url = `${this.orgUrl}/_apis/wit/workitems/${id}?$expand=relations&api-version=7.1`;
+    const response = await this.makeRequest(url, { notFoundOk: true });
+    if (response.status === 404) return null;
+    const raw = (await response.json()) as RawWorkItem;
+    const project = (raw.fields as Record<string, unknown>)['System.TeamProject'];
+    return { item: this.mapWorkItem(raw), project: typeof project === 'string' ? project : '' };
+  }
+
   async fetchWorkItemTypes(project: string): Promise<string[]> {
     const url = `${this.orgUrl}/${encodeURIComponent(project)}/_apis/wit/workitemtypes?api-version=7.1`;
     const response = await this.makeRequest(url);
@@ -342,7 +353,7 @@ export class AzureDevOpsRestAdapter implements AzureDevOpsPort {
 
   private async makeRequest(
     url: string,
-    options: { method?: string; body?: string } = {},
+    options: { method?: string; body?: string; notFoundOk?: boolean } = {},
   ): Promise<Response> {
     if (this.consecutiveFailures >= CIRCUIT_BREAKER_THRESHOLD) {
       throw new AzureDevOpsCircuitOpenError();
@@ -380,6 +391,12 @@ export class AzureDevOpsRestAdapter implements AzureDevOpsPort {
 
       if (response.ok) {
         this.consecutiveFailures = 0;
+        return response;
+      }
+
+      // A caller asking for one item treats 404 as an answer ("no such item"),
+      // not a failure — so it neither throws nor counts toward the breaker.
+      if (response.status === 404 && options.notFoundOk) {
         return response;
       }
 

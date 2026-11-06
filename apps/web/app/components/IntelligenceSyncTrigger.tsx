@@ -4,7 +4,7 @@
 import { useState, useTransition } from 'react';
 import { triggerIntelligenceSync, type SyncTriggerResult } from '../actions/intelligence';
 
-type Source = 'jira' | 'github' | 'ado' | 'gitlab' | 'all';
+type Source = 'jira' | 'github' | 'ado' | 'gitlab' | 'bitbucket' | 'all';
 
 const TONE_CLASS: Record<SyncTriggerResult['tone'], string> = {
   success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
@@ -45,7 +45,7 @@ export function IntelligenceSyncTrigger() {
         >
           {isPending ? 'Enqueueing…' : 'Sync All Now'}
         </button>
-        {(['jira', 'github', 'ado', 'gitlab'] as Source[]).map((s) => (
+        {(['jira', 'github', 'ado', 'gitlab', 'bitbucket'] as Source[]).map((s) => (
           <button
             key={s}
             onClick={() => fire(s)}

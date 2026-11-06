@@ -429,7 +429,7 @@ export function BoardSidebar({
           summary: getBoardTemplate(createTarget.kind).explainer.summary,
           highlights: getBoardTemplate(createTarget.kind).explainer.highlights as readonly string[],
           footnote: boardCapabilities(createTarget.kind).sourceOnboarding
-            ? 'Next: connect Jira, GitHub, Azure DevOps, or GitLab.'
+            ? 'Next: connect Jira, GitHub, Azure DevOps, GitLab, or Bitbucket.'
             : undefined,
           nameLabel: 'Board name',
           namePlaceholder: 'e.g. Platform Team',

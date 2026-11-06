@@ -1,5 +1,6 @@
 'use client';
 
+import { EmployeePhoto } from './EmployeePhoto';
 import { useState, useRef, useEffect, useTransition } from 'react';
 import Link from 'next/link';
 import type { OrgEmployeeDto } from '@deckgauge/shared';
@@ -101,19 +102,30 @@ function Avatar({ employee, status }: { employee: OrgEmployeeDto; status: Activi
   const departed = status === 'departed';
   return (
     <span className="relative flex-shrink-0">
-      <span
-        aria-hidden="true"
+      <EmployeePhoto
+        src={employee.photoUrl}
         className={[
-          'grid h-9 w-9 place-items-center rounded-full text-[13px] font-semibold text-white ring-offset-1 ring-offset-surface-1',
+          'block h-9 w-9 rounded-full object-cover ring-offset-1 ring-offset-surface-1',
           RING_CLASS[status],
           departed ? 'opacity-50 grayscale' : '',
         ]
           .filter(Boolean)
           .join(' ')}
-        style={{ backgroundColor: avatarColor(employee.name) }}
       >
-        {getInitials(employee.name)}
-      </span>
+        <span
+          aria-hidden="true"
+          className={[
+            'grid h-9 w-9 place-items-center rounded-full text-[13px] font-semibold text-white ring-offset-1 ring-offset-surface-1',
+            RING_CLASS[status],
+            departed ? 'opacity-50 grayscale' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          style={{ backgroundColor: avatarColor(employee.name) }}
+        >
+          {getInitials(employee.name)}
+        </span>
+      </EmployeePhoto>
       {!departed && (
         <span
           className={`absolute -bottom-0.5 -right-0.5 grid h-3.5 w-3.5 place-items-center rounded-full text-white ring-2 ring-surface-1 ${DOT_CLASS[status]}`}

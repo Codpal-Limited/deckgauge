@@ -57,4 +57,13 @@ export interface JiraPort {
    * Callers treat its absence as "discovery unavailable", not as an error.
    */
   fetchFields?(): Promise<JiraFieldMeta[]>;
+  /**
+   * One issue by key, with the same baseline fields a sync fetches — what
+   * "add an item by its source link" loads. `null` when Jira answers 404 (the
+   * issue does not exist or this credential cannot see it); any other failure
+   * rejects.
+   *
+   * Optional for the same reason as the probes above.
+   */
+  fetchIssue?(issueKey: string): Promise<JiraIssue | null>;
 }

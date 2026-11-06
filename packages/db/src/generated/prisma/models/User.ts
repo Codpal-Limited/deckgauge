@@ -32,6 +32,7 @@ export type UserMinAggregateOutputType = {
   firstName: string | null
   lastName: string | null
   avatarUrl: string | null
+  avatarUploadId: string | null
   isAdmin: boolean | null
   activeOrganizationId: string | null
   createdAt: Date | null
@@ -46,6 +47,7 @@ export type UserMaxAggregateOutputType = {
   firstName: string | null
   lastName: string | null
   avatarUrl: string | null
+  avatarUploadId: string | null
   isAdmin: boolean | null
   activeOrganizationId: string | null
   createdAt: Date | null
@@ -60,6 +62,7 @@ export type UserCountAggregateOutputType = {
   firstName: number
   lastName: number
   avatarUrl: number
+  avatarUploadId: number
   isAdmin: number
   activeOrganizationId: number
   createdAt: number
@@ -76,6 +79,7 @@ export type UserMinAggregateInputType = {
   firstName?: true
   lastName?: true
   avatarUrl?: true
+  avatarUploadId?: true
   isAdmin?: true
   activeOrganizationId?: true
   createdAt?: true
@@ -90,6 +94,7 @@ export type UserMaxAggregateInputType = {
   firstName?: true
   lastName?: true
   avatarUrl?: true
+  avatarUploadId?: true
   isAdmin?: true
   activeOrganizationId?: true
   createdAt?: true
@@ -104,6 +109,7 @@ export type UserCountAggregateInputType = {
   firstName?: true
   lastName?: true
   avatarUrl?: true
+  avatarUploadId?: true
   isAdmin?: true
   activeOrganizationId?: true
   createdAt?: true
@@ -191,6 +197,7 @@ export type UserGroupByOutputType = {
   firstName: string | null
   lastName: string | null
   avatarUrl: string | null
+  avatarUploadId: string | null
   isAdmin: boolean
   activeOrganizationId: string | null
   createdAt: Date
@@ -226,10 +233,12 @@ export type UserWhereInput = {
   firstName?: Prisma.StringNullableFilter<"User"> | string | null
   lastName?: Prisma.StringNullableFilter<"User"> | string | null
   avatarUrl?: Prisma.StringNullableFilter<"User"> | string | null
+  avatarUploadId?: Prisma.StringNullableFilter<"User"> | string | null
   isAdmin?: Prisma.BoolFilter<"User"> | boolean
   activeOrganizationId?: Prisma.StringNullableFilter<"User"> | string | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  avatarUpload?: Prisma.XOR<Prisma.UploadNullableScalarRelationFilter, Prisma.UploadWhereInput> | null
   boardAccess?: Prisma.BoardAccessListRelationFilter
   boardOwners?: Prisma.BoardOwnerListRelationFilter
   comments?: Prisma.ProjectCommentListRelationFilter
@@ -252,10 +261,12 @@ export type UserWhereInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceListRelationFilter
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceListRelationFilter
   createdGitLabInstances?: Prisma.GitLabInstanceListRelationFilter
+  createdBitbucketInstances?: Prisma.BitbucketInstanceListRelationFilter
   ownedJiraInstances?: Prisma.JiraInstanceListRelationFilter
   ownedGitHubInstances?: Prisma.GitHubInstanceListRelationFilter
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceListRelationFilter
   ownedGitLabInstances?: Prisma.GitLabInstanceListRelationFilter
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceListRelationFilter
   orgMemberships?: Prisma.OrgMembershipListRelationFilter
   invitedMemberships?: Prisma.OrgMembershipListRelationFilter
 }
@@ -268,10 +279,12 @@ export type UserOrderByWithRelationInput = {
   firstName?: Prisma.SortOrderInput | Prisma.SortOrder
   lastName?: Prisma.SortOrderInput | Prisma.SortOrder
   avatarUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  avatarUploadId?: Prisma.SortOrderInput | Prisma.SortOrder
   isAdmin?: Prisma.SortOrder
   activeOrganizationId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  avatarUpload?: Prisma.UploadOrderByWithRelationInput
   boardAccess?: Prisma.BoardAccessOrderByRelationAggregateInput
   boardOwners?: Prisma.BoardOwnerOrderByRelationAggregateInput
   comments?: Prisma.ProjectCommentOrderByRelationAggregateInput
@@ -294,10 +307,12 @@ export type UserOrderByWithRelationInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceOrderByRelationAggregateInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceOrderByRelationAggregateInput
   createdGitLabInstances?: Prisma.GitLabInstanceOrderByRelationAggregateInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceOrderByRelationAggregateInput
   ownedJiraInstances?: Prisma.JiraInstanceOrderByRelationAggregateInput
   ownedGitHubInstances?: Prisma.GitHubInstanceOrderByRelationAggregateInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceOrderByRelationAggregateInput
   ownedGitLabInstances?: Prisma.GitLabInstanceOrderByRelationAggregateInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceOrderByRelationAggregateInput
   orgMemberships?: Prisma.OrgMembershipOrderByRelationAggregateInput
   invitedMemberships?: Prisma.OrgMembershipOrderByRelationAggregateInput
 }
@@ -306,6 +321,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   keycloakId?: string
   email?: string
+  avatarUploadId?: string
   AND?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
   OR?: Prisma.UserWhereInput[]
   NOT?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
@@ -317,6 +333,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   activeOrganizationId?: Prisma.StringNullableFilter<"User"> | string | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  avatarUpload?: Prisma.XOR<Prisma.UploadNullableScalarRelationFilter, Prisma.UploadWhereInput> | null
   boardAccess?: Prisma.BoardAccessListRelationFilter
   boardOwners?: Prisma.BoardOwnerListRelationFilter
   comments?: Prisma.ProjectCommentListRelationFilter
@@ -339,13 +356,15 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   createdGitHubInstances?: Prisma.GitHubInstanceListRelationFilter
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceListRelationFilter
   createdGitLabInstances?: Prisma.GitLabInstanceListRelationFilter
+  createdBitbucketInstances?: Prisma.BitbucketInstanceListRelationFilter
   ownedJiraInstances?: Prisma.JiraInstanceListRelationFilter
   ownedGitHubInstances?: Prisma.GitHubInstanceListRelationFilter
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceListRelationFilter
   ownedGitLabInstances?: Prisma.GitLabInstanceListRelationFilter
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceListRelationFilter
   orgMemberships?: Prisma.OrgMembershipListRelationFilter
   invitedMemberships?: Prisma.OrgMembershipListRelationFilter
-}, "id" | "keycloakId" | "email">
+}, "id" | "keycloakId" | "email" | "avatarUploadId">
 
 export type UserOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -355,6 +374,7 @@ export type UserOrderByWithAggregationInput = {
   firstName?: Prisma.SortOrderInput | Prisma.SortOrder
   lastName?: Prisma.SortOrderInput | Prisma.SortOrder
   avatarUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  avatarUploadId?: Prisma.SortOrderInput | Prisma.SortOrder
   isAdmin?: Prisma.SortOrder
   activeOrganizationId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -375,6 +395,7 @@ export type UserScalarWhereWithAggregatesInput = {
   firstName?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   lastName?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   avatarUrl?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  avatarUploadId?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   isAdmin?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
   activeOrganizationId?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
@@ -393,6 +414,7 @@ export type UserCreateInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -415,10 +437,12 @@ export type UserCreateInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -431,6 +455,7 @@ export type UserUncheckedCreateInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -457,10 +482,12 @@ export type UserUncheckedCreateInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -477,6 +504,7 @@ export type UserUpdateInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -499,10 +527,12 @@ export type UserUpdateInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -515,6 +545,7 @@ export type UserUncheckedUpdateInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -541,10 +572,12 @@ export type UserUncheckedUpdateInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -557,6 +590,7 @@ export type UserCreateManyInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -585,6 +619,7 @@ export type UserUncheckedUpdateManyInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -604,6 +639,7 @@ export type UserCountOrderByAggregateInput = {
   firstName?: Prisma.SortOrder
   lastName?: Prisma.SortOrder
   avatarUrl?: Prisma.SortOrder
+  avatarUploadId?: Prisma.SortOrder
   isAdmin?: Prisma.SortOrder
   activeOrganizationId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -618,6 +654,7 @@ export type UserMaxOrderByAggregateInput = {
   firstName?: Prisma.SortOrder
   lastName?: Prisma.SortOrder
   avatarUrl?: Prisma.SortOrder
+  avatarUploadId?: Prisma.SortOrder
   isAdmin?: Prisma.SortOrder
   activeOrganizationId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -632,6 +669,7 @@ export type UserMinOrderByAggregateInput = {
   firstName?: Prisma.SortOrder
   lastName?: Prisma.SortOrder
   avatarUrl?: Prisma.SortOrder
+  avatarUploadId?: Prisma.SortOrder
   isAdmin?: Prisma.SortOrder
   activeOrganizationId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -737,6 +775,38 @@ export type UserUpdateOneWithoutOwnedJiraInstancesNestedInput = {
   delete?: Prisma.UserWhereInput | boolean
   connect?: Prisma.UserWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutOwnedJiraInstancesInput, Prisma.UserUpdateWithoutOwnedJiraInstancesInput>, Prisma.UserUncheckedUpdateWithoutOwnedJiraInstancesInput>
+}
+
+export type UserCreateNestedOneWithoutAvatarUploadInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAvatarUploadInput, Prisma.UserUncheckedCreateWithoutAvatarUploadInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAvatarUploadInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUncheckedCreateNestedOneWithoutAvatarUploadInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAvatarUploadInput, Prisma.UserUncheckedCreateWithoutAvatarUploadInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAvatarUploadInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneWithoutAvatarUploadNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAvatarUploadInput, Prisma.UserUncheckedCreateWithoutAvatarUploadInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAvatarUploadInput
+  upsert?: Prisma.UserUpsertWithoutAvatarUploadInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAvatarUploadInput, Prisma.UserUpdateWithoutAvatarUploadInput>, Prisma.UserUncheckedUpdateWithoutAvatarUploadInput>
+}
+
+export type UserUncheckedUpdateOneWithoutAvatarUploadNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAvatarUploadInput, Prisma.UserUncheckedCreateWithoutAvatarUploadInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAvatarUploadInput
+  upsert?: Prisma.UserUpsertWithoutAvatarUploadInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAvatarUploadInput, Prisma.UserUpdateWithoutAvatarUploadInput>, Prisma.UserUncheckedUpdateWithoutAvatarUploadInput>
 }
 
 export type UserCreateNestedOneWithoutCreatedGitHubInstancesInput = {
@@ -877,6 +947,38 @@ export type UserUpdateOneWithoutOwnedGitLabInstancesNestedInput = {
   delete?: Prisma.UserWhereInput | boolean
   connect?: Prisma.UserWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutOwnedGitLabInstancesInput, Prisma.UserUpdateWithoutOwnedGitLabInstancesInput>, Prisma.UserUncheckedUpdateWithoutOwnedGitLabInstancesInput>
+}
+
+export type UserCreateNestedOneWithoutCreatedBitbucketInstancesInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCreatedBitbucketInstancesInput, Prisma.UserUncheckedCreateWithoutCreatedBitbucketInstancesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCreatedBitbucketInstancesInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserCreateNestedOneWithoutOwnedBitbucketInstancesInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutOwnedBitbucketInstancesInput, Prisma.UserUncheckedCreateWithoutOwnedBitbucketInstancesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutOwnedBitbucketInstancesInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneWithoutCreatedBitbucketInstancesNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCreatedBitbucketInstancesInput, Prisma.UserUncheckedCreateWithoutCreatedBitbucketInstancesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCreatedBitbucketInstancesInput
+  upsert?: Prisma.UserUpsertWithoutCreatedBitbucketInstancesInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutCreatedBitbucketInstancesInput, Prisma.UserUpdateWithoutCreatedBitbucketInstancesInput>, Prisma.UserUncheckedUpdateWithoutCreatedBitbucketInstancesInput>
+}
+
+export type UserUpdateOneWithoutOwnedBitbucketInstancesNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutOwnedBitbucketInstancesInput, Prisma.UserUncheckedCreateWithoutOwnedBitbucketInstancesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutOwnedBitbucketInstancesInput
+  upsert?: Prisma.UserUpsertWithoutOwnedBitbucketInstancesInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutOwnedBitbucketInstancesInput, Prisma.UserUpdateWithoutOwnedBitbucketInstancesInput>, Prisma.UserUncheckedUpdateWithoutOwnedBitbucketInstancesInput>
 }
 
 export type UserCreateNestedOneWithoutBoardFoldersInput = {
@@ -1077,6 +1179,7 @@ export type UserCreateWithoutOrgMembershipsInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -1099,10 +1202,12 @@ export type UserCreateWithoutOrgMembershipsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
 
@@ -1114,6 +1219,7 @@ export type UserUncheckedCreateWithoutOrgMembershipsInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -1140,10 +1246,12 @@ export type UserUncheckedCreateWithoutOrgMembershipsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
 
@@ -1164,6 +1272,7 @@ export type UserCreateWithoutInvitedMembershipsInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -1186,10 +1295,12 @@ export type UserCreateWithoutInvitedMembershipsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
 }
 
@@ -1201,6 +1312,7 @@ export type UserUncheckedCreateWithoutInvitedMembershipsInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -1227,10 +1339,12 @@ export type UserUncheckedCreateWithoutInvitedMembershipsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
 }
 
@@ -1262,6 +1376,7 @@ export type UserUpdateWithoutOrgMembershipsInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -1284,10 +1399,12 @@ export type UserUpdateWithoutOrgMembershipsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
 
@@ -1299,6 +1416,7 @@ export type UserUncheckedUpdateWithoutOrgMembershipsInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1325,10 +1443,12 @@ export type UserUncheckedUpdateWithoutOrgMembershipsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
 
@@ -1355,6 +1475,7 @@ export type UserUpdateWithoutInvitedMembershipsInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -1377,10 +1498,12 @@ export type UserUpdateWithoutInvitedMembershipsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
 }
 
@@ -1392,6 +1515,7 @@ export type UserUncheckedUpdateWithoutInvitedMembershipsInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1418,10 +1542,12 @@ export type UserUncheckedUpdateWithoutInvitedMembershipsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
 }
 
@@ -1437,6 +1563,7 @@ export type UserCreateWithoutBoardOwnersInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
@@ -1458,10 +1585,12 @@ export type UserCreateWithoutBoardOwnersInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -1474,6 +1603,7 @@ export type UserUncheckedCreateWithoutBoardOwnersInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -1499,10 +1629,12 @@ export type UserUncheckedCreateWithoutBoardOwnersInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -1535,6 +1667,7 @@ export type UserUpdateWithoutBoardOwnersInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
@@ -1556,10 +1689,12 @@ export type UserUpdateWithoutBoardOwnersInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -1572,6 +1707,7 @@ export type UserUncheckedUpdateWithoutBoardOwnersInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1597,10 +1733,12 @@ export type UserUncheckedUpdateWithoutBoardOwnersInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -1617,6 +1755,7 @@ export type UserCreateWithoutCommentsInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
@@ -1638,10 +1777,12 @@ export type UserCreateWithoutCommentsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -1654,6 +1795,7 @@ export type UserUncheckedCreateWithoutCommentsInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -1679,10 +1821,12 @@ export type UserUncheckedCreateWithoutCommentsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -1715,6 +1859,7 @@ export type UserUpdateWithoutCommentsInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
@@ -1736,10 +1881,12 @@ export type UserUpdateWithoutCommentsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -1752,6 +1899,7 @@ export type UserUncheckedUpdateWithoutCommentsInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1777,10 +1925,12 @@ export type UserUncheckedUpdateWithoutCommentsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -1797,6 +1947,7 @@ export type UserCreateWithoutCreatedJiraInstancesInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -1818,10 +1969,12 @@ export type UserCreateWithoutCreatedJiraInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -1834,6 +1987,7 @@ export type UserUncheckedCreateWithoutCreatedJiraInstancesInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -1859,10 +2013,12 @@ export type UserUncheckedCreateWithoutCreatedJiraInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -1884,6 +2040,7 @@ export type UserCreateWithoutOwnedJiraInstancesInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -1906,9 +2063,11 @@ export type UserCreateWithoutOwnedJiraInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -1921,6 +2080,7 @@ export type UserUncheckedCreateWithoutOwnedJiraInstancesInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -1947,9 +2107,11 @@ export type UserUncheckedCreateWithoutOwnedJiraInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -1982,6 +2144,7 @@ export type UserUpdateWithoutCreatedJiraInstancesInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -2003,10 +2166,12 @@ export type UserUpdateWithoutCreatedJiraInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -2019,6 +2184,7 @@ export type UserUncheckedUpdateWithoutCreatedJiraInstancesInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2044,10 +2210,12 @@ export type UserUncheckedUpdateWithoutCreatedJiraInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -2075,6 +2243,7 @@ export type UserUpdateWithoutOwnedJiraInstancesInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -2097,9 +2266,11 @@ export type UserUpdateWithoutOwnedJiraInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -2112,6 +2283,7 @@ export type UserUncheckedUpdateWithoutOwnedJiraInstancesInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2138,101 +2310,16 @@ export type UserUncheckedUpdateWithoutOwnedJiraInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
 
-export type UserCreateWithoutCreatedGitHubInstancesInput = {
-  id?: string
-  keycloakId: string
-  email: string
-  name: string
-  firstName?: string | null
-  lastName?: string | null
-  avatarUrl?: string | null
-  isAdmin?: boolean
-  activeOrganizationId?: string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
-  boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
-  comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
-  notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
-  actedNotifications?: Prisma.NotificationCreateNestedManyWithoutActorInput
-  developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutUserInput
-  boardFolders?: Prisma.BoardFolderCreateNestedManyWithoutUserInput
-  boardPrefs?: Prisma.UserBoardPrefCreateNestedManyWithoutUserInput
-  roadmapAccess?: Prisma.RoadmapAccessCreateNestedManyWithoutUserInput
-  roadmapPrefs?: Prisma.UserRoadmapPrefCreateNestedManyWithoutUserInput
-  employeeComments?: Prisma.OrgEmployeeCommentCreateNestedManyWithoutAuthorInput
-  orgTreeAccess?: Prisma.OrgTreeAccessCreateNestedManyWithoutUserInput
-  employeeBoardAccess?: Prisma.EmployeeBoardAccessCreateNestedManyWithoutUserInput
-  comparisonAccess?: Prisma.ComparisonAccessCreateNestedManyWithoutUserInput
-  advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutUserInput
-  advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutCreatedByInput
-  notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutUserInput
-  boardNotificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutUserInput
-  createdJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutCreatedByInput
-  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
-  createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
-  ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
-  ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
-  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
-  ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
-  orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
-  invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
-}
-
-export type UserUncheckedCreateWithoutCreatedGitHubInstancesInput = {
-  id?: string
-  keycloakId: string
-  email: string
-  name: string
-  firstName?: string | null
-  lastName?: string | null
-  avatarUrl?: string | null
-  isAdmin?: boolean
-  activeOrganizationId?: string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  boardAccess?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutUserInput
-  boardOwners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutUserInput
-  comments?: Prisma.ProjectCommentUncheckedCreateNestedManyWithoutAuthorInput
-  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
-  actedNotifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutActorInput
-  developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutUserInput
-  boardFolders?: Prisma.BoardFolderUncheckedCreateNestedManyWithoutUserInput
-  boardPrefs?: Prisma.UserBoardPrefUncheckedCreateNestedManyWithoutUserInput
-  roadmapAccess?: Prisma.RoadmapAccessUncheckedCreateNestedManyWithoutUserInput
-  roadmapPrefs?: Prisma.UserRoadmapPrefUncheckedCreateNestedManyWithoutUserInput
-  employeeComments?: Prisma.OrgEmployeeCommentUncheckedCreateNestedManyWithoutAuthorInput
-  orgTreeAccess?: Prisma.OrgTreeAccessUncheckedCreateNestedManyWithoutUserInput
-  employeeBoardAccess?: Prisma.EmployeeBoardAccessUncheckedCreateNestedManyWithoutUserInput
-  comparisonAccess?: Prisma.ComparisonAccessUncheckedCreateNestedManyWithoutUserInput
-  advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutUserInput
-  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutCreatedByInput
-  notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutUserInput
-  boardNotificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutUserInput
-  createdJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutCreatedByInput
-  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
-  createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
-  ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
-  ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
-  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
-  ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
-  orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
-  invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
-}
-
-export type UserCreateOrConnectWithoutCreatedGitHubInstancesInput = {
-  where: Prisma.UserWhereUniqueInput
-  create: Prisma.XOR<Prisma.UserCreateWithoutCreatedGitHubInstancesInput, Prisma.UserUncheckedCreateWithoutCreatedGitHubInstancesInput>
-}
-
-export type UserCreateWithoutOwnedGitHubInstancesInput = {
+export type UserCreateWithoutAvatarUploadInput = {
   id?: string
   keycloakId: string
   email: string
@@ -2266,14 +2353,17 @@ export type UserCreateWithoutOwnedGitHubInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
 
-export type UserUncheckedCreateWithoutOwnedGitHubInstancesInput = {
+export type UserUncheckedCreateWithoutAvatarUploadInput = {
   id?: string
   keycloakId: string
   email: string
@@ -2307,9 +2397,297 @@ export type UserUncheckedCreateWithoutOwnedGitHubInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
+  invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
+}
+
+export type UserCreateOrConnectWithoutAvatarUploadInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutAvatarUploadInput, Prisma.UserUncheckedCreateWithoutAvatarUploadInput>
+}
+
+export type UserUpsertWithoutAvatarUploadInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutAvatarUploadInput, Prisma.UserUncheckedUpdateWithoutAvatarUploadInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutAvatarUploadInput, Prisma.UserUncheckedCreateWithoutAvatarUploadInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutAvatarUploadInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutAvatarUploadInput, Prisma.UserUncheckedUpdateWithoutAvatarUploadInput>
+}
+
+export type UserUpdateWithoutAvatarUploadInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  keycloakId?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
+  boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
+  comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
+  notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
+  actedNotifications?: Prisma.NotificationUpdateManyWithoutActorNestedInput
+  developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutUserNestedInput
+  boardFolders?: Prisma.BoardFolderUpdateManyWithoutUserNestedInput
+  boardPrefs?: Prisma.UserBoardPrefUpdateManyWithoutUserNestedInput
+  roadmapAccess?: Prisma.RoadmapAccessUpdateManyWithoutUserNestedInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefUpdateManyWithoutUserNestedInput
+  employeeComments?: Prisma.OrgEmployeeCommentUpdateManyWithoutAuthorNestedInput
+  orgTreeAccess?: Prisma.OrgTreeAccessUpdateManyWithoutUserNestedInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessUpdateManyWithoutUserNestedInput
+  comparisonAccess?: Prisma.ComparisonAccessUpdateManyWithoutUserNestedInput
+  advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutUserNestedInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutCreatedByNestedInput
+  notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutUserNestedInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutUserNestedInput
+  createdJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutCreatedByNestedInput
+  createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
+  createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
+  ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
+  orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
+  invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
+}
+
+export type UserUncheckedUpdateWithoutAvatarUploadInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  keycloakId?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  boardAccess?: Prisma.BoardAccessUncheckedUpdateManyWithoutUserNestedInput
+  boardOwners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutUserNestedInput
+  comments?: Prisma.ProjectCommentUncheckedUpdateManyWithoutAuthorNestedInput
+  notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
+  actedNotifications?: Prisma.NotificationUncheckedUpdateManyWithoutActorNestedInput
+  developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutUserNestedInput
+  boardFolders?: Prisma.BoardFolderUncheckedUpdateManyWithoutUserNestedInput
+  boardPrefs?: Prisma.UserBoardPrefUncheckedUpdateManyWithoutUserNestedInput
+  roadmapAccess?: Prisma.RoadmapAccessUncheckedUpdateManyWithoutUserNestedInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefUncheckedUpdateManyWithoutUserNestedInput
+  employeeComments?: Prisma.OrgEmployeeCommentUncheckedUpdateManyWithoutAuthorNestedInput
+  orgTreeAccess?: Prisma.OrgTreeAccessUncheckedUpdateManyWithoutUserNestedInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessUncheckedUpdateManyWithoutUserNestedInput
+  comparisonAccess?: Prisma.ComparisonAccessUncheckedUpdateManyWithoutUserNestedInput
+  advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutUserNestedInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutCreatedByNestedInput
+  notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutUserNestedInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutUserNestedInput
+  createdJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
+  invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
+}
+
+export type UserCreateWithoutCreatedGitHubInstancesInput = {
+  id?: string
+  keycloakId: string
+  email: string
+  name: string
+  firstName?: string | null
+  lastName?: string | null
+  avatarUrl?: string | null
+  isAdmin?: boolean
+  activeOrganizationId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
+  boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
+  boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
+  comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
+  notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
+  actedNotifications?: Prisma.NotificationCreateNestedManyWithoutActorInput
+  developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutUserInput
+  boardFolders?: Prisma.BoardFolderCreateNestedManyWithoutUserInput
+  boardPrefs?: Prisma.UserBoardPrefCreateNestedManyWithoutUserInput
+  roadmapAccess?: Prisma.RoadmapAccessCreateNestedManyWithoutUserInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefCreateNestedManyWithoutUserInput
+  employeeComments?: Prisma.OrgEmployeeCommentCreateNestedManyWithoutAuthorInput
+  orgTreeAccess?: Prisma.OrgTreeAccessCreateNestedManyWithoutUserInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessCreateNestedManyWithoutUserInput
+  comparisonAccess?: Prisma.ComparisonAccessCreateNestedManyWithoutUserInput
+  advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutUserInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutCreatedByInput
+  notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutUserInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutUserInput
+  createdJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutCreatedByInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
+  createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
+  ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
+  orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
+  invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
+}
+
+export type UserUncheckedCreateWithoutCreatedGitHubInstancesInput = {
+  id?: string
+  keycloakId: string
+  email: string
+  name: string
+  firstName?: string | null
+  lastName?: string | null
+  avatarUrl?: string | null
+  avatarUploadId?: string | null
+  isAdmin?: boolean
+  activeOrganizationId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  boardAccess?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutUserInput
+  boardOwners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutUserInput
+  comments?: Prisma.ProjectCommentUncheckedCreateNestedManyWithoutAuthorInput
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
+  actedNotifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutActorInput
+  developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutUserInput
+  boardFolders?: Prisma.BoardFolderUncheckedCreateNestedManyWithoutUserInput
+  boardPrefs?: Prisma.UserBoardPrefUncheckedCreateNestedManyWithoutUserInput
+  roadmapAccess?: Prisma.RoadmapAccessUncheckedCreateNestedManyWithoutUserInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefUncheckedCreateNestedManyWithoutUserInput
+  employeeComments?: Prisma.OrgEmployeeCommentUncheckedCreateNestedManyWithoutAuthorInput
+  orgTreeAccess?: Prisma.OrgTreeAccessUncheckedCreateNestedManyWithoutUserInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessUncheckedCreateNestedManyWithoutUserInput
+  comparisonAccess?: Prisma.ComparisonAccessUncheckedCreateNestedManyWithoutUserInput
+  advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutUserInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutCreatedByInput
+  notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutUserInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutUserInput
+  createdJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
+  invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
+}
+
+export type UserCreateOrConnectWithoutCreatedGitHubInstancesInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutCreatedGitHubInstancesInput, Prisma.UserUncheckedCreateWithoutCreatedGitHubInstancesInput>
+}
+
+export type UserCreateWithoutOwnedGitHubInstancesInput = {
+  id?: string
+  keycloakId: string
+  email: string
+  name: string
+  firstName?: string | null
+  lastName?: string | null
+  avatarUrl?: string | null
+  isAdmin?: boolean
+  activeOrganizationId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
+  boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
+  boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
+  comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
+  notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
+  actedNotifications?: Prisma.NotificationCreateNestedManyWithoutActorInput
+  developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutUserInput
+  boardFolders?: Prisma.BoardFolderCreateNestedManyWithoutUserInput
+  boardPrefs?: Prisma.UserBoardPrefCreateNestedManyWithoutUserInput
+  roadmapAccess?: Prisma.RoadmapAccessCreateNestedManyWithoutUserInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefCreateNestedManyWithoutUserInput
+  employeeComments?: Prisma.OrgEmployeeCommentCreateNestedManyWithoutAuthorInput
+  orgTreeAccess?: Prisma.OrgTreeAccessCreateNestedManyWithoutUserInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessCreateNestedManyWithoutUserInput
+  comparisonAccess?: Prisma.ComparisonAccessCreateNestedManyWithoutUserInput
+  advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutUserInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutCreatedByInput
+  notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutUserInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutUserInput
+  createdJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutCreatedByInput
+  createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
+  createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
+  ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
+  orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
+  invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
+}
+
+export type UserUncheckedCreateWithoutOwnedGitHubInstancesInput = {
+  id?: string
+  keycloakId: string
+  email: string
+  name: string
+  firstName?: string | null
+  lastName?: string | null
+  avatarUrl?: string | null
+  avatarUploadId?: string | null
+  isAdmin?: boolean
+  activeOrganizationId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  boardAccess?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutUserInput
+  boardOwners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutUserInput
+  comments?: Prisma.ProjectCommentUncheckedCreateNestedManyWithoutAuthorInput
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
+  actedNotifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutActorInput
+  developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutUserInput
+  boardFolders?: Prisma.BoardFolderUncheckedCreateNestedManyWithoutUserInput
+  boardPrefs?: Prisma.UserBoardPrefUncheckedCreateNestedManyWithoutUserInput
+  roadmapAccess?: Prisma.RoadmapAccessUncheckedCreateNestedManyWithoutUserInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefUncheckedCreateNestedManyWithoutUserInput
+  employeeComments?: Prisma.OrgEmployeeCommentUncheckedCreateNestedManyWithoutAuthorInput
+  orgTreeAccess?: Prisma.OrgTreeAccessUncheckedCreateNestedManyWithoutUserInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessUncheckedCreateNestedManyWithoutUserInput
+  comparisonAccess?: Prisma.ComparisonAccessUncheckedCreateNestedManyWithoutUserInput
+  advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutUserInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutCreatedByInput
+  notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutUserInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutUserInput
+  createdJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -2342,6 +2720,7 @@ export type UserUpdateWithoutCreatedGitHubInstancesInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -2363,10 +2742,12 @@ export type UserUpdateWithoutCreatedGitHubInstancesInput = {
   createdJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -2379,6 +2760,7 @@ export type UserUncheckedUpdateWithoutCreatedGitHubInstancesInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2404,10 +2786,12 @@ export type UserUncheckedUpdateWithoutCreatedGitHubInstancesInput = {
   createdJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -2435,6 +2819,7 @@ export type UserUpdateWithoutOwnedGitHubInstancesInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -2457,9 +2842,11 @@ export type UserUpdateWithoutOwnedGitHubInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -2472,6 +2859,7 @@ export type UserUncheckedUpdateWithoutOwnedGitHubInstancesInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2498,9 +2886,11 @@ export type UserUncheckedUpdateWithoutOwnedGitHubInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -2517,6 +2907,7 @@ export type UserCreateWithoutCreatedAzureDevOpsInstancesInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -2538,10 +2929,12 @@ export type UserCreateWithoutCreatedAzureDevOpsInstancesInput = {
   createdJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutCreatedByInput
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -2554,6 +2947,7 @@ export type UserUncheckedCreateWithoutCreatedAzureDevOpsInstancesInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -2579,10 +2973,12 @@ export type UserUncheckedCreateWithoutCreatedAzureDevOpsInstancesInput = {
   createdJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -2604,6 +3000,7 @@ export type UserCreateWithoutOwnedAzureDevOpsInstancesInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -2626,9 +3023,11 @@ export type UserCreateWithoutOwnedAzureDevOpsInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -2641,6 +3040,7 @@ export type UserUncheckedCreateWithoutOwnedAzureDevOpsInstancesInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -2667,9 +3067,11 @@ export type UserUncheckedCreateWithoutOwnedAzureDevOpsInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -2702,6 +3104,7 @@ export type UserUpdateWithoutCreatedAzureDevOpsInstancesInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -2723,10 +3126,12 @@ export type UserUpdateWithoutCreatedAzureDevOpsInstancesInput = {
   createdJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -2739,6 +3144,7 @@ export type UserUncheckedUpdateWithoutCreatedAzureDevOpsInstancesInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2764,10 +3170,12 @@ export type UserUncheckedUpdateWithoutCreatedAzureDevOpsInstancesInput = {
   createdJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -2795,6 +3203,7 @@ export type UserUpdateWithoutOwnedAzureDevOpsInstancesInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -2817,9 +3226,11 @@ export type UserUpdateWithoutOwnedAzureDevOpsInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -2832,6 +3243,7 @@ export type UserUncheckedUpdateWithoutOwnedAzureDevOpsInstancesInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2858,9 +3270,11 @@ export type UserUncheckedUpdateWithoutOwnedAzureDevOpsInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -2877,6 +3291,7 @@ export type UserCreateWithoutDeveloperProfilesInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -2898,10 +3313,12 @@ export type UserCreateWithoutDeveloperProfilesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -2914,6 +3331,7 @@ export type UserUncheckedCreateWithoutDeveloperProfilesInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -2939,10 +3357,12 @@ export type UserUncheckedCreateWithoutDeveloperProfilesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -2975,6 +3395,7 @@ export type UserUpdateWithoutDeveloperProfilesInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -2996,10 +3417,12 @@ export type UserUpdateWithoutDeveloperProfilesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -3012,6 +3435,7 @@ export type UserUncheckedUpdateWithoutDeveloperProfilesInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3037,10 +3461,12 @@ export type UserUncheckedUpdateWithoutDeveloperProfilesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -3057,6 +3483,7 @@ export type UserCreateWithoutBoardAccessInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
@@ -3078,10 +3505,12 @@ export type UserCreateWithoutBoardAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -3094,6 +3523,7 @@ export type UserUncheckedCreateWithoutBoardAccessInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -3119,10 +3549,12 @@ export type UserUncheckedCreateWithoutBoardAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -3155,6 +3587,7 @@ export type UserUpdateWithoutBoardAccessInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
@@ -3176,10 +3609,12 @@ export type UserUpdateWithoutBoardAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -3192,6 +3627,7 @@ export type UserUncheckedUpdateWithoutBoardAccessInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3217,10 +3653,12 @@ export type UserUncheckedUpdateWithoutBoardAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -3237,6 +3675,7 @@ export type UserCreateWithoutComparisonAccessInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -3258,10 +3697,12 @@ export type UserCreateWithoutComparisonAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -3274,6 +3715,7 @@ export type UserUncheckedCreateWithoutComparisonAccessInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -3299,10 +3741,12 @@ export type UserUncheckedCreateWithoutComparisonAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -3335,6 +3779,7 @@ export type UserUpdateWithoutComparisonAccessInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -3356,10 +3801,12 @@ export type UserUpdateWithoutComparisonAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -3372,6 +3819,7 @@ export type UserUncheckedUpdateWithoutComparisonAccessInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3397,10 +3845,12 @@ export type UserUncheckedUpdateWithoutComparisonAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -3417,6 +3867,7 @@ export type UserCreateWithoutCreatedGitLabInstancesInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -3438,10 +3889,12 @@ export type UserCreateWithoutCreatedGitLabInstancesInput = {
   createdJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutCreatedByInput
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -3454,6 +3907,7 @@ export type UserUncheckedCreateWithoutCreatedGitLabInstancesInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -3479,10 +3933,12 @@ export type UserUncheckedCreateWithoutCreatedGitLabInstancesInput = {
   createdJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -3504,6 +3960,7 @@ export type UserCreateWithoutOwnedGitLabInstancesInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -3526,9 +3983,11 @@ export type UserCreateWithoutOwnedGitLabInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -3541,6 +4000,7 @@ export type UserUncheckedCreateWithoutOwnedGitLabInstancesInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -3567,9 +4027,11 @@ export type UserUncheckedCreateWithoutOwnedGitLabInstancesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -3602,6 +4064,7 @@ export type UserUpdateWithoutCreatedGitLabInstancesInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -3623,10 +4086,12 @@ export type UserUpdateWithoutCreatedGitLabInstancesInput = {
   createdJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -3639,6 +4104,7 @@ export type UserUncheckedUpdateWithoutCreatedGitLabInstancesInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3664,10 +4130,12 @@ export type UserUncheckedUpdateWithoutCreatedGitLabInstancesInput = {
   createdJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -3695,6 +4163,292 @@ export type UserUpdateWithoutOwnedGitLabInstancesInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
+  boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
+  boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
+  comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
+  notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
+  actedNotifications?: Prisma.NotificationUpdateManyWithoutActorNestedInput
+  developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutUserNestedInput
+  boardFolders?: Prisma.BoardFolderUpdateManyWithoutUserNestedInput
+  boardPrefs?: Prisma.UserBoardPrefUpdateManyWithoutUserNestedInput
+  roadmapAccess?: Prisma.RoadmapAccessUpdateManyWithoutUserNestedInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefUpdateManyWithoutUserNestedInput
+  employeeComments?: Prisma.OrgEmployeeCommentUpdateManyWithoutAuthorNestedInput
+  orgTreeAccess?: Prisma.OrgTreeAccessUpdateManyWithoutUserNestedInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessUpdateManyWithoutUserNestedInput
+  comparisonAccess?: Prisma.ComparisonAccessUpdateManyWithoutUserNestedInput
+  advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutUserNestedInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutCreatedByNestedInput
+  notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutUserNestedInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutUserNestedInput
+  createdJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutCreatedByNestedInput
+  createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
+  createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
+  ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
+  orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
+  invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
+}
+
+export type UserUncheckedUpdateWithoutOwnedGitLabInstancesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  keycloakId?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  boardAccess?: Prisma.BoardAccessUncheckedUpdateManyWithoutUserNestedInput
+  boardOwners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutUserNestedInput
+  comments?: Prisma.ProjectCommentUncheckedUpdateManyWithoutAuthorNestedInput
+  notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
+  actedNotifications?: Prisma.NotificationUncheckedUpdateManyWithoutActorNestedInput
+  developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutUserNestedInput
+  boardFolders?: Prisma.BoardFolderUncheckedUpdateManyWithoutUserNestedInput
+  boardPrefs?: Prisma.UserBoardPrefUncheckedUpdateManyWithoutUserNestedInput
+  roadmapAccess?: Prisma.RoadmapAccessUncheckedUpdateManyWithoutUserNestedInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefUncheckedUpdateManyWithoutUserNestedInput
+  employeeComments?: Prisma.OrgEmployeeCommentUncheckedUpdateManyWithoutAuthorNestedInput
+  orgTreeAccess?: Prisma.OrgTreeAccessUncheckedUpdateManyWithoutUserNestedInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessUncheckedUpdateManyWithoutUserNestedInput
+  comparisonAccess?: Prisma.ComparisonAccessUncheckedUpdateManyWithoutUserNestedInput
+  advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutUserNestedInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutCreatedByNestedInput
+  notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutUserNestedInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutUserNestedInput
+  createdJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
+  invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
+}
+
+export type UserCreateWithoutCreatedBitbucketInstancesInput = {
+  id?: string
+  keycloakId: string
+  email: string
+  name: string
+  firstName?: string | null
+  lastName?: string | null
+  avatarUrl?: string | null
+  isAdmin?: boolean
+  activeOrganizationId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
+  boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
+  boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
+  comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
+  notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
+  actedNotifications?: Prisma.NotificationCreateNestedManyWithoutActorInput
+  developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutUserInput
+  boardFolders?: Prisma.BoardFolderCreateNestedManyWithoutUserInput
+  boardPrefs?: Prisma.UserBoardPrefCreateNestedManyWithoutUserInput
+  roadmapAccess?: Prisma.RoadmapAccessCreateNestedManyWithoutUserInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefCreateNestedManyWithoutUserInput
+  employeeComments?: Prisma.OrgEmployeeCommentCreateNestedManyWithoutAuthorInput
+  orgTreeAccess?: Prisma.OrgTreeAccessCreateNestedManyWithoutUserInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessCreateNestedManyWithoutUserInput
+  comparisonAccess?: Prisma.ComparisonAccessCreateNestedManyWithoutUserInput
+  advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutUserInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutCreatedByInput
+  notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutUserInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutUserInput
+  createdJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutCreatedByInput
+  createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
+  createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
+  orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
+  invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
+}
+
+export type UserUncheckedCreateWithoutCreatedBitbucketInstancesInput = {
+  id?: string
+  keycloakId: string
+  email: string
+  name: string
+  firstName?: string | null
+  lastName?: string | null
+  avatarUrl?: string | null
+  avatarUploadId?: string | null
+  isAdmin?: boolean
+  activeOrganizationId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  boardAccess?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutUserInput
+  boardOwners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutUserInput
+  comments?: Prisma.ProjectCommentUncheckedCreateNestedManyWithoutAuthorInput
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
+  actedNotifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutActorInput
+  developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutUserInput
+  boardFolders?: Prisma.BoardFolderUncheckedCreateNestedManyWithoutUserInput
+  boardPrefs?: Prisma.UserBoardPrefUncheckedCreateNestedManyWithoutUserInput
+  roadmapAccess?: Prisma.RoadmapAccessUncheckedCreateNestedManyWithoutUserInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefUncheckedCreateNestedManyWithoutUserInput
+  employeeComments?: Prisma.OrgEmployeeCommentUncheckedCreateNestedManyWithoutAuthorInput
+  orgTreeAccess?: Prisma.OrgTreeAccessUncheckedCreateNestedManyWithoutUserInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessUncheckedCreateNestedManyWithoutUserInput
+  comparisonAccess?: Prisma.ComparisonAccessUncheckedCreateNestedManyWithoutUserInput
+  advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutUserInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutCreatedByInput
+  notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutUserInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutUserInput
+  createdJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
+  invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
+}
+
+export type UserCreateOrConnectWithoutCreatedBitbucketInstancesInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutCreatedBitbucketInstancesInput, Prisma.UserUncheckedCreateWithoutCreatedBitbucketInstancesInput>
+}
+
+export type UserCreateWithoutOwnedBitbucketInstancesInput = {
+  id?: string
+  keycloakId: string
+  email: string
+  name: string
+  firstName?: string | null
+  lastName?: string | null
+  avatarUrl?: string | null
+  isAdmin?: boolean
+  activeOrganizationId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
+  boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
+  boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
+  comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
+  notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
+  actedNotifications?: Prisma.NotificationCreateNestedManyWithoutActorInput
+  developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutUserInput
+  boardFolders?: Prisma.BoardFolderCreateNestedManyWithoutUserInput
+  boardPrefs?: Prisma.UserBoardPrefCreateNestedManyWithoutUserInput
+  roadmapAccess?: Prisma.RoadmapAccessCreateNestedManyWithoutUserInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefCreateNestedManyWithoutUserInput
+  employeeComments?: Prisma.OrgEmployeeCommentCreateNestedManyWithoutAuthorInput
+  orgTreeAccess?: Prisma.OrgTreeAccessCreateNestedManyWithoutUserInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessCreateNestedManyWithoutUserInput
+  comparisonAccess?: Prisma.ComparisonAccessCreateNestedManyWithoutUserInput
+  advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutUserInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutCreatedByInput
+  notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutUserInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutUserInput
+  createdJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutCreatedByInput
+  createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
+  createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
+  ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
+  invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
+}
+
+export type UserUncheckedCreateWithoutOwnedBitbucketInstancesInput = {
+  id?: string
+  keycloakId: string
+  email: string
+  name: string
+  firstName?: string | null
+  lastName?: string | null
+  avatarUrl?: string | null
+  avatarUploadId?: string | null
+  isAdmin?: boolean
+  activeOrganizationId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  boardAccess?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutUserInput
+  boardOwners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutUserInput
+  comments?: Prisma.ProjectCommentUncheckedCreateNestedManyWithoutAuthorInput
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
+  actedNotifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutActorInput
+  developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutUserInput
+  boardFolders?: Prisma.BoardFolderUncheckedCreateNestedManyWithoutUserInput
+  boardPrefs?: Prisma.UserBoardPrefUncheckedCreateNestedManyWithoutUserInput
+  roadmapAccess?: Prisma.RoadmapAccessUncheckedCreateNestedManyWithoutUserInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefUncheckedCreateNestedManyWithoutUserInput
+  employeeComments?: Prisma.OrgEmployeeCommentUncheckedCreateNestedManyWithoutAuthorInput
+  orgTreeAccess?: Prisma.OrgTreeAccessUncheckedCreateNestedManyWithoutUserInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessUncheckedCreateNestedManyWithoutUserInput
+  comparisonAccess?: Prisma.ComparisonAccessUncheckedCreateNestedManyWithoutUserInput
+  advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutUserInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutCreatedByInput
+  notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutUserInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutUserInput
+  createdJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
+  invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
+}
+
+export type UserCreateOrConnectWithoutOwnedBitbucketInstancesInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutOwnedBitbucketInstancesInput, Prisma.UserUncheckedCreateWithoutOwnedBitbucketInstancesInput>
+}
+
+export type UserUpsertWithoutCreatedBitbucketInstancesInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutCreatedBitbucketInstancesInput, Prisma.UserUncheckedUpdateWithoutCreatedBitbucketInstancesInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutCreatedBitbucketInstancesInput, Prisma.UserUncheckedCreateWithoutCreatedBitbucketInstancesInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutCreatedBitbucketInstancesInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutCreatedBitbucketInstancesInput, Prisma.UserUncheckedUpdateWithoutCreatedBitbucketInstancesInput>
+}
+
+export type UserUpdateWithoutCreatedBitbucketInstancesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  keycloakId?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -3720,11 +4474,13 @@ export type UserUpdateWithoutOwnedGitLabInstancesInput = {
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
 
-export type UserUncheckedUpdateWithoutOwnedGitLabInstancesInput = {
+export type UserUncheckedUpdateWithoutCreatedBitbucketInstancesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   keycloakId?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3732,6 +4488,7 @@ export type UserUncheckedUpdateWithoutOwnedGitLabInstancesInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3761,6 +4518,107 @@ export type UserUncheckedUpdateWithoutOwnedGitLabInstancesInput = {
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
+  invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
+}
+
+export type UserUpsertWithoutOwnedBitbucketInstancesInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutOwnedBitbucketInstancesInput, Prisma.UserUncheckedUpdateWithoutOwnedBitbucketInstancesInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutOwnedBitbucketInstancesInput, Prisma.UserUncheckedCreateWithoutOwnedBitbucketInstancesInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutOwnedBitbucketInstancesInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutOwnedBitbucketInstancesInput, Prisma.UserUncheckedUpdateWithoutOwnedBitbucketInstancesInput>
+}
+
+export type UserUpdateWithoutOwnedBitbucketInstancesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  keycloakId?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
+  boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
+  boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
+  comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
+  notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
+  actedNotifications?: Prisma.NotificationUpdateManyWithoutActorNestedInput
+  developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutUserNestedInput
+  boardFolders?: Prisma.BoardFolderUpdateManyWithoutUserNestedInput
+  boardPrefs?: Prisma.UserBoardPrefUpdateManyWithoutUserNestedInput
+  roadmapAccess?: Prisma.RoadmapAccessUpdateManyWithoutUserNestedInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefUpdateManyWithoutUserNestedInput
+  employeeComments?: Prisma.OrgEmployeeCommentUpdateManyWithoutAuthorNestedInput
+  orgTreeAccess?: Prisma.OrgTreeAccessUpdateManyWithoutUserNestedInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessUpdateManyWithoutUserNestedInput
+  comparisonAccess?: Prisma.ComparisonAccessUpdateManyWithoutUserNestedInput
+  advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutUserNestedInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutCreatedByNestedInput
+  notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutUserNestedInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutUserNestedInput
+  createdJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutCreatedByNestedInput
+  createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
+  createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
+  ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
+  invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
+}
+
+export type UserUncheckedUpdateWithoutOwnedBitbucketInstancesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  keycloakId?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  boardAccess?: Prisma.BoardAccessUncheckedUpdateManyWithoutUserNestedInput
+  boardOwners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutUserNestedInput
+  comments?: Prisma.ProjectCommentUncheckedUpdateManyWithoutAuthorNestedInput
+  notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
+  actedNotifications?: Prisma.NotificationUncheckedUpdateManyWithoutActorNestedInput
+  developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutUserNestedInput
+  boardFolders?: Prisma.BoardFolderUncheckedUpdateManyWithoutUserNestedInput
+  boardPrefs?: Prisma.UserBoardPrefUncheckedUpdateManyWithoutUserNestedInput
+  roadmapAccess?: Prisma.RoadmapAccessUncheckedUpdateManyWithoutUserNestedInput
+  roadmapPrefs?: Prisma.UserRoadmapPrefUncheckedUpdateManyWithoutUserNestedInput
+  employeeComments?: Prisma.OrgEmployeeCommentUncheckedUpdateManyWithoutAuthorNestedInput
+  orgTreeAccess?: Prisma.OrgTreeAccessUncheckedUpdateManyWithoutUserNestedInput
+  employeeBoardAccess?: Prisma.EmployeeBoardAccessUncheckedUpdateManyWithoutUserNestedInput
+  comparisonAccess?: Prisma.ComparisonAccessUncheckedUpdateManyWithoutUserNestedInput
+  advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutUserNestedInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutCreatedByNestedInput
+  notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutUserNestedInput
+  boardNotificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutUserNestedInput
+  createdJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -3777,6 +4635,7 @@ export type UserCreateWithoutBoardFoldersInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -3798,10 +4657,12 @@ export type UserCreateWithoutBoardFoldersInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -3814,6 +4675,7 @@ export type UserUncheckedCreateWithoutBoardFoldersInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -3839,10 +4701,12 @@ export type UserUncheckedCreateWithoutBoardFoldersInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -3875,6 +4739,7 @@ export type UserUpdateWithoutBoardFoldersInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -3896,10 +4761,12 @@ export type UserUpdateWithoutBoardFoldersInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -3912,6 +4779,7 @@ export type UserUncheckedUpdateWithoutBoardFoldersInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3937,10 +4805,12 @@ export type UserUncheckedUpdateWithoutBoardFoldersInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -3957,6 +4827,7 @@ export type UserCreateWithoutBoardPrefsInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -3978,10 +4849,12 @@ export type UserCreateWithoutBoardPrefsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -3994,6 +4867,7 @@ export type UserUncheckedCreateWithoutBoardPrefsInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -4019,10 +4893,12 @@ export type UserUncheckedCreateWithoutBoardPrefsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -4055,6 +4931,7 @@ export type UserUpdateWithoutBoardPrefsInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -4076,10 +4953,12 @@ export type UserUpdateWithoutBoardPrefsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -4092,6 +4971,7 @@ export type UserUncheckedUpdateWithoutBoardPrefsInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4117,10 +4997,12 @@ export type UserUncheckedUpdateWithoutBoardPrefsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -4137,6 +5019,7 @@ export type UserCreateWithoutOrgTreeAccessInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -4158,10 +5041,12 @@ export type UserCreateWithoutOrgTreeAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -4174,6 +5059,7 @@ export type UserUncheckedCreateWithoutOrgTreeAccessInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -4199,10 +5085,12 @@ export type UserUncheckedCreateWithoutOrgTreeAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -4235,6 +5123,7 @@ export type UserUpdateWithoutOrgTreeAccessInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -4256,10 +5145,12 @@ export type UserUpdateWithoutOrgTreeAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -4272,6 +5163,7 @@ export type UserUncheckedUpdateWithoutOrgTreeAccessInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4297,10 +5189,12 @@ export type UserUncheckedUpdateWithoutOrgTreeAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -4317,6 +5211,7 @@ export type UserCreateWithoutEmployeeCommentsInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -4338,10 +5233,12 @@ export type UserCreateWithoutEmployeeCommentsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -4354,6 +5251,7 @@ export type UserUncheckedCreateWithoutEmployeeCommentsInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -4379,10 +5277,12 @@ export type UserUncheckedCreateWithoutEmployeeCommentsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -4415,6 +5315,7 @@ export type UserUpdateWithoutEmployeeCommentsInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -4436,10 +5337,12 @@ export type UserUpdateWithoutEmployeeCommentsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -4452,6 +5355,7 @@ export type UserUncheckedUpdateWithoutEmployeeCommentsInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4477,10 +5381,12 @@ export type UserUncheckedUpdateWithoutEmployeeCommentsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -4497,6 +5403,7 @@ export type UserCreateWithoutEmployeeBoardAccessInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -4518,10 +5425,12 @@ export type UserCreateWithoutEmployeeBoardAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -4534,6 +5443,7 @@ export type UserUncheckedCreateWithoutEmployeeBoardAccessInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -4559,10 +5469,12 @@ export type UserUncheckedCreateWithoutEmployeeBoardAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -4595,6 +5507,7 @@ export type UserUpdateWithoutEmployeeBoardAccessInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -4616,10 +5529,12 @@ export type UserUpdateWithoutEmployeeBoardAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -4632,6 +5547,7 @@ export type UserUncheckedUpdateWithoutEmployeeBoardAccessInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4657,10 +5573,12 @@ export type UserUncheckedUpdateWithoutEmployeeBoardAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -4677,6 +5595,7 @@ export type UserCreateWithoutRoadmapAccessInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -4698,10 +5617,12 @@ export type UserCreateWithoutRoadmapAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -4714,6 +5635,7 @@ export type UserUncheckedCreateWithoutRoadmapAccessInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -4739,10 +5661,12 @@ export type UserUncheckedCreateWithoutRoadmapAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -4775,6 +5699,7 @@ export type UserUpdateWithoutRoadmapAccessInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -4796,10 +5721,12 @@ export type UserUpdateWithoutRoadmapAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -4812,6 +5739,7 @@ export type UserUncheckedUpdateWithoutRoadmapAccessInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4837,10 +5765,12 @@ export type UserUncheckedUpdateWithoutRoadmapAccessInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -4857,6 +5787,7 @@ export type UserCreateWithoutRoadmapPrefsInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -4878,10 +5809,12 @@ export type UserCreateWithoutRoadmapPrefsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -4894,6 +5827,7 @@ export type UserUncheckedCreateWithoutRoadmapPrefsInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -4919,10 +5853,12 @@ export type UserUncheckedCreateWithoutRoadmapPrefsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -4955,6 +5891,7 @@ export type UserUpdateWithoutRoadmapPrefsInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -4976,10 +5913,12 @@ export type UserUpdateWithoutRoadmapPrefsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -4992,6 +5931,7 @@ export type UserUncheckedUpdateWithoutRoadmapPrefsInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -5017,10 +5957,12 @@ export type UserUncheckedUpdateWithoutRoadmapPrefsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -5037,6 +5979,7 @@ export type UserCreateWithoutAdvisorSessionsInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -5058,10 +6001,12 @@ export type UserCreateWithoutAdvisorSessionsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -5074,6 +6019,7 @@ export type UserUncheckedCreateWithoutAdvisorSessionsInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -5099,10 +6045,12 @@ export type UserUncheckedCreateWithoutAdvisorSessionsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -5135,6 +6083,7 @@ export type UserUpdateWithoutAdvisorSessionsInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -5156,10 +6105,12 @@ export type UserUpdateWithoutAdvisorSessionsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -5172,6 +6123,7 @@ export type UserUncheckedUpdateWithoutAdvisorSessionsInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -5197,10 +6149,12 @@ export type UserUncheckedUpdateWithoutAdvisorSessionsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -5217,6 +6171,7 @@ export type UserCreateWithoutAdvisorChangeSetsInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -5238,10 +6193,12 @@ export type UserCreateWithoutAdvisorChangeSetsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -5254,6 +6211,7 @@ export type UserUncheckedCreateWithoutAdvisorChangeSetsInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -5279,10 +6237,12 @@ export type UserUncheckedCreateWithoutAdvisorChangeSetsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -5315,6 +6275,7 @@ export type UserUpdateWithoutAdvisorChangeSetsInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -5336,10 +6297,12 @@ export type UserUpdateWithoutAdvisorChangeSetsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -5352,6 +6315,7 @@ export type UserUncheckedUpdateWithoutAdvisorChangeSetsInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -5377,10 +6341,12 @@ export type UserUncheckedUpdateWithoutAdvisorChangeSetsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -5397,6 +6363,7 @@ export type UserCreateWithoutNotificationsInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -5418,10 +6385,12 @@ export type UserCreateWithoutNotificationsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -5434,6 +6403,7 @@ export type UserUncheckedCreateWithoutNotificationsInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -5459,10 +6429,12 @@ export type UserUncheckedCreateWithoutNotificationsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -5484,6 +6456,7 @@ export type UserCreateWithoutActedNotificationsInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -5505,10 +6478,12 @@ export type UserCreateWithoutActedNotificationsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -5521,6 +6496,7 @@ export type UserUncheckedCreateWithoutActedNotificationsInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -5546,10 +6522,12 @@ export type UserUncheckedCreateWithoutActedNotificationsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -5582,6 +6560,7 @@ export type UserUpdateWithoutNotificationsInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -5603,10 +6582,12 @@ export type UserUpdateWithoutNotificationsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -5619,6 +6600,7 @@ export type UserUncheckedUpdateWithoutNotificationsInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -5644,10 +6626,12 @@ export type UserUncheckedUpdateWithoutNotificationsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -5675,6 +6659,7 @@ export type UserUpdateWithoutActedNotificationsInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -5696,10 +6681,12 @@ export type UserUpdateWithoutActedNotificationsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -5712,6 +6699,7 @@ export type UserUncheckedUpdateWithoutActedNotificationsInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -5737,10 +6725,12 @@ export type UserUncheckedUpdateWithoutActedNotificationsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -5757,6 +6747,7 @@ export type UserCreateWithoutNotificationPreferencesInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -5778,10 +6769,12 @@ export type UserCreateWithoutNotificationPreferencesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -5794,6 +6787,7 @@ export type UserUncheckedCreateWithoutNotificationPreferencesInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -5819,10 +6813,12 @@ export type UserUncheckedCreateWithoutNotificationPreferencesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -5855,6 +6851,7 @@ export type UserUpdateWithoutNotificationPreferencesInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -5876,10 +6873,12 @@ export type UserUpdateWithoutNotificationPreferencesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -5892,6 +6891,7 @@ export type UserUncheckedUpdateWithoutNotificationPreferencesInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -5917,10 +6917,12 @@ export type UserUncheckedUpdateWithoutNotificationPreferencesInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -5937,6 +6939,7 @@ export type UserCreateWithoutBoardNotificationSettingsInput = {
   activeOrganizationId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  avatarUpload?: Prisma.UploadCreateNestedOneWithoutAvatarOfInput
   boardAccess?: Prisma.BoardAccessCreateNestedManyWithoutUserInput
   boardOwners?: Prisma.BoardOwnerCreateNestedManyWithoutUserInput
   comments?: Prisma.ProjectCommentCreateNestedManyWithoutAuthorInput
@@ -5958,10 +6961,12 @@ export type UserCreateWithoutBoardNotificationSettingsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipCreateNestedManyWithoutInvitedByInput
 }
@@ -5974,6 +6979,7 @@ export type UserUncheckedCreateWithoutBoardNotificationSettingsInput = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  avatarUploadId?: string | null
   isAdmin?: boolean
   activeOrganizationId?: string | null
   createdAt?: Date | string
@@ -5999,10 +7005,12 @@ export type UserUncheckedCreateWithoutBoardNotificationSettingsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutCreatedByInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutCreatedByInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOwnerInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOwnerInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOwnerInput
   orgMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutUserInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutInvitedByInput
 }
@@ -6035,6 +7043,7 @@ export type UserUpdateWithoutBoardNotificationSettingsInput = {
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarUpload?: Prisma.UploadUpdateOneWithoutAvatarOfNestedInput
   boardAccess?: Prisma.BoardAccessUpdateManyWithoutUserNestedInput
   boardOwners?: Prisma.BoardOwnerUpdateManyWithoutUserNestedInput
   comments?: Prisma.ProjectCommentUpdateManyWithoutAuthorNestedInput
@@ -6056,10 +7065,12 @@ export type UserUpdateWithoutBoardNotificationSettingsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUpdateManyWithoutInvitedByNestedInput
 }
@@ -6072,6 +7083,7 @@ export type UserUncheckedUpdateWithoutBoardNotificationSettingsInput = {
   firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activeOrganizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -6097,10 +7109,12 @@ export type UserUncheckedUpdateWithoutBoardNotificationSettingsInput = {
   createdGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   createdGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
+  createdBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutCreatedByNestedInput
   ownedJiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitHubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedAzureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedGitLabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedBitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOwnerNestedInput
   orgMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
   invitedMemberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutInvitedByNestedInput
 }
@@ -6133,10 +7147,12 @@ export type UserCountOutputType = {
   createdGitHubInstances: number
   createdAzureDevOpsInstances: number
   createdGitLabInstances: number
+  createdBitbucketInstances: number
   ownedJiraInstances: number
   ownedGitHubInstances: number
   ownedAzureDevOpsInstances: number
   ownedGitLabInstances: number
+  ownedBitbucketInstances: number
   orgMemberships: number
   invitedMemberships: number
 }
@@ -6164,10 +7180,12 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   createdGitHubInstances?: boolean | UserCountOutputTypeCountCreatedGitHubInstancesArgs
   createdAzureDevOpsInstances?: boolean | UserCountOutputTypeCountCreatedAzureDevOpsInstancesArgs
   createdGitLabInstances?: boolean | UserCountOutputTypeCountCreatedGitLabInstancesArgs
+  createdBitbucketInstances?: boolean | UserCountOutputTypeCountCreatedBitbucketInstancesArgs
   ownedJiraInstances?: boolean | UserCountOutputTypeCountOwnedJiraInstancesArgs
   ownedGitHubInstances?: boolean | UserCountOutputTypeCountOwnedGitHubInstancesArgs
   ownedAzureDevOpsInstances?: boolean | UserCountOutputTypeCountOwnedAzureDevOpsInstancesArgs
   ownedGitLabInstances?: boolean | UserCountOutputTypeCountOwnedGitLabInstancesArgs
+  ownedBitbucketInstances?: boolean | UserCountOutputTypeCountOwnedBitbucketInstancesArgs
   orgMemberships?: boolean | UserCountOutputTypeCountOrgMembershipsArgs
   invitedMemberships?: boolean | UserCountOutputTypeCountInvitedMembershipsArgs
 }
@@ -6339,6 +7357,13 @@ export type UserCountOutputTypeCountCreatedGitLabInstancesArgs<ExtArgs extends r
 /**
  * UserCountOutputType without action
  */
+export type UserCountOutputTypeCountCreatedBitbucketInstancesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.BitbucketInstanceWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
 export type UserCountOutputTypeCountOwnedJiraInstancesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.JiraInstanceWhereInput
 }
@@ -6367,6 +7392,13 @@ export type UserCountOutputTypeCountOwnedGitLabInstancesArgs<ExtArgs extends run
 /**
  * UserCountOutputType without action
  */
+export type UserCountOutputTypeCountOwnedBitbucketInstancesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.BitbucketInstanceWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
 export type UserCountOutputTypeCountOrgMembershipsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.OrgMembershipWhereInput
 }
@@ -6387,10 +7419,12 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   firstName?: boolean
   lastName?: boolean
   avatarUrl?: boolean
+  avatarUploadId?: boolean
   isAdmin?: boolean
   activeOrganizationId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  avatarUpload?: boolean | Prisma.User$avatarUploadArgs<ExtArgs>
   boardAccess?: boolean | Prisma.User$boardAccessArgs<ExtArgs>
   boardOwners?: boolean | Prisma.User$boardOwnersArgs<ExtArgs>
   comments?: boolean | Prisma.User$commentsArgs<ExtArgs>
@@ -6413,10 +7447,12 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   createdGitHubInstances?: boolean | Prisma.User$createdGitHubInstancesArgs<ExtArgs>
   createdAzureDevOpsInstances?: boolean | Prisma.User$createdAzureDevOpsInstancesArgs<ExtArgs>
   createdGitLabInstances?: boolean | Prisma.User$createdGitLabInstancesArgs<ExtArgs>
+  createdBitbucketInstances?: boolean | Prisma.User$createdBitbucketInstancesArgs<ExtArgs>
   ownedJiraInstances?: boolean | Prisma.User$ownedJiraInstancesArgs<ExtArgs>
   ownedGitHubInstances?: boolean | Prisma.User$ownedGitHubInstancesArgs<ExtArgs>
   ownedAzureDevOpsInstances?: boolean | Prisma.User$ownedAzureDevOpsInstancesArgs<ExtArgs>
   ownedGitLabInstances?: boolean | Prisma.User$ownedGitLabInstancesArgs<ExtArgs>
+  ownedBitbucketInstances?: boolean | Prisma.User$ownedBitbucketInstancesArgs<ExtArgs>
   orgMemberships?: boolean | Prisma.User$orgMembershipsArgs<ExtArgs>
   invitedMemberships?: boolean | Prisma.User$invitedMembershipsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
@@ -6430,10 +7466,12 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   firstName?: boolean
   lastName?: boolean
   avatarUrl?: boolean
+  avatarUploadId?: boolean
   isAdmin?: boolean
   activeOrganizationId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  avatarUpload?: boolean | Prisma.User$avatarUploadArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -6444,10 +7482,12 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   firstName?: boolean
   lastName?: boolean
   avatarUrl?: boolean
+  avatarUploadId?: boolean
   isAdmin?: boolean
   activeOrganizationId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  avatarUpload?: boolean | Prisma.User$avatarUploadArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectScalar = {
@@ -6458,14 +7498,16 @@ export type UserSelectScalar = {
   firstName?: boolean
   lastName?: boolean
   avatarUrl?: boolean
+  avatarUploadId?: boolean
   isAdmin?: boolean
   activeOrganizationId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "keycloakId" | "email" | "name" | "firstName" | "lastName" | "avatarUrl" | "isAdmin" | "activeOrganizationId" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "keycloakId" | "email" | "name" | "firstName" | "lastName" | "avatarUrl" | "avatarUploadId" | "isAdmin" | "activeOrganizationId" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  avatarUpload?: boolean | Prisma.User$avatarUploadArgs<ExtArgs>
   boardAccess?: boolean | Prisma.User$boardAccessArgs<ExtArgs>
   boardOwners?: boolean | Prisma.User$boardOwnersArgs<ExtArgs>
   comments?: boolean | Prisma.User$commentsArgs<ExtArgs>
@@ -6488,20 +7530,27 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   createdGitHubInstances?: boolean | Prisma.User$createdGitHubInstancesArgs<ExtArgs>
   createdAzureDevOpsInstances?: boolean | Prisma.User$createdAzureDevOpsInstancesArgs<ExtArgs>
   createdGitLabInstances?: boolean | Prisma.User$createdGitLabInstancesArgs<ExtArgs>
+  createdBitbucketInstances?: boolean | Prisma.User$createdBitbucketInstancesArgs<ExtArgs>
   ownedJiraInstances?: boolean | Prisma.User$ownedJiraInstancesArgs<ExtArgs>
   ownedGitHubInstances?: boolean | Prisma.User$ownedGitHubInstancesArgs<ExtArgs>
   ownedAzureDevOpsInstances?: boolean | Prisma.User$ownedAzureDevOpsInstancesArgs<ExtArgs>
   ownedGitLabInstances?: boolean | Prisma.User$ownedGitLabInstancesArgs<ExtArgs>
+  ownedBitbucketInstances?: boolean | Prisma.User$ownedBitbucketInstancesArgs<ExtArgs>
   orgMemberships?: boolean | Prisma.User$orgMembershipsArgs<ExtArgs>
   invitedMemberships?: boolean | Prisma.User$invitedMembershipsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
-export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
-export type UserIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  avatarUpload?: boolean | Prisma.User$avatarUploadArgs<ExtArgs>
+}
+export type UserIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  avatarUpload?: boolean | Prisma.User$avatarUploadArgs<ExtArgs>
+}
 
 export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "User"
   objects: {
+    avatarUpload: Prisma.$UploadPayload<ExtArgs> | null
     boardAccess: Prisma.$BoardAccessPayload<ExtArgs>[]
     boardOwners: Prisma.$BoardOwnerPayload<ExtArgs>[]
     comments: Prisma.$ProjectCommentPayload<ExtArgs>[]
@@ -6524,10 +7573,12 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     createdGitHubInstances: Prisma.$GitHubInstancePayload<ExtArgs>[]
     createdAzureDevOpsInstances: Prisma.$AzureDevOpsInstancePayload<ExtArgs>[]
     createdGitLabInstances: Prisma.$GitLabInstancePayload<ExtArgs>[]
+    createdBitbucketInstances: Prisma.$BitbucketInstancePayload<ExtArgs>[]
     ownedJiraInstances: Prisma.$JiraInstancePayload<ExtArgs>[]
     ownedGitHubInstances: Prisma.$GitHubInstancePayload<ExtArgs>[]
     ownedAzureDevOpsInstances: Prisma.$AzureDevOpsInstancePayload<ExtArgs>[]
     ownedGitLabInstances: Prisma.$GitLabInstancePayload<ExtArgs>[]
+    ownedBitbucketInstances: Prisma.$BitbucketInstancePayload<ExtArgs>[]
     orgMemberships: Prisma.$OrgMembershipPayload<ExtArgs>[]
     invitedMemberships: Prisma.$OrgMembershipPayload<ExtArgs>[]
   }
@@ -6544,6 +7595,11 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     firstName: string | null
     lastName: string | null
     avatarUrl: string | null
+    /**
+     * The stored copy of the photo this person chose on their profile page.
+     * `avatarUrl` is kept in step with it so existing consumers render it.
+     */
+    avatarUploadId: string | null
     /**
      * Database-side administrator flag, OR'd with the Keycloak `cockpit-admin`
      * realm-role claim in keycloak-auth.plugin.ts. Exists because a realm role
@@ -6963,6 +8019,7 @@ readonly fields: UserFieldRefs;
  */
 export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  avatarUpload<T extends Prisma.User$avatarUploadArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$avatarUploadArgs<ExtArgs>>): Prisma.Prisma__UploadClient<runtime.Types.Result.GetResult<Prisma.$UploadPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   boardAccess<T extends Prisma.User$boardAccessArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$boardAccessArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardAccessPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   boardOwners<T extends Prisma.User$boardOwnersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$boardOwnersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardOwnerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   comments<T extends Prisma.User$commentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$commentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProjectCommentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -6985,10 +8042,12 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   createdGitHubInstances<T extends Prisma.User$createdGitHubInstancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$createdGitHubInstancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$GitHubInstancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   createdAzureDevOpsInstances<T extends Prisma.User$createdAzureDevOpsInstancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$createdAzureDevOpsInstancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AzureDevOpsInstancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   createdGitLabInstances<T extends Prisma.User$createdGitLabInstancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$createdGitLabInstancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$GitLabInstancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  createdBitbucketInstances<T extends Prisma.User$createdBitbucketInstancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$createdBitbucketInstancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BitbucketInstancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   ownedJiraInstances<T extends Prisma.User$ownedJiraInstancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$ownedJiraInstancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$JiraInstancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   ownedGitHubInstances<T extends Prisma.User$ownedGitHubInstancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$ownedGitHubInstancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$GitHubInstancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   ownedAzureDevOpsInstances<T extends Prisma.User$ownedAzureDevOpsInstancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$ownedAzureDevOpsInstancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AzureDevOpsInstancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   ownedGitLabInstances<T extends Prisma.User$ownedGitLabInstancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$ownedGitLabInstancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$GitLabInstancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  ownedBitbucketInstances<T extends Prisma.User$ownedBitbucketInstancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$ownedBitbucketInstancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BitbucketInstancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   orgMemberships<T extends Prisma.User$orgMembershipsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$orgMembershipsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrgMembershipPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   invitedMemberships<T extends Prisma.User$invitedMembershipsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$invitedMembershipsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrgMembershipPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
@@ -7027,6 +8086,7 @@ export interface UserFieldRefs {
   readonly firstName: Prisma.FieldRef<"User", 'String'>
   readonly lastName: Prisma.FieldRef<"User", 'String'>
   readonly avatarUrl: Prisma.FieldRef<"User", 'String'>
+  readonly avatarUploadId: Prisma.FieldRef<"User", 'String'>
   readonly isAdmin: Prisma.FieldRef<"User", 'Boolean'>
   readonly activeOrganizationId: Prisma.FieldRef<"User", 'String'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
@@ -7285,6 +8345,10 @@ export type UserCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions
    */
   data: Prisma.UserCreateManyInput | Prisma.UserCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -7355,6 +8419,10 @@ export type UserUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions
    * Limit how many Users to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -7421,6 +8489,25 @@ export type UserDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Internal
    * Limit how many Users to delete.
    */
   limit?: number
+}
+
+/**
+ * User.avatarUpload
+ */
+export type User$avatarUploadArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Upload
+   */
+  select?: Prisma.UploadSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Upload
+   */
+  omit?: Prisma.UploadOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UploadInclude<ExtArgs> | null
+  where?: Prisma.UploadWhereInput
 }
 
 /**
@@ -7952,6 +9039,30 @@ export type User$createdGitLabInstancesArgs<ExtArgs extends runtime.Types.Extens
 }
 
 /**
+ * User.createdBitbucketInstances
+ */
+export type User$createdBitbucketInstancesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BitbucketInstance
+   */
+  select?: Prisma.BitbucketInstanceSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BitbucketInstance
+   */
+  omit?: Prisma.BitbucketInstanceOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BitbucketInstanceInclude<ExtArgs> | null
+  where?: Prisma.BitbucketInstanceWhereInput
+  orderBy?: Prisma.BitbucketInstanceOrderByWithRelationInput | Prisma.BitbucketInstanceOrderByWithRelationInput[]
+  cursor?: Prisma.BitbucketInstanceWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.BitbucketInstanceScalarFieldEnum | Prisma.BitbucketInstanceScalarFieldEnum[]
+}
+
+/**
  * User.ownedJiraInstances
  */
 export type User$ownedJiraInstancesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -8045,6 +9156,30 @@ export type User$ownedGitLabInstancesArgs<ExtArgs extends runtime.Types.Extensio
   take?: number
   skip?: number
   distinct?: Prisma.GitLabInstanceScalarFieldEnum | Prisma.GitLabInstanceScalarFieldEnum[]
+}
+
+/**
+ * User.ownedBitbucketInstances
+ */
+export type User$ownedBitbucketInstancesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BitbucketInstance
+   */
+  select?: Prisma.BitbucketInstanceSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BitbucketInstance
+   */
+  omit?: Prisma.BitbucketInstanceOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BitbucketInstanceInclude<ExtArgs> | null
+  where?: Prisma.BitbucketInstanceWhereInput
+  orderBy?: Prisma.BitbucketInstanceOrderByWithRelationInput | Prisma.BitbucketInstanceOrderByWithRelationInput[]
+  cursor?: Prisma.BitbucketInstanceWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.BitbucketInstanceScalarFieldEnum | Prisma.BitbucketInstanceScalarFieldEnum[]
 }
 
 /**

@@ -6,8 +6,11 @@
 // same upsert; we re-implement it here against the worker's PrismaClient to
 // avoid an apps/api → apps/worker import edge.
 import type { PrismaClient } from '@deckgauge/db';
+import type { DeveloperProvider } from '@deckgauge/shared';
 
-export type DeveloperProfileProvider = 'github' | 'gitlab' | 'ado' | 'jira';
+// Derived from the shared enum rather than restated: a hand-kept copy of the
+// provider list is a silent list, and it had already missed 'bitbucket'.
+export type DeveloperProfileProvider = DeveloperProvider;
 
 export interface DeveloperProfileUpsert {
   provider: DeveloperProfileProvider;

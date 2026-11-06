@@ -14,7 +14,7 @@ import { apiRequest, authFetch } from './api';
 
 // Mirrors OrgEmployeeAliasInputSchema from @deckgauge/shared without importing zod.
 export interface OrgEmployeeAliasInput {
-  provider: 'github' | 'gitlab' | 'ado' | 'jira';
+  provider: 'github' | 'gitlab' | 'bitbucket' | 'ado' | 'jira';
   kind: 'login' | 'email' | 'name';
   value: string;
 }

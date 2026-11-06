@@ -1,4 +1,4 @@
-export type Provider = 'jira' | 'github' | 'ado' | 'gitlab';
+export type Provider = 'jira' | 'github' | 'ado' | 'gitlab' | 'bitbucket';
 
 export interface RoleField {
   /** Maps 1:1 to the attach-action flag name. */
@@ -12,6 +12,7 @@ export const PROVIDER_LABEL: Record<Provider, string> = {
   github: 'GitHub',
   ado: 'Azure DevOps',
   gitlab: 'GitLab',
+  bitbucket: 'Bitbucket',
 };
 
 // Role toggles shown in the wizard's review step. Keys + defaults must match
@@ -30,6 +31,9 @@ export const PROVIDER_ROLE_FIELDS: Record<Provider, RoleField[]> = {
     { key: 'syncIssuesToBoard', label: 'Feed issues to board', default: false },
     { key: 'syncMrsToBoard', label: 'Feed MRs to board', default: false },
   ],
+  // Bitbucket never writes board rows — tasks come from Jira; Bitbucket feeds
+  // code intelligence only (spec 2026-11-03 non-goals).
+  bitbucket: [],
 };
 
 export function defaultRoleFlags(provider: Provider): Record<string, boolean> {

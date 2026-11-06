@@ -92,7 +92,8 @@ export const SyncSource = {
   ADO: 'ADO',
   GITHUB: 'GITHUB',
   JIRA: 'JIRA',
-  GITLAB: 'GITLAB'
+  GITLAB: 'GITLAB',
+  BITBUCKET: 'BITBUCKET'
 } as const
 
 export type SyncSource = (typeof SyncSource)[keyof typeof SyncSource]

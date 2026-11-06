@@ -392,17 +392,19 @@ export async function widgetDataRoutes(
     { config: { policy: board('VIEWER') } },
     async (req): Promise<WidgetScopeFlags> => {
       const { boardId } = req.params;
-      const [jira, github, gitlab, ado] = await Promise.all([
+      const [jira, github, gitlab, ado, bitbucket] = await Promise.all([
         prisma.boardJiraSource.count({ where: { boardId } }),
         prisma.boardGitHubSource.count({ where: { boardId } }),
         prisma.boardGitLabSource.count({ where: { boardId } }),
         prisma.boardAdoSource.count({ where: { boardId } }),
+        prisma.boardBitbucketSource.count({ where: { boardId } }),
       ]);
       return {
         hasJira: jira > 0,
         hasGitHub: github > 0,
         hasGitLab: gitlab > 0,
         hasAdo: ado > 0,
+        hasBitbucket: bitbucket > 0,
       };
     }
   );

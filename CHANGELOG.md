@@ -16,7 +16,78 @@ operator to do something before upgrading is a major one.
 
 ## [Unreleased]
 
+## [v3.0.0] — 2026-11-06 — Bitbucket, credentials sealed at rest, secure defaults
+
+A **major** release because an existing install has to do one thing before it
+upgrades: give it a credential-encryption key (step 1 under "Upgrading" below).
+Compose refuses to start without one, by design.
+
+### Added
+
+- **Bitbucket Cloud** as a fifth source, alongside Jira, GitHub, GitLab and
+  Azure DevOps: connection and repository picker in onboarding and board
+  sources, worker sync of pull requests, commits and reviews, and the same
+  intelligence widgets the other code hosts feed. Bitbucket PRs link to a
+  board's Jira projects by issue key, and their activity counts in the org
+  tree's Activity tab and ranking.
+- **Add an item by its source link.** Each group's add row takes a Jira issue,
+  GitHub issue or Azure DevOps work item URL next to "Item name". The link must
+  belong to a source already attached to the board; the row appears at once,
+  keeps receiving updates even when it falls outside the source's scope filter,
+  and is never flagged removed for being out of scope.
+- **Employee photos in the org chart.** An org-chart import may carry a photo
+  column; photos are fetched over https only, with no redirects, size and type
+  checks, and a host allowlist (BambooHR always, plus `ORG_PHOTO_ALLOWED_HOSTS`,
+  comma-separated). A photo that fails never fails the import.
+- **My profile.** Members can upload or remove their own photo, which shows in
+  the header, on their org-chart entry and on employee-board rows.
+- **Links in comments** — URLs render clickable, and a Link toolbar button
+  inserts one (http(s), `mailto:` and `tel:` only).
+- New **development** boards open with the Team Focus tab already set up.
+
+### Changed
+
+- **Lead time for changes is measured to the production deploy.** It used to
+  run PR opened → merged. It now runs from PR opened to the first successful
+  production deploy of the same repository at or after the merge; a repository
+  with no production deploys falls back to merge, and PRs not yet shipped are
+  excluded. The Lead Time and DORA widgets say which basis they used
+  (deployments, merge proxy, or mixed). **Expect your numbers to move.**
+- Team Focus is offered only on development boards.
+- Manual sync forms pick the connection from a list (GitHub issue #4), and a
+  manual sync with nothing attached reports that instead of queueing a no-op
+  (#8). The GitHub repository picker remembers the connection's organization
+  and lists your own repositories when it has none (#3).
+- The org-chart import recognises BambooHR headers, and picks columns by the
+  most specific alias rather than by column order.
+
+### Fixed
+
+- **`./scripts/backup.sh` works in the published repository.** It sources
+  `scripts/lib/ch-export.sh`, which v2.0.0 did not publish, so it stopped on its
+  first ClickHouse step. `scripts/check-pinned-env.sh` had the same gap with
+  `scripts/lib/container-consumed-env.py`. Both helpers are published now, and
+  a test fails if a published script uses a helper that is not.
+- **Keycloak no longer restarts while `./scripts/test-account.sh` runs.** The
+  admin CLI is a second Java process inside Keycloak's 512 MB container, and
+  on a fresh install the pair crossed the limit and the server was killed at
+  "Setting the password". `docker-compose.yml` now caps the CLI with
+  `KC_OPTS`, which the server does not read; recreate Keycloak to pick it up
+  (`docker compose up -d keycloak`).
+- Bitbucket-linked PRs no longer need typed issue prefixes to reach a board's
+  Jira projects; the delete dialog no longer carries over to the next board; a
+  space typed inside a draggable node reaches the field.
+
 ### Security
+
+- **Provider credentials are encrypted at rest.** Every stored Jira, GitHub,
+  GitLab, Azure DevOps, Bitbucket and Microsoft Graph token, and the advisor
+  API key, is sealed with AES-256-GCM before it reaches Postgres. A leaked
+  database is no longer a leaked set of logins. The key is
+  `CREDENTIAL_ENCRYPTION_KEY`; the api and worker refuse to start without it
+  rather than fall back to plaintext. **Losing the key makes every stored
+  credential unrecoverable** — back it up with your database.
+- Comment attachments can no longer reference a profile or org-chart photo.
 
 - **TLS certificates are verified by default** (GitHub issue #6). All three
   images used to bake `NODE_TLS_REJECT_UNAUTHORIZED=0` into the running
@@ -43,10 +114,33 @@ operator to do something before upgrading is a major one.
 
 ### Upgrading
 
-Nothing here stops an existing install from starting, but three things change
-under it:
+Back up first. **From v2.0.0, `git pull` before `./scripts/backup.sh`:**
+v2.0.0's copy of `backup.sh` cannot run (see Fixed), and pulling changes no
+running container. Then:
 
-1. **Outbound TLS is verified now.** If your network intercepts TLS (a corporate
+1. **Add a credential-encryption key — required.** `./scripts/init-env.sh --check`
+   names it. Add a fresh value to `.env`:
+
+   ```bash
+   CREDENTIAL_ENCRYPTION_KEY=<output of: openssl rand -hex 32>
+   ```
+
+   Run the usual upgrade (README, "Upgrading an existing install"), then seal
+   the credentials already in your database, once, and confirm none are left:
+
+   ```bash
+   docker compose run --rm -T api sh -c "cd /app/packages/db && npx tsx src/scripts/encrypt-credentials.ts"
+   docker compose run --rm -T api sh -c "cd /app/packages/db && npx tsx src/scripts/encrypt-credentials.ts --verify"
+   ```
+
+   Until that runs, connections stored before the upgrade cannot be read and
+   their syncs fail. Back the key up alongside your database backups: a restore
+   without it means re-entering every connection.
+
+The rest does not stop an existing install from starting, but three things
+change under it:
+
+2. **Outbound TLS is verified now.** If your network intercepts TLS (a corporate
    proxy), outbound syncs will fail with `self-signed certificate in certificate
    chain` or `unable to get local issuer certificate`, and so will
    `docker compose build` (pnpm install inside the image).
@@ -61,11 +155,11 @@ under it:
    Jira with a self-signed certificate is the same case: trust its CA with
    `NODE_EXTRA_CA_CERTS`. (`JIRA_TLS_INSECURE=1` relaxes only the api's
    connection test and project discovery; the worker's sync still verifies.)
-2. **Your ports move to loopback.** If you reach this install from another
+3. **Your ports move to loopback.** If you reach this install from another
    machine by IP, add `BIND_HOST=` (or `BIND_HOST=<address>:`, trailing colon
    included) to `.env` before `docker compose up -d`. Reaching it through a
    reverse proxy or tunnel on the same host needs nothing.
-3. **Add a Redis password.** Run `./scripts/init-env.sh --check`; it now names
+4. **Add a Redis password.** Run `./scripts/init-env.sh --check`; it now names
    `REDIS_PASSWORD`. Any fresh value works — Redis reads it at every start, not
    from its volume — so add both lines and `docker compose up -d`:
 

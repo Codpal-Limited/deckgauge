@@ -8,12 +8,15 @@ import type { OrgEmployee, OrgEmployeeAlias } from '@deckgauge/db';
 
 /** Map an OrgEmployee (+aliases) to the wire DTO. Salary fields are included
  *  only when includeSalary (PII gate). The tree-relative `ranking` is computed by
- *  the caller (it needs every employee in the tree) and passed in; null = unranked. */
+ *  the caller (it needs every employee in the tree) and passed in; null = unranked.
+ *  `selfPhotoUrl` is the matching member's self-chosen profile photo (see
+ *  `userAvatarsByEmail`); it wins over the imported one. */
 export function toOrgEmployeeDto(
   e: OrgEmployee,
   aliases: OrgEmployeeAlias[],
   includeSalary: boolean,
   ranking: EmployeeRankingDto | null = null,
+  selfPhotoUrl: string | null = null,
 ): OrgEmployeeDto {
   const parsed = e.statsJson ? EmployeeStatsSchema.safeParse(e.statsJson) : null;
   const dto: OrgEmployeeDto = {
@@ -47,6 +50,7 @@ export function toOrgEmployeeDto(
     phone: e.phone,
     workAddress: e.workAddress,
     isDeparted: e.departedAt != null,
+    photoUrl: selfPhotoUrl ?? (e.photoUploadId ? `/api/uploads/${e.photoUploadId}` : null),
   };
   if (includeSalary) {
     dto.salaryCurrent = e.salaryCurrent;

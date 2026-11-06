@@ -26,6 +26,7 @@ const SOURCE_LABELS: Record<WidgetSourceKind, string> = {
   ado: 'Azure DevOps',
   github: 'GitHub',
   gitlab: 'GitLab',
+  bitbucket: 'Bitbucket',
 };
 
 function formatRequirementMessage(widgetType: string): string | null {
@@ -75,7 +76,7 @@ export default function WidgetPicker({ boardId, viewId, onClose, onAdded }: Widg
       .catch(() => {
         // Fall back to no-gating on fetch failure so the picker stays usable.
         if (!cancelled) {
-          setScope({ hasJira: true, hasGitHub: true, hasGitLab: true, hasAdo: true });
+          setScope({ hasJira: true, hasGitHub: true, hasGitLab: true, hasAdo: true, hasBitbucket: true });
         }
       });
     return () => {

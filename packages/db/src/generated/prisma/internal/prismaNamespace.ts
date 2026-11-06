@@ -426,6 +426,7 @@ export const ModelName = {
   DashboardWidget: 'DashboardWidget',
   ProjectStatusChange: 'ProjectStatusChange',
   GitLabInstance: 'GitLabInstance',
+  BitbucketInstance: 'BitbucketInstance',
   JiraProjectSync: 'JiraProjectSync',
   BoardJiraSource: 'BoardJiraSource',
   BoardJiraSourceKey: 'BoardJiraSourceKey',
@@ -437,6 +438,8 @@ export const ModelName = {
   BoardAdoSource: 'BoardAdoSource',
   GitLabProjectSync: 'GitLabProjectSync',
   BoardGitLabSource: 'BoardGitLabSource',
+  BitbucketRepoSync: 'BitbucketRepoSync',
+  BoardBitbucketSource: 'BoardBitbucketSource',
   BoardFolder: 'BoardFolder',
   UserBoardPref: 'UserBoardPref',
   OrgTree: 'OrgTree',
@@ -488,7 +491,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "organization" | "orgMembership" | "board" | "boardCalendarEvent" | "boardOwner" | "boardStatus" | "boardSyncExclusion" | "group" | "project" | "projectComment" | "boardColumn" | "projectFieldValue" | "automationRule" | "jiraInstance" | "syncRun" | "upload" | "gitHubInstance" | "azureDevOpsInstance" | "user" | "developerProfile" | "boardAccess" | "boardView" | "comparison" | "comparisonAccess" | "comparisonMember" | "roadmapConfig" | "dashboardWidget" | "projectStatusChange" | "gitLabInstance" | "jiraProjectSync" | "boardJiraSource" | "boardJiraSourceKey" | "gitHubRepoSync" | "prJiraLink" | "boardGitHubSource" | "azureDevOpsProjectSync" | "adoRepoSyncState" | "boardAdoSource" | "gitLabProjectSync" | "boardGitLabSource" | "boardFolder" | "userBoardPref" | "orgTree" | "orgTreeAccess" | "orgEmployee" | "orgTreeSource" | "boardCalendarSource" | "orgEmployeeAlias" | "orgEmployeeComment" | "employeeBoard" | "employeeBoardAccess" | "employeeGroup" | "employeeBoardMember" | "employeeColumn" | "employeeFieldValue" | "roadmap" | "roadmapAccess" | "roadmapBoardSubscription" | "roadmapGroup" | "roadmapView" | "roadmapGanttConfig" | "userRoadmapPref" | "timesheetStatusRule" | "orgTreeTimesheetConfig" | "sourceStatusBucket" | "retiredJiraProject" | "advisorConfig" | "advisorSession" | "advisorMessage" | "advisorChangeSet" | "notification" | "notificationPreference" | "boardNotificationSetting" | "focusVerdict" | "focusConfig" | "focusEpic"
+    modelProps: "organization" | "orgMembership" | "board" | "boardCalendarEvent" | "boardOwner" | "boardStatus" | "boardSyncExclusion" | "group" | "project" | "projectComment" | "boardColumn" | "projectFieldValue" | "automationRule" | "jiraInstance" | "syncRun" | "upload" | "gitHubInstance" | "azureDevOpsInstance" | "user" | "developerProfile" | "boardAccess" | "boardView" | "comparison" | "comparisonAccess" | "comparisonMember" | "roadmapConfig" | "dashboardWidget" | "projectStatusChange" | "gitLabInstance" | "bitbucketInstance" | "jiraProjectSync" | "boardJiraSource" | "boardJiraSourceKey" | "gitHubRepoSync" | "prJiraLink" | "boardGitHubSource" | "azureDevOpsProjectSync" | "adoRepoSyncState" | "boardAdoSource" | "gitLabProjectSync" | "boardGitLabSource" | "bitbucketRepoSync" | "boardBitbucketSource" | "boardFolder" | "userBoardPref" | "orgTree" | "orgTreeAccess" | "orgEmployee" | "orgTreeSource" | "boardCalendarSource" | "orgEmployeeAlias" | "orgEmployeeComment" | "employeeBoard" | "employeeBoardAccess" | "employeeGroup" | "employeeBoardMember" | "employeeColumn" | "employeeFieldValue" | "roadmap" | "roadmapAccess" | "roadmapBoardSubscription" | "roadmapGroup" | "roadmapView" | "roadmapGanttConfig" | "userRoadmapPref" | "timesheetStatusRule" | "orgTreeTimesheetConfig" | "sourceStatusBucket" | "retiredJiraProject" | "advisorConfig" | "advisorSession" | "advisorMessage" | "advisorChangeSet" | "notification" | "notificationPreference" | "boardNotificationSetting" | "focusVerdict" | "focusConfig" | "focusEpic"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2638,6 +2641,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    BitbucketInstance: {
+      payload: Prisma.$BitbucketInstancePayload<ExtArgs>
+      fields: Prisma.BitbucketInstanceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BitbucketInstanceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketInstancePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BitbucketInstanceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketInstancePayload>
+        }
+        findFirst: {
+          args: Prisma.BitbucketInstanceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketInstancePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BitbucketInstanceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketInstancePayload>
+        }
+        findMany: {
+          args: Prisma.BitbucketInstanceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketInstancePayload>[]
+        }
+        create: {
+          args: Prisma.BitbucketInstanceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketInstancePayload>
+        }
+        createMany: {
+          args: Prisma.BitbucketInstanceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BitbucketInstanceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketInstancePayload>[]
+        }
+        delete: {
+          args: Prisma.BitbucketInstanceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketInstancePayload>
+        }
+        update: {
+          args: Prisma.BitbucketInstanceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketInstancePayload>
+        }
+        deleteMany: {
+          args: Prisma.BitbucketInstanceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BitbucketInstanceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BitbucketInstanceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketInstancePayload>[]
+        }
+        upsert: {
+          args: Prisma.BitbucketInstanceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketInstancePayload>
+        }
+        aggregate: {
+          args: Prisma.BitbucketInstanceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBitbucketInstance>
+        }
+        groupBy: {
+          args: Prisma.BitbucketInstanceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BitbucketInstanceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BitbucketInstanceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BitbucketInstanceCountAggregateOutputType> | number
+        }
+      }
+    }
     JiraProjectSync: {
       payload: Prisma.$JiraProjectSyncPayload<ExtArgs>
       fields: Prisma.JiraProjectSyncFieldRefs
@@ -3449,6 +3526,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.BoardGitLabSourceCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.BoardGitLabSourceCountAggregateOutputType> | number
+        }
+      }
+    }
+    BitbucketRepoSync: {
+      payload: Prisma.$BitbucketRepoSyncPayload<ExtArgs>
+      fields: Prisma.BitbucketRepoSyncFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BitbucketRepoSyncFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketRepoSyncPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BitbucketRepoSyncFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketRepoSyncPayload>
+        }
+        findFirst: {
+          args: Prisma.BitbucketRepoSyncFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketRepoSyncPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BitbucketRepoSyncFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketRepoSyncPayload>
+        }
+        findMany: {
+          args: Prisma.BitbucketRepoSyncFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketRepoSyncPayload>[]
+        }
+        create: {
+          args: Prisma.BitbucketRepoSyncCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketRepoSyncPayload>
+        }
+        createMany: {
+          args: Prisma.BitbucketRepoSyncCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BitbucketRepoSyncCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketRepoSyncPayload>[]
+        }
+        delete: {
+          args: Prisma.BitbucketRepoSyncDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketRepoSyncPayload>
+        }
+        update: {
+          args: Prisma.BitbucketRepoSyncUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketRepoSyncPayload>
+        }
+        deleteMany: {
+          args: Prisma.BitbucketRepoSyncDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BitbucketRepoSyncUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BitbucketRepoSyncUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketRepoSyncPayload>[]
+        }
+        upsert: {
+          args: Prisma.BitbucketRepoSyncUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BitbucketRepoSyncPayload>
+        }
+        aggregate: {
+          args: Prisma.BitbucketRepoSyncAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBitbucketRepoSync>
+        }
+        groupBy: {
+          args: Prisma.BitbucketRepoSyncGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BitbucketRepoSyncGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BitbucketRepoSyncCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BitbucketRepoSyncCountAggregateOutputType> | number
+        }
+      }
+    }
+    BoardBitbucketSource: {
+      payload: Prisma.$BoardBitbucketSourcePayload<ExtArgs>
+      fields: Prisma.BoardBitbucketSourceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BoardBitbucketSourceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardBitbucketSourcePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BoardBitbucketSourceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardBitbucketSourcePayload>
+        }
+        findFirst: {
+          args: Prisma.BoardBitbucketSourceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardBitbucketSourcePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BoardBitbucketSourceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardBitbucketSourcePayload>
+        }
+        findMany: {
+          args: Prisma.BoardBitbucketSourceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardBitbucketSourcePayload>[]
+        }
+        create: {
+          args: Prisma.BoardBitbucketSourceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardBitbucketSourcePayload>
+        }
+        createMany: {
+          args: Prisma.BoardBitbucketSourceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BoardBitbucketSourceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardBitbucketSourcePayload>[]
+        }
+        delete: {
+          args: Prisma.BoardBitbucketSourceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardBitbucketSourcePayload>
+        }
+        update: {
+          args: Prisma.BoardBitbucketSourceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardBitbucketSourcePayload>
+        }
+        deleteMany: {
+          args: Prisma.BoardBitbucketSourceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BoardBitbucketSourceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BoardBitbucketSourceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardBitbucketSourcePayload>[]
+        }
+        upsert: {
+          args: Prisma.BoardBitbucketSourceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BoardBitbucketSourcePayload>
+        }
+        aggregate: {
+          args: Prisma.BoardBitbucketSourceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBoardBitbucketSource>
+        }
+        groupBy: {
+          args: Prisma.BoardBitbucketSourceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BoardBitbucketSourceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BoardBitbucketSourceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BoardBitbucketSourceCountAggregateOutputType> | number
         }
       }
     }
@@ -6296,6 +6521,7 @@ export const ProjectScalarFieldEnum = {
   adoProject: 'adoProject',
   adoSyncedFields: 'adoSyncedFields',
   adoRemovedFromSource: 'adoRemovedFromSource',
+  linkedFromSource: 'linkedFromSource',
   roadmapPinnedStart: 'roadmapPinnedStart',
   startDate: 'startDate',
   endDate: 'endDate',
@@ -6457,6 +6683,7 @@ export const UserScalarFieldEnum = {
   firstName: 'firstName',
   lastName: 'lastName',
   avatarUrl: 'avatarUrl',
+  avatarUploadId: 'avatarUploadId',
   isAdmin: 'isAdmin',
   activeOrganizationId: 'activeOrganizationId',
   createdAt: 'createdAt',
@@ -6598,6 +6825,22 @@ export const GitLabInstanceScalarFieldEnum = {
 } as const
 
 export type GitLabInstanceScalarFieldEnum = (typeof GitLabInstanceScalarFieldEnum)[keyof typeof GitLabInstanceScalarFieldEnum]
+
+
+export const BitbucketInstanceScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  workspace: 'workspace',
+  email: 'email',
+  apiToken: 'apiToken',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  organizationId: 'organizationId',
+  createdById: 'createdById',
+  ownerUserId: 'ownerUserId'
+} as const
+
+export type BitbucketInstanceScalarFieldEnum = (typeof BitbucketInstanceScalarFieldEnum)[keyof typeof BitbucketInstanceScalarFieldEnum]
 
 
 export const JiraProjectSyncScalarFieldEnum = {
@@ -6792,6 +7035,35 @@ export const BoardGitLabSourceScalarFieldEnum = {
 export type BoardGitLabSourceScalarFieldEnum = (typeof BoardGitLabSourceScalarFieldEnum)[keyof typeof BoardGitLabSourceScalarFieldEnum]
 
 
+export const BitbucketRepoSyncScalarFieldEnum = {
+  id: 'id',
+  bitbucketInstanceId: 'bitbucketInstanceId',
+  repoFullName: 'repoFullName',
+  projectKey: 'projectKey',
+  syncPrs: 'syncPrs',
+  syncCommits: 'syncCommits',
+  syncDeployments: 'syncDeployments',
+  lastSyncedAt: 'lastSyncedAt',
+  lastDeploymentSyncAt: 'lastDeploymentSyncAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type BitbucketRepoSyncScalarFieldEnum = (typeof BitbucketRepoSyncScalarFieldEnum)[keyof typeof BitbucketRepoSyncScalarFieldEnum]
+
+
+export const BoardBitbucketSourceScalarFieldEnum = {
+  id: 'id',
+  boardId: 'boardId',
+  bitbucketRepoSyncId: 'bitbucketRepoSyncId',
+  targetGroupId: 'targetGroupId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type BoardBitbucketSourceScalarFieldEnum = (typeof BoardBitbucketSourceScalarFieldEnum)[keyof typeof BoardBitbucketSourceScalarFieldEnum]
+
+
 export const BoardFolderScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -6879,6 +7151,8 @@ export const OrgEmployeeScalarFieldEnum = {
   syncedAt: 'syncedAt',
   msGraphId: 'msGraphId',
   departedAt: 'departedAt',
+  photoUploadId: 'photoUploadId',
+  photoSource: 'photoSource',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -7930,6 +8204,7 @@ export type GlobalOmitConfig = {
   dashboardWidget?: Prisma.DashboardWidgetOmit
   projectStatusChange?: Prisma.ProjectStatusChangeOmit
   gitLabInstance?: Prisma.GitLabInstanceOmit
+  bitbucketInstance?: Prisma.BitbucketInstanceOmit
   jiraProjectSync?: Prisma.JiraProjectSyncOmit
   boardJiraSource?: Prisma.BoardJiraSourceOmit
   boardJiraSourceKey?: Prisma.BoardJiraSourceKeyOmit
@@ -7941,6 +8216,8 @@ export type GlobalOmitConfig = {
   boardAdoSource?: Prisma.BoardAdoSourceOmit
   gitLabProjectSync?: Prisma.GitLabProjectSyncOmit
   boardGitLabSource?: Prisma.BoardGitLabSourceOmit
+  bitbucketRepoSync?: Prisma.BitbucketRepoSyncOmit
+  boardBitbucketSource?: Prisma.BoardBitbucketSourceOmit
   boardFolder?: Prisma.BoardFolderOmit
   userBoardPref?: Prisma.UserBoardPrefOmit
   orgTree?: Prisma.OrgTreeOmit

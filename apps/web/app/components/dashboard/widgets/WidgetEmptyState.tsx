@@ -33,17 +33,17 @@ const REASON_COPY: Record<string, Copy> = {
   },
   no_pr_source: {
     headline: 'No pull-request source connected',
-    body: 'Connect GitHub, GitLab, or Azure DevOps.',
+    body: 'Connect GitHub, GitLab, Bitbucket, or Azure DevOps.',
     connect: true,
   },
   no_commit_source: {
     headline: 'No commit source connected',
-    body: 'Connect GitHub, GitLab, or Azure DevOps.',
+    body: 'Connect GitHub, GitLab, Bitbucket, or Azure DevOps.',
     connect: true,
   },
   no_review_source: {
     headline: 'No code-review source connected',
-    body: 'Connect GitHub, GitLab, or Azure DevOps.',
+    body: 'Connect GitHub, GitLab, Bitbucket, or Azure DevOps.',
     connect: true,
   },
   no_github_source: {
@@ -53,7 +53,7 @@ const REASON_COPY: Record<string, Copy> = {
   },
   no_code_source: {
     headline: 'No code source connected',
-    body: 'Connect GitHub, GitLab, or Azure DevOps (PRs or commits).',
+    body: 'Connect GitHub, GitLab, Bitbucket, or Azure DevOps (PRs or commits).',
     connect: true,
   },
   no_sprintable_source: {

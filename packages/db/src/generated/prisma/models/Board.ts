@@ -218,6 +218,7 @@ export type BoardWhereInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceListRelationFilter
   boardAdoSources?: Prisma.BoardAdoSourceListRelationFilter
   boardGitlabSources?: Prisma.BoardGitLabSourceListRelationFilter
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceListRelationFilter
   owners?: Prisma.BoardOwnerListRelationFilter
   statuses?: Prisma.BoardStatusListRelationFilter
   accessEntries?: Prisma.BoardAccessListRelationFilter
@@ -255,6 +256,7 @@ export type BoardOrderByWithRelationInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceOrderByRelationAggregateInput
   boardAdoSources?: Prisma.BoardAdoSourceOrderByRelationAggregateInput
   boardGitlabSources?: Prisma.BoardGitLabSourceOrderByRelationAggregateInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceOrderByRelationAggregateInput
   owners?: Prisma.BoardOwnerOrderByRelationAggregateInput
   statuses?: Prisma.BoardStatusOrderByRelationAggregateInput
   accessEntries?: Prisma.BoardAccessOrderByRelationAggregateInput
@@ -295,6 +297,7 @@ export type BoardWhereUniqueInput = Prisma.AtLeast<{
   boardGithubSources?: Prisma.BoardGitHubSourceListRelationFilter
   boardAdoSources?: Prisma.BoardAdoSourceListRelationFilter
   boardGitlabSources?: Prisma.BoardGitLabSourceListRelationFilter
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceListRelationFilter
   owners?: Prisma.BoardOwnerListRelationFilter
   statuses?: Prisma.BoardStatusListRelationFilter
   accessEntries?: Prisma.BoardAccessListRelationFilter
@@ -363,6 +366,7 @@ export type BoardCreateInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -400,6 +404,7 @@ export type BoardUncheckedCreateInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -435,6 +440,7 @@ export type BoardUpdateInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -472,6 +478,7 @@ export type BoardUncheckedUpdateInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -862,6 +869,20 @@ export type BoardUpdateOneRequiredWithoutBoardGitlabSourcesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.BoardUpdateToOneWithWhereWithoutBoardGitlabSourcesInput, Prisma.BoardUpdateWithoutBoardGitlabSourcesInput>, Prisma.BoardUncheckedUpdateWithoutBoardGitlabSourcesInput>
 }
 
+export type BoardCreateNestedOneWithoutBoardBitbucketSourcesInput = {
+  create?: Prisma.XOR<Prisma.BoardCreateWithoutBoardBitbucketSourcesInput, Prisma.BoardUncheckedCreateWithoutBoardBitbucketSourcesInput>
+  connectOrCreate?: Prisma.BoardCreateOrConnectWithoutBoardBitbucketSourcesInput
+  connect?: Prisma.BoardWhereUniqueInput
+}
+
+export type BoardUpdateOneRequiredWithoutBoardBitbucketSourcesNestedInput = {
+  create?: Prisma.XOR<Prisma.BoardCreateWithoutBoardBitbucketSourcesInput, Prisma.BoardUncheckedCreateWithoutBoardBitbucketSourcesInput>
+  connectOrCreate?: Prisma.BoardCreateOrConnectWithoutBoardBitbucketSourcesInput
+  upsert?: Prisma.BoardUpsertWithoutBoardBitbucketSourcesInput
+  connect?: Prisma.BoardWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.BoardUpdateToOneWithWhereWithoutBoardBitbucketSourcesInput, Prisma.BoardUpdateWithoutBoardBitbucketSourcesInput>, Prisma.BoardUncheckedUpdateWithoutBoardBitbucketSourcesInput>
+}
+
 export type BoardCreateNestedOneWithoutUserPrefsInput = {
   create?: Prisma.XOR<Prisma.BoardCreateWithoutUserPrefsInput, Prisma.BoardUncheckedCreateWithoutUserPrefsInput>
   connectOrCreate?: Prisma.BoardCreateOrConnectWithoutUserPrefsInput
@@ -992,6 +1013,7 @@ export type BoardCreateWithoutOrganizationInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -1027,6 +1049,7 @@ export type BoardUncheckedCreateWithoutOrganizationInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -1104,6 +1127,7 @@ export type BoardCreateWithoutCalendarEventsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -1140,6 +1164,7 @@ export type BoardUncheckedCreateWithoutCalendarEventsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -1190,6 +1215,7 @@ export type BoardUpdateWithoutCalendarEventsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -1226,6 +1252,7 @@ export type BoardUncheckedUpdateWithoutCalendarEventsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -1260,6 +1287,7 @@ export type BoardCreateWithoutOwnersInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
   views?: Prisma.BoardViewCreateNestedManyWithoutBoardInput
@@ -1296,6 +1324,7 @@ export type BoardUncheckedCreateWithoutOwnersInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
   views?: Prisma.BoardViewUncheckedCreateNestedManyWithoutBoardInput
@@ -1346,6 +1375,7 @@ export type BoardUpdateWithoutOwnersInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
   views?: Prisma.BoardViewUpdateManyWithoutBoardNestedInput
@@ -1382,6 +1412,7 @@ export type BoardUncheckedUpdateWithoutOwnersInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
   views?: Prisma.BoardViewUncheckedUpdateManyWithoutBoardNestedInput
@@ -1416,6 +1447,7 @@ export type BoardCreateWithoutStatusesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
   views?: Prisma.BoardViewCreateNestedManyWithoutBoardInput
@@ -1452,6 +1484,7 @@ export type BoardUncheckedCreateWithoutStatusesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
   views?: Prisma.BoardViewUncheckedCreateNestedManyWithoutBoardInput
@@ -1502,6 +1535,7 @@ export type BoardUpdateWithoutStatusesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
   views?: Prisma.BoardViewUpdateManyWithoutBoardNestedInput
@@ -1538,6 +1572,7 @@ export type BoardUncheckedUpdateWithoutStatusesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
   views?: Prisma.BoardViewUncheckedUpdateManyWithoutBoardNestedInput
@@ -1572,6 +1607,7 @@ export type BoardCreateWithoutSyncExclusionsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -1608,6 +1644,7 @@ export type BoardUncheckedCreateWithoutSyncExclusionsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -1658,6 +1695,7 @@ export type BoardUpdateWithoutSyncExclusionsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -1694,6 +1732,7 @@ export type BoardUncheckedUpdateWithoutSyncExclusionsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -1727,6 +1766,7 @@ export type BoardCreateWithoutGroupsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -1763,6 +1803,7 @@ export type BoardUncheckedCreateWithoutGroupsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -1813,6 +1854,7 @@ export type BoardUpdateWithoutGroupsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -1849,6 +1891,7 @@ export type BoardUncheckedUpdateWithoutGroupsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -1883,6 +1926,7 @@ export type BoardCreateWithoutProjectsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -1919,6 +1963,7 @@ export type BoardUncheckedCreateWithoutProjectsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -1969,6 +2014,7 @@ export type BoardUpdateWithoutProjectsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -2005,6 +2051,7 @@ export type BoardUncheckedUpdateWithoutProjectsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -2039,6 +2086,7 @@ export type BoardCreateWithoutColumnsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -2075,6 +2123,7 @@ export type BoardUncheckedCreateWithoutColumnsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -2125,6 +2174,7 @@ export type BoardUpdateWithoutColumnsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -2161,6 +2211,7 @@ export type BoardUncheckedUpdateWithoutColumnsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -2195,6 +2246,7 @@ export type BoardCreateWithoutAutomationsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -2231,6 +2283,7 @@ export type BoardUncheckedCreateWithoutAutomationsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -2281,6 +2334,7 @@ export type BoardUpdateWithoutAutomationsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -2317,6 +2371,7 @@ export type BoardUncheckedUpdateWithoutAutomationsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -2352,6 +2407,7 @@ export type BoardCreateWithoutAccessEntriesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   views?: Prisma.BoardViewCreateNestedManyWithoutBoardInput
@@ -2388,6 +2444,7 @@ export type BoardUncheckedCreateWithoutAccessEntriesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   views?: Prisma.BoardViewUncheckedCreateNestedManyWithoutBoardInput
@@ -2438,6 +2495,7 @@ export type BoardUpdateWithoutAccessEntriesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   views?: Prisma.BoardViewUpdateManyWithoutBoardNestedInput
@@ -2474,6 +2532,7 @@ export type BoardUncheckedUpdateWithoutAccessEntriesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   views?: Prisma.BoardViewUncheckedUpdateManyWithoutBoardNestedInput
@@ -2508,6 +2567,7 @@ export type BoardCreateWithoutViewsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -2544,6 +2604,7 @@ export type BoardUncheckedCreateWithoutViewsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -2594,6 +2655,7 @@ export type BoardUpdateWithoutViewsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -2630,6 +2692,7 @@ export type BoardUncheckedUpdateWithoutViewsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -2664,6 +2727,7 @@ export type BoardCreateWithoutComparisonMembershipsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -2700,6 +2764,7 @@ export type BoardUncheckedCreateWithoutComparisonMembershipsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -2750,6 +2815,7 @@ export type BoardUpdateWithoutComparisonMembershipsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -2786,6 +2852,7 @@ export type BoardUncheckedUpdateWithoutComparisonMembershipsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -2819,6 +2886,7 @@ export type BoardCreateWithoutBoardJiraSourcesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -2855,6 +2923,7 @@ export type BoardUncheckedCreateWithoutBoardJiraSourcesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -2905,6 +2974,7 @@ export type BoardUpdateWithoutBoardJiraSourcesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -2941,6 +3011,7 @@ export type BoardUncheckedUpdateWithoutBoardJiraSourcesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -2975,6 +3046,7 @@ export type BoardCreateWithoutBoardGithubSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -3011,6 +3083,7 @@ export type BoardUncheckedCreateWithoutBoardGithubSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -3061,6 +3134,7 @@ export type BoardUpdateWithoutBoardGithubSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -3097,6 +3171,7 @@ export type BoardUncheckedUpdateWithoutBoardGithubSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -3131,6 +3206,7 @@ export type BoardCreateWithoutBoardAdoSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceCreateNestedManyWithoutBoardInput
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -3167,6 +3243,7 @@ export type BoardUncheckedCreateWithoutBoardAdoSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -3217,6 +3294,7 @@ export type BoardUpdateWithoutBoardAdoSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUpdateManyWithoutBoardNestedInput
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -3253,6 +3331,7 @@ export type BoardUncheckedUpdateWithoutBoardAdoSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -3287,6 +3366,7 @@ export type BoardCreateWithoutBoardGitlabSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceCreateNestedManyWithoutBoardInput
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -3323,6 +3403,7 @@ export type BoardUncheckedCreateWithoutBoardGitlabSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -3373,6 +3454,7 @@ export type BoardUpdateWithoutBoardGitlabSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUpdateManyWithoutBoardNestedInput
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -3409,6 +3491,167 @@ export type BoardUncheckedUpdateWithoutBoardGitlabSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
+  owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
+  statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
+  accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
+  views?: Prisma.BoardViewUncheckedUpdateManyWithoutBoardNestedInput
+  userPrefs?: Prisma.UserBoardPrefUncheckedUpdateManyWithoutBoardNestedInput
+  syncExclusions?: Prisma.BoardSyncExclusionUncheckedUpdateManyWithoutBoardNestedInput
+  roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUncheckedUpdateManyWithoutBoardNestedInput
+  calendarEvents?: Prisma.BoardCalendarEventUncheckedUpdateManyWithoutBoardNestedInput
+  comparisonMemberships?: Prisma.ComparisonMemberUncheckedUpdateManyWithoutBoardNestedInput
+  notificationSettings?: Prisma.BoardNotificationSettingUncheckedUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUncheckedUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUncheckedUpdateManyWithoutBoardNestedInput
+  calendarSource?: Prisma.BoardCalendarSourceUncheckedUpdateOneWithoutBoardNestedInput
+  advisorSessions?: Prisma.AdvisorSessionUncheckedUpdateManyWithoutBoardNestedInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedUpdateManyWithoutBoardNestedInput
+}
+
+export type BoardCreateWithoutBoardBitbucketSourcesInput = {
+  id?: string
+  name: string
+  description?: string | null
+  kind?: string
+  ticketKeyPrefixes?: Prisma.BoardCreateticketKeyPrefixesInput | string[]
+  hiddenSystemFields?: Prisma.BoardCreatehiddenSystemFieldsInput | string[]
+  columnLayout?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  groups?: Prisma.GroupCreateNestedManyWithoutBoardInput
+  projects?: Prisma.ProjectCreateNestedManyWithoutBoardInput
+  columns?: Prisma.BoardColumnCreateNestedManyWithoutBoardInput
+  automations?: Prisma.AutomationRuleCreateNestedManyWithoutBoardInput
+  boardJiraSources?: Prisma.BoardJiraSourceCreateNestedManyWithoutBoardInput
+  boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
+  boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
+  statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
+  accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
+  views?: Prisma.BoardViewCreateNestedManyWithoutBoardInput
+  userPrefs?: Prisma.UserBoardPrefCreateNestedManyWithoutBoardInput
+  syncExclusions?: Prisma.BoardSyncExclusionCreateNestedManyWithoutBoardInput
+  roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionCreateNestedManyWithoutBoardInput
+  calendarEvents?: Prisma.BoardCalendarEventCreateNestedManyWithoutBoardInput
+  comparisonMemberships?: Prisma.ComparisonMemberCreateNestedManyWithoutBoardInput
+  notificationSettings?: Prisma.BoardNotificationSettingCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicCreateNestedManyWithoutBoardInput
+  calendarSource?: Prisma.BoardCalendarSourceCreateNestedOneWithoutBoardInput
+  advisorSessions?: Prisma.AdvisorSessionCreateNestedManyWithoutBoardInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetCreateNestedManyWithoutBoardInput
+  organization: Prisma.OrganizationCreateNestedOneWithoutBoardsInput
+}
+
+export type BoardUncheckedCreateWithoutBoardBitbucketSourcesInput = {
+  id?: string
+  name: string
+  description?: string | null
+  kind?: string
+  ticketKeyPrefixes?: Prisma.BoardCreateticketKeyPrefixesInput | string[]
+  hiddenSystemFields?: Prisma.BoardCreatehiddenSystemFieldsInput | string[]
+  columnLayout?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  organizationId: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  groups?: Prisma.GroupUncheckedCreateNestedManyWithoutBoardInput
+  projects?: Prisma.ProjectUncheckedCreateNestedManyWithoutBoardInput
+  columns?: Prisma.BoardColumnUncheckedCreateNestedManyWithoutBoardInput
+  automations?: Prisma.AutomationRuleUncheckedCreateNestedManyWithoutBoardInput
+  boardJiraSources?: Prisma.BoardJiraSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
+  statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
+  accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
+  views?: Prisma.BoardViewUncheckedCreateNestedManyWithoutBoardInput
+  userPrefs?: Prisma.UserBoardPrefUncheckedCreateNestedManyWithoutBoardInput
+  syncExclusions?: Prisma.BoardSyncExclusionUncheckedCreateNestedManyWithoutBoardInput
+  roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUncheckedCreateNestedManyWithoutBoardInput
+  calendarEvents?: Prisma.BoardCalendarEventUncheckedCreateNestedManyWithoutBoardInput
+  comparisonMemberships?: Prisma.ComparisonMemberUncheckedCreateNestedManyWithoutBoardInput
+  notificationSettings?: Prisma.BoardNotificationSettingUncheckedCreateNestedManyWithoutBoardInput
+  focusConfig?: Prisma.FocusConfigUncheckedCreateNestedOneWithoutBoardInput
+  focusEpics?: Prisma.FocusEpicUncheckedCreateNestedManyWithoutBoardInput
+  calendarSource?: Prisma.BoardCalendarSourceUncheckedCreateNestedOneWithoutBoardInput
+  advisorSessions?: Prisma.AdvisorSessionUncheckedCreateNestedManyWithoutBoardInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUncheckedCreateNestedManyWithoutBoardInput
+}
+
+export type BoardCreateOrConnectWithoutBoardBitbucketSourcesInput = {
+  where: Prisma.BoardWhereUniqueInput
+  create: Prisma.XOR<Prisma.BoardCreateWithoutBoardBitbucketSourcesInput, Prisma.BoardUncheckedCreateWithoutBoardBitbucketSourcesInput>
+}
+
+export type BoardUpsertWithoutBoardBitbucketSourcesInput = {
+  update: Prisma.XOR<Prisma.BoardUpdateWithoutBoardBitbucketSourcesInput, Prisma.BoardUncheckedUpdateWithoutBoardBitbucketSourcesInput>
+  create: Prisma.XOR<Prisma.BoardCreateWithoutBoardBitbucketSourcesInput, Prisma.BoardUncheckedCreateWithoutBoardBitbucketSourcesInput>
+  where?: Prisma.BoardWhereInput
+}
+
+export type BoardUpdateToOneWithWhereWithoutBoardBitbucketSourcesInput = {
+  where?: Prisma.BoardWhereInput
+  data: Prisma.XOR<Prisma.BoardUpdateWithoutBoardBitbucketSourcesInput, Prisma.BoardUncheckedUpdateWithoutBoardBitbucketSourcesInput>
+}
+
+export type BoardUpdateWithoutBoardBitbucketSourcesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.StringFieldUpdateOperationsInput | string
+  ticketKeyPrefixes?: Prisma.BoardUpdateticketKeyPrefixesInput | string[]
+  hiddenSystemFields?: Prisma.BoardUpdatehiddenSystemFieldsInput | string[]
+  columnLayout?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  groups?: Prisma.GroupUpdateManyWithoutBoardNestedInput
+  projects?: Prisma.ProjectUpdateManyWithoutBoardNestedInput
+  columns?: Prisma.BoardColumnUpdateManyWithoutBoardNestedInput
+  automations?: Prisma.AutomationRuleUpdateManyWithoutBoardNestedInput
+  boardJiraSources?: Prisma.BoardJiraSourceUpdateManyWithoutBoardNestedInput
+  boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
+  boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
+  statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
+  accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
+  views?: Prisma.BoardViewUpdateManyWithoutBoardNestedInput
+  userPrefs?: Prisma.UserBoardPrefUpdateManyWithoutBoardNestedInput
+  syncExclusions?: Prisma.BoardSyncExclusionUpdateManyWithoutBoardNestedInput
+  roadmapSubscriptions?: Prisma.RoadmapBoardSubscriptionUpdateManyWithoutBoardNestedInput
+  calendarEvents?: Prisma.BoardCalendarEventUpdateManyWithoutBoardNestedInput
+  comparisonMemberships?: Prisma.ComparisonMemberUpdateManyWithoutBoardNestedInput
+  notificationSettings?: Prisma.BoardNotificationSettingUpdateManyWithoutBoardNestedInput
+  focusConfig?: Prisma.FocusConfigUpdateOneWithoutBoardNestedInput
+  focusEpics?: Prisma.FocusEpicUpdateManyWithoutBoardNestedInput
+  calendarSource?: Prisma.BoardCalendarSourceUpdateOneWithoutBoardNestedInput
+  advisorSessions?: Prisma.AdvisorSessionUpdateManyWithoutBoardNestedInput
+  advisorChangeSets?: Prisma.AdvisorChangeSetUpdateManyWithoutBoardNestedInput
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutBoardsNestedInput
+}
+
+export type BoardUncheckedUpdateWithoutBoardBitbucketSourcesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.StringFieldUpdateOperationsInput | string
+  ticketKeyPrefixes?: Prisma.BoardUpdateticketKeyPrefixesInput | string[]
+  hiddenSystemFields?: Prisma.BoardUpdatehiddenSystemFieldsInput | string[]
+  columnLayout?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  groups?: Prisma.GroupUncheckedUpdateManyWithoutBoardNestedInput
+  projects?: Prisma.ProjectUncheckedUpdateManyWithoutBoardNestedInput
+  columns?: Prisma.BoardColumnUncheckedUpdateManyWithoutBoardNestedInput
+  automations?: Prisma.AutomationRuleUncheckedUpdateManyWithoutBoardNestedInput
+  boardJiraSources?: Prisma.BoardJiraSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -3444,6 +3687,7 @@ export type BoardCreateWithoutUserPrefsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -3480,6 +3724,7 @@ export type BoardUncheckedCreateWithoutUserPrefsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -3530,6 +3775,7 @@ export type BoardUpdateWithoutUserPrefsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -3566,6 +3812,7 @@ export type BoardUncheckedUpdateWithoutUserPrefsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -3600,6 +3847,7 @@ export type BoardCreateWithoutCalendarSourceInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -3636,6 +3884,7 @@ export type BoardUncheckedCreateWithoutCalendarSourceInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -3686,6 +3935,7 @@ export type BoardUpdateWithoutCalendarSourceInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -3722,6 +3972,7 @@ export type BoardUncheckedUpdateWithoutCalendarSourceInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -3756,6 +4007,7 @@ export type BoardCreateWithoutRoadmapSubscriptionsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -3792,6 +4044,7 @@ export type BoardUncheckedCreateWithoutRoadmapSubscriptionsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -3842,6 +4095,7 @@ export type BoardUpdateWithoutRoadmapSubscriptionsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -3878,6 +4132,7 @@ export type BoardUncheckedUpdateWithoutRoadmapSubscriptionsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -3912,6 +4167,7 @@ export type BoardCreateWithoutAdvisorSessionsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -3948,6 +4204,7 @@ export type BoardUncheckedCreateWithoutAdvisorSessionsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -3998,6 +4255,7 @@ export type BoardUpdateWithoutAdvisorSessionsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -4034,6 +4292,7 @@ export type BoardUncheckedUpdateWithoutAdvisorSessionsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -4068,6 +4327,7 @@ export type BoardCreateWithoutAdvisorChangeSetsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -4104,6 +4364,7 @@ export type BoardUncheckedCreateWithoutAdvisorChangeSetsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -4154,6 +4415,7 @@ export type BoardUpdateWithoutAdvisorChangeSetsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -4190,6 +4452,7 @@ export type BoardUncheckedUpdateWithoutAdvisorChangeSetsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -4224,6 +4487,7 @@ export type BoardCreateWithoutNotificationSettingsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -4260,6 +4524,7 @@ export type BoardUncheckedCreateWithoutNotificationSettingsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -4310,6 +4575,7 @@ export type BoardUpdateWithoutNotificationSettingsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -4346,6 +4612,7 @@ export type BoardUncheckedUpdateWithoutNotificationSettingsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -4380,6 +4647,7 @@ export type BoardCreateWithoutFocusConfigInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -4416,6 +4684,7 @@ export type BoardUncheckedCreateWithoutFocusConfigInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -4466,6 +4735,7 @@ export type BoardUpdateWithoutFocusConfigInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -4502,6 +4772,7 @@ export type BoardUncheckedUpdateWithoutFocusConfigInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -4536,6 +4807,7 @@ export type BoardCreateWithoutFocusEpicsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessCreateNestedManyWithoutBoardInput
@@ -4572,6 +4844,7 @@ export type BoardUncheckedCreateWithoutFocusEpicsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutBoardInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutBoardInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutBoardInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutBoardInput
   owners?: Prisma.BoardOwnerUncheckedCreateNestedManyWithoutBoardInput
   statuses?: Prisma.BoardStatusUncheckedCreateNestedManyWithoutBoardInput
   accessEntries?: Prisma.BoardAccessUncheckedCreateNestedManyWithoutBoardInput
@@ -4622,6 +4895,7 @@ export type BoardUpdateWithoutFocusEpicsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -4658,6 +4932,7 @@ export type BoardUncheckedUpdateWithoutFocusEpicsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -4704,6 +4979,7 @@ export type BoardUpdateWithoutOrganizationInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUpdateManyWithoutBoardNestedInput
@@ -4739,6 +5015,7 @@ export type BoardUncheckedUpdateWithoutOrganizationInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutBoardNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutBoardNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutBoardNestedInput
   owners?: Prisma.BoardOwnerUncheckedUpdateManyWithoutBoardNestedInput
   statuses?: Prisma.BoardStatusUncheckedUpdateManyWithoutBoardNestedInput
   accessEntries?: Prisma.BoardAccessUncheckedUpdateManyWithoutBoardNestedInput
@@ -4782,6 +5059,7 @@ export type BoardCountOutputType = {
   boardGithubSources: number
   boardAdoSources: number
   boardGitlabSources: number
+  boardBitbucketSources: number
   owners: number
   statuses: number
   accessEntries: number
@@ -4806,6 +5084,7 @@ export type BoardCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.
   boardGithubSources?: boolean | BoardCountOutputTypeCountBoardGithubSourcesArgs
   boardAdoSources?: boolean | BoardCountOutputTypeCountBoardAdoSourcesArgs
   boardGitlabSources?: boolean | BoardCountOutputTypeCountBoardGitlabSourcesArgs
+  boardBitbucketSources?: boolean | BoardCountOutputTypeCountBoardBitbucketSourcesArgs
   owners?: boolean | BoardCountOutputTypeCountOwnersArgs
   statuses?: boolean | BoardCountOutputTypeCountStatusesArgs
   accessEntries?: boolean | BoardCountOutputTypeCountAccessEntriesArgs
@@ -4885,6 +5164,13 @@ export type BoardCountOutputTypeCountBoardAdoSourcesArgs<ExtArgs extends runtime
  */
 export type BoardCountOutputTypeCountBoardGitlabSourcesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.BoardGitLabSourceWhereInput
+}
+
+/**
+ * BoardCountOutputType without action
+ */
+export type BoardCountOutputTypeCountBoardBitbucketSourcesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.BoardBitbucketSourceWhereInput
 }
 
 /**
@@ -4998,6 +5284,7 @@ export type BoardSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   boardGithubSources?: boolean | Prisma.Board$boardGithubSourcesArgs<ExtArgs>
   boardAdoSources?: boolean | Prisma.Board$boardAdoSourcesArgs<ExtArgs>
   boardGitlabSources?: boolean | Prisma.Board$boardGitlabSourcesArgs<ExtArgs>
+  boardBitbucketSources?: boolean | Prisma.Board$boardBitbucketSourcesArgs<ExtArgs>
   owners?: boolean | Prisma.Board$ownersArgs<ExtArgs>
   statuses?: boolean | Prisma.Board$statusesArgs<ExtArgs>
   accessEntries?: boolean | Prisma.Board$accessEntriesArgs<ExtArgs>
@@ -5068,6 +5355,7 @@ export type BoardInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   boardGithubSources?: boolean | Prisma.Board$boardGithubSourcesArgs<ExtArgs>
   boardAdoSources?: boolean | Prisma.Board$boardAdoSourcesArgs<ExtArgs>
   boardGitlabSources?: boolean | Prisma.Board$boardGitlabSourcesArgs<ExtArgs>
+  boardBitbucketSources?: boolean | Prisma.Board$boardBitbucketSourcesArgs<ExtArgs>
   owners?: boolean | Prisma.Board$ownersArgs<ExtArgs>
   statuses?: boolean | Prisma.Board$statusesArgs<ExtArgs>
   accessEntries?: boolean | Prisma.Board$accessEntriesArgs<ExtArgs>
@@ -5104,6 +5392,7 @@ export type $BoardPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     boardGithubSources: Prisma.$BoardGitHubSourcePayload<ExtArgs>[]
     boardAdoSources: Prisma.$BoardAdoSourcePayload<ExtArgs>[]
     boardGitlabSources: Prisma.$BoardGitLabSourcePayload<ExtArgs>[]
+    boardBitbucketSources: Prisma.$BoardBitbucketSourcePayload<ExtArgs>[]
     owners: Prisma.$BoardOwnerPayload<ExtArgs>[]
     statuses: Prisma.$BoardStatusPayload<ExtArgs>[]
     accessEntries: Prisma.$BoardAccessPayload<ExtArgs>[]
@@ -5534,6 +5823,7 @@ export interface Prisma__BoardClient<T, Null = never, ExtArgs extends runtime.Ty
   boardGithubSources<T extends Prisma.Board$boardGithubSourcesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$boardGithubSourcesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardGitHubSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   boardAdoSources<T extends Prisma.Board$boardAdoSourcesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$boardAdoSourcesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardAdoSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   boardGitlabSources<T extends Prisma.Board$boardGitlabSourcesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$boardGitlabSourcesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardGitLabSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  boardBitbucketSources<T extends Prisma.Board$boardBitbucketSourcesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$boardBitbucketSourcesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardBitbucketSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   owners<T extends Prisma.Board$ownersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$ownersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardOwnerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   statuses<T extends Prisma.Board$statusesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$statusesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardStatusPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   accessEntries<T extends Prisma.Board$accessEntriesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Board$accessEntriesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardAccessPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -6179,6 +6469,30 @@ export type Board$boardGitlabSourcesArgs<ExtArgs extends runtime.Types.Extension
   take?: number
   skip?: number
   distinct?: Prisma.BoardGitLabSourceScalarFieldEnum | Prisma.BoardGitLabSourceScalarFieldEnum[]
+}
+
+/**
+ * Board.boardBitbucketSources
+ */
+export type Board$boardBitbucketSourcesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BoardBitbucketSource
+   */
+  select?: Prisma.BoardBitbucketSourceSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BoardBitbucketSource
+   */
+  omit?: Prisma.BoardBitbucketSourceOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BoardBitbucketSourceInclude<ExtArgs> | null
+  where?: Prisma.BoardBitbucketSourceWhereInput
+  orderBy?: Prisma.BoardBitbucketSourceOrderByWithRelationInput | Prisma.BoardBitbucketSourceOrderByWithRelationInput[]
+  cursor?: Prisma.BoardBitbucketSourceWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.BoardBitbucketSourceScalarFieldEnum | Prisma.BoardBitbucketSourceScalarFieldEnum[]
 }
 
 /**

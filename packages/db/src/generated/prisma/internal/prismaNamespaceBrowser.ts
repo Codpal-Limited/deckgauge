@@ -80,6 +80,7 @@ export const ModelName = {
   DashboardWidget: 'DashboardWidget',
   ProjectStatusChange: 'ProjectStatusChange',
   GitLabInstance: 'GitLabInstance',
+  BitbucketInstance: 'BitbucketInstance',
   JiraProjectSync: 'JiraProjectSync',
   BoardJiraSource: 'BoardJiraSource',
   BoardJiraSourceKey: 'BoardJiraSourceKey',
@@ -91,6 +92,8 @@ export const ModelName = {
   BoardAdoSource: 'BoardAdoSource',
   GitLabProjectSync: 'GitLabProjectSync',
   BoardGitLabSource: 'BoardGitLabSource',
+  BitbucketRepoSync: 'BitbucketRepoSync',
+  BoardBitbucketSource: 'BoardBitbucketSource',
   BoardFolder: 'BoardFolder',
   UserBoardPref: 'UserBoardPref',
   OrgTree: 'OrgTree',
@@ -286,6 +289,7 @@ export const ProjectScalarFieldEnum = {
   adoProject: 'adoProject',
   adoSyncedFields: 'adoSyncedFields',
   adoRemovedFromSource: 'adoRemovedFromSource',
+  linkedFromSource: 'linkedFromSource',
   roadmapPinnedStart: 'roadmapPinnedStart',
   startDate: 'startDate',
   endDate: 'endDate',
@@ -447,6 +451,7 @@ export const UserScalarFieldEnum = {
   firstName: 'firstName',
   lastName: 'lastName',
   avatarUrl: 'avatarUrl',
+  avatarUploadId: 'avatarUploadId',
   isAdmin: 'isAdmin',
   activeOrganizationId: 'activeOrganizationId',
   createdAt: 'createdAt',
@@ -588,6 +593,22 @@ export const GitLabInstanceScalarFieldEnum = {
 } as const
 
 export type GitLabInstanceScalarFieldEnum = (typeof GitLabInstanceScalarFieldEnum)[keyof typeof GitLabInstanceScalarFieldEnum]
+
+
+export const BitbucketInstanceScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  workspace: 'workspace',
+  email: 'email',
+  apiToken: 'apiToken',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  organizationId: 'organizationId',
+  createdById: 'createdById',
+  ownerUserId: 'ownerUserId'
+} as const
+
+export type BitbucketInstanceScalarFieldEnum = (typeof BitbucketInstanceScalarFieldEnum)[keyof typeof BitbucketInstanceScalarFieldEnum]
 
 
 export const JiraProjectSyncScalarFieldEnum = {
@@ -782,6 +803,35 @@ export const BoardGitLabSourceScalarFieldEnum = {
 export type BoardGitLabSourceScalarFieldEnum = (typeof BoardGitLabSourceScalarFieldEnum)[keyof typeof BoardGitLabSourceScalarFieldEnum]
 
 
+export const BitbucketRepoSyncScalarFieldEnum = {
+  id: 'id',
+  bitbucketInstanceId: 'bitbucketInstanceId',
+  repoFullName: 'repoFullName',
+  projectKey: 'projectKey',
+  syncPrs: 'syncPrs',
+  syncCommits: 'syncCommits',
+  syncDeployments: 'syncDeployments',
+  lastSyncedAt: 'lastSyncedAt',
+  lastDeploymentSyncAt: 'lastDeploymentSyncAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type BitbucketRepoSyncScalarFieldEnum = (typeof BitbucketRepoSyncScalarFieldEnum)[keyof typeof BitbucketRepoSyncScalarFieldEnum]
+
+
+export const BoardBitbucketSourceScalarFieldEnum = {
+  id: 'id',
+  boardId: 'boardId',
+  bitbucketRepoSyncId: 'bitbucketRepoSyncId',
+  targetGroupId: 'targetGroupId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type BoardBitbucketSourceScalarFieldEnum = (typeof BoardBitbucketSourceScalarFieldEnum)[keyof typeof BoardBitbucketSourceScalarFieldEnum]
+
+
 export const BoardFolderScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -869,6 +919,8 @@ export const OrgEmployeeScalarFieldEnum = {
   syncedAt: 'syncedAt',
   msGraphId: 'msGraphId',
   departedAt: 'departedAt',
+  photoUploadId: 'photoUploadId',
+  photoSource: 'photoSource',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

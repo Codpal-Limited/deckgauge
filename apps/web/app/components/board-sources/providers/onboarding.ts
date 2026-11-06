@@ -28,6 +28,16 @@ export interface OnboardingGuide {
 // the same array the user is told to tick, so the two can never drift apart.
 const GITHUB_SCOPES = ['repo', 'read:org', 'read:user'];
 const GITLAB_SCOPES = ['read_api', 'read_repository', 'read_user'];
+// Atlassian's scoped-token page takes no query params, so these are a checklist
+// only. read:pipeline is what makes real DORA deployments possible.
+const BITBUCKET_SCOPES = [
+  'read:user:bitbucket',
+  'read:workspace:bitbucket',
+  'read:project:bitbucket',
+  'read:repository:bitbucket',
+  'read:pullrequest:bitbucket',
+  'read:pipeline:bitbucket',
+];
 
 export const PROVIDER_ONBOARDING: Record<Provider, OnboardingGuide> = {
   github: {
@@ -101,5 +111,17 @@ export const PROVIDER_ONBOARDING: Record<Provider, OnboardingGuide> = {
       'Copy the token. For self-hosted GitLab, change the API base URL below to your instance.',
       'Paste the token and click "Create & test".',
     ],
+  },
+  bitbucket: {
+    tokenUrl: 'https://id.atlassian.com/manage-profile/security/api-tokens',
+    linkLabel: 'Open Atlassian API tokens',
+    scopes: BITBUCKET_SCOPES,
+    steps: [
+      'Open Atlassian API tokens and click "Create API token with scopes" — not the plain "Create API token".',
+      'Name it "Deckgauge", set an expiry, and choose Bitbucket as the app.',
+      'Tick every read scope below, create the token and copy it.',
+      'Enter your Atlassian email, paste the token and click "Create & test".',
+    ],
+    note: 'A plain Atlassian API token (the kind Jira uses) is rejected by Bitbucket — it must be created with scopes. Your workspace is detected from the token.',
   },
 };

@@ -4,6 +4,8 @@ export interface RawOrgRow {
   supervisorId?: string;
   role?: string;
   email?: string;
+  /** Source URL of the person's photo, as exported (BambooHR's `Photo`). */
+  photoUrl?: string;
   rowNumber: number;
 }
 export interface ParsedEmployee {
@@ -12,6 +14,7 @@ export interface ParsedEmployee {
   role: string | null;
   email: string | null;
   managerExternalId: string | null;
+  photoUrl: string | null;
   isVacancy: boolean;
   rowNumber: number;
 }
@@ -51,6 +54,7 @@ export function normalizeOrgRows(raw: RawOrgRow[]): {
       role: clean(r.role) || null,
       email: clean(r.email).toLowerCase() || null,
       managerExternalId: clean(r.supervisorId) || null,
+      photoUrl: clean(r.photoUrl) || null,
       isVacancy,
       rowNumber: r.rowNumber,
     });

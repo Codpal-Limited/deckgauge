@@ -13,7 +13,7 @@ export const SourceHealthStateSchema = z.enum([
 export type SourceHealthState = z.infer<typeof SourceHealthStateSchema>;
 
 export const BoardSourceHealthSchema = z.object({
-  provider: z.enum(['jira', 'github', 'ado', 'gitlab']),
+  provider: z.enum(['jira', 'github', 'ado', 'gitlab', 'bitbucket']),
   instanceId: z.string(),
   label: z.string(),
   state: SourceHealthStateSchema,
@@ -34,6 +34,7 @@ export const BoardSyncEnqueueResponseSchema = z.object({
     github: z.number().int().min(0),
     ado: z.number().int().min(0),
     gitlab: z.number().int().min(0),
+    bitbucket: z.number().int().min(0),
   }),
   expired: z.array(BoardSourceHealthSchema).default([]),
 });
@@ -57,6 +58,8 @@ export type BoardSyncStatusResponse = z.infer<
 // silently blacklists work items forever. These shapes back the "Excluded
 // items" block on the board Sources page.
 
+// BITBUCKET is deliberately absent: Bitbucket never promotes rows onto a board
+// (Jira owns tasks for those teams), so there is nothing it could exclude.
 export const SyncExclusionSourceSchema = z.enum(['JIRA', 'GITHUB', 'ADO', 'GITLAB']);
 export type SyncExclusionSource = z.infer<typeof SyncExclusionSourceSchema>;
 

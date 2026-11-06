@@ -239,6 +239,47 @@ export async function deleteGitLabProjectSync(id: string): Promise<void> {
   if (!res.ok) throw new Error(await res.text());
 }
 
+// ---- Bitbucket ----
+
+export interface BitbucketRepoSyncRow {
+  id: string;
+  bitbucketInstanceId: string;
+  repoFullName: string;
+  projectKey: string | null;
+  syncPrs: boolean;
+  syncCommits: boolean;
+  syncDeployments: boolean;
+  lastSyncedAt: string | null;
+  lastDeploymentSyncAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  boardCount: number;
+}
+
+export async function listBitbucketRepoSyncs(): Promise<BitbucketRepoSyncRow[]> {
+  const res = await authFetch('/project-syncs/bitbucket', { method: 'GET' });
+  if (!res.ok) throw new Error(`list bitbucket repo syncs failed: ${res.status}`);
+  return res.json();
+}
+
+export async function updateBitbucketRepoSync(
+  id: string,
+  patch: { syncPrs?: boolean; syncCommits?: boolean; syncDeployments?: boolean },
+) {
+  const res = await authFetch(`/project-syncs/bitbucket/${id}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function deleteBitbucketRepoSync(id: string): Promise<void> {
+  const res = await authFetch(`/project-syncs/bitbucket/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(await res.text());
+}
+
 // ---- Instances: list (normalized), refresh token, test ----
 
 export interface SourceInstanceRow {
@@ -356,8 +397,23 @@ export async function refreshGitHubToken(id: string, token: string) {
 export async function refreshAdoToken(id: string, token: string) {
   return refreshTokenAt(`/azure-devops/instances/${id}/refresh-token`, token);
 }
+export async function listBitbucketInstances(): Promise<SourceInstanceRow[]> {
+  const rows = await listInstancesRaw('/bitbucket/instances');
+  return rows.map((r) => ({
+    id: String(r.id),
+    label: String(r.name ?? 'Bitbucket'),
+    sublabel: r.workspace ? `bitbucket.org/${String(r.workspace)}` : String(r.email ?? ''),
+    isPersonal: Boolean(r.isPersonal),
+    addedBy: r.addedBy == null ? null : String(r.addedBy),
+  }));
+}
+
 export async function refreshGitLabToken(id: string, token: string) {
   return refreshTokenAt(`/gitlab/instances/${id}/refresh-token`, token);
+}
+
+export async function refreshBitbucketToken(id: string, token: string) {
+  return refreshTokenAt(`/bitbucket/instances/${id}/refresh-token`, token);
 }
 
 export async function testJiraConnection(id: string) {
@@ -372,6 +428,9 @@ export async function testAdoConnection(id: string) {
 export async function testGitLabConnection(id: string) {
   return testConnectionAt(`/gitlab/instances/${id}/test`);
 }
+export async function testBitbucketConnection(id: string) {
+  return testConnectionAt(`/bitbucket/instances/${id}/test`);
+}
 
 // ---- Instances: delete ----
 // Deleting an instance cascades (Prisma onDelete: Cascade): the instance's
@@ -384,7 +443,7 @@ async function deleteInstanceAt(path: string): Promise<RefreshResult> {
 
 // ---- Instances: create ----
 
-export type ConnectionProvider = 'jira' | 'github' | 'ado' | 'gitlab';
+export type ConnectionProvider = 'jira' | 'github' | 'ado' | 'gitlab' | 'bitbucket';
 
 /** Where each provider's create endpoint lives, and the empty scope it starts with. */
 const CREATE_ENDPOINT: Record<ConnectionProvider, { path: string; scope: Record<string, string[]> }> = {
@@ -392,7 +451,15 @@ const CREATE_ENDPOINT: Record<ConnectionProvider, { path: string; scope: Record<
   github: { path: '/github/instances', scope: { repos: [] } },
   ado: { path: '/azure-devops/instances', scope: { projects: [] } },
   gitlab: { path: '/gitlab/instances', scope: { projects: [] } },
+  // Repos are chosen per board, not on the connection.
+  bitbucket: { path: '/bitbucket/instances', scope: {} },
 };
+
+/** A Bitbucket workspace the token can see — offered when the API cannot pick one. */
+export interface BitbucketWorkspaceOption {
+  slug: string;
+  name: string;
+}
 
 /**
  * Creates a connection. Requires the organization ADMIN role.
@@ -405,7 +472,7 @@ const CREATE_ENDPOINT: Record<ConnectionProvider, { path: string; scope: Record<
 export async function createConnection(
   provider: ConnectionProvider,
   values: Record<string, string>,
-): Promise<RefreshResult & { id?: string }> {
+): Promise<RefreshResult & { id?: string; workspaces?: BitbucketWorkspaceOption[] }> {
   const { path, scope } = CREATE_ENDPOINT[provider];
   let res: Response;
   try {
@@ -418,7 +485,28 @@ export async function createConnection(
   } catch {
     return { ok: false, error: 'Could not reach the server. Try again.' };
   }
-  if (!res.ok) return failureFrom(res, 'Could not create the connection');
+  if (!res.ok) {
+    // Bitbucket: the token sees several workspaces, so the API asks which one.
+    // Returned as data rather than a bare message so the form can offer a picker.
+    if (provider === 'bitbucket' && res.status === 400) {
+      const body = (await res.clone().json().catch(() => ({}))) as {
+        code?: unknown;
+        error?: unknown;
+        workspaces?: unknown;
+      };
+      if (body.code === 'WORKSPACE_REQUIRED' && Array.isArray(body.workspaces)) {
+        return {
+          ok: false,
+          error: typeof body.error === 'string' ? body.error : 'Choose a workspace.',
+          workspaces: (body.workspaces as Array<{ slug?: unknown; name?: unknown }>).map((w) => ({
+            slug: String(w.slug ?? ''),
+            name: String(w.name ?? w.slug ?? ''),
+          })),
+        };
+      }
+    }
+    return failureFrom(res, 'Could not create the connection');
+  }
   try {
     const body = (await res.json()) as { id?: unknown };
     return { ok: true, id: typeof body.id === 'string' ? body.id : undefined };
@@ -438,4 +526,7 @@ export async function deleteAdoInstance(id: string) {
 }
 export async function deleteGitLabInstance(id: string) {
   return deleteInstanceAt(`/gitlab/instances/${id}`);
+}
+export async function deleteBitbucketInstance(id: string) {
+  return deleteInstanceAt(`/bitbucket/instances/${id}`);
 }

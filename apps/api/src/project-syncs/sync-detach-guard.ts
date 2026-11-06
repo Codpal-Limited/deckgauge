@@ -2,7 +2,7 @@ import type { PrismaClient } from '@deckgauge/db';
 import { forbiddenBoardIds, type BoardAccessLog } from '../auth/board-access.js';
 import type { CallerMembership } from '../auth/board-access.js';
 
-export type SyncKind = 'jira' | 'github' | 'ado' | 'gitlab';
+export type SyncKind = 'jira' | 'github' | 'ado' | 'gitlab' | 'bitbucket';
 
 /**
  * Every `Board*Source` row cascade-deletes with its sync (see the `onDelete:
@@ -25,6 +25,11 @@ const BOARDS_USING: Record<
   gitlab: (prisma, id) =>
     prisma.boardGitLabSource.findMany({
       where: { gitlabProjectSyncId: id },
+      select: { boardId: true },
+    }),
+  bitbucket: (prisma, id) =>
+    prisma.boardBitbucketSource.findMany({
+      where: { bitbucketRepoSyncId: id },
       select: { boardId: true },
     }),
 };

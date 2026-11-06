@@ -6,7 +6,7 @@ import { boardTag } from '../utils/cache-tags';
 
 export interface TriggerResult {
   ok: boolean;
-  enqueued?: { jira: number; github: number; ado: number; gitlab: number };
+  enqueued?: { jira: number; github: number; ado: number; gitlab: number; bitbucket: number };
   expired?: BoardSourceHealth[];
   reason?: 'forbidden' | 'queue_unavailable' | 'network' | 'unknown';
 }
@@ -23,7 +23,7 @@ export interface BoardSyncStatus {
 export type SourceHealth = 'valid' | 'expired' | 'reauthorize' | 'unreachable';
 
 export interface BoardSourceHealth {
-  provider: 'jira' | 'github' | 'ado' | 'gitlab';
+  provider: 'jira' | 'github' | 'ado' | 'gitlab' | 'bitbucket';
   instanceId: string;
   label: string;
   state: SourceHealth;
@@ -46,7 +46,7 @@ export async function triggerBoardSync(boardId: string): Promise<TriggerResult> 
     if (!res.ok) return { ok: false, reason: 'unknown' };
     const body = (await res.json()) as {
       boardId: string;
-      enqueued: { jira: number; github: number; ado: number; gitlab: number };
+      enqueued: { jira: number; github: number; ado: number; gitlab: number; bitbucket: number };
       expired?: BoardSourceHealth[];
     };
     return { ok: true, enqueued: body.enqueued, expired: body.expired ?? [] };

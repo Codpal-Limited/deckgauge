@@ -3,7 +3,7 @@
 // linked_ticket_keys column on ClickHouse PR/commit/MR rows.
 // Spec: planning/ENGINEERING-INTELLIGENCE.md §7.
 
-export type TicketSource = 'github' | 'gitlab' | 'ado';
+export type TicketSource = 'github' | 'gitlab' | 'ado' | 'bitbucket';
 
 export interface TicketLinkInput {
   text: string;

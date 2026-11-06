@@ -61,9 +61,11 @@ const SOURCE_LABEL: Record<string, string> = {
   jira: 'Jira',
   github: 'Pull request',
   gitlab: 'Merge request',
+  bitbucket: 'Pull request',
   ado: 'Pull request',
   'github-commit': 'Commit',
   'gitlab-commit': 'Commit',
+  'bitbucket-commit': 'Commit',
   'ado-commit': 'Commit',
 };
 

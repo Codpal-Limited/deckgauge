@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { boardTag } from "../utils/cache-tags";
-import { apiRequest } from "./api";
+import { apiRequest, authFetch } from "./api";
 
 // --- Projects ---
 
@@ -63,6 +63,43 @@ export async function createProject(
     body: JSON.stringify(data),
   });
   invalidate(boardId ?? data.boardId, { revalidateRoute: true });
+}
+
+/**
+ * Load one item from a connected source onto the board, by its link.
+ *
+ * Returns the refusal instead of throwing: a server action's thrown error is
+ * redacted in production, and the API's message ("OPS is not a source of this
+ * board") is exactly what the user needs to read.
+ */
+export async function importItemFromSourceLink(
+  boardId: string,
+  groupId: string,
+  url: string,
+): Promise<{ ok: true; name: string } | { ok: false; error: string }> {
+  let response: Response;
+  try {
+    response = await authFetch(`/boards/${boardId}/items/from-source-link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ groupId, url }),
+    });
+  } catch {
+    return { ok: false, error: "Couldn't reach the server. Try again." };
+  }
+  if (!response.ok) {
+    let message = "Couldn't load the item from its source.";
+    try {
+      const body = (await response.json()) as { error?: unknown };
+      if (typeof body.error === "string") message = body.error;
+    } catch {
+      // Keep the generic message.
+    }
+    return { ok: false, error: message };
+  }
+  const body = (await response.json()) as { name: string };
+  invalidate(boardId, { revalidateRoute: true });
+  return { ok: true, name: body.name };
 }
 
 export async function updateProject(

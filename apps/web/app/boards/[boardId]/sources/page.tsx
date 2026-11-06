@@ -7,6 +7,7 @@ import {
   hydrateGitHub,
   hydrateAdo,
   hydrateGitLab,
+  hydrateBitbucket,
 } from '../../../components/board-sources/hydrate';
 import type { SourceShape } from '../../../components/board-sources/BoardSourceCard';
 import type { ReadyProviders } from '../../../components/board-sources/BoardAddSource';
@@ -18,8 +19,9 @@ import {
   listGitHubRepoSyncs,
   listAdoProjectSyncs,
   listGitLabProjectSyncs,
+  listBoardBitbucketSources,
 } from '../../../actions/board-sources';
-import { listJiraProjectSyncs } from '../../../actions/connections';
+import { listJiraProjectSyncs, listBitbucketInstances } from '../../../actions/connections';
 import { fetchGroups } from '../../../actions/projects';
 import { fetchBoardStatuses } from '../../../actions/board-statuses';
 import { fetchGitHubInstances } from '../../../actions/github';
@@ -42,6 +44,8 @@ export default async function BoardSourcesPage(props: { params: Promise<{ boardI
     adoSyncs,
     glSources,
     glSyncs,
+    bbSources,
+    bbInstances,
     groups,
     boardStatuses,
   ] = await Promise.all([
@@ -53,6 +57,8 @@ export default async function BoardSourcesPage(props: { params: Promise<{ boardI
     listAdoProjectSyncs().catch(() => []),
     listBoardGitLabSources(params.boardId).catch(() => []),
     listGitLabProjectSyncs().catch(() => []),
+    listBoardBitbucketSources(params.boardId).catch(() => []),
+    listBitbucketInstances().catch(() => []),
     fetchGroups(params.boardId).catch(() => [] as { id: string; name: string; color: string }[]),
     fetchBoardStatuses(params.boardId).catch(
       () => [] as { id: string; label: string; color: string }[],
@@ -101,6 +107,9 @@ export default async function BoardSourcesPage(props: { params: Promise<{ boardI
     gitlab: (glSyncs as any[])
       .filter((s) => !usedGl.has(s.id))
       .map((s) => ({ id: s.id, label: s.projectPath })),
+    // Bitbucket repos are picked live from the connection (BitbucketSourcePicker),
+    // never from a ready-list; the count shows what can be picked from.
+    bitbucket: bbInstances.map((i) => ({ id: i.id, label: i.label })),
   };
 
   const initialSources: SourceShape[] = [
@@ -108,6 +117,7 @@ export default async function BoardSourcesPage(props: { params: Promise<{ boardI
     ...(ghSources as any[]).map((r) => hydrateGitHub(r as Record<string, unknown>)),
     ...(adoSources as any[]).map((r) => hydrateAdo(r as Record<string, unknown>)),
     ...(glSources as any[]).map((r) => hydrateGitLab(r as Record<string, unknown>)),
+    ...(bbSources as any[]).map((r) => hydrateBitbucket(r as Record<string, unknown>)),
   ];
 
   return (
@@ -131,6 +141,11 @@ export default async function BoardSourcesPage(props: { params: Promise<{ boardI
           id: i.id,
           label: i.baseUrl ?? i.id,
           isPersonal: Boolean(i.isPersonal),
+        }))}
+        bitbucketInstances={bbInstances.map((i) => ({
+          id: i.id,
+          label: i.sublabel ? `${i.label} — ${i.sublabel}` : i.label,
+          isPersonal: i.isPersonal,
         }))}
         canManageConnections={canManageConnections}
       />

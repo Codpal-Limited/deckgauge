@@ -20,14 +20,17 @@
 //             AND to at least one of syncPrs / syncCommits.
 //   gitlab -> apps/worker/src/gitlab-sync.handler.ts
 //             every gitLabProjectSync row.
+//   bitbucket -> apps/worker/src/bitbucket-sync.handler.ts
+//             bitbucketRepoSync rows with at least one of syncPrs / syncCommits /
+//             syncDeployments on (a row with all three off fetches nothing).
 //
 // Every query is scoped to the caller's organization — directly on the instance,
 // or through the parent relation for the sync tables that carry no tenant column.
 import type { PrismaClient } from '@deckgauge/db';
 import { EXCLUDE_DEMO_INSTANCE } from '@deckgauge/db';
 
-export type SyncSource = 'jira' | 'github' | 'ado' | 'gitlab';
-export const SYNC_SOURCES: readonly SyncSource[] = ['jira', 'github', 'ado', 'gitlab'];
+export type SyncSource = 'jira' | 'github' | 'ado' | 'gitlab' | 'bitbucket';
+export const SYNC_SOURCES: readonly SyncSource[] = ['jira', 'github', 'ado', 'gitlab', 'bitbucket'];
 export type SyncableScope = Record<SyncSource, number>;
 
 async function countJira(prisma: PrismaClient, organizationId: string): Promise<number> {
@@ -67,18 +70,28 @@ function countGitLab(prisma: PrismaClient, organizationId: string): Promise<numb
   return prisma.gitLabProjectSync.count({ where: { gitlabInstance: { organizationId } } });
 }
 
+function countBitbucket(prisma: PrismaClient, organizationId: string): Promise<number> {
+  return prisma.bitbucketRepoSync.count({
+    where: {
+      bitbucketInstance: { organizationId },
+      OR: [{ syncPrs: true }, { syncCommits: true }, { syncDeployments: true }],
+    },
+  });
+}
+
 /** Per source, how many projects/repos a manual intelligence sync would fetch. */
 export async function countSyncableScope(
   prisma: PrismaClient,
   organizationId: string,
 ): Promise<SyncableScope> {
-  const [jira, github, ado, gitlab] = await Promise.all([
+  const [jira, github, ado, gitlab, bitbucket] = await Promise.all([
     countJira(prisma, organizationId),
     countGitHubIntelligence(prisma, organizationId),
     countAdo(prisma, organizationId),
     countGitLab(prisma, organizationId),
+    countBitbucket(prisma, organizationId),
   ]);
-  return { jira, github, ado, gitlab };
+  return { jira, github, ado, gitlab, bitbucket };
 }
 
 /**

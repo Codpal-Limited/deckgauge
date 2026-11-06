@@ -383,6 +383,65 @@ export type { GitLabReviewRow } from './gitlab-review-adapter.js';
 export { GitLabIssueAdapter, FakeGitLabIssueAdapter } from './gitlab-issue-adapter.js';
 export type { GitLabIssuePort, GitLabIssueFetchOpts, GitLabIssueRow } from './gitlab-issue-adapter.js';
 
+// Bitbucket Cloud — REST 2.0 client (Basic email:apiToken, `next` pagination,
+// redirects, 429/5xx retry) and the discovery / PR / commit / deployment adapters.
+export {
+  BitbucketClient,
+  BitbucketAuthError,
+  BitbucketApiError,
+  BITBUCKET_API_BASE,
+  bitbucketRepoPath,
+} from './bitbucket-api.js';
+export type {
+  BitbucketClientConfig,
+  BitbucketAuthErrorKind,
+  BitbucketPage,
+  BitbucketPaginateOpts,
+} from './bitbucket-api.js';
+export {
+  getBitbucketCurrentUser,
+  listBitbucketWorkspaces,
+  listBitbucketRepos,
+  groupBitbucketReposByProject,
+} from './bitbucket-workspaces.js';
+export type {
+  BitbucketCurrentUser,
+  BitbucketWorkspace,
+  BitbucketRemoteRepo,
+  BitbucketRepoProjectGroup,
+} from './bitbucket-workspaces.js';
+export { BitbucketPrAdapter, FakeBitbucketPrAdapter, isReleaseBranch } from './bitbucket-pr-adapter.js';
+export type {
+  BitbucketPrPort,
+  BitbucketPrFetchOpts,
+  BitbucketPrAdapterConfig,
+  BitbucketPullRequestRow,
+  BitbucketPullRequestPage,
+} from './bitbucket-pr-adapter.js';
+export { buildBitbucketReviews } from './bitbucket-review-adapter.js';
+export type { BitbucketReviewRow, BuildBitbucketReviewsInput } from './bitbucket-review-adapter.js';
+export {
+  BitbucketCommitAdapter,
+  FakeBitbucketCommitAdapter,
+  parseBitbucketAuthorRaw,
+} from './bitbucket-commit-adapter.js';
+export type {
+  BitbucketCommitPort,
+  BitbucketCommitFetchOpts,
+  BitbucketCommitAdapterConfig,
+  BitbucketCommitRow,
+} from './bitbucket-commit-adapter.js';
+export {
+  BitbucketDeploymentAdapter,
+  FakeBitbucketDeploymentAdapter,
+} from './bitbucket-deployment-adapter.js';
+export type {
+  BitbucketDeploymentPort,
+  BitbucketDeploymentFetchOpts,
+  BitbucketDeploymentAdapterConfig,
+  BitbucketDeploymentRow,
+} from './bitbucket-deployment-adapter.js';
+
 // Phase 3 (EI-007) — ADO Repos PR adapter (lists repos, fetches PRs + threads).
 export { AdoPrAdapter, FakeAdoPrAdapter } from './ado-pr-adapter.js';
 export type {
@@ -508,6 +567,27 @@ export {
   GitLabProjectSyncSchema,
   BoardGitLabSourceCreateSchema,
   BoardGitLabSourcePatchSchema,
+  BitbucketInstanceCreateSchema,
+  BitbucketInstancePatchSchema,
+  BitbucketTestCredentialsSchema,
+  BitbucketWorkspaceSchema,
+  BitbucketTestResultSchema,
+  BitbucketRepoSyncSchema,
+  BitbucketRepoSyncCreateSchema,
+  BoardBitbucketSourceCreateSchema,
+  BoardBitbucketSourcePatchSchema,
+  BoardBitbucketSourceBulkCreateSchema,
+  BitbucketRemoteRepoSchema,
+  BitbucketRemoteReposResponseSchema,
+  type BitbucketInstanceCreate,
+  type BitbucketInstancePatch,
+  type BitbucketTestCredentials,
+  type BitbucketWorkspaceDto,
+  type BitbucketTestResult,
+  type BitbucketRepoSyncDto,
+  type BoardBitbucketSourceBulkCreate,
+  type BitbucketRemoteRepoDto,
+  type BitbucketRemoteReposResponse,
   type JiraProjectSyncDto,
   type AdoSourceRepositoryDto,
   type AdoSourceRepositoriesResponseDto,
@@ -1129,3 +1209,17 @@ export * from "./focus/index.js";
 // The five status buckets, shared by the timesheet's Time rules panel and the
 // Focus stage map. Pure — no node builtins — so apps/web can import it.
 export * from "./status-buckets/index.js";
+
+export {
+  parseSourceItemLink,
+  githubWebHost,
+  adoOrgKey,
+  jiraSiteHost,
+  ImportSourceLinkInputSchema,
+  ImportSourceLinkResultSchema,
+  type ParsedSourceItemLink,
+  type ImportSourceLinkInput,
+  type ImportSourceLinkResult,
+} from './source-item-link.js';
+
+export * from './my-profile-schemas.js';

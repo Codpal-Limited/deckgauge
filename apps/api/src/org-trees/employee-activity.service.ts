@@ -31,6 +31,19 @@ const BY_LOGIN = `has({logins:Array(String)}, author_login)`;
 const BY_AUTHOR_EMAIL = `has({emails:Array(String)}, lower(author_email))`;
 const BY_AUTHOR_NAME = `has({names:Array(String)}, lower(author_name))`;
 
+/**
+ * `names` are produced by `normalizeName` (lower-cased, `._-` and whitespace folded
+ * to single spaces), so a raw `lower(col)` misses every git author name of the form
+ * `Kateryna.Soloviova` / `andrii.dan` — which is most of them on Bitbucket. This
+ * applies the same fold in SQL. `lowerUTF8`, not `lower`: ClickHouse's `lower` is
+ * ASCII-only while JS `toLowerCase` is not, so a Cyrillic name would never match.
+ * Four backslashes in this source reach ClickHouse as `\\s` inside a string
+ * literal, i.e. the regex `\s` — the same escaping as the org-sync aggregator's
+ * `normStatusExpr`.
+ */
+const normName = (col: string): string =>
+  `trimBoth(replaceRegexpAll(lowerUTF8(${col}), '[\\\\s._-]+', ' '))`;
+
 const SOURCES: Source[] = [
   {
     category: 'commits',
@@ -64,6 +77,30 @@ const SOURCES: Source[] = [
       toString(created_at) ts, '' url
       FROM ado_pull_requests FINAL
       WHERE has({logins:Array(String)}, created_by_login) OR has({names:Array(String)}, lower(created_by_name))
+      ORDER BY created_at DESC LIMIT ${n}`,
+  },
+  // Bitbucket Cloud. Commits match by email or (normalised) author name; PRs carry
+  // no email, so they match by nickname — expanded from bitbucket_commits by
+  // `expandBitbucketLogins` — or by display name. Release PRs are listed: they are
+  // the author's real PRs; only the COUNTS exclude them (they re-ship merged work).
+  {
+    category: 'commits',
+    sql: (n) => `SELECT sha id, message_subject title, repo_full_name subtitle,
+      toString(committed_at) ts,
+      concat('https://bitbucket.org/', repo_full_name, '/commits/', sha) url
+      FROM bitbucket_commits FINAL
+      WHERE ${BY_AUTHOR_EMAIL} OR has({names:Array(String)}, ${normName('author_name')})
+        OR has({bbLogins:Array(String)}, ifNull(author_username, ''))
+      ORDER BY committed_at DESC LIMIT ${n}`,
+  },
+  {
+    category: 'pullRequests',
+    sql: (n) => `SELECT toString(pr_id) id, title, repo_full_name subtitle,
+      toString(created_at) ts,
+      concat('https://bitbucket.org/', repo_full_name, '/pull-requests/', toString(pr_id)) url
+      FROM bitbucket_pull_requests FINAL
+      WHERE has({bbLogins:Array(String)}, author_username)
+        OR has({names:Array(String)}, ${normName("ifNull(author_name, '')")})
       ORDER BY created_at DESC LIMIT ${n}`,
   },
   {
@@ -150,6 +187,36 @@ export class EmployeeActivityService {
     }
   }
 
+  /**
+   * The Bitbucket counterpart of `expandGithubLogins`: Bitbucket PR rows carry a
+   * nickname and display name but no email, and nicknames are often one token
+   * ("Denys") that no name match can resolve. Any nickname that committed under
+   * one of the employee's emails or names is theirs. Alias logins are included as
+   * given, so a hand-added login alias works too.
+   */
+  private async expandBitbucketLogins(ids: EmployeeIdentities): Promise<string[]> {
+    if (ids.emails.length === 0 && ids.names.length === 0) return ids.logins;
+    try {
+      const res = await this.ch.query({
+        query: `SELECT DISTINCT author_username FROM bitbucket_commits
+          WHERE ifNull(author_username, '') != ''
+          AND (has({emails:Array(String)}, lower(author_email))
+               OR has({names:Array(String)}, ${normName('author_name')})
+               OR has({names:Array(String)}, ${normName("ifNull(author_username, '')")}))`,
+        query_params: { emails: ids.emails, names: ids.names },
+        format: 'JSONEachRow',
+      });
+      const rows = (await res.json()) as Array<{ author_username: string }>;
+      return [...new Set([...ids.logins, ...rows.map((r) => r.author_username)])];
+    } catch (err) {
+      this.log.error(
+        '[employee-activity] bitbucket login expansion failed; falling back to alias logins:',
+        err instanceof Error ? err.message : err,
+      );
+      return ids.logins;
+    }
+  }
+
   async forEmployee(
     ids: EmployeeIdentities,
     limit: number = ACTIVITY_LIMIT,
@@ -157,8 +224,11 @@ export class EmployeeActivityService {
     const empty: EmployeeActivity = { commits: [], pullRequests: [], assignedIssues: [] };
     if (isEmptyIdentities(ids)) return empty;
 
-    const logins = await this.expandGithubLogins(ids);
-    const params = { logins, emails: ids.emails, names: ids.names };
+    const [logins, bbLogins] = await Promise.all([
+      this.expandGithubLogins(ids),
+      this.expandBitbucketLogins(ids),
+    ]);
+    const params = { logins, bbLogins, emails: ids.emails, names: ids.names };
     const buckets: Record<Category, ActivityItem[]> = {
       commits: [],
       pullRequests: [],

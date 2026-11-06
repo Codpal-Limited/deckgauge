@@ -14,8 +14,8 @@ for that project stop being counted:
   date, so only the hours before the cutoff still count.
 - Any span that starts on or after the cutoff is dropped entirely.
 
-This only affects Jira-sourced work — GitHub, GitLab, and Azure DevOps
-activity is untouched by a retirement.
+This only affects Jira-sourced work — GitHub, GitLab, Azure DevOps and
+Bitbucket activity is untouched by a retirement.
 
 You manage the list of retired projects from the Sources page, in the
 "Retired projects" panel. Un-retiring a project (removing it from the list)

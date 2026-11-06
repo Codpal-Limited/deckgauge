@@ -68,6 +68,21 @@ export interface AdvisorBridgeDeps {
 const NO_AGENT_FOUND_ERROR =
   'No local agent found. Install and sign in to Claude Code (or Codex) and try again.';
 
+/** ACP's `RequestError.resourceNotFound` code (JSON-RPC server-error range). */
+const ACP_RESOURCE_NOT_FOUND = -32002;
+
+/**
+ * A rejected ACP request arrives as the wire `{code, message, data}` object
+ * (see `getErrorMessage`), not an `Error`, so the code is read structurally.
+ */
+function isResourceNotFound(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: unknown }).code === ACP_RESOURCE_NOT_FOUND
+  );
+}
+
 /**
  * Thrown by `start()` when no local ACP agent is installed — as opposed to the
  * other way `start()` can fail (a `DECKGAUGE_TOKEN` that can't reach `/mcp`).
@@ -309,10 +324,7 @@ export class AdvisorBridge {
     this.pendingToken = null;
 
     try {
-      if (client.canReconnectMcp()) {
-        await client.reconnectMcp(({ supportsHttp }) =>
-          buildDeckgaugeMcpConfig({ mcpUrl: this.config.mcpUrl, token, supportsHttp })
-        );
+      if (client.canReconnectMcp() && (await this.reconnectInPlace(client, token))) {
         this.authenticatedToken = token;
       } else if (!(await this.openSession(token))) {
         // Installed NOTHING: a concurrent `authenticate()` bumped the generation
@@ -342,6 +354,33 @@ export class AdvisorBridge {
       // Object]" (see `getErrorMessage`'s docblock). Reuse the same extractor
       // rather than a second copy of it.
       return getErrorMessage(error);
+    }
+  }
+
+  /**
+   * Re-points the live session's MCP server at `token`. Resolves `false` —
+   * meaning "open a fresh session instead" — when the agent reports it has no
+   * conversation to reload; rethrows anything else.
+   *
+   * The pinned Claude adapter implements `session/load` as a RESUME from the
+   * on-disk transcript, and Claude writes none until the first prompt. So a
+   * panel opened and left idle past one rotation failed its very first
+   * question with `Resource not found: <sessionId>` (-32002), and since the
+   * token is restored for retry, every later question failed the same way.
+   * The adapter has already torn the old session down by then, and there is
+   * no history to lose, so a replacement session is the correct outcome.
+   */
+  private async reconnectInPlace(client: AcpClientLike, token: string): Promise<boolean> {
+    try {
+      await client.reconnectMcp(({ supportsHttp }) =>
+        buildDeckgaugeMcpConfig({ mcpUrl: this.config.mcpUrl, token, supportsHttp })
+      );
+      return true;
+    } catch (error: unknown) {
+      if (isResourceNotFound(error)) {
+        return false;
+      }
+      throw error;
     }
   }
 

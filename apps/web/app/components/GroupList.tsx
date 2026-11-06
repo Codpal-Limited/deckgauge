@@ -48,6 +48,7 @@ import {
   reorderItems,
   reorderGroups,
   createProject,
+  importItemFromSourceLink,
   updateProject,
   deleteProject,
   deleteProjects,
@@ -1585,6 +1586,19 @@ export function GroupList({
                             <InlineAddRow
                               isLoading={isCreating || isPending}
                               groupColor={groupColor}
+                              // Only a board with a connected source can load an
+                              // item by its link, and only into a group that
+                              // exists server-side.
+                              onAddFromLink={
+                                hasIntegration && boardId && !isTempId(group.id)
+                                  ? async (url) => {
+                                      const result = await importItemFromSourceLink(boardId, group.id, url);
+                                      if (!result.ok) return result;
+                                      toast.success(`Added "${result.name}"`);
+                                      return { ok: true };
+                                    }
+                                  : undefined
+                              }
                               onAdd={(name) => {
                                 const tempId = makeTempId();
                                 applyOptimistic(

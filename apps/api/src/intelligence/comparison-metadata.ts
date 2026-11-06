@@ -28,7 +28,11 @@ export const MISSING_ORG_LINK_REASON = 'no org-tree link on one or more boards';
 interface ScopeLike {
   scope: Pick<
     BoardScope,
-    'jiraProjectKeys' | 'adoProjects' | 'githubRepoFullNames' | 'gitlabProjectPaths'
+    | 'jiraProjectKeys'
+    | 'adoProjects'
+    | 'githubRepoFullNames'
+    | 'gitlabProjectPaths'
+    | 'bitbucketRepoFullNames'
   >;
 }
 
@@ -43,6 +47,7 @@ function providerFamilies(scope: ScopeLike['scope']): Set<string> {
   if (scope.adoProjects.length > 0) set.add('ado');
   if (scope.githubRepoFullNames.length > 0) set.add('github');
   if (scope.gitlabProjectPaths.length > 0) set.add('gitlab');
+  if ((scope.bitbucketRepoFullNames ?? []).length > 0) set.add('bitbucket');
   return set;
 }
 

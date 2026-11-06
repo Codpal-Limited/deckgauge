@@ -238,6 +238,7 @@ export type GroupWhereInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceListRelationFilter
   boardAdoSources?: Prisma.BoardAdoSourceListRelationFilter
   boardGitlabSources?: Prisma.BoardGitLabSourceListRelationFilter
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceListRelationFilter
   roadmapGroups?: Prisma.RoadmapGroupListRelationFilter
 }
 
@@ -255,6 +256,7 @@ export type GroupOrderByWithRelationInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceOrderByRelationAggregateInput
   boardAdoSources?: Prisma.BoardAdoSourceOrderByRelationAggregateInput
   boardGitlabSources?: Prisma.BoardGitLabSourceOrderByRelationAggregateInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceOrderByRelationAggregateInput
   roadmapGroups?: Prisma.RoadmapGroupOrderByRelationAggregateInput
 }
 
@@ -275,6 +277,7 @@ export type GroupWhereUniqueInput = Prisma.AtLeast<{
   boardGithubSources?: Prisma.BoardGitHubSourceListRelationFilter
   boardAdoSources?: Prisma.BoardAdoSourceListRelationFilter
   boardGitlabSources?: Prisma.BoardGitLabSourceListRelationFilter
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceListRelationFilter
   roadmapGroups?: Prisma.RoadmapGroupListRelationFilter
 }, "id">
 
@@ -319,6 +322,7 @@ export type GroupCreateInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupCreateNestedManyWithoutGroupInput
 }
 
@@ -335,6 +339,7 @@ export type GroupUncheckedCreateInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedCreateNestedManyWithoutGroupInput
 }
 
@@ -351,6 +356,7 @@ export type GroupUpdateInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUpdateManyWithoutGroupNestedInput
 }
 
@@ -367,6 +373,7 @@ export type GroupUncheckedUpdateInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedUpdateManyWithoutGroupNestedInput
 }
 
@@ -579,6 +586,22 @@ export type GroupUpdateOneWithoutBoardGitlabSourcesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.GroupUpdateToOneWithWhereWithoutBoardGitlabSourcesInput, Prisma.GroupUpdateWithoutBoardGitlabSourcesInput>, Prisma.GroupUncheckedUpdateWithoutBoardGitlabSourcesInput>
 }
 
+export type GroupCreateNestedOneWithoutBoardBitbucketSourcesInput = {
+  create?: Prisma.XOR<Prisma.GroupCreateWithoutBoardBitbucketSourcesInput, Prisma.GroupUncheckedCreateWithoutBoardBitbucketSourcesInput>
+  connectOrCreate?: Prisma.GroupCreateOrConnectWithoutBoardBitbucketSourcesInput
+  connect?: Prisma.GroupWhereUniqueInput
+}
+
+export type GroupUpdateOneWithoutBoardBitbucketSourcesNestedInput = {
+  create?: Prisma.XOR<Prisma.GroupCreateWithoutBoardBitbucketSourcesInput, Prisma.GroupUncheckedCreateWithoutBoardBitbucketSourcesInput>
+  connectOrCreate?: Prisma.GroupCreateOrConnectWithoutBoardBitbucketSourcesInput
+  upsert?: Prisma.GroupUpsertWithoutBoardBitbucketSourcesInput
+  disconnect?: Prisma.GroupWhereInput | boolean
+  delete?: Prisma.GroupWhereInput | boolean
+  connect?: Prisma.GroupWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.GroupUpdateToOneWithWhereWithoutBoardBitbucketSourcesInput, Prisma.GroupUpdateWithoutBoardBitbucketSourcesInput>, Prisma.GroupUncheckedUpdateWithoutBoardBitbucketSourcesInput>
+}
+
 export type GroupCreateNestedOneWithoutRoadmapGroupsInput = {
   create?: Prisma.XOR<Prisma.GroupCreateWithoutRoadmapGroupsInput, Prisma.GroupUncheckedCreateWithoutRoadmapGroupsInput>
   connectOrCreate?: Prisma.GroupCreateOrConnectWithoutRoadmapGroupsInput
@@ -605,6 +628,7 @@ export type GroupCreateWithoutBoardInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupCreateNestedManyWithoutGroupInput
 }
 
@@ -620,6 +644,7 @@ export type GroupUncheckedCreateWithoutBoardInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedCreateNestedManyWithoutGroupInput
 }
 
@@ -674,6 +699,7 @@ export type GroupCreateWithoutProjectsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupCreateNestedManyWithoutGroupInput
 }
 
@@ -689,6 +715,7 @@ export type GroupUncheckedCreateWithoutProjectsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedCreateNestedManyWithoutGroupInput
 }
 
@@ -720,6 +747,7 @@ export type GroupUpdateWithoutProjectsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUpdateManyWithoutGroupNestedInput
 }
 
@@ -735,6 +763,7 @@ export type GroupUncheckedUpdateWithoutProjectsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedUpdateManyWithoutGroupNestedInput
 }
 
@@ -750,6 +779,7 @@ export type GroupCreateWithoutBoardJiraSourcesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupCreateNestedManyWithoutGroupInput
 }
 
@@ -765,6 +795,7 @@ export type GroupUncheckedCreateWithoutBoardJiraSourcesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedCreateNestedManyWithoutGroupInput
 }
 
@@ -796,6 +827,7 @@ export type GroupUpdateWithoutBoardJiraSourcesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUpdateManyWithoutGroupNestedInput
 }
 
@@ -811,6 +843,7 @@ export type GroupUncheckedUpdateWithoutBoardJiraSourcesInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedUpdateManyWithoutGroupNestedInput
 }
 
@@ -826,6 +859,7 @@ export type GroupCreateWithoutBoardGithubSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupCreateNestedManyWithoutGroupInput
 }
 
@@ -841,6 +875,7 @@ export type GroupUncheckedCreateWithoutBoardGithubSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedCreateNestedManyWithoutGroupInput
 }
 
@@ -872,6 +907,7 @@ export type GroupUpdateWithoutBoardGithubSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUpdateManyWithoutGroupNestedInput
 }
 
@@ -887,6 +923,7 @@ export type GroupUncheckedUpdateWithoutBoardGithubSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedUpdateManyWithoutGroupNestedInput
 }
 
@@ -902,6 +939,7 @@ export type GroupCreateWithoutBoardAdoSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceCreateNestedManyWithoutTargetGroupInput
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupCreateNestedManyWithoutGroupInput
 }
 
@@ -917,6 +955,7 @@ export type GroupUncheckedCreateWithoutBoardAdoSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedCreateNestedManyWithoutGroupInput
 }
 
@@ -948,6 +987,7 @@ export type GroupUpdateWithoutBoardAdoSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUpdateManyWithoutTargetGroupNestedInput
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUpdateManyWithoutGroupNestedInput
 }
 
@@ -963,6 +1003,7 @@ export type GroupUncheckedUpdateWithoutBoardAdoSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedUpdateManyWithoutGroupNestedInput
 }
 
@@ -978,6 +1019,7 @@ export type GroupCreateWithoutBoardGitlabSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceCreateNestedManyWithoutTargetGroupInput
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupCreateNestedManyWithoutGroupInput
 }
 
@@ -993,6 +1035,7 @@ export type GroupUncheckedCreateWithoutBoardGitlabSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedCreateNestedManyWithoutGroupInput
 }
 
@@ -1024,6 +1067,7 @@ export type GroupUpdateWithoutBoardGitlabSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUpdateManyWithoutTargetGroupNestedInput
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUpdateManyWithoutGroupNestedInput
 }
 
@@ -1039,6 +1083,87 @@ export type GroupUncheckedUpdateWithoutBoardGitlabSourcesInput = {
   boardJiraSources?: Prisma.BoardJiraSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
+  roadmapGroups?: Prisma.RoadmapGroupUncheckedUpdateManyWithoutGroupNestedInput
+}
+
+export type GroupCreateWithoutBoardBitbucketSourcesInput = {
+  id?: string
+  name: string
+  position?: number
+  color?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  board: Prisma.BoardCreateNestedOneWithoutGroupsInput
+  projects?: Prisma.ProjectCreateNestedManyWithoutGroupInput
+  boardJiraSources?: Prisma.BoardJiraSourceCreateNestedManyWithoutTargetGroupInput
+  boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutTargetGroupInput
+  boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutTargetGroupInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutTargetGroupInput
+  roadmapGroups?: Prisma.RoadmapGroupCreateNestedManyWithoutGroupInput
+}
+
+export type GroupUncheckedCreateWithoutBoardBitbucketSourcesInput = {
+  id?: string
+  name: string
+  position?: number
+  color?: string
+  boardId: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  projects?: Prisma.ProjectUncheckedCreateNestedManyWithoutGroupInput
+  boardJiraSources?: Prisma.BoardJiraSourceUncheckedCreateNestedManyWithoutTargetGroupInput
+  boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutTargetGroupInput
+  boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutTargetGroupInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutTargetGroupInput
+  roadmapGroups?: Prisma.RoadmapGroupUncheckedCreateNestedManyWithoutGroupInput
+}
+
+export type GroupCreateOrConnectWithoutBoardBitbucketSourcesInput = {
+  where: Prisma.GroupWhereUniqueInput
+  create: Prisma.XOR<Prisma.GroupCreateWithoutBoardBitbucketSourcesInput, Prisma.GroupUncheckedCreateWithoutBoardBitbucketSourcesInput>
+}
+
+export type GroupUpsertWithoutBoardBitbucketSourcesInput = {
+  update: Prisma.XOR<Prisma.GroupUpdateWithoutBoardBitbucketSourcesInput, Prisma.GroupUncheckedUpdateWithoutBoardBitbucketSourcesInput>
+  create: Prisma.XOR<Prisma.GroupCreateWithoutBoardBitbucketSourcesInput, Prisma.GroupUncheckedCreateWithoutBoardBitbucketSourcesInput>
+  where?: Prisma.GroupWhereInput
+}
+
+export type GroupUpdateToOneWithWhereWithoutBoardBitbucketSourcesInput = {
+  where?: Prisma.GroupWhereInput
+  data: Prisma.XOR<Prisma.GroupUpdateWithoutBoardBitbucketSourcesInput, Prisma.GroupUncheckedUpdateWithoutBoardBitbucketSourcesInput>
+}
+
+export type GroupUpdateWithoutBoardBitbucketSourcesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  position?: Prisma.IntFieldUpdateOperationsInput | number
+  color?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  board?: Prisma.BoardUpdateOneRequiredWithoutGroupsNestedInput
+  projects?: Prisma.ProjectUpdateManyWithoutGroupNestedInput
+  boardJiraSources?: Prisma.BoardJiraSourceUpdateManyWithoutTargetGroupNestedInput
+  boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutTargetGroupNestedInput
+  boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutTargetGroupNestedInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutTargetGroupNestedInput
+  roadmapGroups?: Prisma.RoadmapGroupUpdateManyWithoutGroupNestedInput
+}
+
+export type GroupUncheckedUpdateWithoutBoardBitbucketSourcesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  position?: Prisma.IntFieldUpdateOperationsInput | number
+  color?: Prisma.StringFieldUpdateOperationsInput | string
+  boardId?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  projects?: Prisma.ProjectUncheckedUpdateManyWithoutGroupNestedInput
+  boardJiraSources?: Prisma.BoardJiraSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
+  boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
+  boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
+  boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedUpdateManyWithoutGroupNestedInput
 }
 
@@ -1055,6 +1180,7 @@ export type GroupCreateWithoutRoadmapGroupsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceCreateNestedManyWithoutTargetGroupInput
 }
 
 export type GroupUncheckedCreateWithoutRoadmapGroupsInput = {
@@ -1070,6 +1196,7 @@ export type GroupUncheckedCreateWithoutRoadmapGroupsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedCreateNestedManyWithoutTargetGroupInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedCreateNestedManyWithoutTargetGroupInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedCreateNestedManyWithoutTargetGroupInput
 }
 
 export type GroupCreateOrConnectWithoutRoadmapGroupsInput = {
@@ -1101,6 +1228,7 @@ export type GroupUpdateWithoutRoadmapGroupsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutTargetGroupNestedInput
 }
 
 export type GroupUncheckedUpdateWithoutRoadmapGroupsInput = {
@@ -1116,6 +1244,7 @@ export type GroupUncheckedUpdateWithoutRoadmapGroupsInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
 }
 
 export type GroupCreateManyBoardInput = {
@@ -1139,6 +1268,7 @@ export type GroupUpdateWithoutBoardInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUpdateManyWithoutGroupNestedInput
 }
 
@@ -1154,6 +1284,7 @@ export type GroupUncheckedUpdateWithoutBoardInput = {
   boardGithubSources?: Prisma.BoardGitHubSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardAdoSources?: Prisma.BoardAdoSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   boardGitlabSources?: Prisma.BoardGitLabSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
+  boardBitbucketSources?: Prisma.BoardBitbucketSourceUncheckedUpdateManyWithoutTargetGroupNestedInput
   roadmapGroups?: Prisma.RoadmapGroupUncheckedUpdateManyWithoutGroupNestedInput
 }
 
@@ -1177,6 +1308,7 @@ export type GroupCountOutputType = {
   boardGithubSources: number
   boardAdoSources: number
   boardGitlabSources: number
+  boardBitbucketSources: number
   roadmapGroups: number
 }
 
@@ -1186,6 +1318,7 @@ export type GroupCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.
   boardGithubSources?: boolean | GroupCountOutputTypeCountBoardGithubSourcesArgs
   boardAdoSources?: boolean | GroupCountOutputTypeCountBoardAdoSourcesArgs
   boardGitlabSources?: boolean | GroupCountOutputTypeCountBoardGitlabSourcesArgs
+  boardBitbucketSources?: boolean | GroupCountOutputTypeCountBoardBitbucketSourcesArgs
   roadmapGroups?: boolean | GroupCountOutputTypeCountRoadmapGroupsArgs
 }
 
@@ -1237,6 +1370,13 @@ export type GroupCountOutputTypeCountBoardGitlabSourcesArgs<ExtArgs extends runt
 /**
  * GroupCountOutputType without action
  */
+export type GroupCountOutputTypeCountBoardBitbucketSourcesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.BoardBitbucketSourceWhereInput
+}
+
+/**
+ * GroupCountOutputType without action
+ */
 export type GroupCountOutputTypeCountRoadmapGroupsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.RoadmapGroupWhereInput
 }
@@ -1256,6 +1396,7 @@ export type GroupSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   boardGithubSources?: boolean | Prisma.Group$boardGithubSourcesArgs<ExtArgs>
   boardAdoSources?: boolean | Prisma.Group$boardAdoSourcesArgs<ExtArgs>
   boardGitlabSources?: boolean | Prisma.Group$boardGitlabSourcesArgs<ExtArgs>
+  boardBitbucketSources?: boolean | Prisma.Group$boardBitbucketSourcesArgs<ExtArgs>
   roadmapGroups?: boolean | Prisma.Group$roadmapGroupsArgs<ExtArgs>
   _count?: boolean | Prisma.GroupCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["group"]>
@@ -1300,6 +1441,7 @@ export type GroupInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   boardGithubSources?: boolean | Prisma.Group$boardGithubSourcesArgs<ExtArgs>
   boardAdoSources?: boolean | Prisma.Group$boardAdoSourcesArgs<ExtArgs>
   boardGitlabSources?: boolean | Prisma.Group$boardGitlabSourcesArgs<ExtArgs>
+  boardBitbucketSources?: boolean | Prisma.Group$boardBitbucketSourcesArgs<ExtArgs>
   roadmapGroups?: boolean | Prisma.Group$roadmapGroupsArgs<ExtArgs>
   _count?: boolean | Prisma.GroupCountOutputTypeDefaultArgs<ExtArgs>
 }
@@ -1319,6 +1461,7 @@ export type $GroupPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     boardGithubSources: Prisma.$BoardGitHubSourcePayload<ExtArgs>[]
     boardAdoSources: Prisma.$BoardAdoSourcePayload<ExtArgs>[]
     boardGitlabSources: Prisma.$BoardGitLabSourcePayload<ExtArgs>[]
+    boardBitbucketSources: Prisma.$BoardBitbucketSourcePayload<ExtArgs>[]
     roadmapGroups: Prisma.$RoadmapGroupPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -1729,6 +1872,7 @@ export interface Prisma__GroupClient<T, Null = never, ExtArgs extends runtime.Ty
   boardGithubSources<T extends Prisma.Group$boardGithubSourcesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Group$boardGithubSourcesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardGitHubSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   boardAdoSources<T extends Prisma.Group$boardAdoSourcesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Group$boardAdoSourcesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardAdoSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   boardGitlabSources<T extends Prisma.Group$boardGitlabSourcesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Group$boardGitlabSourcesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardGitLabSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  boardBitbucketSources<T extends Prisma.Group$boardBitbucketSourcesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Group$boardBitbucketSourcesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BoardBitbucketSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   roadmapGroups<T extends Prisma.Group$roadmapGroupsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Group$roadmapGroupsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RoadmapGroupPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -2284,6 +2428,30 @@ export type Group$boardGitlabSourcesArgs<ExtArgs extends runtime.Types.Extension
   take?: number
   skip?: number
   distinct?: Prisma.BoardGitLabSourceScalarFieldEnum | Prisma.BoardGitLabSourceScalarFieldEnum[]
+}
+
+/**
+ * Group.boardBitbucketSources
+ */
+export type Group$boardBitbucketSourcesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BoardBitbucketSource
+   */
+  select?: Prisma.BoardBitbucketSourceSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BoardBitbucketSource
+   */
+  omit?: Prisma.BoardBitbucketSourceOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BoardBitbucketSourceInclude<ExtArgs> | null
+  where?: Prisma.BoardBitbucketSourceWhereInput
+  orderBy?: Prisma.BoardBitbucketSourceOrderByWithRelationInput | Prisma.BoardBitbucketSourceOrderByWithRelationInput[]
+  cursor?: Prisma.BoardBitbucketSourceWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.BoardBitbucketSourceScalarFieldEnum | Prisma.BoardBitbucketSourceScalarFieldEnum[]
 }
 
 /**

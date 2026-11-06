@@ -7,6 +7,8 @@ export interface ResolvedScope {
   jira: string[];
   ado: string[];
   gitlab: string[];
+  /** Bitbucket repo full names (`{workspace}/{repo_slug}`). */
+  bitbucket: string[];
   /**
    * Per-project issue-key allow-lists, from `board_jira_source_keys`. A project
    * absent from this map, or present with an empty array, is UNNARROWED —
@@ -47,7 +49,7 @@ export interface ResolvedScope {
  * without it would silently drop a dimension the console is supposed to enforce.
  *
  * It is a GETTER rather than a client because the second caller,
- * `buildSchemaPayload`, reads only the four identifier lists — it needs the
+ * `buildSchemaPayload`, reads only the five identifier lists — it needs the
  * scope to know which TABLES a board may read, never the narrowing maps — and
  * 24 of the 25 ADO sources in this install configure no area paths at all. An
  * eager client would make that hot route construct one per request for a feature
@@ -73,7 +75,7 @@ export async function resolveScope(
   getCh: () => ChReadClient,
 ): Promise<ResolvedScope> {
   const tenantFilter = organizationId ? { board: { organizationId } } : {};
-  const [github, jira, ado, gitlab] = await Promise.all([
+  const [github, jira, ado, gitlab, bitbucket] = await Promise.all([
     prisma.boardGitHubSource.findMany({
       where: { boardId, ...tenantFilter },
       select: { gitHubRepoSync: { select: { repoFullName: true } } },
@@ -102,6 +104,10 @@ export async function resolveScope(
       where: { boardId, ...tenantFilter },
       select: { gitlabProjectSync: { select: { projectPath: true } } },
     }),
+    prisma.boardBitbucketSource.findMany({
+      where: { boardId, ...tenantFilter },
+      select: { bitbucketRepoSync: { select: { repoFullName: true } } },
+    }),
   ]);
 
   return {
@@ -109,6 +115,7 @@ export async function resolveScope(
     jira: jira.map((r) => r.jiraProjectSync.jiraProjectKey),
     ado: ado.map((r) => r.azureDevOpsProjectSync.adoProject),
     gitlab: gitlab.map((r) => r.gitlabProjectSync.projectPath),
+    bitbucket: bitbucket.map((r) => r.bitbucketRepoSync.repoFullName),
     jiraIssueKeysByProject: collectJiraIssueKeys(jira),
     adoAreaPathsByProject: await expandAdoAreaPaths(getCh, ado),
   };

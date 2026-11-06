@@ -38,6 +38,7 @@ services:
       NODE_EXTRA_CA_CERTS: ""
       NODE_OPTIONS: --max-old-space-size=1280
       NODE_TLS_REJECT_UNAUTHORIZED: "1"
+      ORG_PHOTO_ALLOWED_HOSTS: ""
       REDIS_URL: redis://:@redis:6379
     healthcheck:
       test:
@@ -80,7 +81,8 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - clickhouse-client --user cockpit --password __required_not_a_credential__ --query 'SELECT 1'
+        - clickhouse-client --user cockpit --password __required_not_a_credential__
+          --query 'SELECT 1'
       timeout: 5s
       interval: 10s
       retries: 12
@@ -141,6 +143,7 @@ services:
       KC_DB_USERNAME: keycloak
       KC_HOSTNAME: http://localhost:8080
       KC_HOSTNAME_STRICT: "false"
+      KC_OPTS: -Xmx64m -XX:MaxMetaspaceSize=96m -XX:+UseSerialGC -XX:TieredStopAtLevel=1
       KEYCLOAK_CLIENT_SECRET: __required_not_a_credential__
       KEYCLOAK_PUBLIC_ORIGIN: http://localhost:3000
       MICROSOFT_CLIENT_ID: ""
@@ -275,7 +278,8 @@ services:
     command:
       - sh
       - -c
-      - exec redis-server --save 60 1 --maxmemory 384mb --maxmemory-policy noeviction --loglevel warning $${REDIS_PASSWORD:+--requirepass "$$REDIS_PASSWORD"}
+      - exec redis-server --save 60 1 --maxmemory 384mb --maxmemory-policy noeviction
+        --loglevel warning $${REDIS_PASSWORD:+--requirepass "$$REDIS_PASSWORD"}
     container_name: deckgauge-redis
     deploy:
       resources:
@@ -286,7 +290,8 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - redis-cli $${REDIS_PASSWORD:+--no-auth-warning -a "$$REDIS_PASSWORD"} ping | grep -q PONG
+        - redis-cli $${REDIS_PASSWORD:+--no-auth-warning -a "$$REDIS_PASSWORD"} ping
+          | grep -q PONG
       timeout: 5s
       interval: 5s
       retries: 6

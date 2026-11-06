@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const DeveloperProviderSchema = z.enum(['github', 'gitlab', 'ado', 'jira']);
+export const DeveloperProviderSchema = z.enum(['github', 'gitlab', 'ado', 'jira', 'bitbucket']);
 export type DeveloperProvider = z.infer<typeof DeveloperProviderSchema>;
 
 export const DeveloperProfileSchema = z.object({

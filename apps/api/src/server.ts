@@ -32,10 +32,12 @@ import { githubRoutes } from "./github/github.routes.js";
 import { azureDevOpsRoutes } from "./azure-devops/azure-devops.routes.js";
 import { adoProjectSyncRoutes } from "./project-syncs/ado-project-sync.routes.js";
 import { gitlabRoutes } from "./gitlab/gitlab.routes.js";
+import { bitbucketRoutes } from "./bitbucket/bitbucket.routes.js";
 import { developerProfileRoutes } from "./developer-profiles/developer-profile.routes.js";
 import { jiraProjectSyncRoutes } from "./project-syncs/jira-project-sync.routes.js";
 import { githubRepoSyncRoutes } from "./project-syncs/github-repo-sync.routes.js";
 import { gitlabProjectSyncRoutes } from "./project-syncs/gitlab-project-sync.routes.js";
+import { bitbucketRepoSyncRoutes } from "./project-syncs/bitbucket-repo-sync.routes.js";
 import { boardJiraSourceRoutes } from "./board-sources/board-jira-source.routes.js";
 import { boardGitHubSourceRoutes } from "./board-sources/board-github-source.routes.js";
 import { boardGitHubPickerRoutes } from "./board-sources/board-github-picker.routes.js";
@@ -48,11 +50,13 @@ import {
 } from "@deckgauge/shared";
 import { boardAdoSourceRoutes } from "./board-sources/board-ado-source.routes.js";
 import { boardGitLabSourceRoutes } from "./board-sources/board-gitlab-source.routes.js";
+import { boardBitbucketSourceRoutes } from "./board-sources/board-bitbucket-source.routes.js";
 import { buildKeycloakAuthPlugin } from "./auth/keycloak-auth.plugin.js";
 import { buildPolicyPlugin } from "./auth/policy.plugin.js";
 import { AUTHENTICATED, PUBLIC } from "./auth/policy.js";
 import { boardAccessRoutes } from "./board-access/board-access.routes.js";
 import { userRoutes } from "./users/user.routes.js";
+import { profileRoutes } from "./users/profile.routes.js";
 import { notificationRoutes } from "./notifications/notification.routes.js";
 import { notificationPreferenceRoutes } from "./notifications/notification-preference.routes.js";
 import { boardViewRoutes } from "./widgets/board-views.routes.js";
@@ -71,6 +75,7 @@ import { advisorSessionRoutes } from "./advisor/advisor-session.routes.js";
 import { advisorChangeSetRoutes } from "./advisor/advisor-change-set.routes.js";
 import { mcpRoutes } from "./mcp/mcp.routes.js";
 import { boardSyncRoutes } from "./board-sync/board-sync.routes.js";
+import { sourceLinkRoutes } from "./source-link/source-link.routes.js";
 import { boardTreeRoutes } from "./board-tree/board-tree.routes.js";
 import { roadmapRoutes } from "./roadmap/roadmap.routes.js";
 import { comparisonRoutes } from "./comparison/comparison.routes.js";
@@ -182,6 +187,7 @@ export function buildServer(prisma: PrismaClient) {
 
     protectedApp.register(boardAccessRoutes, { prisma });
     protectedApp.register(userRoutes, { prisma });
+    protectedApp.register(profileRoutes, { prisma, uploadService });
     protectedApp.register(commentRoutes, { prisma, uploadService });
     protectedApp.register(notificationRoutes, { prisma });
     protectedApp.register(notificationPreferenceRoutes, { prisma });
@@ -239,10 +245,12 @@ export function buildServer(prisma: PrismaClient) {
     protectedApp.register(azureDevOpsRoutes, { prisma });
     protectedApp.register(adoProjectSyncRoutes({ prisma, singleUser }));
     protectedApp.register(gitlabRoutes({ prisma, singleUser }));
+    protectedApp.register(bitbucketRoutes({ prisma, singleUser }));
     protectedApp.register(developerProfileRoutes({ prisma }));
     protectedApp.register(jiraProjectSyncRoutes({ prisma, singleUser }));
     protectedApp.register(githubRepoSyncRoutes({ prisma, singleUser }));
     protectedApp.register(gitlabProjectSyncRoutes({ prisma, singleUser }));
+    protectedApp.register(bitbucketRepoSyncRoutes({ prisma, singleUser }));
     protectedApp.register(boardJiraSourceRoutes({ prisma, clickhouse }));
 
     // Three-tier BullMQ queue client for GitHub bulk-repo ingestion.
@@ -277,6 +285,7 @@ export function buildServer(prisma: PrismaClient) {
     );
     protectedApp.register(boardAdoSourceRoutes({ prisma, clickhouse }));
     protectedApp.register(boardGitLabSourceRoutes({ prisma, clickhouse }));
+    protectedApp.register(boardBitbucketSourceRoutes({ prisma, clickhouse }));
     protectedApp.register(boardViewRoutes, { prisma });
     protectedApp.register(dashboardWidgetRoutes, { prisma });
     // One instance across both plugins: saving a Focus stage map evicts this
@@ -383,6 +392,7 @@ export function buildServer(prisma: PrismaClient) {
       }),
     );
     protectedApp.register(boardSyncRoutes({ prisma, queues }));
+    protectedApp.register(sourceLinkRoutes({ prisma, queues }));
 
     // One TimesheetService — its TtlCache is per-instance and the timesheet
     // engine is the most expensive read in the product — but a reader resolved

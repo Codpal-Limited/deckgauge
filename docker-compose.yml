@@ -268,6 +268,15 @@ services:
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?run ./scripts/init-env.sh to generate one, or set it in .env}
       # Cap JVM heap — default uses ~1.9 GB which is excessive for local dev
       JAVA_OPTS_APPEND: "-Xms128m -Xmx384m"
+      # The admin CLI (kcadm.sh) is a SECOND JVM, and every script runs it with
+      # `docker compose exec` — inside this container's 512M limit, next to a
+      # server that idles near 460M. Uncapped, the pair crossed the limit and
+      # the kernel killed the larger process: the SERVER. Seen on a fresh
+      # install's test-account.sh (2026-11-06), Keycloak restarting at
+      # "Setting the password" on every attempt. KC_OPTS is read only by
+      # kcadm.sh and kcreg.sh, never by kc.sh, so the server is unaffected and
+      # `exec` hands it to every CLI call from every script.
+      KC_OPTS: "-Xmx64m -XX:MaxMetaspaceSize=96m -XX:+UseSerialGC -XX:TieredStopAtLevel=1"
       # HOSTNAME v2 (Keycloak 25+). This is now a full URL, and KC_HOSTNAME_PORT
       # NO LONGER EXISTS — 24 took a bare host in KC_HOSTNAME plus the port in
       # KC_HOSTNAME_PORT, and 25 replaced both with this single value.
@@ -463,6 +472,11 @@ services:
       # carries a permissive `USING 1` policy on every object, which ORs past every
       # tenant predicate, and provisioning refuses the combination outright.
       CLICKHOUSE_READ_URL: "${CLICKHOUSE_READ_URL:-}"
+      # Extra host suffixes (comma-separated) the org-chart import may download
+      # employee photos from. bamboohr.com is always allowed; anything else must be
+      # named here, because the URLs come from an uploaded file and the api must not
+      # fetch arbitrary hosts (SSRF). See apps/api/src/org-trees/org-photo-fetch.ts.
+      ORG_PHOTO_ALLOWED_HOSTS: "${ORG_PHOTO_ALLOWED_HOSTS:-}"
       # The OPERATOR's half of the gate on creating a SECOND organization — the
       # other half is a licence carrying `multi_org` (DECKGAUGE_LICENSE_FILE
       # below), because more than one organization per installation is an

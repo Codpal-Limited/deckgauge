@@ -114,3 +114,25 @@ export function hydrateGitLab(row: Record<string, unknown>): SourceShape {
     },
   };
 }
+
+export function hydrateBitbucket(row: Record<string, unknown>): SourceShape {
+  const r = row as any;
+  const sync = r.bitbucketRepoSync ?? {};
+  return {
+    id: r.id,
+    provider: 'bitbucket',
+    name: sync.repoFullName ?? r.repoFullName ?? '(unknown)',
+    instanceId: sync.bitbucketInstanceId ?? '',
+    bitbucketRepoSyncId: r.bitbucketRepoSyncId ?? sync.id ?? '',
+    projectKey: sync.projectKey ?? null,
+    lastSyncedAt: sync.lastSyncedAt ?? null,
+    lastDeploymentSyncAt: sync.lastDeploymentSyncAt ?? null,
+    // The switches live on the shared repo sync. Defaults mirror the API's
+    // (all on) for a row whose include tree was trimmed.
+    zoneValue: {
+      syncPrs: sync.syncPrs ?? true,
+      syncCommits: sync.syncCommits ?? true,
+      syncDeployments: sync.syncDeployments ?? true,
+    },
+  };
+}

@@ -18,10 +18,12 @@ import { buildBoardReverseIndex, type BoardReverseIndex } from './board-reverse-
 import {
   fetchActivityIdentities,
   fetchCommitHeat,
+  fetchBitbucketLoginEmails,
   fetchGithubLoginEmails,
   fetchRankingMetrics,
   type ActivityIdentityRow,
   type CommitHeatRow,
+  type LoginEmailBridges,
   type RankingMetricRow,
 } from './org-sync-aggregator.js';
 
@@ -254,9 +256,15 @@ export async function handleOrgTreeSyncJob(
   // tenant. Memoised on the promise rather than on the value so the two callers
   // below — which run inside one `Promise.all` — share one query instead of racing
   // to issue two.
-  let bridge: Promise<Map<string, string>> | undefined;
-  const loginEmailsFor = (organizationId: string): Promise<Map<string, string>> =>
-    (bridge ??= fetchGithubLoginEmails(chFor(organizationId)));
+  //
+  // Bitbucket has the same gap (PRs and reviews carry a nickname, not an email) and
+  // gets its own bridge from bitbucket_commits; each fills only its provider's rows.
+  let bridge: Promise<LoginEmailBridges> | undefined;
+  const loginEmailsFor = (organizationId: string): Promise<LoginEmailBridges> =>
+    (bridge ??= Promise.all([
+      fetchGithubLoginEmails(chFor(organizationId)),
+      fetchBitbucketLoginEmails(chFor(organizationId)),
+    ]).then(([github, bitbucket]) => ({ github, bitbucket })));
 
   return runOrgTreeSync(jobData.treeId, {
     prisma,

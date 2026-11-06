@@ -16,6 +16,31 @@ import {
   type UpdateEmployeeProfileInput,
 } from '@deckgauge/shared';
 import { toOrgEmployeeDto } from './org-employee-dto.js';
+import { photoSourceOf, type OrgPhotoFetcher } from './org-photo-fetch.js';
+import type { UploadService } from '../uploads/upload.service.js';
+import { userAvatarsByEmail } from '../users/user-avatars.js';
+
+/** What an import needs to store photos. Absent → photo columns are ignored. */
+export interface PhotoImportDeps {
+  fetchPhoto: OrgPhotoFetcher;
+  uploads: UploadService;
+}
+
+type PhotoCounts = { saved: number; unchanged: number; skipped: number; failed: number };
+
+/** Photo downloads in flight at once: enough to finish ~100 in seconds, few enough to be polite. */
+const PHOTO_CONCURRENCY = 6;
+
+async function forEachLimited<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const item = items[next++]!;
+      await fn(item);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+}
 
 export class OrgTreeCycleError extends Error {
   constructor(message = 'move would create a cycle') {
@@ -217,8 +242,19 @@ export class OrgTreeService {
     });
     if (!tree) return null;
     const rankingByEmployee = computeTreeRanking(tree.employees);
+    const selfPhotos = await userAvatarsByEmail(
+      this.prisma,
+      tree.organizationId,
+      tree.employees.map((e) => e.email),
+    );
     const employees: OrgEmployeeDto[] = tree.employees.map((e) =>
-      toOrgEmployeeDto(e, e.aliases, !!opts?.includeSalary, rankingByEmployee.get(e.id) ?? null),
+      toOrgEmployeeDto(
+        e,
+        e.aliases,
+        !!opts?.includeSalary,
+        rankingByEmployee.get(e.id) ?? null,
+        (e.email && selfPhotos.get(e.email.trim().toLowerCase())) || null,
+      ),
     );
     return {
       id: tree.id,
@@ -229,18 +265,24 @@ export class OrgTreeService {
     };
   }
 
-  async importEmployees(treeId: string, rows: RawOrgRow[]): Promise<ImportResult> {
+  async importEmployees(
+    treeId: string,
+    rows: RawOrgRow[],
+    opts: { photos?: PhotoImportDeps } = {},
+  ): Promise<ImportResult> {
     const { employees, vacancies, rejectedRows } = normalizeOrgRows(rows);
     const { withManager, orphanWarnings } = resolveHierarchy(employees);
 
     let created = 0;
     let updated = 0;
+    // Which stored employee each file photo belongs to, collected as rows are written.
+    const photoTargets: { employeeId: string; name: string; photoUrl: string }[] = [];
     for (const [position, e] of withManager.entries()) {
       if (e.externalId) {
         const existing = await this.prisma.orgEmployee.findUnique({
           where: { orgTreeId_externalId: { orgTreeId: treeId, externalId: e.externalId } },
         });
-        await this.prisma.orgEmployee.upsert({
+        const saved = await this.prisma.orgEmployee.upsert({
           where: { orgTreeId_externalId: { orgTreeId: treeId, externalId: e.externalId } },
           create: {
             orgTreeId: treeId,
@@ -262,8 +304,9 @@ export class OrgTreeService {
           },
         });
         if (existing) { updated += 1; } else { created += 1; }
+        if (e.photoUrl) photoTargets.push({ employeeId: saved.id, name: e.name, photoUrl: e.photoUrl });
       } else {
-        await this.prisma.orgEmployee.create({
+        const saved = await this.prisma.orgEmployee.create({
           data: {
             orgTreeId: treeId,
             name: e.name,
@@ -275,6 +318,7 @@ export class OrgTreeService {
           },
         });
         created += 1;
+        if (e.photoUrl) photoTargets.push({ employeeId: saved.id, name: e.name, photoUrl: e.photoUrl });
       }
     }
 
@@ -288,7 +332,73 @@ export class OrgTreeService {
       }
     }
 
-    return { created, updated, vacancies, rejectedRows, orphanWarnings };
+    const { photos, photoWarnings } = opts.photos
+      ? await this.importPhotos(photoTargets, opts.photos)
+      : { photos: { saved: 0, unchanged: 0, skipped: 0, failed: 0 }, photoWarnings: [] };
+
+    return { created, updated, vacancies, rejectedRows, orphanWarnings, photos, photoWarnings };
+  }
+
+  /**
+   * Download and store each employee's photo. A photo whose source (URL minus
+   * its signed query string) matches what is already stored is left alone; a
+   * new one replaces the old upload, which is then deleted; a failure keeps
+   * whatever was there and becomes a warning. Never throws for a photo.
+   */
+  private async importPhotos(
+    targets: { employeeId: string; name: string; photoUrl: string }[],
+    deps: PhotoImportDeps,
+  ): Promise<{ photos: PhotoCounts; photoWarnings: string[] }> {
+    const photos: PhotoCounts = { saved: 0, unchanged: 0, skipped: 0, failed: 0 };
+    const photoWarnings: string[] = [];
+    await forEachLimited(targets, PHOTO_CONCURRENCY, async (t) => {
+      const fail = (reason: string) => {
+        photos.failed += 1;
+        photoWarnings.push(`${t.name}: photo not imported (${reason})`);
+      };
+      try {
+        const source = photoSourceOf(t.photoUrl);
+        const current = await this.prisma.orgEmployee.findUnique({
+          where: { id: t.employeeId },
+          select: { photoUploadId: true, photoSource: true },
+        });
+        if (current?.photoUploadId && current.photoSource === source) {
+          photos.unchanged += 1;
+          return;
+        }
+        const result = await deps.fetchPhoto(t.photoUrl);
+        if (result.kind === 'skipped') {
+          photos.skipped += 1;
+          return;
+        }
+        if (result.kind === 'failed') return fail(result.reason);
+
+        const upload = await deps.uploads.saveFile({
+          orgEmployeeId: t.employeeId,
+          mimeType: result.mimeType,
+          buffer: result.buffer,
+        });
+        try {
+          await this.prisma.orgEmployee.update({
+            where: { id: t.employeeId },
+            data: { photoUploadId: upload.id, photoSource: source },
+          });
+        } catch (err) {
+          // Nothing points at the new upload; don't leave it behind.
+          await deps.uploads.deleteUpload(upload.id).catch(() => undefined);
+          throw err;
+        }
+        photos.saved += 1;
+        // Cleanup only: the new photo is in place whether or not the old one goes.
+        if (current?.photoUploadId) {
+          await deps.uploads.deleteUpload(current.photoUploadId).catch(() => undefined);
+        }
+      } catch (err) {
+        fail((err as Error).message);
+      }
+    });
+    photoWarnings.sort();
+    return { photos, photoWarnings };
   }
 
   async addAlias(

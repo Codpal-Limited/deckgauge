@@ -8,6 +8,7 @@ import Image from '@tiptap/extension-image';
 import Mention from '@tiptap/extension-mention';
 import { formatRelative } from '@deckgauge/shared';
 import { ImageLightbox } from './ImageLightbox';
+import { linkifyCommentContent } from './linkifyCommentContent';
 
 interface CommentData {
   id: string;
@@ -35,8 +36,9 @@ function renderContent(content: unknown): string {
     // Extension set MUST mirror CommentEditor's (the composer that wrote this
     // JSON). The Color picker stamps text nodes with a `textStyle` mark; without
     // TextStyle/Color registered here, generateHTML throws on the unknown mark
-    // and the body renders blank. (underline is covered by StarterKit's default.)
-    return generateHTML(content as Record<string, unknown>, [
+    // and the body renders blank. (underline and link are covered by StarterKit's
+    // defaults; Link's renderHTML blanks any href with a disallowed scheme.)
+    return generateHTML(linkifyCommentContent(content as Record<string, unknown>), [
       StarterKit,
       TextStyle,
       Color,
@@ -82,7 +84,7 @@ export function CommentItem({ comment, onEdit, onDelete, onTogglePin }: CommentI
 
   return (
     <div className={`px-5 py-4 border-b border-slate-100 ${comment.pinned ? 'bg-amber-500/10' : ''}`}>
-      <style>{`.mention { color: #2563eb; font-weight: 500; } .comment-body img { cursor: zoom-in; }`}</style>
+      <style>{`.mention { color: #2563eb; font-weight: 500; } .comment-body img { cursor: zoom-in; } .comment-body a { color: #2563eb; text-decoration: underline; overflow-wrap: anywhere; } .comment-body a:hover { color: #1d4ed8; }`}</style>
       {comment.pinned && (
         <div className="flex items-center gap-1 mb-2">
           <span className="text-xs text-amber-700 font-medium">Pinned</span>

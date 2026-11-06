@@ -2,9 +2,9 @@
  * Every column in this schema that holds a credential, and the only list of them.
  *
  * These are not passwords to Deckgauge. Each one is a working token into the
- * customer's own GitHub, Jira, GitLab, Azure DevOps or Microsoft 365 tenant, which
- * is why a leaked database here is a breach of THEIR systems rather than only of
- * ours.
+ * customer's own GitHub, Jira, GitLab, Bitbucket, Azure DevOps or Microsoft 365
+ * tenant, which is why a leaked database here is a breach of THEIR systems rather
+ * than only of ours.
  *
  * Keys are Prisma model names as they appear in `schema.prisma` (the `model` value
  * a client extension receives), not table names.
@@ -18,6 +18,10 @@ export const CREDENTIAL_FIELDS: Readonly<Record<string, readonly string[]>> = {
   GitHubInstance: ["accessToken"],
   AzureDevOpsInstance: ["accessToken"],
   GitLabInstance: ["accessToken"],
+  // An Atlassian API token "with scopes" (Bitbucket) — `ATATT…`, the same family
+  // as JiraInstance.apiToken. `email` beside it is the Basic-auth username, not a
+  // credential, and stays plaintext.
+  BitbucketInstance: ["apiToken"],
   OrgTreeSource: ["msAccessToken", "msRefreshToken"],
   BoardCalendarSource: ["msAccessToken", "msRefreshToken"],
   AdvisorConfig: ["apiKey"],

@@ -316,13 +316,13 @@ export function intelligenceRoutes(deps: IntelligenceRoutesDeps) {
       return reply.send(data);
     });
 
-    // EI-022 — manual sync trigger. Accepts source: 'jira' | 'github' | 'ado' | 'gitlab' | 'all'.
+    // EI-022 — manual sync trigger. Accepts source: 'jira' | 'github' | 'ado' | 'gitlab' | 'bitbucket' | 'all'.
     // The route enqueues a job onto the corresponding BullMQ queue via a dependency-injected
     // enqueue callback. If no enqueue function was provided to intelligenceRoutes, returns 503
     // so the caller knows the worker bus isn't reachable from this API process.
     app.post('/intelligence/sync', { config: { policy: ADMIN } }, async (req, reply) => {
       const body = z
-        .object({ source: z.enum(['jira', 'github', 'ado', 'gitlab', 'all']) })
+        .object({ source: z.enum(['jira', 'github', 'ado', 'gitlab', 'bitbucket', 'all']) })
         .safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
       if (!deps.enqueueSync || !deps.syncableScope) {

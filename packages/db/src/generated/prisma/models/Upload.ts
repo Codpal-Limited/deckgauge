@@ -251,6 +251,8 @@ export type UploadWhereInput = {
   comment?: Prisma.XOR<Prisma.ProjectCommentNullableScalarRelationFilter, Prisma.ProjectCommentWhereInput> | null
   project?: Prisma.XOR<Prisma.ProjectNullableScalarRelationFilter, Prisma.ProjectWhereInput> | null
   orgEmployee?: Prisma.XOR<Prisma.OrgEmployeeNullableScalarRelationFilter, Prisma.OrgEmployeeWhereInput> | null
+  photoOf?: Prisma.XOR<Prisma.OrgEmployeeNullableScalarRelationFilter, Prisma.OrgEmployeeWhereInput> | null
+  avatarOf?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   employeeComment?: Prisma.XOR<Prisma.OrgEmployeeCommentNullableScalarRelationFilter, Prisma.OrgEmployeeCommentWhereInput> | null
 }
 
@@ -267,6 +269,8 @@ export type UploadOrderByWithRelationInput = {
   comment?: Prisma.ProjectCommentOrderByWithRelationInput
   project?: Prisma.ProjectOrderByWithRelationInput
   orgEmployee?: Prisma.OrgEmployeeOrderByWithRelationInput
+  photoOf?: Prisma.OrgEmployeeOrderByWithRelationInput
+  avatarOf?: Prisma.UserOrderByWithRelationInput
   employeeComment?: Prisma.OrgEmployeeCommentOrderByWithRelationInput
 }
 
@@ -286,6 +290,8 @@ export type UploadWhereUniqueInput = Prisma.AtLeast<{
   comment?: Prisma.XOR<Prisma.ProjectCommentNullableScalarRelationFilter, Prisma.ProjectCommentWhereInput> | null
   project?: Prisma.XOR<Prisma.ProjectNullableScalarRelationFilter, Prisma.ProjectWhereInput> | null
   orgEmployee?: Prisma.XOR<Prisma.OrgEmployeeNullableScalarRelationFilter, Prisma.OrgEmployeeWhereInput> | null
+  photoOf?: Prisma.XOR<Prisma.OrgEmployeeNullableScalarRelationFilter, Prisma.OrgEmployeeWhereInput> | null
+  avatarOf?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   employeeComment?: Prisma.XOR<Prisma.OrgEmployeeCommentNullableScalarRelationFilter, Prisma.OrgEmployeeCommentWhereInput> | null
 }, "id">
 
@@ -330,6 +336,8 @@ export type UploadCreateInput = {
   comment?: Prisma.ProjectCommentCreateNestedOneWithoutUploadsInput
   project?: Prisma.ProjectCreateNestedOneWithoutUploadsInput
   orgEmployee?: Prisma.OrgEmployeeCreateNestedOneWithoutUploadsInput
+  photoOf?: Prisma.OrgEmployeeCreateNestedOneWithoutPhotoUploadInput
+  avatarOf?: Prisma.UserCreateNestedOneWithoutAvatarUploadInput
   employeeComment?: Prisma.OrgEmployeeCommentCreateNestedOneWithoutUploadsInput
 }
 
@@ -343,6 +351,8 @@ export type UploadUncheckedCreateInput = {
   orgEmployeeId?: string | null
   employeeCommentId?: string | null
   createdAt?: Date | string
+  photoOf?: Prisma.OrgEmployeeUncheckedCreateNestedOneWithoutPhotoUploadInput
+  avatarOf?: Prisma.UserUncheckedCreateNestedOneWithoutAvatarUploadInput
 }
 
 export type UploadUpdateInput = {
@@ -354,6 +364,8 @@ export type UploadUpdateInput = {
   comment?: Prisma.ProjectCommentUpdateOneWithoutUploadsNestedInput
   project?: Prisma.ProjectUpdateOneWithoutUploadsNestedInput
   orgEmployee?: Prisma.OrgEmployeeUpdateOneWithoutUploadsNestedInput
+  photoOf?: Prisma.OrgEmployeeUpdateOneWithoutPhotoUploadNestedInput
+  avatarOf?: Prisma.UserUpdateOneWithoutAvatarUploadNestedInput
   employeeComment?: Prisma.OrgEmployeeCommentUpdateOneWithoutUploadsNestedInput
 }
 
@@ -367,6 +379,8 @@ export type UploadUncheckedUpdateInput = {
   orgEmployeeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   employeeCommentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  photoOf?: Prisma.OrgEmployeeUncheckedUpdateOneWithoutPhotoUploadNestedInput
+  avatarOf?: Prisma.UserUncheckedUpdateOneWithoutAvatarUploadNestedInput
 }
 
 export type UploadCreateManyInput = {
@@ -455,6 +469,11 @@ export type UploadSumOrderByAggregateInput = {
   sizeBytes?: Prisma.SortOrder
 }
 
+export type UploadNullableScalarRelationFilter = {
+  is?: Prisma.UploadWhereInput | null
+  isNot?: Prisma.UploadWhereInput | null
+}
+
 export type UploadCreateNestedManyWithoutProjectInput = {
   create?: Prisma.XOR<Prisma.UploadCreateWithoutProjectInput, Prisma.UploadUncheckedCreateWithoutProjectInput> | Prisma.UploadCreateWithoutProjectInput[] | Prisma.UploadUncheckedCreateWithoutProjectInput[]
   connectOrCreate?: Prisma.UploadCreateOrConnectWithoutProjectInput | Prisma.UploadCreateOrConnectWithoutProjectInput[]
@@ -539,6 +558,28 @@ export type UploadUncheckedUpdateManyWithoutCommentNestedInput = {
   deleteMany?: Prisma.UploadScalarWhereInput | Prisma.UploadScalarWhereInput[]
 }
 
+export type UploadCreateNestedOneWithoutAvatarOfInput = {
+  create?: Prisma.XOR<Prisma.UploadCreateWithoutAvatarOfInput, Prisma.UploadUncheckedCreateWithoutAvatarOfInput>
+  connectOrCreate?: Prisma.UploadCreateOrConnectWithoutAvatarOfInput
+  connect?: Prisma.UploadWhereUniqueInput
+}
+
+export type UploadUpdateOneWithoutAvatarOfNestedInput = {
+  create?: Prisma.XOR<Prisma.UploadCreateWithoutAvatarOfInput, Prisma.UploadUncheckedCreateWithoutAvatarOfInput>
+  connectOrCreate?: Prisma.UploadCreateOrConnectWithoutAvatarOfInput
+  upsert?: Prisma.UploadUpsertWithoutAvatarOfInput
+  disconnect?: Prisma.UploadWhereInput | boolean
+  delete?: Prisma.UploadWhereInput | boolean
+  connect?: Prisma.UploadWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UploadUpdateToOneWithWhereWithoutAvatarOfInput, Prisma.UploadUpdateWithoutAvatarOfInput>, Prisma.UploadUncheckedUpdateWithoutAvatarOfInput>
+}
+
+export type UploadCreateNestedOneWithoutPhotoOfInput = {
+  create?: Prisma.XOR<Prisma.UploadCreateWithoutPhotoOfInput, Prisma.UploadUncheckedCreateWithoutPhotoOfInput>
+  connectOrCreate?: Prisma.UploadCreateOrConnectWithoutPhotoOfInput
+  connect?: Prisma.UploadWhereUniqueInput
+}
+
 export type UploadCreateNestedManyWithoutOrgEmployeeInput = {
   create?: Prisma.XOR<Prisma.UploadCreateWithoutOrgEmployeeInput, Prisma.UploadUncheckedCreateWithoutOrgEmployeeInput> | Prisma.UploadCreateWithoutOrgEmployeeInput[] | Prisma.UploadUncheckedCreateWithoutOrgEmployeeInput[]
   connectOrCreate?: Prisma.UploadCreateOrConnectWithoutOrgEmployeeInput | Prisma.UploadCreateOrConnectWithoutOrgEmployeeInput[]
@@ -551,6 +592,16 @@ export type UploadUncheckedCreateNestedManyWithoutOrgEmployeeInput = {
   connectOrCreate?: Prisma.UploadCreateOrConnectWithoutOrgEmployeeInput | Prisma.UploadCreateOrConnectWithoutOrgEmployeeInput[]
   createMany?: Prisma.UploadCreateManyOrgEmployeeInputEnvelope
   connect?: Prisma.UploadWhereUniqueInput | Prisma.UploadWhereUniqueInput[]
+}
+
+export type UploadUpdateOneWithoutPhotoOfNestedInput = {
+  create?: Prisma.XOR<Prisma.UploadCreateWithoutPhotoOfInput, Prisma.UploadUncheckedCreateWithoutPhotoOfInput>
+  connectOrCreate?: Prisma.UploadCreateOrConnectWithoutPhotoOfInput
+  upsert?: Prisma.UploadUpsertWithoutPhotoOfInput
+  disconnect?: Prisma.UploadWhereInput | boolean
+  delete?: Prisma.UploadWhereInput | boolean
+  connect?: Prisma.UploadWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UploadUpdateToOneWithWhereWithoutPhotoOfInput, Prisma.UploadUpdateWithoutPhotoOfInput>, Prisma.UploadUncheckedUpdateWithoutPhotoOfInput>
 }
 
 export type UploadUpdateManyWithoutOrgEmployeeNestedInput = {
@@ -631,6 +682,8 @@ export type UploadCreateWithoutProjectInput = {
   createdAt?: Date | string
   comment?: Prisma.ProjectCommentCreateNestedOneWithoutUploadsInput
   orgEmployee?: Prisma.OrgEmployeeCreateNestedOneWithoutUploadsInput
+  photoOf?: Prisma.OrgEmployeeCreateNestedOneWithoutPhotoUploadInput
+  avatarOf?: Prisma.UserCreateNestedOneWithoutAvatarUploadInput
   employeeComment?: Prisma.OrgEmployeeCommentCreateNestedOneWithoutUploadsInput
 }
 
@@ -643,6 +696,8 @@ export type UploadUncheckedCreateWithoutProjectInput = {
   orgEmployeeId?: string | null
   employeeCommentId?: string | null
   createdAt?: Date | string
+  photoOf?: Prisma.OrgEmployeeUncheckedCreateNestedOneWithoutPhotoUploadInput
+  avatarOf?: Prisma.UserUncheckedCreateNestedOneWithoutAvatarUploadInput
 }
 
 export type UploadCreateOrConnectWithoutProjectInput = {
@@ -694,6 +749,8 @@ export type UploadCreateWithoutCommentInput = {
   createdAt?: Date | string
   project?: Prisma.ProjectCreateNestedOneWithoutUploadsInput
   orgEmployee?: Prisma.OrgEmployeeCreateNestedOneWithoutUploadsInput
+  photoOf?: Prisma.OrgEmployeeCreateNestedOneWithoutPhotoUploadInput
+  avatarOf?: Prisma.UserCreateNestedOneWithoutAvatarUploadInput
   employeeComment?: Prisma.OrgEmployeeCommentCreateNestedOneWithoutUploadsInput
 }
 
@@ -706,6 +763,8 @@ export type UploadUncheckedCreateWithoutCommentInput = {
   orgEmployeeId?: string | null
   employeeCommentId?: string | null
   createdAt?: Date | string
+  photoOf?: Prisma.OrgEmployeeUncheckedCreateNestedOneWithoutPhotoUploadInput
+  avatarOf?: Prisma.UserUncheckedCreateNestedOneWithoutAvatarUploadInput
 }
 
 export type UploadCreateOrConnectWithoutCommentInput = {
@@ -734,6 +793,105 @@ export type UploadUpdateManyWithWhereWithoutCommentInput = {
   data: Prisma.XOR<Prisma.UploadUpdateManyMutationInput, Prisma.UploadUncheckedUpdateManyWithoutCommentInput>
 }
 
+export type UploadCreateWithoutAvatarOfInput = {
+  id?: string
+  filename: string
+  mimeType: string
+  sizeBytes: number
+  createdAt?: Date | string
+  comment?: Prisma.ProjectCommentCreateNestedOneWithoutUploadsInput
+  project?: Prisma.ProjectCreateNestedOneWithoutUploadsInput
+  orgEmployee?: Prisma.OrgEmployeeCreateNestedOneWithoutUploadsInput
+  photoOf?: Prisma.OrgEmployeeCreateNestedOneWithoutPhotoUploadInput
+  employeeComment?: Prisma.OrgEmployeeCommentCreateNestedOneWithoutUploadsInput
+}
+
+export type UploadUncheckedCreateWithoutAvatarOfInput = {
+  id?: string
+  filename: string
+  mimeType: string
+  sizeBytes: number
+  commentId?: string | null
+  projectId?: string | null
+  orgEmployeeId?: string | null
+  employeeCommentId?: string | null
+  createdAt?: Date | string
+  photoOf?: Prisma.OrgEmployeeUncheckedCreateNestedOneWithoutPhotoUploadInput
+}
+
+export type UploadCreateOrConnectWithoutAvatarOfInput = {
+  where: Prisma.UploadWhereUniqueInput
+  create: Prisma.XOR<Prisma.UploadCreateWithoutAvatarOfInput, Prisma.UploadUncheckedCreateWithoutAvatarOfInput>
+}
+
+export type UploadUpsertWithoutAvatarOfInput = {
+  update: Prisma.XOR<Prisma.UploadUpdateWithoutAvatarOfInput, Prisma.UploadUncheckedUpdateWithoutAvatarOfInput>
+  create: Prisma.XOR<Prisma.UploadCreateWithoutAvatarOfInput, Prisma.UploadUncheckedCreateWithoutAvatarOfInput>
+  where?: Prisma.UploadWhereInput
+}
+
+export type UploadUpdateToOneWithWhereWithoutAvatarOfInput = {
+  where?: Prisma.UploadWhereInput
+  data: Prisma.XOR<Prisma.UploadUpdateWithoutAvatarOfInput, Prisma.UploadUncheckedUpdateWithoutAvatarOfInput>
+}
+
+export type UploadUpdateWithoutAvatarOfInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  filename?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  comment?: Prisma.ProjectCommentUpdateOneWithoutUploadsNestedInput
+  project?: Prisma.ProjectUpdateOneWithoutUploadsNestedInput
+  orgEmployee?: Prisma.OrgEmployeeUpdateOneWithoutUploadsNestedInput
+  photoOf?: Prisma.OrgEmployeeUpdateOneWithoutPhotoUploadNestedInput
+  employeeComment?: Prisma.OrgEmployeeCommentUpdateOneWithoutUploadsNestedInput
+}
+
+export type UploadUncheckedUpdateWithoutAvatarOfInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  filename?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  commentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  projectId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  orgEmployeeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  employeeCommentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  photoOf?: Prisma.OrgEmployeeUncheckedUpdateOneWithoutPhotoUploadNestedInput
+}
+
+export type UploadCreateWithoutPhotoOfInput = {
+  id?: string
+  filename: string
+  mimeType: string
+  sizeBytes: number
+  createdAt?: Date | string
+  comment?: Prisma.ProjectCommentCreateNestedOneWithoutUploadsInput
+  project?: Prisma.ProjectCreateNestedOneWithoutUploadsInput
+  orgEmployee?: Prisma.OrgEmployeeCreateNestedOneWithoutUploadsInput
+  avatarOf?: Prisma.UserCreateNestedOneWithoutAvatarUploadInput
+  employeeComment?: Prisma.OrgEmployeeCommentCreateNestedOneWithoutUploadsInput
+}
+
+export type UploadUncheckedCreateWithoutPhotoOfInput = {
+  id?: string
+  filename: string
+  mimeType: string
+  sizeBytes: number
+  commentId?: string | null
+  projectId?: string | null
+  orgEmployeeId?: string | null
+  employeeCommentId?: string | null
+  createdAt?: Date | string
+  avatarOf?: Prisma.UserUncheckedCreateNestedOneWithoutAvatarUploadInput
+}
+
+export type UploadCreateOrConnectWithoutPhotoOfInput = {
+  where: Prisma.UploadWhereUniqueInput
+  create: Prisma.XOR<Prisma.UploadCreateWithoutPhotoOfInput, Prisma.UploadUncheckedCreateWithoutPhotoOfInput>
+}
+
 export type UploadCreateWithoutOrgEmployeeInput = {
   id?: string
   filename: string
@@ -742,6 +900,8 @@ export type UploadCreateWithoutOrgEmployeeInput = {
   createdAt?: Date | string
   comment?: Prisma.ProjectCommentCreateNestedOneWithoutUploadsInput
   project?: Prisma.ProjectCreateNestedOneWithoutUploadsInput
+  photoOf?: Prisma.OrgEmployeeCreateNestedOneWithoutPhotoUploadInput
+  avatarOf?: Prisma.UserCreateNestedOneWithoutAvatarUploadInput
   employeeComment?: Prisma.OrgEmployeeCommentCreateNestedOneWithoutUploadsInput
 }
 
@@ -754,6 +914,8 @@ export type UploadUncheckedCreateWithoutOrgEmployeeInput = {
   projectId?: string | null
   employeeCommentId?: string | null
   createdAt?: Date | string
+  photoOf?: Prisma.OrgEmployeeUncheckedCreateNestedOneWithoutPhotoUploadInput
+  avatarOf?: Prisma.UserUncheckedCreateNestedOneWithoutAvatarUploadInput
 }
 
 export type UploadCreateOrConnectWithoutOrgEmployeeInput = {
@@ -764,6 +926,43 @@ export type UploadCreateOrConnectWithoutOrgEmployeeInput = {
 export type UploadCreateManyOrgEmployeeInputEnvelope = {
   data: Prisma.UploadCreateManyOrgEmployeeInput | Prisma.UploadCreateManyOrgEmployeeInput[]
   skipDuplicates?: boolean
+}
+
+export type UploadUpsertWithoutPhotoOfInput = {
+  update: Prisma.XOR<Prisma.UploadUpdateWithoutPhotoOfInput, Prisma.UploadUncheckedUpdateWithoutPhotoOfInput>
+  create: Prisma.XOR<Prisma.UploadCreateWithoutPhotoOfInput, Prisma.UploadUncheckedCreateWithoutPhotoOfInput>
+  where?: Prisma.UploadWhereInput
+}
+
+export type UploadUpdateToOneWithWhereWithoutPhotoOfInput = {
+  where?: Prisma.UploadWhereInput
+  data: Prisma.XOR<Prisma.UploadUpdateWithoutPhotoOfInput, Prisma.UploadUncheckedUpdateWithoutPhotoOfInput>
+}
+
+export type UploadUpdateWithoutPhotoOfInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  filename?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  comment?: Prisma.ProjectCommentUpdateOneWithoutUploadsNestedInput
+  project?: Prisma.ProjectUpdateOneWithoutUploadsNestedInput
+  orgEmployee?: Prisma.OrgEmployeeUpdateOneWithoutUploadsNestedInput
+  avatarOf?: Prisma.UserUpdateOneWithoutAvatarUploadNestedInput
+  employeeComment?: Prisma.OrgEmployeeCommentUpdateOneWithoutUploadsNestedInput
+}
+
+export type UploadUncheckedUpdateWithoutPhotoOfInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  filename?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  commentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  projectId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  orgEmployeeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  employeeCommentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  avatarOf?: Prisma.UserUncheckedUpdateOneWithoutAvatarUploadNestedInput
 }
 
 export type UploadUpsertWithWhereUniqueWithoutOrgEmployeeInput = {
@@ -791,6 +990,8 @@ export type UploadCreateWithoutEmployeeCommentInput = {
   comment?: Prisma.ProjectCommentCreateNestedOneWithoutUploadsInput
   project?: Prisma.ProjectCreateNestedOneWithoutUploadsInput
   orgEmployee?: Prisma.OrgEmployeeCreateNestedOneWithoutUploadsInput
+  photoOf?: Prisma.OrgEmployeeCreateNestedOneWithoutPhotoUploadInput
+  avatarOf?: Prisma.UserCreateNestedOneWithoutAvatarUploadInput
 }
 
 export type UploadUncheckedCreateWithoutEmployeeCommentInput = {
@@ -802,6 +1003,8 @@ export type UploadUncheckedCreateWithoutEmployeeCommentInput = {
   projectId?: string | null
   orgEmployeeId?: string | null
   createdAt?: Date | string
+  photoOf?: Prisma.OrgEmployeeUncheckedCreateNestedOneWithoutPhotoUploadInput
+  avatarOf?: Prisma.UserUncheckedCreateNestedOneWithoutAvatarUploadInput
 }
 
 export type UploadCreateOrConnectWithoutEmployeeCommentInput = {
@@ -849,6 +1052,8 @@ export type UploadUpdateWithoutProjectInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   comment?: Prisma.ProjectCommentUpdateOneWithoutUploadsNestedInput
   orgEmployee?: Prisma.OrgEmployeeUpdateOneWithoutUploadsNestedInput
+  photoOf?: Prisma.OrgEmployeeUpdateOneWithoutPhotoUploadNestedInput
+  avatarOf?: Prisma.UserUpdateOneWithoutAvatarUploadNestedInput
   employeeComment?: Prisma.OrgEmployeeCommentUpdateOneWithoutUploadsNestedInput
 }
 
@@ -861,6 +1066,8 @@ export type UploadUncheckedUpdateWithoutProjectInput = {
   orgEmployeeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   employeeCommentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  photoOf?: Prisma.OrgEmployeeUncheckedUpdateOneWithoutPhotoUploadNestedInput
+  avatarOf?: Prisma.UserUncheckedUpdateOneWithoutAvatarUploadNestedInput
 }
 
 export type UploadUncheckedUpdateManyWithoutProjectInput = {
@@ -893,6 +1100,8 @@ export type UploadUpdateWithoutCommentInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   project?: Prisma.ProjectUpdateOneWithoutUploadsNestedInput
   orgEmployee?: Prisma.OrgEmployeeUpdateOneWithoutUploadsNestedInput
+  photoOf?: Prisma.OrgEmployeeUpdateOneWithoutPhotoUploadNestedInput
+  avatarOf?: Prisma.UserUpdateOneWithoutAvatarUploadNestedInput
   employeeComment?: Prisma.OrgEmployeeCommentUpdateOneWithoutUploadsNestedInput
 }
 
@@ -905,6 +1114,8 @@ export type UploadUncheckedUpdateWithoutCommentInput = {
   orgEmployeeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   employeeCommentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  photoOf?: Prisma.OrgEmployeeUncheckedUpdateOneWithoutPhotoUploadNestedInput
+  avatarOf?: Prisma.UserUncheckedUpdateOneWithoutAvatarUploadNestedInput
 }
 
 export type UploadUncheckedUpdateManyWithoutCommentInput = {
@@ -937,6 +1148,8 @@ export type UploadUpdateWithoutOrgEmployeeInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   comment?: Prisma.ProjectCommentUpdateOneWithoutUploadsNestedInput
   project?: Prisma.ProjectUpdateOneWithoutUploadsNestedInput
+  photoOf?: Prisma.OrgEmployeeUpdateOneWithoutPhotoUploadNestedInput
+  avatarOf?: Prisma.UserUpdateOneWithoutAvatarUploadNestedInput
   employeeComment?: Prisma.OrgEmployeeCommentUpdateOneWithoutUploadsNestedInput
 }
 
@@ -949,6 +1162,8 @@ export type UploadUncheckedUpdateWithoutOrgEmployeeInput = {
   projectId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   employeeCommentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  photoOf?: Prisma.OrgEmployeeUncheckedUpdateOneWithoutPhotoUploadNestedInput
+  avatarOf?: Prisma.UserUncheckedUpdateOneWithoutAvatarUploadNestedInput
 }
 
 export type UploadUncheckedUpdateManyWithoutOrgEmployeeInput = {
@@ -982,6 +1197,8 @@ export type UploadUpdateWithoutEmployeeCommentInput = {
   comment?: Prisma.ProjectCommentUpdateOneWithoutUploadsNestedInput
   project?: Prisma.ProjectUpdateOneWithoutUploadsNestedInput
   orgEmployee?: Prisma.OrgEmployeeUpdateOneWithoutUploadsNestedInput
+  photoOf?: Prisma.OrgEmployeeUpdateOneWithoutPhotoUploadNestedInput
+  avatarOf?: Prisma.UserUpdateOneWithoutAvatarUploadNestedInput
 }
 
 export type UploadUncheckedUpdateWithoutEmployeeCommentInput = {
@@ -993,6 +1210,8 @@ export type UploadUncheckedUpdateWithoutEmployeeCommentInput = {
   projectId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   orgEmployeeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  photoOf?: Prisma.OrgEmployeeUncheckedUpdateOneWithoutPhotoUploadNestedInput
+  avatarOf?: Prisma.UserUncheckedUpdateOneWithoutAvatarUploadNestedInput
 }
 
 export type UploadUncheckedUpdateManyWithoutEmployeeCommentInput = {
@@ -1021,6 +1240,8 @@ export type UploadSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   comment?: boolean | Prisma.Upload$commentArgs<ExtArgs>
   project?: boolean | Prisma.Upload$projectArgs<ExtArgs>
   orgEmployee?: boolean | Prisma.Upload$orgEmployeeArgs<ExtArgs>
+  photoOf?: boolean | Prisma.Upload$photoOfArgs<ExtArgs>
+  avatarOf?: boolean | Prisma.Upload$avatarOfArgs<ExtArgs>
   employeeComment?: boolean | Prisma.Upload$employeeCommentArgs<ExtArgs>
 }, ExtArgs["result"]["upload"]>
 
@@ -1073,6 +1294,8 @@ export type UploadInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   comment?: boolean | Prisma.Upload$commentArgs<ExtArgs>
   project?: boolean | Prisma.Upload$projectArgs<ExtArgs>
   orgEmployee?: boolean | Prisma.Upload$orgEmployeeArgs<ExtArgs>
+  photoOf?: boolean | Prisma.Upload$photoOfArgs<ExtArgs>
+  avatarOf?: boolean | Prisma.Upload$avatarOfArgs<ExtArgs>
   employeeComment?: boolean | Prisma.Upload$employeeCommentArgs<ExtArgs>
 }
 export type UploadIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1094,6 +1317,8 @@ export type $UploadPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     comment: Prisma.$ProjectCommentPayload<ExtArgs> | null
     project: Prisma.$ProjectPayload<ExtArgs> | null
     orgEmployee: Prisma.$OrgEmployeePayload<ExtArgs> | null
+    photoOf: Prisma.$OrgEmployeePayload<ExtArgs> | null
+    avatarOf: Prisma.$UserPayload<ExtArgs> | null
     employeeComment: Prisma.$OrgEmployeeCommentPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -1503,6 +1728,8 @@ export interface Prisma__UploadClient<T, Null = never, ExtArgs extends runtime.T
   comment<T extends Prisma.Upload$commentArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Upload$commentArgs<ExtArgs>>): Prisma.Prisma__ProjectCommentClient<runtime.Types.Result.GetResult<Prisma.$ProjectCommentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   project<T extends Prisma.Upload$projectArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Upload$projectArgs<ExtArgs>>): Prisma.Prisma__ProjectClient<runtime.Types.Result.GetResult<Prisma.$ProjectPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   orgEmployee<T extends Prisma.Upload$orgEmployeeArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Upload$orgEmployeeArgs<ExtArgs>>): Prisma.Prisma__OrgEmployeeClient<runtime.Types.Result.GetResult<Prisma.$OrgEmployeePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  photoOf<T extends Prisma.Upload$photoOfArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Upload$photoOfArgs<ExtArgs>>): Prisma.Prisma__OrgEmployeeClient<runtime.Types.Result.GetResult<Prisma.$OrgEmployeePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  avatarOf<T extends Prisma.Upload$avatarOfArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Upload$avatarOfArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   employeeComment<T extends Prisma.Upload$employeeCommentArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Upload$employeeCommentArgs<ExtArgs>>): Prisma.Prisma__OrgEmployeeCommentClient<runtime.Types.Result.GetResult<Prisma.$OrgEmployeeCommentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1997,6 +2224,44 @@ export type Upload$orgEmployeeArgs<ExtArgs extends runtime.Types.Extensions.Inte
    */
   include?: Prisma.OrgEmployeeInclude<ExtArgs> | null
   where?: Prisma.OrgEmployeeWhereInput
+}
+
+/**
+ * Upload.photoOf
+ */
+export type Upload$photoOfArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the OrgEmployee
+   */
+  select?: Prisma.OrgEmployeeSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the OrgEmployee
+   */
+  omit?: Prisma.OrgEmployeeOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OrgEmployeeInclude<ExtArgs> | null
+  where?: Prisma.OrgEmployeeWhereInput
+}
+
+/**
+ * Upload.avatarOf
+ */
+export type Upload$avatarOfArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the User
+   */
+  select?: Prisma.UserSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the User
+   */
+  omit?: Prisma.UserOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInclude<ExtArgs> | null
+  where?: Prisma.UserWhereInput
 }
 
 /**

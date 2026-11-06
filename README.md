@@ -30,7 +30,7 @@ first thing a visitor sees.
 
 *See how your software really gets built.*
 
-Turn **Jira, GitHub, GitLab, and Azure DevOps** into one board with the widgets, dashboards,
+Turn **Jira, GitHub, GitLab, Bitbucket, and Azure DevOps** into one board with the widgets, dashboards,
 rankings, and roadmaps engineering leaders use to see what’s really going on.
 
 [![License: FSL-1.1](https://img.shields.io/badge/license-FSL--1.1-0c8f83)](LICENSE)
@@ -67,7 +67,7 @@ sources connected, install it below — it takes one command.
 
 ### One board across all your dev tools
 
-Pull Jira, GitHub, GitLab, and Azure DevOps into a single Monday-style board — grouped,
+Pull Jira, GitHub, GitLab, Bitbucket, and Azure DevOps into a single Monday-style board — grouped,
 owned, status-tracked, sized, and classified CapEx/OpEx. Discuss any item inline.
 
 ![Deckgauge board — owners, status, effort sizing, CapEx/OpEx classification, and inline item comments](https://deckgauge.com/media/board.gif)
@@ -284,9 +284,36 @@ reversible if something about your install is unusual.
 
 Your existing `.env` keeps working across ordinary upgrades. The compose file
 passes only the variables it names, so keys that later releases stop using are
-ignored rather than breaking startup. (Two releases do need an `.env` edit: the
-default-credential change immediately below, and the `deckgauge` rename after
-it.)
+ignored rather than breaking startup. (Three releases do need an `.env` edit:
+v3.0.0's credential-encryption key immediately below, the default-credential
+change, and the `deckgauge` rename.)
+
+#### One-time step when upgrading to v3.0.0: the credential-encryption key
+
+**Coming from v2.0.0, run `git pull` before `./scripts/backup.sh`, not after.**
+v2.0.0 published a `backup.sh` without a helper it needs, so it stops before
+dumping anything; the pull brings the helper and changes no running container.
+
+Provider credentials are now encrypted at rest, and compose refuses to start
+without a key. `./scripts/init-env.sh --check` names it. **Before** the upgrade
+commands above, add a fresh value to `.env`:
+
+```
+CREDENTIAL_ENCRYPTION_KEY=<output of: openssl rand -hex 32>
+```
+
+Then, after the upgrade, seal the credentials already stored — once — and
+confirm none are left in the clear:
+
+```bash
+docker compose run --rm -T api sh -c "cd /app/packages/db && npx tsx src/scripts/encrypt-credentials.ts"
+docker compose run --rm -T api sh -c "cd /app/packages/db && npx tsx src/scripts/encrypt-credentials.ts --verify"
+```
+
+Until the first command runs, connections saved before the upgrade cannot be
+read and their syncs fail. **Back the key up with your database:** without it,
+every stored connection is unrecoverable and has to be entered again.
+`./scripts/backup.sh` does not copy `.env`.
 
 #### One-time step when upgrading past the default-credential change
 

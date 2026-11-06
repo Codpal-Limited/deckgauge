@@ -17,6 +17,7 @@ import type { OrgTreeService } from './org-tree.service.js';
 import { OrgTreeCycleError, OrgEmployeeForbiddenError, CrossTreeEmployeeError } from './org-tree.service.js';
 import type { OrgSourceService } from './org-source.service.js';
 import { parseOrgChartBuffer } from './org-chart-import.js';
+import { createOrgPhotoFetcher, parseAllowedHosts } from './org-photo-fetch.js';
 import { EmployeeActivityService } from './employee-activity.service.js';
 import { EmployeeCommentService } from './employee-comment.service.js';
 import type { ClickHouseClient, PrismaClient } from '@deckgauge/db';
@@ -68,6 +69,14 @@ export function orgTreeRoutes(deps: OrgTreeRoutesDeps) {
       return client ? new EmployeeActivityService(client) : null;
     };
     const commentService = new EmployeeCommentService(deps.prisma, deps.uploadService);
+    // Photos named in an import are downloaded and stored, because source links
+    // expire (BambooHR's are signed for 30 days). Only with durable upload storage.
+    const photoDeps = deps.uploadService
+      ? {
+          fetchPhoto: createOrgPhotoFetcher({ allowedHosts: parseAllowedHosts(process.env) }),
+          uploads: deps.uploadService,
+        }
+      : undefined;
 
     // No tree id lives on this request to check a declarative policy against —
     // the set of trees to check IS the response — so this stays AUTHENTICATED
@@ -284,7 +293,7 @@ export function orgTreeRoutes(deps: OrgTreeRoutesDeps) {
       if (!file) return reply.code(400).send({ error: 'no file' });
       const buf = await file.toBuffer();
       const rows = await parseOrgChartBuffer(buf, file.filename);
-      return service.importEmployees(req.params.id, rows);
+      return service.importEmployees(req.params.id, rows, photoDeps ? { photos: photoDeps } : {});
     });
 
     app.post<{ Params: { id: string } }>('/org-trees/:id/sync', { config: { policy: orgTree('EDITOR') } }, async (req, reply) => {

@@ -6,6 +6,7 @@ export interface EnqueueCounts {
   github: number;
   ado: number;
   gitlab: number;
+  bitbucket: number;
 }
 
 interface JiraSrc {
@@ -19,6 +20,9 @@ interface AdoSrc {
 }
 interface GitLabSrc {
   gitlabProjectSync: { projectPath: string; gitlabInstance: { id: string } };
+}
+interface BitbucketSrc {
+  bitbucketRepoSync: { repoFullName: string; bitbucketInstance: { id: string; organizationId: string } };
 }
 
 function groupByInstance<T>(
@@ -46,7 +50,7 @@ export class BoardSyncService {
     boardId: string,
     skipInstanceIds: Set<string> = new Set(),
   ): Promise<EnqueueCounts> {
-    const [jiraSrcs, githubSrcs, adoSrcs, gitlabSrcs] = await Promise.all([
+    const [jiraSrcs, githubSrcs, adoSrcs, gitlabSrcs, bitbucketSrcs] = await Promise.all([
       this.prisma.boardJiraSource.findMany({
         where: { boardId },
         include: { jiraProjectSync: { include: { jiraInstance: true } } },
@@ -63,6 +67,10 @@ export class BoardSyncService {
         where: { boardId },
         include: { gitlabProjectSync: { include: { gitlabInstance: true } } },
       }) as unknown as Promise<GitLabSrc[]>,
+      this.prisma.boardBitbucketSource.findMany({
+        where: { boardId },
+        include: { bitbucketRepoSync: { include: { bitbucketInstance: true } } },
+      }) as unknown as Promise<BitbucketSrc[]>,
     ]);
 
     const jiraGroups = groupByInstance(
@@ -86,7 +94,19 @@ export class BoardSyncService {
       (r) => r.gitlabProjectSync.projectPath,
     );
 
-    for (const groups of [jiraGroups, githubGroups, adoGroups, gitlabGroups]) {
+    const bitbucketGroups = groupByInstance(
+      bitbucketSrcs,
+      (r) => r.bitbucketRepoSync.bitbucketInstance.id,
+      (r) => r.bitbucketRepoSync.repoFullName,
+    );
+    // The tenant of each Bitbucket instance, carried on its job so the worker's
+    // resolveSyncJobScope scopes it directly (a manual job naming no organization
+    // relies on the instance lookup instead — explicit is the stronger form).
+    const bitbucketOrg = new Map(
+      bitbucketSrcs.map((r) => [r.bitbucketRepoSync.bitbucketInstance.id, r.bitbucketRepoSync.bitbucketInstance.organizationId]),
+    );
+
+    for (const groups of [jiraGroups, githubGroups, adoGroups, gitlabGroups, bitbucketGroups]) {
       for (const instanceId of skipInstanceIds) groups.delete(instanceId);
     }
 
@@ -142,7 +162,19 @@ export class BoardSyncService {
       ),
     );
 
-    const allResults = [...jiraResults, ...githubResults, ...adoResults, ...gitlabResults];
+    // Bitbucket feeds intelligence only — one queue, no promote pipeline.
+    const bitbucketResults = await Promise.all(
+      Array.from(bitbucketGroups, ([instanceId, repoFullNames]) =>
+        tryAdd(this.queues.bitbucket, {
+          trigger: 'manual',
+          instanceId,
+          organizationId: bitbucketOrg.get(instanceId),
+          repoFullNames,
+        }),
+      ),
+    );
+
+    const allResults = [...jiraResults, ...githubResults, ...adoResults, ...gitlabResults, ...bitbucketResults];
     const attempted = allResults.length;
     const succeeded = allResults.filter(Boolean).length;
 
@@ -157,6 +189,7 @@ export class BoardSyncService {
       github: githubResults.filter(Boolean).length,
       ado: adoResults.filter(Boolean).length,
       gitlab: gitlabResults.filter(Boolean).length,
+      bitbucket: bitbucketResults.filter(Boolean).length,
     };
   }
 
@@ -165,7 +198,7 @@ export class BoardSyncService {
     finishedAt: string | null;
     sourceCount: number;
   }> {
-    const [jira, github, ado, gitlab] = await Promise.all([
+    const [jira, github, ado, gitlab, bitbucket] = await Promise.all([
       this.prisma.boardJiraSource.findMany({
         where: { boardId },
         select: { jiraProjectSync: { select: { lastSyncedAt: true } } },
@@ -184,6 +217,10 @@ export class BoardSyncService {
         where: { boardId },
         select: { gitlabProjectSync: { select: { lastSyncedAt: true } } },
       }),
+      this.prisma.boardBitbucketSource.findMany({
+        where: { boardId },
+        select: { bitbucketRepoSync: { select: { lastSyncedAt: true } } },
+      }),
     ]);
 
     const timestamps: number[] = [];
@@ -199,12 +236,15 @@ export class BoardSyncService {
     for (const r of gitlab as Array<{ gitlabProjectSync: { lastSyncedAt: Date | null } }>) {
       if (r.gitlabProjectSync?.lastSyncedAt) timestamps.push(r.gitlabProjectSync.lastSyncedAt.getTime());
     }
+    for (const r of bitbucket as Array<{ bitbucketRepoSync: { lastSyncedAt: Date | null } }>) {
+      if (r.bitbucketRepoSync?.lastSyncedAt) timestamps.push(r.bitbucketRepoSync.lastSyncedAt.getTime());
+    }
 
     const max = timestamps.length ? Math.max(...timestamps) : null;
     return {
       status: 'IDLE',
       finishedAt: max ? new Date(max).toISOString() : null,
-      sourceCount: jira.length + github.length + ado.length + gitlab.length,
+      sourceCount: jira.length + github.length + ado.length + gitlab.length + bitbucket.length,
     };
   }
 }

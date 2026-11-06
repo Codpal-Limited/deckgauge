@@ -76,40 +76,44 @@ export const WIDGET_CATEGORIES = [
 ] as const;
 export type WidgetCategory = (typeof WIDGET_CATEGORIES)[number];
 
-// Source kinds a widget can require. Mirrors the four Board*Source tables.
-export const WIDGET_SOURCE_KINDS = ['jira', 'github', 'gitlab', 'ado'] as const;
+// Source kinds a widget can require. Mirrors the five Board*Source tables.
+export const WIDGET_SOURCE_KINDS = ['jira', 'github', 'gitlab', 'ado', 'bitbucket'] as const;
 export type WidgetSourceKind = (typeof WIDGET_SOURCE_KINDS)[number];
 
-// Per-widget source requirements. A widget is supported when the board has
+// Per-widget source requirements.
+// Bitbucket is listed wherever the widget reads PRs, commits, reviews or
+// deployments (the unions carry a bitbucket_* leg). It is deliberately NOT on
+// issue-only widgets: Bitbucket issues are out of scope, so issuesUnion has no
+// Bitbucket leg and listing it there would advertise an always-empty widget. A widget is supported when the board has
 // AT LEAST ONE of the listed source kinds attached. Kept in shared so the
 // picker (web) and preset seeder (api) gate on the same rule.
 export const WIDGET_SCOPE_REQUIREMENTS: Record<NewWidgetType, WidgetSourceKind[]> = {
-  LEAD_TIME_FOR_CHANGES: ['github', 'gitlab', 'ado'],
-  PR_CYCLE_TIME_SCATTER: ['github', 'gitlab', 'ado'],
-  REVIEW_PICKUP_TIME: ['github', 'gitlab', 'ado'],
-  PR_SIZE_DISTRIBUTION: ['github', 'gitlab', 'ado'],
-  MERGE_FREQUENCY_PER_DEV: ['github', 'gitlab', 'ado'],
-  REWORK_RATE: ['github', 'gitlab', 'ado'],
+  LEAD_TIME_FOR_CHANGES: ['github', 'gitlab', 'ado', 'bitbucket'],
+  PR_CYCLE_TIME_SCATTER: ['github', 'gitlab', 'ado', 'bitbucket'],
+  REVIEW_PICKUP_TIME: ['github', 'gitlab', 'ado', 'bitbucket'],
+  PR_SIZE_DISTRIBUTION: ['github', 'gitlab', 'ado', 'bitbucket'],
+  MERGE_FREQUENCY_PER_DEV: ['github', 'gitlab', 'ado', 'bitbucket'],
+  REWORK_RATE: ['github', 'gitlab', 'ado', 'bitbucket'],
   BUG_RATE: ['jira', 'ado', 'github', 'gitlab'],
   ITERATION_PLANNING_ACCURACY: ['jira', 'ado'],
   VELOCITY_WITH_CONFIDENCE: ['jira', 'ado', 'gitlab'],
   INITIATIVE_RISK_RADAR: ['jira', 'ado', 'github'],
   ISSUES_OPENED_VS_CLOSED: ['jira', 'ado', 'github', 'gitlab'],
   WIP_COUNT: ['jira', 'ado', 'github', 'gitlab'],
-  TICKET_COVERAGE_RATE: ['github', 'gitlab', 'ado'],
-  AI_ASSISTED_PR_PCT: ['github', 'gitlab', 'ado'],
+  TICKET_COVERAGE_RATE: ['github', 'gitlab', 'ado', 'bitbucket'],
+  AI_ASSISTED_PR_PCT: ['github', 'gitlab', 'ado', 'bitbucket'],
   // github_reviews is github-only; gitlab/ado have no parallel review table.
   REVIEW_MIX: ['github'],
   // Commit-authorship split; commits exist for all three code providers.
-  BOT_VS_HUMAN: ['github', 'gitlab', 'ado'],
+  BOT_VS_HUMAN: ['github', 'gitlab', 'ado', 'bitbucket'],
   // Commits per developer; commits exist for all three code providers.
-  COMMITS_PER_DEV: ['github', 'gitlab', 'ado'],
+  COMMITS_PER_DEV: ['github', 'gitlab', 'ado', 'bitbucket'],
   // github_reviews + ado_reviews + gitlab_reviews.
-  REVIEWER_PARTICIPATION: ['github', 'ado', 'gitlab'],
+  REVIEWER_PARTICIPATION: ['github', 'ado', 'gitlab', 'bitbucket'],
   // github_reviews + ado_reviews + gitlab_reviews.
-  REVIEW_QUALITY_INDEX: ['github', 'ado', 'gitlab'],
+  REVIEW_QUALITY_INDEX: ['github', 'ado', 'gitlab', 'bitbucket'],
   // github_reviews + ado_reviews + gitlab_reviews (mirrors REVIEW_QUALITY_INDEX).
-  REVIEW_QUALITY_TREND: ['github', 'ado', 'gitlab'],
+  REVIEW_QUALITY_TREND: ['github', 'ado', 'gitlab', 'bitbucket'],
   FLOW_THROUGHPUT_CYCLE: ['jira', 'ado'],
   DELIVERY_TREND_ANNOTATED: ['jira', 'ado'],
   AI_ADOPTION: ['github', 'ado'],
@@ -119,11 +123,11 @@ export const WIDGET_SCOPE_REQUIREMENTS: Record<NewWidgetType, WidgetSourceKind[]
   // DORA scorecard spans PRs/commits (speed + change-failure) and bug issues
   // (time-to-restore), so any code or issue source makes it partially usable;
   // metrics without a matching source render as "—".
-  DORA_METRICS: ['github', 'gitlab', 'ado', 'jira'],
+  DORA_METRICS: ['github', 'gitlab', 'ado', 'jira', 'bitbucket'],
   // Period comparison spans the DORA proxy set (PR/commit speed + change-failure)
   // plus issue throughput/time-to-restore — any code or issue source makes it
   // partially usable; unsupported metrics render "—" in both periods.
-  PERIOD_COMPARISON: ['github', 'gitlab', 'ado', 'jira'],
+  PERIOD_COMPARISON: ['github', 'gitlab', 'ado', 'jira', 'bitbucket'],
 
   // Focus widgets read tracked work items, so they require an ISSUE source and
   // deliberately do not accept github/gitlab: this view reports where a team's
@@ -148,6 +152,7 @@ export interface WidgetScopeFlags {
   hasGitHub: boolean;
   hasGitLab: boolean;
   hasAdo: boolean;
+  hasBitbucket: boolean;
 }
 
 const SCOPE_FLAG_BY_KIND: Record<WidgetSourceKind, keyof WidgetScopeFlags> = {
@@ -155,6 +160,7 @@ const SCOPE_FLAG_BY_KIND: Record<WidgetSourceKind, keyof WidgetScopeFlags> = {
   github: 'hasGitHub',
   gitlab: 'hasGitLab',
   ado: 'hasAdo',
+  bitbucket: 'hasBitbucket',
 };
 
 export function widgetIsSupportedByScope(

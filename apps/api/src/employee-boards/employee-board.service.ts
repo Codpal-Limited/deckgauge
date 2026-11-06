@@ -8,6 +8,7 @@ import {
   type EmployeeColumnDto,
 } from '@deckgauge/shared';
 import { toOrgEmployeeDto } from '../org-trees/org-employee-dto.js';
+import { userAvatarsByEmail } from '../users/user-avatars.js';
 import { effectiveBoardRole } from '../authz/policy.js';
 import type { OrgRoleValue } from '@deckgauge/shared';
 import { OrgTreeService, computeTreeRanking, CrossTreeEmployeeError } from '../org-trees/org-tree.service.js';
@@ -412,6 +413,17 @@ export class EmployeeBoardService {
       },
     });
     const rankingByEmployee = computeTreeRanking(treeEmployees);
+    const tree = await this.prisma.orgTree.findUnique({
+      where: { id: board.orgTreeId },
+      select: { organizationId: true },
+    });
+    const selfPhotos = tree
+      ? await userAvatarsByEmail(
+          this.prisma,
+          tree.organizationId,
+          board.groups.flatMap((g) => g.members.map((m) => m.employee.email)),
+        )
+      : new Map<string, string>();
     const parsedConfig = EmployeeBoardColumnConfigSchema.safeParse(board.columnConfig);
     const columnConfig = parsedConfig.success ? parsedConfig.data : null;
     const columns: EmployeeColumnDto[] = board.columns.map((c) => ({
@@ -449,7 +461,8 @@ export class EmployeeBoardService {
             m.employee,
             m.employee.aliases,
             opts.includeSalary,
-            rankingByEmployee.get(m.orgEmployeeId) ?? null
+            rankingByEmployee.get(m.orgEmployeeId) ?? null,
+            (m.employee.email && selfPhotos.get(m.employee.email.trim().toLowerCase())) || null
           ),
           fieldValues: valuesByEmployee.get(m.orgEmployeeId) ?? {},
         })),

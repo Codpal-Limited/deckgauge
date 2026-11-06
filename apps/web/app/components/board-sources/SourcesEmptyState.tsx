@@ -7,6 +7,7 @@ const PROVIDERS: { id: Provider; label: string }[] = [
   { id: 'github', label: 'GitHub' },
   { id: 'ado', label: 'Azure DevOps' },
   { id: 'gitlab', label: 'GitLab' },
+  { id: 'bitbucket', label: 'Bitbucket' },
 ];
 
 interface SourcesEmptyStateProps {
@@ -28,7 +29,7 @@ export function SourcesEmptyState({ catalogEmpty, onConnect }: SourcesEmptyState
         Connect your issue tracker or git provider and this board&rsquo;s dashboard and roadmap
         fill in automatically. Pick one to get started:
       </p>
-      <div className="mx-auto mt-5 grid max-w-lg grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mx-auto mt-5 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-5">
         {PROVIDERS.map((p) => (
           <button
             key={p.id}

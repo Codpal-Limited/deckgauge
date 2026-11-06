@@ -194,6 +194,32 @@ export class JiraCloudAdapter implements JiraPort {
     }
   }
 
+  async fetchIssue(issueKey: string): Promise<JiraIssue | null> {
+    const baseUrl = this.config.atlassianUrl.replace(/\/+$/, "");
+    const fields = encodeURIComponent(this.fieldsFor().join(","));
+    const url = `${baseUrl}/rest/api/3/issue/${encodeURIComponent(issueKey)}?fields=${fields}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: this.getBasicAuthHeader(),
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+      });
+      if (res.status === 404) return null;
+      if (res.status === 401 || res.status === 403) {
+        throw new JiraAuthError(`Jira authentication failed (${res.status})`);
+      }
+      if (!res.ok) throw new Error(`Jira answered ${res.status} for ${issueKey}`);
+      return this.mapToIssue((await res.json()) as JiraIssueResponse);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   async issueExists(issueKey: string): Promise<JiraIssueExistence> {
     if (this.circuitOpen) return "unknown";
 

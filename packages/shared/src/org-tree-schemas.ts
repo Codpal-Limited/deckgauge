@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const OrgProviderSchema = z.enum(['github', 'gitlab', 'ado', 'jira']);
+export const OrgProviderSchema = z.enum(['github', 'gitlab', 'ado', 'jira', 'bitbucket']);
 export const OrgAliasKindSchema = z.enum(['login', 'email', 'name']);
 export const EmployeeTypeSchema = z.enum(['PERMANENT', 'CONTRACTOR']);
 export const TimeTypeSchema = z.enum(['FULL_TIME', 'PART_TIME']);
@@ -107,6 +107,9 @@ export const OrgEmployeeDtoSchema = z.object({
   salaryCurrent: z.number().int().nullable().optional(),
   salaryCurrency: z.string().nullable().optional(),
   isDeparted: z.boolean(),
+  // Stored photo, served by the access-gated `GET /api/uploads/:id` (via the web
+  // proxy). Null → the UI shows initials.
+  photoUrl: z.string().nullable(),
 });
 export type OrgEmployeeDto = z.infer<typeof OrgEmployeeDtoSchema>;
 
@@ -133,6 +136,17 @@ export const ImportResultSchema = z.object({
   vacancies: z.number().int(),
   rejectedRows: z.array(z.object({ row: z.number().int(), reason: z.string() })),
   orphanWarnings: z.array(z.string()),
+  // Photos downloaded from the file's photo column (BambooHR `Photo`). Optional so
+  // a client built before photos existed still parses the result.
+  photos: z
+    .object({
+      saved: z.number().int(),
+      unchanged: z.number().int(),
+      skipped: z.number().int(),
+      failed: z.number().int(),
+    })
+    .optional(),
+  photoWarnings: z.array(z.string()).optional(),
 });
 export type ImportResult = z.infer<typeof ImportResultSchema>;
 

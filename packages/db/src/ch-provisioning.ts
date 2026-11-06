@@ -564,7 +564,18 @@ export async function reprovisionOrganizations(
     await runAll(exec, statements);
     results.push({ role: roleNameFor(organizationId), coverage, statements: statements.length });
   }
-  return results;
+  // `coverage.needsReprovision` was measured by the baseline BEFORE this pass
+  // wrote any predicate, so it lists precisely the gaps the pass just closed.
+  // Re-measure, so a caller reading the result sees the state it left behind
+  // rather than failing on the run that repaired it.
+  if (results.length === 0) return results;
+  const isoRows = await exec(CH_ISO_POLICY_OBJECTS_QUERY);
+  const isoCovered = new Set(isoRows.map((row) => String(row.table)));
+  const after: ChCoverageReport = {
+    ...coverage,
+    needsReprovision: coverage.tenant.filter((object) => !isoCovered.has(object)),
+  };
+  return results.map((r) => ({ ...r, coverage: after }));
 }
 
 /** What the read-identity retrofit found and did. */

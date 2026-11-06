@@ -33,7 +33,7 @@ export interface RunIntelligenceQueryOk {
   ok: true;
   rows: IntelligenceQueryRow[];
   ms: number;
-  scope: { github: string[]; jira: string[]; ado: string[]; gitlab: string[] };
+  scope: { github: string[]; jira: string[]; ado: string[]; gitlab: string[]; bitbucket: string[] };
   truncated: boolean;
   executedSql: string;
 }

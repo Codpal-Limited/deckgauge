@@ -13,5 +13,7 @@ export function ScopeBadge({ scope }: Props) {
   if (scope.adoProjects.length) parts.push(`${scope.adoProjects.length} ado projects`);
   if (scope.gitlabProjectPaths.length)
     parts.push(`${scope.gitlabProjectPaths.length} gitlab projects`);
+  if (scope.bitbucketRepoFullNames?.length)
+    parts.push(`${scope.bitbucketRepoFullNames.length} bitbucket repos`);
   return <span className="text-xs text-slate-500">Scope: {parts.join(' · ') || '(none)'}</span>;
 }

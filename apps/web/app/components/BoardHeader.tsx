@@ -41,6 +41,25 @@ export function BoardHeader({ board, userRole }: BoardHeaderProps) {
   const [descError, setDescError] = useState<string | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
+  // After a delete the page navigates to `/`, which renders the NEXT board in
+  // this same tree position — React keeps this component, and every piece of
+  // per-board state with it. The open delete dialog re-labelled itself for the
+  // next board, one click from deleting a board nobody chose. So all of it is
+  // reset whenever the board changes (React's "adjust state on prop change").
+  const [stateBoardId, setStateBoardId] = useState(board.id);
+  if (stateBoardId !== board.id) {
+    setStateBoardId(board.id);
+    setIsEditingName(false);
+    setNameValue(board.name);
+    setShowDescription(false);
+    setDescValue(board.description || "");
+    setShowDeleteConfirm(false);
+    setShowAutomations(false);
+    setShowNotifyLevel(false);
+    setDeleteError(null);
+    setDescError(null);
+  }
+
   // Match the server's own tiers (route-inventory.snapshot.json): renaming is
   // `PATCH /boards/:id` -> board(EDITOR); deleting is `DELETE /boards/:id` ->
   // board(OWNER). They are NOT the same tier — a viewer must not be offered
@@ -82,6 +101,7 @@ export function BoardHeader({ board, userRole }: BoardHeaderProps) {
     startTransition(async () => {
       try {
         await deleteBoard(board.id);
+        setShowDeleteConfirm(false);
         router.push("/");
       } catch {
         setDeleteError("Failed to delete board. Please try again.");

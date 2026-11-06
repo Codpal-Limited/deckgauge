@@ -2,7 +2,10 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { OrgSwitcher } from './OrgSwitcher';
+import { fetchMyAvatarUrl } from '../actions/profile';
+import { AVATAR_CHANGED_EVENT } from '../profile/ProfilePhotoEditor';
 
 const LOGOUT_URL_ENDPOINT = '/api/logout-url';
 
@@ -34,6 +37,34 @@ export function UserMenu() {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarBroken, setAvatarBroken] = useState(false);
+  const signedIn = !!session?.user;
+
+  // The photo is not in the session (it changes without a new token), so it is
+  // fetched once per sign-in and again whenever the profile page changes it.
+  useEffect(() => {
+    if (!signedIn) return;
+    let live = true;
+    fetchMyAvatarUrl()
+      .then((u) => {
+        if (live) {
+          setAvatarUrl(u);
+          setAvatarBroken(false);
+        }
+      })
+      .catch(() => undefined);
+    function onChanged(e: Event) {
+      const next = (e as CustomEvent<{ avatarUrl: string | null }>).detail?.avatarUrl ?? null;
+      setAvatarUrl(next);
+      setAvatarBroken(false);
+    }
+    window.addEventListener(AVATAR_CHANGED_EVENT, onChanged);
+    return () => {
+      live = false;
+      window.removeEventListener(AVATAR_CHANGED_EVENT, onChanged);
+    };
+  }, [signedIn]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -72,9 +103,18 @@ export function UserMenu() {
           bg-gradient-to-br from-violet-400 to-purple-600
           text-xs font-semibold text-white
           ring-2 ring-white/30
-          transition-all hover:ring-white/50"
+          transition-all hover:ring-white/50 overflow-hidden"
       >
-        {initials}
+        {avatarUrl && !avatarBroken ? (
+          <img
+            src={avatarUrl}
+            alt=""
+            onError={() => setAvatarBroken(true)}
+            className="h-full w-full rounded-full object-cover"
+          />
+        ) : (
+          initials
+        )}
       </button>
 
       {open && (
@@ -83,6 +123,13 @@ export function UserMenu() {
             {session.user.email}
           </div>
           <div className="mx-2 border-t border-slate-100" />
+          <Link
+            href="/profile"
+            onClick={() => setOpen(false)}
+            className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            My profile
+          </Link>
           {/* Renders nothing unless the caller belongs to more than one
               organization, which is nobody under the one-organization cap. */}
           <OrgSwitcher />

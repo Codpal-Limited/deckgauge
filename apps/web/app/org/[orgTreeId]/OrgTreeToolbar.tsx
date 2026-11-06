@@ -31,7 +31,10 @@ export function OrgTreeToolbar({ treeId, lastSyncedAt }: OrgTreeToolbarProps) {
       const fd = new FormData();
       fd.append('file', file);
       const result = await importOrgChart(treeId, fd);
-      setImportMsg(`Imported: ${result.created} created, ${result.updated} updated`);
+      const parts = [`Imported: ${result.created} created`, `${result.updated} updated`];
+      if (result.photos?.saved) parts.push(`${result.photos.saved} photos`);
+      if (result.photos?.failed) parts.push(`${result.photos.failed} photos failed`);
+      setImportMsg(parts.join(', '));
     } catch {
       setImportMsg('Import failed');
     } finally {

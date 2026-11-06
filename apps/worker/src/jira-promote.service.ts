@@ -266,9 +266,16 @@ export class JiraPromoteService {
         // by jiraProjectKey).
         const existingProjects = await this.prisma.project.findMany({
           where: { jiraProjectKey, boardId: boardSource.boardId },
-          select: { id: true, jiraKey: true, jiraProjectKey: true, status: true, statusId: true, jiraSyncedFields: true, overriddenFields: true, jiraDeletedAt: true, jiraAnalyticsPurgedAt: true },
+          select: { id: true, jiraKey: true, jiraProjectKey: true, status: true, statusId: true, jiraSyncedFields: true, overriddenFields: true, jiraDeletedAt: true, jiraAnalyticsPurgedAt: true, linkedFromSource: true },
         });
         const projectByJiraKey = new Map(existingProjects.map((p) => [p.jiraKey, p]));
+        // Rows a user added from a pasted source link. The board's scope (issue
+        // types, JQL) governs what the sync ADDS; a linked row was added on
+        // purpose, outside that scope, and keeps receiving updates — the same
+        // carve-out the ADO promote makes for every existing row.
+        const linkedKeys = new Set(
+          existingProjects.filter((p) => p.linkedFromSource && p.jiraKey).map((p) => p.jiraKey as string),
+        );
 
         // A fetch that came back empty is not evidence of anything.
         //
@@ -309,17 +316,17 @@ export class JiraPromoteService {
         // Filter in-memory payload (was previously a Postgres read against the
         // now-dropped jira_epics / jira_issues tables — those tables vanished in
         // 20260603120000_drop_legacy_phase3_tables).
-        const epicRows = allowedTypes.includes('Epic')
-          ? payload.epics.filter((e) => e.projectKey === jiraProjectKey)
-          : [];
+        const epicsAllowed = allowedTypes.includes('Epic');
+        const epicRows = payload.epics.filter(
+          (e) => e.projectKey === jiraProjectKey && (epicsAllowed || linkedKeys.has(e.key)),
+        );
 
         const nonEpicTypes = allowedTypes.filter((t) => t !== 'Epic');
-        const issueRows =
-          nonEpicTypes.length > 0
-            ? payload.issues.filter(
-                (i) => i.projectKey === jiraProjectKey && nonEpicTypes.includes(i.type),
-              )
-            : [];
+        const issueRows = payload.issues.filter(
+          (i) =>
+            i.projectKey === jiraProjectKey &&
+            (nonEpicTypes.includes(i.type) || linkedKeys.has(i.key)),
+        );
 
         // Merge into a single typed array
         type RawItem = {
@@ -365,7 +372,9 @@ export class JiraPromoteService {
         // flagged `jiraRemovedFromSource` by the mark-removed pass below — the
         // same treatment as an issue deleted in Jira.
         const items =
-          allowedKeys === null ? notExcluded : notExcluded.filter((r) => allowedKeys.has(r.key));
+          allowedKeys === null
+            ? notExcluded
+            : notExcluded.filter((r) => allowedKeys.has(r.key) || linkedKeys.has(r.key));
 
         const seenKeys: string[] = [];
 
@@ -518,10 +527,27 @@ export class JiraPromoteService {
             jiraProjectKey,
             jiraType: { in: allowedTypes },
             jiraKey: { notIn: seenKeys },
+            // Scope never removes a linked row — see linkedKeys above.
+            linkedFromSource: false,
           },
           data: { jiraRemovedFromSource: true },
         });
         markedRemoved += markResult.count;
+
+        // A linked row is flagged only when its issue is absent from the WHOLE
+        // project fetch (moved, or no longer visible) — never for scope.
+        if (linkedKeys.size > 0) {
+          const linkedResult = await this.prisma.project.updateMany({
+            where: {
+              boardId: boardSource.boardId,
+              jiraProjectKey,
+              linkedFromSource: true,
+              jiraKey: { notIn: [...payloadKeys] },
+            },
+            data: { jiraRemovedFromSource: true },
+          });
+          markedRemoved += linkedResult?.count ?? 0;
+        }
 
         if (!this.isInDeletionScope(jiraProjectKey, ps.jiraInstanceId, options)) continue;
 

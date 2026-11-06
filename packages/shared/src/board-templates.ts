@@ -124,12 +124,12 @@ const DEVELOPMENT_TEMPLATE: BoardTemplate = {
   kind: 'development',
   label: 'Development',
   description:
-    'Delivery board with the engineering-intelligence dashboard and roadmap. Connect Jira/GitHub/ADO/GitLab after creating.',
+    'Delivery board with the engineering-intelligence dashboard and roadmap. Connect Jira/GitHub/ADO/GitLab/Bitbucket after creating.',
   explainer: {
     summary:
       'A delivery board that turns your issue tracker and git activity into live engineering-intelligence analytics and a roadmap.',
     highlights: [
-      'Connect Jira, GitHub, Azure DevOps, or GitLab',
+      'Connect Jira, GitHub, Azure DevOps, GitLab, or Bitbucket',
       'The engineering-intelligence dashboard fills in automatically',
       'The roadmap sizes itself from your issues',
     ],

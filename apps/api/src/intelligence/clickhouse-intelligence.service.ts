@@ -425,28 +425,33 @@ export class ClickhouseIntelligenceService {
   }
 
   /**
-   * EI-021 — unified ticket timeline across Jira / GitHub / GitLab / ADO.
+   * EI-021 — unified ticket timeline across Jira / GitHub / GitLab / ADO /
+   * Bitbucket.
    *
    * `key` must be a JIRA-STYLE key. The jira arm matches `issue_key`, and the
-   * other six match `has(linked_ticket_keys, key)`, where `linked_ticket_keys`
+   * other eight match `has(linked_ticket_keys, key)`, where `linked_ticket_keys`
    * is populated by `extractTicketKeys` and only ever holds `PREFIX-123` or
    * `gh#N`. An ADO work-item key of the form `project#1234` therefore matches
-   * NOTHING in any of the seven arms — callers holding one should not ask.
+   * NOTHING in any of the nine arms — callers holding one should not ask.
    */
   async getTicketTimeline(key: string, scope?: BoardScope): Promise<TicketTimelineEvent[]> {
     if (scope?.isEmpty) return [];
 
     // Apply per-source WHERE-IN filters when scope is supplied. Each of the
-    // seven UNION branches is gated by its own column:
+    // nine UNION branches is gated by its own column:
     // jira_transitions.project_key, github_pull_requests.repo_full_name,
     // github_commits.repo_full_name, gitlab_merge_requests.project_path,
     // gitlab_commits.project_path, ado_pull_requests.project,
-    // ado_commits.project.
+    // ado_commits.project, bitbucket_pull_requests.repo_full_name,
+    // bitbucket_commits.repo_full_name.
     const params: Record<string, unknown> = { key };
     if (scope) {
       params.jira = scope.jiraProjectKeys;
       params.gh = scope.githubRepoFullNames;
       params.gl = scope.gitlabProjectPaths;
+      // `?? []` binds an EMPTY list for a scope built before Bitbucket existed,
+      // so those arms match nothing rather than running unscoped.
+      params.bb = scope.bitbucketRepoFullNames ?? [];
     }
 
     const jiraFilter = scope ? 'AND project_key IN ({jira:Array(String)})' : '';
@@ -473,6 +478,8 @@ export class ClickhouseIntelligenceService {
     const adoCommitFilter = scope
       ? `AND ${adoScopeFilter(scope, params, { repoColumn: 'repo_name' })}`
       : '';
+    const bbPrFilter = scope ? 'AND repo_full_name IN ({bb:Array(String)})' : '';
+    const bbCommitFilter = scope ? 'AND repo_full_name IN ({bb:Array(String)})' : '';
 
     const result = await this.client.query({
       query: `
@@ -539,6 +546,29 @@ export class ClickhouseIntelligenceService {
           FROM cockpit.ado_commits
           WHERE has(linked_ticket_keys, {key:String})
           ${adoCommitFilter}
+          UNION ALL
+          -- Release PRs (stage→prod) are KEPT here, unlike in the PR unions:
+          -- on a timeline the release that carried a ticket to production is
+          -- an event worth seeing, and it is labelled as such. FINAL because
+          -- every sync re-writes each PR updated since the watermark.
+          SELECT 'bitbucket'             AS source,
+                 created_at              AS ts,
+                 concat(if(is_release = 1, 'Bitbucket release PR #', 'Bitbucket PR #'),
+                        toString(pr_id), ': ', title) AS title,
+                 author_username         AS actor,
+                 toString(pr_id)         AS ref
+          FROM cockpit.bitbucket_pull_requests FINAL
+          WHERE has(linked_ticket_keys, {key:String})
+          ${bbPrFilter}
+          UNION ALL
+          SELECT 'bitbucket-commit'      AS source,
+                 committed_at            AS ts,
+                 concat('Commit: ', message_subject)             AS title,
+                 coalesce(author_username, author_name) AS actor,
+                 sha                     AS ref
+          FROM cockpit.bitbucket_commits
+          WHERE has(linked_ticket_keys, {key:String})
+          ${bbCommitFilter}
         )
         ORDER BY ts ASC
         LIMIT 1000
@@ -649,7 +679,10 @@ declare module './clickhouse-intelligence.service.js' {
 // deduplicated. FINAL on each source table drops those re-sync duplicates.
 // Columns mirror the MV's SELECT (clickhouse/schemas/50_materialized_views.sql)
 // minus the State() wrappers, so downstream aggregation semantics are unchanged.
-// All three provider legs are present at code level; gitlab returns 0 rows today.
+// All four provider legs are present at code level; gitlab returns 0 rows today.
+// The bitbucket leg skips release PRs (is_release = 1) for the same reason the
+// PR union does — a stage→prod release would credit every feature twice, the
+// second time to whoever cut the release — and maps Bitbucket's UPPERCASE state.
 //
 // `scope`/`params` are optional and BOTH-or-NEITHER: passing scope narrows only
 // the ado leg via adoScopeFilter (github/gitlab are untouched here — out of
@@ -693,6 +726,18 @@ function normalizedWeeklyPrUnionSql(scope?: BoardScope, params?: Record<string, 
       ai_assisted          AS ai_assisted
     FROM cockpit.ado_pull_requests FINAL
     ${adoFilter}
+    UNION ALL
+    SELECT
+      author_username      AS developer_login,
+      toMonday(created_at) AS week_start,
+      'bitbucket'          AS provider,
+      state = 'MERGED'     AS is_merged,
+      cycle_time_hours     AS cycle_time_hours,
+      additions            AS additions,
+      deletions            AS deletions,
+      ai_assisted          AS ai_assisted
+    FROM cockpit.bitbucket_pull_requests FINAL
+    WHERE is_release = 0
   `;
 }
 

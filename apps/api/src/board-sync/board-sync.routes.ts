@@ -17,6 +17,7 @@ import type { IntelligenceQueues } from '../intelligence/queues.js';
 import { JiraInstanceService } from '../jira-instances/jira-instance.service.js';
 import { GitHubService } from '../github/github.service.js';
 import { GitLabService } from '../gitlab/gitlab.service.js';
+import { BitbucketService } from '../bitbucket/bitbucket.service.js';
 import { AzureDevOpsService } from '../azure-devops/azure-devops.service.js';
 import { requireOrganizationId } from '../organizations/request-organization.js';
 import { boardOwnedConnectionCaller } from '../connections/connection-caller.js';
@@ -53,11 +54,15 @@ export function boardSyncRoutes(deps: Deps) {
       const github = new GitHubService(deps.prisma);
       const gitlab = new GitLabService(deps.prisma);
       const ado = new AzureDevOpsService(deps.prisma);
+      const bitbucket = new BitbucketService(deps.prisma);
       const probes: BoardSourceProbes = {
         jira: (id) => jira.testConnection(caller, id),
         github: (id) => github.testConnection(caller, id),
         gitlab: (id) => gitlab.testConnection(caller, id),
         ado: (id) => ado.testConnection(caller, id),
+        // `/user` with the stored credential; failures carry "Bitbucket returned
+        // 401/403" so `classify` marks them expired rather than unreachable.
+        bitbucket: (id) => bitbucket.testConnection(caller, id),
       };
       return new BoardSourceHealthService(deps.prisma, probes);
     };
@@ -116,6 +121,7 @@ export function boardSyncRoutes(deps: Deps) {
             github: { add: async () => {} },
             ado: { add: async () => {} },
             gitlab: { add: async () => {} },
+            bitbucket: { add: async () => {} },
           }) as never,
         );
         const status = await service.getBoardSyncStatus(params.data.boardId);

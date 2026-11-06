@@ -109,6 +109,7 @@ enum SyncSource {
   GITHUB
   JIRA
   GITLAB
+  BITBUCKET
 
   @@map("sync_source")
 }
@@ -152,27 +153,28 @@ model Organization {
   // the spec was written are all Class B — they inherit tenancy through a
   // parent listed here: OrgTreeAccess via orgTreeId, AdvisorSession via
   // boardId, AdvisorMessage via its session. None needs a column of its own.
-  boards               Board[]
-  roadmaps             Roadmap[]
-  orgTrees             OrgTree[]
-  comparisons          Comparison[]
-  boardFolders         BoardFolder[]
-  jiraInstances        JiraInstance[]
-  githubInstances      GitHubInstance[]
-  azureDevOpsInstances AzureDevOpsInstance[]
-  gitlabInstances      GitLabInstance[]
-  advisorConfig        AdvisorConfig?
-  timesheetStatusRules TimesheetStatusRule[]
-  retiredJiraProjects  RetiredJiraProject[]
-  prJiraLinks          PrJiraLink[]
-  developerProfiles    DeveloperProfile[]
-  focusVerdicts        FocusVerdict[]
-  syncRuns             SyncRun[]
-  notifications        Notification[]
+  boards                  Board[]
+  roadmaps                Roadmap[]
+  orgTrees                OrgTree[]
+  comparisons             Comparison[]
+  boardFolders            BoardFolder[]
+  jiraInstances           JiraInstance[]
+  githubInstances         GitHubInstance[]
+  azureDevOpsInstances    AzureDevOpsInstance[]
+  gitlabInstances         GitLabInstance[]
+  bitbucketInstances      BitbucketInstance[]
+  advisorConfig           AdvisorConfig?
+  timesheetStatusRules    TimesheetStatusRule[]
+  retiredJiraProjects     RetiredJiraProject[]
+  prJiraLinks             PrJiraLink[]
+  developerProfiles       DeveloperProfile[]
+  focusVerdicts           FocusVerdict[]
+  syncRuns                SyncRun[]
+  notifications           Notification[]
   notificationPreferences NotificationPreference[]
+  sourceStatusBuckets     SourceStatusBucket[]
 
   @@map("organizations")
-  sourceStatusBuckets SourceStatusBucket[]
 }
 
 model OrgMembership {
@@ -230,6 +232,7 @@ model Board {
   boardGithubSources    BoardGitHubSource[]
   boardAdoSources       BoardAdoSource[]
   boardGitlabSources    BoardGitLabSource[]
+  boardBitbucketSources BoardBitbucketSource[]
   owners                BoardOwner[]
   statuses              BoardStatus[]
   accessEntries         BoardAccess[]
@@ -330,14 +333,15 @@ model Group {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  board              Board               @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  projects           Project[]
+  board                 Board                  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  projects              Project[]
   // Phase 3 multi-board sync target-group relations.
-  boardJiraSources   BoardJiraSource[]
-  boardGithubSources BoardGitHubSource[]
-  boardAdoSources    BoardAdoSource[]
-  boardGitlabSources BoardGitLabSource[]
-  roadmapGroups      RoadmapGroup[]
+  boardJiraSources      BoardJiraSource[]
+  boardGithubSources    BoardGitHubSource[]
+  boardAdoSources       BoardAdoSource[]
+  boardGitlabSources    BoardGitLabSource[]
+  boardBitbucketSources BoardBitbucketSource[]
+  roadmapGroups         RoadmapGroup[]
 
   @@index([boardId, position])
   @@map("groups")
@@ -390,6 +394,11 @@ model Project {
   adoProject              String?             @map("ado_project")
   adoSyncedFields         Json?               @map("ado_synced_fields")
   adoRemovedFromSource    Boolean             @default(false) @map("ado_removed_from_source")
+  /// Added by a user from a pasted source link rather than promoted by the
+  /// sync's scope. Such a row keeps receiving source updates even when it falls
+  /// outside its board source's filters (issue types, JQL, labels), and narrowing
+  /// a filter never flags it removed. See apps/api/src/source-link/.
+  linkedFromSource        Boolean             @default(false) @map("linked_from_source")
   roadmapPinnedStart      DateTime?           @map("roadmap_pinned_start")
   startDate               DateTime?           @map("start_date")
   endDate                 DateTime?           @map("end_date")
@@ -612,6 +621,8 @@ model Upload {
   project           Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   orgEmployeeId     String?             @map("org_employee_id")
   orgEmployee       OrgEmployee?        @relation(fields: [orgEmployeeId], references: [id], onDelete: Cascade)
+  photoOf           OrgEmployee?        @relation("OrgEmployeePhoto")
+  avatarOf          User?               @relation("UserAvatar")
   employeeCommentId String?             @map("employee_comment_id")
   employeeComment   OrgEmployeeComment? @relation(fields: [employeeCommentId], references: [id], onDelete: Cascade)
   createdAt         DateTime            @default(now()) @map("created_at")
@@ -735,6 +746,10 @@ model User {
   firstName            String?  @map("first_name")
   lastName             String?  @map("last_name")
   avatarUrl            String?  @map("avatar_url")
+  /// The stored copy of the photo this person chose on their profile page.
+  /// `avatarUrl` is kept in step with it so existing consumers render it.
+  avatarUploadId       String?  @unique @map("avatar_upload_id")
+  avatarUpload         Upload?  @relation("UserAvatar", fields: [avatarUploadId], references: [id], onDelete: SetNull)
   /// Database-side administrator flag, OR'd with the Keycloak `cockpit-admin`
   /// realm-role claim in keycloak-auth.plugin.ts. Exists because a realm role
   /// cannot be granted to an install that has already imported its realm —
@@ -757,25 +772,25 @@ model User {
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
 
-  boardAccess         BoardAccess[]
-  boardOwners         BoardOwner[]
-  comments            ProjectComment[]
+  boardAccess               BoardAccess[]
+  boardOwners               BoardOwner[]
+  comments                  ProjectComment[]
   // Two relations to Notification, so both need explicit names: one for the
   // person who is notified, one for the person who caused it.
-  notifications       Notification[] @relation("NotificationRecipient")
-  actedNotifications  Notification[] @relation("NotificationActor")
-  developerProfiles   DeveloperProfile[]
-  boardFolders        BoardFolder[]
-  boardPrefs          UserBoardPref[]
-  roadmapAccess       RoadmapAccess[]
-  roadmapPrefs        UserRoadmapPref[]
-  employeeComments    OrgEmployeeComment[]
-  orgTreeAccess       OrgTreeAccess[]
-  employeeBoardAccess EmployeeBoardAccess[]
-  comparisonAccess    ComparisonAccess[]
-  advisorSessions     AdvisorSession[]
-  advisorChangeSets   AdvisorChangeSet[]
-  notificationPreferences  NotificationPreference[]
+  notifications             Notification[]             @relation("NotificationRecipient")
+  actedNotifications        Notification[]             @relation("NotificationActor")
+  developerProfiles         DeveloperProfile[]
+  boardFolders              BoardFolder[]
+  boardPrefs                UserBoardPref[]
+  roadmapAccess             RoadmapAccess[]
+  roadmapPrefs              UserRoadmapPref[]
+  employeeComments          OrgEmployeeComment[]
+  orgTreeAccess             OrgTreeAccess[]
+  employeeBoardAccess       EmployeeBoardAccess[]
+  comparisonAccess          ComparisonAccess[]
+  advisorSessions           AdvisorSession[]
+  advisorChangeSets         AdvisorChangeSet[]
+  notificationPreferences   NotificationPreference[]
   boardNotificationSettings BoardNotificationSetting[]
 
   // Creator-scoped provider connections (authz hardening). A deleted user's
@@ -785,6 +800,7 @@ model User {
   createdGitHubInstances      GitHubInstance[]      @relation("CreatedGitHubInstances")
   createdAzureDevOpsInstances AzureDevOpsInstance[] @relation("CreatedAzureDevOpsInstances")
   createdGitLabInstances      GitLabInstance[]      @relation("CreatedGitLabInstances")
+  createdBitbucketInstances   BitbucketInstance[]   @relation("CreatedBitbucketInstances")
 
   // Connections this user OWNS — personal connections, as opposed to the
   // `created*` relations above, which are provenance only. Both sides need
@@ -798,6 +814,7 @@ model User {
   ownedGitHubInstances      GitHubInstance[]      @relation("OwnedGitHubInstances")
   ownedAzureDevOpsInstances AzureDevOpsInstance[] @relation("OwnedAzureDevOpsInstances")
   ownedGitLabInstances      GitLabInstance[]      @relation("OwnedGitLabInstances")
+  ownedBitbucketInstances   BitbucketInstance[]   @relation("OwnedBitbucketInstances")
 
   // Membership is the join — User itself is intentionally untenanted (spec §4.2
   // Class C): one person can hold memberships in several organizations.
@@ -1029,6 +1046,52 @@ model GitLabInstance {
   @@map("gitlab_instances")
 }
 
+// Bitbucket Cloud — the fifth code provider. Pattern mirrors GitLabInstance.
+// Auth is HTTP Basic with an Atlassian account email + an API token created
+// with "Create API token with scopes" → Bitbucket (a plain Atlassian API token
+// is answered 401 "API Token provided has no Bitbucket scopes."). Repo scope is
+// explicit per-repo BitbucketRepoSync rows (the GitHub model), not a list here.
+model BitbucketInstance {
+  id        String   @id @default(uuid())
+  name      String
+  /// Workspace slug, auto-detected on "Create & test". Empty until detected,
+  /// like GitHubInstance.org.
+  workspace String   @default("")
+  /// Atlassian account email — the Basic-auth username. Not a credential.
+  email     String
+  /// Encrypted at rest — listed in credential-encryption/fields.ts.
+  apiToken  String   @map("api_token")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Tenant boundary + within-org ownership — see JiraInstance for the full rule.
+  organizationId String  @map("organization_id")
+  createdById    String? @map("created_by_id")
+  createdBy      User?   @relation("CreatedBitbucketInstances", fields: [createdById], references: [id], onDelete: SetNull)
+  /// Whose connection this is. NULL means organization-wide: every member may
+  /// use it. A user id means personal: only that user (and an organization
+  /// ADMIN) may. Stamped from the creator's role at creation and never
+  /// re-derived, so promoting or demoting somebody cannot move a connection
+  /// across the boundary.
+  ///
+  /// Deliberately NOT `createdById`, which stays provenance for the "Added by"
+  /// label and is never a gate — reusing it as one is the `connectionOwner`
+  /// mistake Phase C removed.
+  ///
+  /// onDelete: Restrict, because SetNull here would turn a personal connection
+  /// into an organization-wide one when a user row is deleted, publishing a
+  /// credential. No route deletes a user today.
+  ownerUserId    String? @map("owner_user_id")
+  owner          User?   @relation("OwnedBitbucketInstances", fields: [ownerUserId], references: [id], onDelete: Restrict)
+
+  repoSyncs    BitbucketRepoSync[]
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([organizationId, ownerUserId])
+  @@map("bitbucket_instances")
+}
+
 // ── Jira ──────────────────────────────────────────────────────────────────────
 
 model JiraProjectSync {
@@ -1068,9 +1131,9 @@ model BoardJiraSource {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  board           Board           @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  jiraProjectSync JiraProjectSync @relation(fields: [jiraProjectSyncId], references: [id], onDelete: Cascade)
-  targetGroup     Group?          @relation(fields: [targetGroupId], references: [id], onDelete: SetNull)
+  board           Board                @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  jiraProjectSync JiraProjectSync      @relation(fields: [jiraProjectSyncId], references: [id], onDelete: Cascade)
+  targetGroup     Group?               @relation(fields: [targetGroupId], references: [id], onDelete: SetNull)
   filteredKeys    BoardJiraSourceKey[]
 
   @@unique([boardId, jiraProjectSyncId])
@@ -1292,15 +1355,15 @@ model BoardAdoSource {
   azureDevOpsProjectSyncId String  @map("azure_devops_project_sync_id")
   targetGroupId            String? @map("target_group_id")
 
-  syncWorkItemsToBoard  Boolean  @default(true) @map("sync_work_items_to_board")
-  useForIntelligence    Boolean  @default(true) @map("use_for_intelligence")
-  intelligenceRepos     String[] @default([]) @map("intelligence_repos")
-  areaPaths             String[] @default([]) @map("area_paths")
-  allowedWorkItemTypes  String[] @default([]) @map("allowed_work_item_types")
-  wiqlFilter            String?  @map("wiql_filter")
-  fieldMappings         Json     @default("{}") @map("field_mappings")
-  statusMapping         Json     @default("{}") @map("status_mapping")
-  defaultSyncedFields   String[] @default(["name", "status", "owner"]) @map("default_synced_fields")
+  syncWorkItemsToBoard Boolean  @default(true) @map("sync_work_items_to_board")
+  useForIntelligence   Boolean  @default(true) @map("use_for_intelligence")
+  intelligenceRepos    String[] @default([]) @map("intelligence_repos")
+  areaPaths            String[] @default([]) @map("area_paths")
+  allowedWorkItemTypes String[] @default([]) @map("allowed_work_item_types")
+  wiqlFilter           String?  @map("wiql_filter")
+  fieldMappings        Json     @default("{}") @map("field_mappings")
+  statusMapping        Json     @default("{}") @map("status_mapping")
+  defaultSyncedFields  String[] @default(["name", "status", "owner"]) @map("default_synced_fields")
 
   lastPromotedAt DateTime? @map("last_promoted_at")
   createdAt      DateTime  @default(now()) @map("created_at")
@@ -1356,6 +1419,56 @@ model BoardGitLabSource {
   @@unique([boardId, gitlabProjectSyncId])
   @@index([boardId])
   @@map("board_gitlab_sources")
+}
+
+// ── Bitbucket ─────────────────────────────────────────────────────────────────
+
+// Class B tenancy: inherits its organization through bitbucketInstanceId.
+model BitbucketRepoSync {
+  id                  String  @id @default(uuid())
+  bitbucketInstanceId String  @map("bitbucket_instance_id")
+  /// "{workspace}/{repo_slug}" — the key every bitbucket_* ClickHouse row carries.
+  repoFullName        String  @map("repo_full_name")
+  /// Bitbucket project the repo sits in (e.g. "FE"); drives the picker grouping.
+  projectKey          String? @map("project_key")
+
+  syncPrs         Boolean @default(true) @map("sync_prs")
+  syncCommits     Boolean @default(true) @map("sync_commits")
+  syncDeployments Boolean @default(true) @map("sync_deployments")
+
+  /// PR + commit watermark. NULL = first sync (180-day backfill).
+  lastSyncedAt         DateTime? @map("last_synced_at")
+  /// Deployment watermark, separate because deployments stream newest-first
+  /// with their own 90-day window.
+  lastDeploymentSyncAt DateTime? @map("last_deployment_sync_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  bitbucketInstance BitbucketInstance      @relation(fields: [bitbucketInstanceId], references: [id], onDelete: Cascade)
+  boardSources      BoardBitbucketSource[]
+
+  @@unique([bitbucketInstanceId, repoFullName])
+  @@map("bitbucket_repo_syncs")
+}
+
+// No issue/PR promotion toggles: Jira owns tasks for Bitbucket teams, so
+// Bitbucket never writes board rows (spec non-goals).
+model BoardBitbucketSource {
+  id                  String  @id @default(uuid())
+  boardId             String  @map("board_id")
+  bitbucketRepoSyncId String  @map("bitbucket_repo_sync_id")
+  targetGroupId       String? @map("target_group_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  board             Board             @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  bitbucketRepoSync BitbucketRepoSync @relation(fields: [bitbucketRepoSyncId], references: [id], onDelete: Cascade)
+  targetGroup       Group?            @relation(fields: [targetGroupId], references: [id], onDelete: SetNull)
+
+  @@unique([boardId, bitbucketRepoSyncId])
+  @@index([boardId])
+  @@map("board_bitbucket_sources")
 }
 
 // ── Boards Sidebar ────────────────────────────────────────────────────────────
@@ -1429,10 +1542,10 @@ model OrgTree {
 }
 
 model OrgTreeAccess {
-  id        String          @id @default(uuid())
-  orgTreeId String          @map("org_tree_id")
-  userId    String          @map("user_id")
-  role      BoardAccessRole
+  id            String          @id @default(uuid())
+  orgTreeId     String          @map("org_tree_id")
+  userId        String          @map("user_id")
+  role          BoardAccessRole
   /// Salary visibility, ORTHOGONAL to `role` — an EDITOR does not see pay by
   /// virtue of being an EDITOR, which is the whole point of a separate flag.
   /// Someone may need to restructure a tree without seeing pay, and someone else
@@ -1443,9 +1556,9 @@ model OrgTreeAccess {
   /// apps/api/src/org-trees/salary-visibility.ts. Making it exclusive is a
   /// one-line change there plus an owner's decision — see that file's comment for
   /// why the additive direction shipped first.
-  canViewSalary Boolean       @default(false) @map("can_view_salary")
-  createdAt DateTime        @default(now()) @map("created_at")
-  updatedAt DateTime        @updatedAt @map("updated_at")
+  canViewSalary Boolean         @default(false) @map("can_view_salary")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
 
   orgTree OrgTree @relation(fields: [orgTreeId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1485,9 +1598,14 @@ model OrgEmployee {
   syncedAt            DateTime?             @map("synced_at")
   msGraphId           String?               @map("ms_graph_id")
   departedAt          DateTime?             @map("departed_at")
+  /// The stored copy of this person's photo (downloaded at import — source URLs expire).
+  photoUploadId       String?               @unique @map("photo_upload_id")
+  /// Source URL WITHOUT its query string; equal on re-import means "unchanged, don't re-download".
+  photoSource         String?               @map("photo_source")
   createdAt           DateTime              @default(now()) @map("created_at")
   updatedAt           DateTime              @updatedAt @map("updated_at")
   orgTree             OrgTree               @relation(fields: [orgTreeId], references: [id], onDelete: Cascade)
+  photoUpload         Upload?               @relation("OrgEmployeePhoto", fields: [photoUploadId], references: [id], onDelete: SetNull)
   manager             OrgEmployee?          @relation("Reports", fields: [managerId], references: [id], onDelete: SetNull)
   reports             OrgEmployee[]         @relation("Reports")
   aliases             OrgEmployeeAlias[]
@@ -1571,13 +1689,13 @@ model OrgEmployeeAlias {
 }
 
 model OrgEmployeeComment {
-  id            String      @id @default(uuid())
-  orgEmployeeId String      @map("org_employee_id")
-  employee      OrgEmployee @relation(fields: [orgEmployeeId], references: [id], onDelete: Cascade)
+  id            String         @id @default(uuid())
+  orgEmployeeId String         @map("org_employee_id")
+  employee      OrgEmployee    @relation(fields: [orgEmployeeId], references: [id], onDelete: Cascade)
   content       Json
-  authorName    String      @default("VP") @map("author_name")
-  authorAvatar  String?     @map("author_avatar")
-  pinned        Boolean     @default(false)
+  authorName    String         @default("VP") @map("author_name")
+  authorAvatar  String?        @map("author_avatar")
+  pinned        Boolean        @default(false)
   /// Author-only when true. Deliberately NOT readable by org admins or by the
   /// tree owner — see the org-tree privacy design's D2: "private except from the
   /// admins" is not private, and the admin bit is an instance-level break-glass
@@ -1587,11 +1705,11 @@ model OrgEmployeeComment {
   /// deleted becomes unreadable by everyone. That is the correct failure
   /// direction: the alternative is a private note turning public the moment its
   /// author is offboarded.
-  isPrivate     Boolean     @default(false) @map("is_private")
-  authorId      String?     @map("author_id")
-  author        User?       @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
+  isPrivate     Boolean        @default(false) @map("is_private")
+  authorId      String?        @map("author_id")
+  author        User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
   uploads       Upload[]
   notifications Notification[]
 
@@ -2124,28 +2242,28 @@ model AdvisorChangeSet {
 /// every other read uses. A denormalised label here would be a second, frozen
 /// copy of who-can-see-what — exactly the thing that goes stale and leaks.
 model Notification {
-  id             String @id @default(uuid())
+  id             String           @id @default(uuid())
   /// Not redundant with `userId`: under multi-org one User holds memberships in
   /// several organizations, and the switcher decides which one they are looking
   /// at. Without this column the bell would mix tenants.
-  organizationId String @map("organization_id")
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String           @map("organization_id")
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   /// The recipient. NOT nullable — a notification nobody can read is a bug.
-  userId String @map("user_id")
-  user   User   @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  userId         String           @map("user_id")
+  user           User             @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
   /// Who caused it. Nullable only so a deleted User does not destroy the
   /// notification: "you were mentioned" still means something.
-  actorId String? @map("actor_id")
-  actor   User?   @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
-  kind    NotificationKind
+  actorId        String?          @map("actor_id")
+  actor          User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  kind           NotificationKind
 
   /// AT MOST ONE typed subject is set — a CHECK constraint in the migration
   /// enforces it, because two subjects is ambiguous. "No subject at all" is legal
   /// SOLELY so a DIGEST summary row can exist. Cascading deletes mean a deleted
   /// comment takes its notifications with it, so no route has to remember.
-  projectCommentId     String? @map("project_comment_id")
-  projectComment       ProjectComment? @relation(fields: [projectCommentId], references: [id], onDelete: Cascade)
-  orgEmployeeCommentId String? @map("org_employee_comment_id")
+  projectCommentId     String?             @map("project_comment_id")
+  projectComment       ProjectComment?     @relation(fields: [projectCommentId], references: [id], onDelete: Cascade)
+  orgEmployeeCommentId String?             @map("org_employee_comment_id")
   orgEmployeeComment   OrgEmployeeComment? @relation(fields: [orgEmployeeCommentId], references: [id], onDelete: Cascade)
 
   /// Item subject: assigned, status/due-date changed, due soon, overdue,

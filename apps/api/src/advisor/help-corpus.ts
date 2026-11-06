@@ -135,7 +135,7 @@ export function loadHelpCorpus(
  * The slug is folded into the title index because a slug is a hand-written
  * topic name and often carries the word the H1 doesn't: `connecting-sources`
  * supplies "source" for "How do I connect a data source?", which its own title
- * ("Connecting Jira, GitHub, GitLab, and Azure DevOps") never mentions.
+ * ("Connecting Jira, GitHub, GitLab, Azure DevOps, and Bitbucket") never mentions.
  */
 export function searchHelpCorpus(
   docs: readonly HelpDoc[],

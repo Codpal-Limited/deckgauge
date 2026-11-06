@@ -64,6 +64,8 @@ export type OrgEmployeeMinAggregateOutputType = {
   syncedAt: Date | null
   msGraphId: string | null
   departedAt: Date | null
+  photoUploadId: string | null
+  photoSource: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -96,6 +98,8 @@ export type OrgEmployeeMaxAggregateOutputType = {
   syncedAt: Date | null
   msGraphId: string | null
   departedAt: Date | null
+  photoUploadId: string | null
+  photoSource: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -129,6 +133,8 @@ export type OrgEmployeeCountAggregateOutputType = {
   syncedAt: number
   msGraphId: number
   departedAt: number
+  photoUploadId: number
+  photoSource: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -173,6 +179,8 @@ export type OrgEmployeeMinAggregateInputType = {
   syncedAt?: true
   msGraphId?: true
   departedAt?: true
+  photoUploadId?: true
+  photoSource?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -205,6 +213,8 @@ export type OrgEmployeeMaxAggregateInputType = {
   syncedAt?: true
   msGraphId?: true
   departedAt?: true
+  photoUploadId?: true
+  photoSource?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -238,6 +248,8 @@ export type OrgEmployeeCountAggregateInputType = {
   syncedAt?: true
   msGraphId?: true
   departedAt?: true
+  photoUploadId?: true
+  photoSource?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -358,6 +370,8 @@ export type OrgEmployeeGroupByOutputType = {
   syncedAt: Date | null
   msGraphId: string | null
   departedAt: Date | null
+  photoUploadId: string | null
+  photoSource: string | null
   createdAt: Date
   updatedAt: Date
   _count: OrgEmployeeCountAggregateOutputType | null
@@ -414,9 +428,12 @@ export type OrgEmployeeWhereInput = {
   syncedAt?: Prisma.DateTimeNullableFilter<"OrgEmployee"> | Date | string | null
   msGraphId?: Prisma.StringNullableFilter<"OrgEmployee"> | string | null
   departedAt?: Prisma.DateTimeNullableFilter<"OrgEmployee"> | Date | string | null
+  photoUploadId?: Prisma.StringNullableFilter<"OrgEmployee"> | string | null
+  photoSource?: Prisma.StringNullableFilter<"OrgEmployee"> | string | null
   createdAt?: Prisma.DateTimeFilter<"OrgEmployee"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"OrgEmployee"> | Date | string
   orgTree?: Prisma.XOR<Prisma.OrgTreeScalarRelationFilter, Prisma.OrgTreeWhereInput>
+  photoUpload?: Prisma.XOR<Prisma.UploadNullableScalarRelationFilter, Prisma.UploadWhereInput> | null
   manager?: Prisma.XOR<Prisma.OrgEmployeeNullableScalarRelationFilter, Prisma.OrgEmployeeWhereInput> | null
   reports?: Prisma.OrgEmployeeListRelationFilter
   aliases?: Prisma.OrgEmployeeAliasListRelationFilter
@@ -456,9 +473,12 @@ export type OrgEmployeeOrderByWithRelationInput = {
   syncedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   msGraphId?: Prisma.SortOrderInput | Prisma.SortOrder
   departedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  photoUploadId?: Prisma.SortOrderInput | Prisma.SortOrder
+  photoSource?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   orgTree?: Prisma.OrgTreeOrderByWithRelationInput
+  photoUpload?: Prisma.UploadOrderByWithRelationInput
   manager?: Prisma.OrgEmployeeOrderByWithRelationInput
   reports?: Prisma.OrgEmployeeOrderByRelationAggregateInput
   aliases?: Prisma.OrgEmployeeAliasOrderByRelationAggregateInput
@@ -471,6 +491,7 @@ export type OrgEmployeeOrderByWithRelationInput = {
 
 export type OrgEmployeeWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  photoUploadId?: string
   orgTreeId_externalId?: Prisma.OrgEmployeeOrgTreeIdExternalIdCompoundUniqueInput
   orgTreeId_msGraphId?: Prisma.OrgEmployeeOrgTreeIdMsGraphIdCompoundUniqueInput
   AND?: Prisma.OrgEmployeeWhereInput | Prisma.OrgEmployeeWhereInput[]
@@ -503,9 +524,11 @@ export type OrgEmployeeWhereUniqueInput = Prisma.AtLeast<{
   syncedAt?: Prisma.DateTimeNullableFilter<"OrgEmployee"> | Date | string | null
   msGraphId?: Prisma.StringNullableFilter<"OrgEmployee"> | string | null
   departedAt?: Prisma.DateTimeNullableFilter<"OrgEmployee"> | Date | string | null
+  photoSource?: Prisma.StringNullableFilter<"OrgEmployee"> | string | null
   createdAt?: Prisma.DateTimeFilter<"OrgEmployee"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"OrgEmployee"> | Date | string
   orgTree?: Prisma.XOR<Prisma.OrgTreeScalarRelationFilter, Prisma.OrgTreeWhereInput>
+  photoUpload?: Prisma.XOR<Prisma.UploadNullableScalarRelationFilter, Prisma.UploadWhereInput> | null
   manager?: Prisma.XOR<Prisma.OrgEmployeeNullableScalarRelationFilter, Prisma.OrgEmployeeWhereInput> | null
   reports?: Prisma.OrgEmployeeListRelationFilter
   aliases?: Prisma.OrgEmployeeAliasListRelationFilter
@@ -514,7 +537,7 @@ export type OrgEmployeeWhereUniqueInput = Prisma.AtLeast<{
   employeeFieldValues?: Prisma.EmployeeFieldValueListRelationFilter
   comments?: Prisma.OrgEmployeeCommentListRelationFilter
   uploads?: Prisma.UploadListRelationFilter
-}, "id" | "orgTreeId_externalId" | "orgTreeId_msGraphId">
+}, "id" | "photoUploadId" | "orgTreeId_externalId" | "orgTreeId_msGraphId">
 
 export type OrgEmployeeOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -545,6 +568,8 @@ export type OrgEmployeeOrderByWithAggregationInput = {
   syncedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   msGraphId?: Prisma.SortOrderInput | Prisma.SortOrder
   departedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  photoUploadId?: Prisma.SortOrderInput | Prisma.SortOrder
+  photoSource?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.OrgEmployeeCountOrderByAggregateInput
@@ -586,6 +611,8 @@ export type OrgEmployeeScalarWhereWithAggregatesInput = {
   syncedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"OrgEmployee"> | Date | string | null
   msGraphId?: Prisma.StringNullableWithAggregatesFilter<"OrgEmployee"> | string | null
   departedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"OrgEmployee"> | Date | string | null
+  photoUploadId?: Prisma.StringNullableWithAggregatesFilter<"OrgEmployee"> | string | null
+  photoSource?: Prisma.StringNullableWithAggregatesFilter<"OrgEmployee"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"OrgEmployee"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"OrgEmployee"> | Date | string
 }
@@ -617,9 +644,11 @@ export type OrgEmployeeCreateInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   orgTree: Prisma.OrgTreeCreateNestedOneWithoutEmployeesInput
+  photoUpload?: Prisma.UploadCreateNestedOneWithoutPhotoOfInput
   manager?: Prisma.OrgEmployeeCreateNestedOneWithoutReportsInput
   reports?: Prisma.OrgEmployeeCreateNestedManyWithoutManagerInput
   aliases?: Prisma.OrgEmployeeAliasCreateNestedManyWithoutEmployeeInput
@@ -659,6 +688,8 @@ export type OrgEmployeeUncheckedCreateInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoUploadId?: string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   reports?: Prisma.OrgEmployeeUncheckedCreateNestedManyWithoutManagerInput
@@ -697,9 +728,11 @@ export type OrgEmployeeUpdateInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orgTree?: Prisma.OrgTreeUpdateOneRequiredWithoutEmployeesNestedInput
+  photoUpload?: Prisma.UploadUpdateOneWithoutPhotoOfNestedInput
   manager?: Prisma.OrgEmployeeUpdateOneWithoutReportsNestedInput
   reports?: Prisma.OrgEmployeeUpdateManyWithoutManagerNestedInput
   aliases?: Prisma.OrgEmployeeAliasUpdateManyWithoutEmployeeNestedInput
@@ -739,6 +772,8 @@ export type OrgEmployeeUncheckedUpdateInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   reports?: Prisma.OrgEmployeeUncheckedUpdateManyWithoutManagerNestedInput
@@ -779,6 +814,8 @@ export type OrgEmployeeCreateManyInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoUploadId?: string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -810,6 +847,7 @@ export type OrgEmployeeUpdateManyMutationInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -843,6 +881,8 @@ export type OrgEmployeeUncheckedUpdateManyInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -901,6 +941,8 @@ export type OrgEmployeeCountOrderByAggregateInput = {
   syncedAt?: Prisma.SortOrder
   msGraphId?: Prisma.SortOrder
   departedAt?: Prisma.SortOrder
+  photoUploadId?: Prisma.SortOrder
+  photoSource?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -938,6 +980,8 @@ export type OrgEmployeeMaxOrderByAggregateInput = {
   syncedAt?: Prisma.SortOrder
   msGraphId?: Prisma.SortOrder
   departedAt?: Prisma.SortOrder
+  photoUploadId?: Prisma.SortOrder
+  photoSource?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -970,6 +1014,8 @@ export type OrgEmployeeMinOrderByAggregateInput = {
   syncedAt?: Prisma.SortOrder
   msGraphId?: Prisma.SortOrder
   departedAt?: Prisma.SortOrder
+  photoUploadId?: Prisma.SortOrder
+  photoSource?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -990,6 +1036,18 @@ export type OrgEmployeeCreateNestedOneWithoutUploadsInput = {
   connect?: Prisma.OrgEmployeeWhereUniqueInput
 }
 
+export type OrgEmployeeCreateNestedOneWithoutPhotoUploadInput = {
+  create?: Prisma.XOR<Prisma.OrgEmployeeCreateWithoutPhotoUploadInput, Prisma.OrgEmployeeUncheckedCreateWithoutPhotoUploadInput>
+  connectOrCreate?: Prisma.OrgEmployeeCreateOrConnectWithoutPhotoUploadInput
+  connect?: Prisma.OrgEmployeeWhereUniqueInput
+}
+
+export type OrgEmployeeUncheckedCreateNestedOneWithoutPhotoUploadInput = {
+  create?: Prisma.XOR<Prisma.OrgEmployeeCreateWithoutPhotoUploadInput, Prisma.OrgEmployeeUncheckedCreateWithoutPhotoUploadInput>
+  connectOrCreate?: Prisma.OrgEmployeeCreateOrConnectWithoutPhotoUploadInput
+  connect?: Prisma.OrgEmployeeWhereUniqueInput
+}
+
 export type OrgEmployeeUpdateOneWithoutUploadsNestedInput = {
   create?: Prisma.XOR<Prisma.OrgEmployeeCreateWithoutUploadsInput, Prisma.OrgEmployeeUncheckedCreateWithoutUploadsInput>
   connectOrCreate?: Prisma.OrgEmployeeCreateOrConnectWithoutUploadsInput
@@ -998,6 +1056,26 @@ export type OrgEmployeeUpdateOneWithoutUploadsNestedInput = {
   delete?: Prisma.OrgEmployeeWhereInput | boolean
   connect?: Prisma.OrgEmployeeWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrgEmployeeUpdateToOneWithWhereWithoutUploadsInput, Prisma.OrgEmployeeUpdateWithoutUploadsInput>, Prisma.OrgEmployeeUncheckedUpdateWithoutUploadsInput>
+}
+
+export type OrgEmployeeUpdateOneWithoutPhotoUploadNestedInput = {
+  create?: Prisma.XOR<Prisma.OrgEmployeeCreateWithoutPhotoUploadInput, Prisma.OrgEmployeeUncheckedCreateWithoutPhotoUploadInput>
+  connectOrCreate?: Prisma.OrgEmployeeCreateOrConnectWithoutPhotoUploadInput
+  upsert?: Prisma.OrgEmployeeUpsertWithoutPhotoUploadInput
+  disconnect?: Prisma.OrgEmployeeWhereInput | boolean
+  delete?: Prisma.OrgEmployeeWhereInput | boolean
+  connect?: Prisma.OrgEmployeeWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrgEmployeeUpdateToOneWithWhereWithoutPhotoUploadInput, Prisma.OrgEmployeeUpdateWithoutPhotoUploadInput>, Prisma.OrgEmployeeUncheckedUpdateWithoutPhotoUploadInput>
+}
+
+export type OrgEmployeeUncheckedUpdateOneWithoutPhotoUploadNestedInput = {
+  create?: Prisma.XOR<Prisma.OrgEmployeeCreateWithoutPhotoUploadInput, Prisma.OrgEmployeeUncheckedCreateWithoutPhotoUploadInput>
+  connectOrCreate?: Prisma.OrgEmployeeCreateOrConnectWithoutPhotoUploadInput
+  upsert?: Prisma.OrgEmployeeUpsertWithoutPhotoUploadInput
+  disconnect?: Prisma.OrgEmployeeWhereInput | boolean
+  delete?: Prisma.OrgEmployeeWhereInput | boolean
+  connect?: Prisma.OrgEmployeeWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrgEmployeeUpdateToOneWithWhereWithoutPhotoUploadInput, Prisma.OrgEmployeeUpdateWithoutPhotoUploadInput>, Prisma.OrgEmployeeUncheckedUpdateWithoutPhotoUploadInput>
 }
 
 export type OrgEmployeeCreateNestedManyWithoutOrgTreeInput = {
@@ -1199,9 +1277,11 @@ export type OrgEmployeeCreateWithoutUploadsInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   orgTree: Prisma.OrgTreeCreateNestedOneWithoutEmployeesInput
+  photoUpload?: Prisma.UploadCreateNestedOneWithoutPhotoOfInput
   manager?: Prisma.OrgEmployeeCreateNestedOneWithoutReportsInput
   reports?: Prisma.OrgEmployeeCreateNestedManyWithoutManagerInput
   aliases?: Prisma.OrgEmployeeAliasCreateNestedManyWithoutEmployeeInput
@@ -1240,6 +1320,8 @@ export type OrgEmployeeUncheckedCreateWithoutUploadsInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoUploadId?: string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   reports?: Prisma.OrgEmployeeUncheckedCreateNestedManyWithoutManagerInput
@@ -1253,6 +1335,93 @@ export type OrgEmployeeUncheckedCreateWithoutUploadsInput = {
 export type OrgEmployeeCreateOrConnectWithoutUploadsInput = {
   where: Prisma.OrgEmployeeWhereUniqueInput
   create: Prisma.XOR<Prisma.OrgEmployeeCreateWithoutUploadsInput, Prisma.OrgEmployeeUncheckedCreateWithoutUploadsInput>
+}
+
+export type OrgEmployeeCreateWithoutPhotoUploadInput = {
+  id?: string
+  externalId?: string | null
+  name: string
+  role?: string | null
+  email?: string | null
+  managerExternalId?: string | null
+  position?: number
+  isVacancy?: boolean
+  matched?: boolean
+  isActive?: boolean
+  lastContributionAt?: Date | string | null
+  hasAssignment?: boolean
+  employeeDisplayId?: string | null
+  businessTitle?: string | null
+  hireDate?: Date | string | null
+  location?: string | null
+  employeeType?: string | null
+  timeType?: string | null
+  phone?: string | null
+  workAddress?: string | null
+  salaryCurrent?: number | null
+  salaryCurrency?: string | null
+  statsJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  syncedAt?: Date | string | null
+  msGraphId?: string | null
+  departedAt?: Date | string | null
+  photoSource?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  orgTree: Prisma.OrgTreeCreateNestedOneWithoutEmployeesInput
+  manager?: Prisma.OrgEmployeeCreateNestedOneWithoutReportsInput
+  reports?: Prisma.OrgEmployeeCreateNestedManyWithoutManagerInput
+  aliases?: Prisma.OrgEmployeeAliasCreateNestedManyWithoutEmployeeInput
+  boardScopes?: Prisma.EmployeeBoardCreateNestedManyWithoutScopeInput
+  boardMembers?: Prisma.EmployeeBoardMemberCreateNestedManyWithoutEmployeeInput
+  employeeFieldValues?: Prisma.EmployeeFieldValueCreateNestedManyWithoutEmployeeInput
+  comments?: Prisma.OrgEmployeeCommentCreateNestedManyWithoutEmployeeInput
+  uploads?: Prisma.UploadCreateNestedManyWithoutOrgEmployeeInput
+}
+
+export type OrgEmployeeUncheckedCreateWithoutPhotoUploadInput = {
+  id?: string
+  orgTreeId: string
+  externalId?: string | null
+  name: string
+  role?: string | null
+  email?: string | null
+  managerExternalId?: string | null
+  managerId?: string | null
+  position?: number
+  isVacancy?: boolean
+  matched?: boolean
+  isActive?: boolean
+  lastContributionAt?: Date | string | null
+  hasAssignment?: boolean
+  employeeDisplayId?: string | null
+  businessTitle?: string | null
+  hireDate?: Date | string | null
+  location?: string | null
+  employeeType?: string | null
+  timeType?: string | null
+  phone?: string | null
+  workAddress?: string | null
+  salaryCurrent?: number | null
+  salaryCurrency?: string | null
+  statsJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  syncedAt?: Date | string | null
+  msGraphId?: string | null
+  departedAt?: Date | string | null
+  photoSource?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  reports?: Prisma.OrgEmployeeUncheckedCreateNestedManyWithoutManagerInput
+  aliases?: Prisma.OrgEmployeeAliasUncheckedCreateNestedManyWithoutEmployeeInput
+  boardScopes?: Prisma.EmployeeBoardUncheckedCreateNestedManyWithoutScopeInput
+  boardMembers?: Prisma.EmployeeBoardMemberUncheckedCreateNestedManyWithoutEmployeeInput
+  employeeFieldValues?: Prisma.EmployeeFieldValueUncheckedCreateNestedManyWithoutEmployeeInput
+  comments?: Prisma.OrgEmployeeCommentUncheckedCreateNestedManyWithoutEmployeeInput
+  uploads?: Prisma.UploadUncheckedCreateNestedManyWithoutOrgEmployeeInput
+}
+
+export type OrgEmployeeCreateOrConnectWithoutPhotoUploadInput = {
+  where: Prisma.OrgEmployeeWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrgEmployeeCreateWithoutPhotoUploadInput, Prisma.OrgEmployeeUncheckedCreateWithoutPhotoUploadInput>
 }
 
 export type OrgEmployeeUpsertWithoutUploadsInput = {
@@ -1293,9 +1462,11 @@ export type OrgEmployeeUpdateWithoutUploadsInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orgTree?: Prisma.OrgTreeUpdateOneRequiredWithoutEmployeesNestedInput
+  photoUpload?: Prisma.UploadUpdateOneWithoutPhotoOfNestedInput
   manager?: Prisma.OrgEmployeeUpdateOneWithoutReportsNestedInput
   reports?: Prisma.OrgEmployeeUpdateManyWithoutManagerNestedInput
   aliases?: Prisma.OrgEmployeeAliasUpdateManyWithoutEmployeeNestedInput
@@ -1334,6 +1505,8 @@ export type OrgEmployeeUncheckedUpdateWithoutUploadsInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   reports?: Prisma.OrgEmployeeUncheckedUpdateManyWithoutManagerNestedInput
@@ -1342,6 +1515,99 @@ export type OrgEmployeeUncheckedUpdateWithoutUploadsInput = {
   boardMembers?: Prisma.EmployeeBoardMemberUncheckedUpdateManyWithoutEmployeeNestedInput
   employeeFieldValues?: Prisma.EmployeeFieldValueUncheckedUpdateManyWithoutEmployeeNestedInput
   comments?: Prisma.OrgEmployeeCommentUncheckedUpdateManyWithoutEmployeeNestedInput
+}
+
+export type OrgEmployeeUpsertWithoutPhotoUploadInput = {
+  update: Prisma.XOR<Prisma.OrgEmployeeUpdateWithoutPhotoUploadInput, Prisma.OrgEmployeeUncheckedUpdateWithoutPhotoUploadInput>
+  create: Prisma.XOR<Prisma.OrgEmployeeCreateWithoutPhotoUploadInput, Prisma.OrgEmployeeUncheckedCreateWithoutPhotoUploadInput>
+  where?: Prisma.OrgEmployeeWhereInput
+}
+
+export type OrgEmployeeUpdateToOneWithWhereWithoutPhotoUploadInput = {
+  where?: Prisma.OrgEmployeeWhereInput
+  data: Prisma.XOR<Prisma.OrgEmployeeUpdateWithoutPhotoUploadInput, Prisma.OrgEmployeeUncheckedUpdateWithoutPhotoUploadInput>
+}
+
+export type OrgEmployeeUpdateWithoutPhotoUploadInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  managerExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  position?: Prisma.IntFieldUpdateOperationsInput | number
+  isVacancy?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  matched?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastContributionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  hasAssignment?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  employeeDisplayId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  businessTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hireDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  employeeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  timeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  salaryCurrent?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  salaryCurrency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  statsJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  orgTree?: Prisma.OrgTreeUpdateOneRequiredWithoutEmployeesNestedInput
+  manager?: Prisma.OrgEmployeeUpdateOneWithoutReportsNestedInput
+  reports?: Prisma.OrgEmployeeUpdateManyWithoutManagerNestedInput
+  aliases?: Prisma.OrgEmployeeAliasUpdateManyWithoutEmployeeNestedInput
+  boardScopes?: Prisma.EmployeeBoardUpdateManyWithoutScopeNestedInput
+  boardMembers?: Prisma.EmployeeBoardMemberUpdateManyWithoutEmployeeNestedInput
+  employeeFieldValues?: Prisma.EmployeeFieldValueUpdateManyWithoutEmployeeNestedInput
+  comments?: Prisma.OrgEmployeeCommentUpdateManyWithoutEmployeeNestedInput
+  uploads?: Prisma.UploadUpdateManyWithoutOrgEmployeeNestedInput
+}
+
+export type OrgEmployeeUncheckedUpdateWithoutPhotoUploadInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  orgTreeId?: Prisma.StringFieldUpdateOperationsInput | string
+  externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  managerExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  managerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  position?: Prisma.IntFieldUpdateOperationsInput | number
+  isVacancy?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  matched?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastContributionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  hasAssignment?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  employeeDisplayId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  businessTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hireDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  employeeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  timeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  salaryCurrent?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  salaryCurrency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  statsJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reports?: Prisma.OrgEmployeeUncheckedUpdateManyWithoutManagerNestedInput
+  aliases?: Prisma.OrgEmployeeAliasUncheckedUpdateManyWithoutEmployeeNestedInput
+  boardScopes?: Prisma.EmployeeBoardUncheckedUpdateManyWithoutScopeNestedInput
+  boardMembers?: Prisma.EmployeeBoardMemberUncheckedUpdateManyWithoutEmployeeNestedInput
+  employeeFieldValues?: Prisma.EmployeeFieldValueUncheckedUpdateManyWithoutEmployeeNestedInput
+  comments?: Prisma.OrgEmployeeCommentUncheckedUpdateManyWithoutEmployeeNestedInput
+  uploads?: Prisma.UploadUncheckedUpdateManyWithoutOrgEmployeeNestedInput
 }
 
 export type OrgEmployeeCreateWithoutOrgTreeInput = {
@@ -1371,8 +1637,10 @@ export type OrgEmployeeCreateWithoutOrgTreeInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  photoUpload?: Prisma.UploadCreateNestedOneWithoutPhotoOfInput
   manager?: Prisma.OrgEmployeeCreateNestedOneWithoutReportsInput
   reports?: Prisma.OrgEmployeeCreateNestedManyWithoutManagerInput
   aliases?: Prisma.OrgEmployeeAliasCreateNestedManyWithoutEmployeeInput
@@ -1411,6 +1679,8 @@ export type OrgEmployeeUncheckedCreateWithoutOrgTreeInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoUploadId?: string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   reports?: Prisma.OrgEmployeeUncheckedCreateNestedManyWithoutManagerInput
@@ -1480,6 +1750,8 @@ export type OrgEmployeeScalarWhereInput = {
   syncedAt?: Prisma.DateTimeNullableFilter<"OrgEmployee"> | Date | string | null
   msGraphId?: Prisma.StringNullableFilter<"OrgEmployee"> | string | null
   departedAt?: Prisma.DateTimeNullableFilter<"OrgEmployee"> | Date | string | null
+  photoUploadId?: Prisma.StringNullableFilter<"OrgEmployee"> | string | null
+  photoSource?: Prisma.StringNullableFilter<"OrgEmployee"> | string | null
   createdAt?: Prisma.DateTimeFilter<"OrgEmployee"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"OrgEmployee"> | Date | string
 }
@@ -1511,9 +1783,11 @@ export type OrgEmployeeCreateWithoutReportsInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   orgTree: Prisma.OrgTreeCreateNestedOneWithoutEmployeesInput
+  photoUpload?: Prisma.UploadCreateNestedOneWithoutPhotoOfInput
   manager?: Prisma.OrgEmployeeCreateNestedOneWithoutReportsInput
   aliases?: Prisma.OrgEmployeeAliasCreateNestedManyWithoutEmployeeInput
   boardScopes?: Prisma.EmployeeBoardCreateNestedManyWithoutScopeInput
@@ -1552,6 +1826,8 @@ export type OrgEmployeeUncheckedCreateWithoutReportsInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoUploadId?: string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   aliases?: Prisma.OrgEmployeeAliasUncheckedCreateNestedManyWithoutEmployeeInput
@@ -1594,9 +1870,11 @@ export type OrgEmployeeCreateWithoutManagerInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   orgTree: Prisma.OrgTreeCreateNestedOneWithoutEmployeesInput
+  photoUpload?: Prisma.UploadCreateNestedOneWithoutPhotoOfInput
   reports?: Prisma.OrgEmployeeCreateNestedManyWithoutManagerInput
   aliases?: Prisma.OrgEmployeeAliasCreateNestedManyWithoutEmployeeInput
   boardScopes?: Prisma.EmployeeBoardCreateNestedManyWithoutScopeInput
@@ -1634,6 +1912,8 @@ export type OrgEmployeeUncheckedCreateWithoutManagerInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoUploadId?: string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   reports?: Prisma.OrgEmployeeUncheckedCreateNestedManyWithoutManagerInput
@@ -1693,9 +1973,11 @@ export type OrgEmployeeUpdateWithoutReportsInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orgTree?: Prisma.OrgTreeUpdateOneRequiredWithoutEmployeesNestedInput
+  photoUpload?: Prisma.UploadUpdateOneWithoutPhotoOfNestedInput
   manager?: Prisma.OrgEmployeeUpdateOneWithoutReportsNestedInput
   aliases?: Prisma.OrgEmployeeAliasUpdateManyWithoutEmployeeNestedInput
   boardScopes?: Prisma.EmployeeBoardUpdateManyWithoutScopeNestedInput
@@ -1734,6 +2016,8 @@ export type OrgEmployeeUncheckedUpdateWithoutReportsInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   aliases?: Prisma.OrgEmployeeAliasUncheckedUpdateManyWithoutEmployeeNestedInput
@@ -1787,9 +2071,11 @@ export type OrgEmployeeCreateWithoutAliasesInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   orgTree: Prisma.OrgTreeCreateNestedOneWithoutEmployeesInput
+  photoUpload?: Prisma.UploadCreateNestedOneWithoutPhotoOfInput
   manager?: Prisma.OrgEmployeeCreateNestedOneWithoutReportsInput
   reports?: Prisma.OrgEmployeeCreateNestedManyWithoutManagerInput
   boardScopes?: Prisma.EmployeeBoardCreateNestedManyWithoutScopeInput
@@ -1828,6 +2114,8 @@ export type OrgEmployeeUncheckedCreateWithoutAliasesInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoUploadId?: string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   reports?: Prisma.OrgEmployeeUncheckedCreateNestedManyWithoutManagerInput
@@ -1881,9 +2169,11 @@ export type OrgEmployeeUpdateWithoutAliasesInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orgTree?: Prisma.OrgTreeUpdateOneRequiredWithoutEmployeesNestedInput
+  photoUpload?: Prisma.UploadUpdateOneWithoutPhotoOfNestedInput
   manager?: Prisma.OrgEmployeeUpdateOneWithoutReportsNestedInput
   reports?: Prisma.OrgEmployeeUpdateManyWithoutManagerNestedInput
   boardScopes?: Prisma.EmployeeBoardUpdateManyWithoutScopeNestedInput
@@ -1922,6 +2212,8 @@ export type OrgEmployeeUncheckedUpdateWithoutAliasesInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   reports?: Prisma.OrgEmployeeUncheckedUpdateManyWithoutManagerNestedInput
@@ -1959,9 +2251,11 @@ export type OrgEmployeeCreateWithoutCommentsInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   orgTree: Prisma.OrgTreeCreateNestedOneWithoutEmployeesInput
+  photoUpload?: Prisma.UploadCreateNestedOneWithoutPhotoOfInput
   manager?: Prisma.OrgEmployeeCreateNestedOneWithoutReportsInput
   reports?: Prisma.OrgEmployeeCreateNestedManyWithoutManagerInput
   aliases?: Prisma.OrgEmployeeAliasCreateNestedManyWithoutEmployeeInput
@@ -2000,6 +2294,8 @@ export type OrgEmployeeUncheckedCreateWithoutCommentsInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoUploadId?: string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   reports?: Prisma.OrgEmployeeUncheckedCreateNestedManyWithoutManagerInput
@@ -2053,9 +2349,11 @@ export type OrgEmployeeUpdateWithoutCommentsInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orgTree?: Prisma.OrgTreeUpdateOneRequiredWithoutEmployeesNestedInput
+  photoUpload?: Prisma.UploadUpdateOneWithoutPhotoOfNestedInput
   manager?: Prisma.OrgEmployeeUpdateOneWithoutReportsNestedInput
   reports?: Prisma.OrgEmployeeUpdateManyWithoutManagerNestedInput
   aliases?: Prisma.OrgEmployeeAliasUpdateManyWithoutEmployeeNestedInput
@@ -2094,6 +2392,8 @@ export type OrgEmployeeUncheckedUpdateWithoutCommentsInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   reports?: Prisma.OrgEmployeeUncheckedUpdateManyWithoutManagerNestedInput
@@ -2131,9 +2431,11 @@ export type OrgEmployeeCreateWithoutBoardScopesInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   orgTree: Prisma.OrgTreeCreateNestedOneWithoutEmployeesInput
+  photoUpload?: Prisma.UploadCreateNestedOneWithoutPhotoOfInput
   manager?: Prisma.OrgEmployeeCreateNestedOneWithoutReportsInput
   reports?: Prisma.OrgEmployeeCreateNestedManyWithoutManagerInput
   aliases?: Prisma.OrgEmployeeAliasCreateNestedManyWithoutEmployeeInput
@@ -2172,6 +2474,8 @@ export type OrgEmployeeUncheckedCreateWithoutBoardScopesInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoUploadId?: string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   reports?: Prisma.OrgEmployeeUncheckedCreateNestedManyWithoutManagerInput
@@ -2225,9 +2529,11 @@ export type OrgEmployeeUpdateWithoutBoardScopesInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orgTree?: Prisma.OrgTreeUpdateOneRequiredWithoutEmployeesNestedInput
+  photoUpload?: Prisma.UploadUpdateOneWithoutPhotoOfNestedInput
   manager?: Prisma.OrgEmployeeUpdateOneWithoutReportsNestedInput
   reports?: Prisma.OrgEmployeeUpdateManyWithoutManagerNestedInput
   aliases?: Prisma.OrgEmployeeAliasUpdateManyWithoutEmployeeNestedInput
@@ -2266,6 +2572,8 @@ export type OrgEmployeeUncheckedUpdateWithoutBoardScopesInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   reports?: Prisma.OrgEmployeeUncheckedUpdateManyWithoutManagerNestedInput
@@ -2303,9 +2611,11 @@ export type OrgEmployeeCreateWithoutBoardMembersInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   orgTree: Prisma.OrgTreeCreateNestedOneWithoutEmployeesInput
+  photoUpload?: Prisma.UploadCreateNestedOneWithoutPhotoOfInput
   manager?: Prisma.OrgEmployeeCreateNestedOneWithoutReportsInput
   reports?: Prisma.OrgEmployeeCreateNestedManyWithoutManagerInput
   aliases?: Prisma.OrgEmployeeAliasCreateNestedManyWithoutEmployeeInput
@@ -2344,6 +2654,8 @@ export type OrgEmployeeUncheckedCreateWithoutBoardMembersInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoUploadId?: string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   reports?: Prisma.OrgEmployeeUncheckedCreateNestedManyWithoutManagerInput
@@ -2397,9 +2709,11 @@ export type OrgEmployeeUpdateWithoutBoardMembersInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orgTree?: Prisma.OrgTreeUpdateOneRequiredWithoutEmployeesNestedInput
+  photoUpload?: Prisma.UploadUpdateOneWithoutPhotoOfNestedInput
   manager?: Prisma.OrgEmployeeUpdateOneWithoutReportsNestedInput
   reports?: Prisma.OrgEmployeeUpdateManyWithoutManagerNestedInput
   aliases?: Prisma.OrgEmployeeAliasUpdateManyWithoutEmployeeNestedInput
@@ -2438,6 +2752,8 @@ export type OrgEmployeeUncheckedUpdateWithoutBoardMembersInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   reports?: Prisma.OrgEmployeeUncheckedUpdateManyWithoutManagerNestedInput
@@ -2475,9 +2791,11 @@ export type OrgEmployeeCreateWithoutEmployeeFieldValuesInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   orgTree: Prisma.OrgTreeCreateNestedOneWithoutEmployeesInput
+  photoUpload?: Prisma.UploadCreateNestedOneWithoutPhotoOfInput
   manager?: Prisma.OrgEmployeeCreateNestedOneWithoutReportsInput
   reports?: Prisma.OrgEmployeeCreateNestedManyWithoutManagerInput
   aliases?: Prisma.OrgEmployeeAliasCreateNestedManyWithoutEmployeeInput
@@ -2516,6 +2834,8 @@ export type OrgEmployeeUncheckedCreateWithoutEmployeeFieldValuesInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoUploadId?: string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   reports?: Prisma.OrgEmployeeUncheckedCreateNestedManyWithoutManagerInput
@@ -2569,9 +2889,11 @@ export type OrgEmployeeUpdateWithoutEmployeeFieldValuesInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orgTree?: Prisma.OrgTreeUpdateOneRequiredWithoutEmployeesNestedInput
+  photoUpload?: Prisma.UploadUpdateOneWithoutPhotoOfNestedInput
   manager?: Prisma.OrgEmployeeUpdateOneWithoutReportsNestedInput
   reports?: Prisma.OrgEmployeeUpdateManyWithoutManagerNestedInput
   aliases?: Prisma.OrgEmployeeAliasUpdateManyWithoutEmployeeNestedInput
@@ -2610,6 +2932,8 @@ export type OrgEmployeeUncheckedUpdateWithoutEmployeeFieldValuesInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   reports?: Prisma.OrgEmployeeUncheckedUpdateManyWithoutManagerNestedInput
@@ -2648,6 +2972,8 @@ export type OrgEmployeeCreateManyOrgTreeInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoUploadId?: string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -2679,8 +3005,10 @@ export type OrgEmployeeUpdateWithoutOrgTreeInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  photoUpload?: Prisma.UploadUpdateOneWithoutPhotoOfNestedInput
   manager?: Prisma.OrgEmployeeUpdateOneWithoutReportsNestedInput
   reports?: Prisma.OrgEmployeeUpdateManyWithoutManagerNestedInput
   aliases?: Prisma.OrgEmployeeAliasUpdateManyWithoutEmployeeNestedInput
@@ -2719,6 +3047,8 @@ export type OrgEmployeeUncheckedUpdateWithoutOrgTreeInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   reports?: Prisma.OrgEmployeeUncheckedUpdateManyWithoutManagerNestedInput
@@ -2758,6 +3088,8 @@ export type OrgEmployeeUncheckedUpdateManyWithoutOrgTreeInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -2790,6 +3122,8 @@ export type OrgEmployeeCreateManyManagerInput = {
   syncedAt?: Date | string | null
   msGraphId?: string | null
   departedAt?: Date | string | null
+  photoUploadId?: string | null
+  photoSource?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -2821,9 +3155,11 @@ export type OrgEmployeeUpdateWithoutManagerInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orgTree?: Prisma.OrgTreeUpdateOneRequiredWithoutEmployeesNestedInput
+  photoUpload?: Prisma.UploadUpdateOneWithoutPhotoOfNestedInput
   reports?: Prisma.OrgEmployeeUpdateManyWithoutManagerNestedInput
   aliases?: Prisma.OrgEmployeeAliasUpdateManyWithoutEmployeeNestedInput
   boardScopes?: Prisma.EmployeeBoardUpdateManyWithoutScopeNestedInput
@@ -2861,6 +3197,8 @@ export type OrgEmployeeUncheckedUpdateWithoutManagerInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   reports?: Prisma.OrgEmployeeUncheckedUpdateManyWithoutManagerNestedInput
@@ -2900,6 +3238,8 @@ export type OrgEmployeeUncheckedUpdateManyWithoutManagerInput = {
   syncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   msGraphId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   departedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photoUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  photoSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -3018,9 +3358,12 @@ export type OrgEmployeeSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   syncedAt?: boolean
   msGraphId?: boolean
   departedAt?: boolean
+  photoUploadId?: boolean
+  photoSource?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   orgTree?: boolean | Prisma.OrgTreeDefaultArgs<ExtArgs>
+  photoUpload?: boolean | Prisma.OrgEmployee$photoUploadArgs<ExtArgs>
   manager?: boolean | Prisma.OrgEmployee$managerArgs<ExtArgs>
   reports?: boolean | Prisma.OrgEmployee$reportsArgs<ExtArgs>
   aliases?: boolean | Prisma.OrgEmployee$aliasesArgs<ExtArgs>
@@ -3061,9 +3404,12 @@ export type OrgEmployeeSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   syncedAt?: boolean
   msGraphId?: boolean
   departedAt?: boolean
+  photoUploadId?: boolean
+  photoSource?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   orgTree?: boolean | Prisma.OrgTreeDefaultArgs<ExtArgs>
+  photoUpload?: boolean | Prisma.OrgEmployee$photoUploadArgs<ExtArgs>
   manager?: boolean | Prisma.OrgEmployee$managerArgs<ExtArgs>
 }, ExtArgs["result"]["orgEmployee"]>
 
@@ -3096,9 +3442,12 @@ export type OrgEmployeeSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   syncedAt?: boolean
   msGraphId?: boolean
   departedAt?: boolean
+  photoUploadId?: boolean
+  photoSource?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   orgTree?: boolean | Prisma.OrgTreeDefaultArgs<ExtArgs>
+  photoUpload?: boolean | Prisma.OrgEmployee$photoUploadArgs<ExtArgs>
   manager?: boolean | Prisma.OrgEmployee$managerArgs<ExtArgs>
 }, ExtArgs["result"]["orgEmployee"]>
 
@@ -3131,13 +3480,16 @@ export type OrgEmployeeSelectScalar = {
   syncedAt?: boolean
   msGraphId?: boolean
   departedAt?: boolean
+  photoUploadId?: boolean
+  photoSource?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type OrgEmployeeOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orgTreeId" | "externalId" | "name" | "role" | "email" | "managerExternalId" | "managerId" | "position" | "isVacancy" | "matched" | "isActive" | "lastContributionAt" | "hasAssignment" | "employeeDisplayId" | "businessTitle" | "hireDate" | "location" | "employeeType" | "timeType" | "phone" | "workAddress" | "salaryCurrent" | "salaryCurrency" | "statsJson" | "syncedAt" | "msGraphId" | "departedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["orgEmployee"]>
+export type OrgEmployeeOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orgTreeId" | "externalId" | "name" | "role" | "email" | "managerExternalId" | "managerId" | "position" | "isVacancy" | "matched" | "isActive" | "lastContributionAt" | "hasAssignment" | "employeeDisplayId" | "businessTitle" | "hireDate" | "location" | "employeeType" | "timeType" | "phone" | "workAddress" | "salaryCurrent" | "salaryCurrency" | "statsJson" | "syncedAt" | "msGraphId" | "departedAt" | "photoUploadId" | "photoSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgEmployee"]>
 export type OrgEmployeeInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   orgTree?: boolean | Prisma.OrgTreeDefaultArgs<ExtArgs>
+  photoUpload?: boolean | Prisma.OrgEmployee$photoUploadArgs<ExtArgs>
   manager?: boolean | Prisma.OrgEmployee$managerArgs<ExtArgs>
   reports?: boolean | Prisma.OrgEmployee$reportsArgs<ExtArgs>
   aliases?: boolean | Prisma.OrgEmployee$aliasesArgs<ExtArgs>
@@ -3150,10 +3502,12 @@ export type OrgEmployeeInclude<ExtArgs extends runtime.Types.Extensions.Internal
 }
 export type OrgEmployeeIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   orgTree?: boolean | Prisma.OrgTreeDefaultArgs<ExtArgs>
+  photoUpload?: boolean | Prisma.OrgEmployee$photoUploadArgs<ExtArgs>
   manager?: boolean | Prisma.OrgEmployee$managerArgs<ExtArgs>
 }
 export type OrgEmployeeIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   orgTree?: boolean | Prisma.OrgTreeDefaultArgs<ExtArgs>
+  photoUpload?: boolean | Prisma.OrgEmployee$photoUploadArgs<ExtArgs>
   manager?: boolean | Prisma.OrgEmployee$managerArgs<ExtArgs>
 }
 
@@ -3161,6 +3515,7 @@ export type $OrgEmployeePayload<ExtArgs extends runtime.Types.Extensions.Interna
   name: "OrgEmployee"
   objects: {
     orgTree: Prisma.$OrgTreePayload<ExtArgs>
+    photoUpload: Prisma.$UploadPayload<ExtArgs> | null
     manager: Prisma.$OrgEmployeePayload<ExtArgs> | null
     reports: Prisma.$OrgEmployeePayload<ExtArgs>[]
     aliases: Prisma.$OrgEmployeeAliasPayload<ExtArgs>[]
@@ -3199,6 +3554,14 @@ export type $OrgEmployeePayload<ExtArgs extends runtime.Types.Extensions.Interna
     syncedAt: Date | null
     msGraphId: string | null
     departedAt: Date | null
+    /**
+     * The stored copy of this person's photo (downloaded at import — source URLs expire).
+     */
+    photoUploadId: string | null
+    /**
+     * Source URL WITHOUT its query string; equal on re-import means "unchanged, don't re-download".
+     */
+    photoSource: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["orgEmployee"]>
@@ -3596,6 +3959,7 @@ readonly fields: OrgEmployeeFieldRefs;
 export interface Prisma__OrgEmployeeClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   orgTree<T extends Prisma.OrgTreeDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrgTreeDefaultArgs<ExtArgs>>): Prisma.Prisma__OrgTreeClient<runtime.Types.Result.GetResult<Prisma.$OrgTreePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  photoUpload<T extends Prisma.OrgEmployee$photoUploadArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrgEmployee$photoUploadArgs<ExtArgs>>): Prisma.Prisma__UploadClient<runtime.Types.Result.GetResult<Prisma.$UploadPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   manager<T extends Prisma.OrgEmployee$managerArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrgEmployee$managerArgs<ExtArgs>>): Prisma.Prisma__OrgEmployeeClient<runtime.Types.Result.GetResult<Prisma.$OrgEmployeePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   reports<T extends Prisma.OrgEmployee$reportsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrgEmployee$reportsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrgEmployeePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   aliases<T extends Prisma.OrgEmployee$aliasesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrgEmployee$aliasesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrgEmployeeAliasPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -3661,6 +4025,8 @@ export interface OrgEmployeeFieldRefs {
   readonly syncedAt: Prisma.FieldRef<"OrgEmployee", 'DateTime'>
   readonly msGraphId: Prisma.FieldRef<"OrgEmployee", 'String'>
   readonly departedAt: Prisma.FieldRef<"OrgEmployee", 'DateTime'>
+  readonly photoUploadId: Prisma.FieldRef<"OrgEmployee", 'String'>
+  readonly photoSource: Prisma.FieldRef<"OrgEmployee", 'String'>
   readonly createdAt: Prisma.FieldRef<"OrgEmployee", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"OrgEmployee", 'DateTime'>
 }
@@ -4061,6 +4427,25 @@ export type OrgEmployeeDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Limit how many OrgEmployees to delete.
    */
   limit?: number
+}
+
+/**
+ * OrgEmployee.photoUpload
+ */
+export type OrgEmployee$photoUploadArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Upload
+   */
+  select?: Prisma.UploadSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Upload
+   */
+  omit?: Prisma.UploadOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UploadInclude<ExtArgs> | null
+  where?: Prisma.UploadWhereInput
 }
 
 /**

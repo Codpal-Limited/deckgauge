@@ -17,7 +17,8 @@ import {
 } from './BoardAddSource';
 import { SourcesEmptyState } from './SourcesEmptyState';
 import type { GitHubInstanceOption, BulkAttachResult } from './GitHubSourcePicker';
-import { hydrateJira, hydrateGitHub, hydrateAdo, hydrateGitLab } from './hydrate';
+import { hydrateJira, hydrateGitHub, hydrateAdo, hydrateGitLab, hydrateBitbucket } from './hydrate';
+import type { BitbucketInstanceOption, BitbucketAttachResult } from './BitbucketSourcePicker';
 import type { BoardStatusOption } from './StatusMappingEditor';
 import { fetchBoardSourceHealth, type SourceHealth } from '../../actions/board-sync';
 import {
@@ -38,6 +39,11 @@ import {
   ensureAdoProjectSync,
   ensureGitLabProjectSync,
   listBoardGitHubSources,
+  listBoardBitbucketSources,
+  detachBoardBitbucketSource,
+  bulkAttachBoardBitbucketSources,
+  listBitbucketRemoteRepos,
+  type BitbucketBulkAttachRequest,
 } from '../../actions/board-sources';
 import {
   updateAdoProjectSync,
@@ -45,6 +51,8 @@ import {
   refreshGitHubToken,
   refreshAdoToken,
   refreshGitLabToken,
+  refreshBitbucketToken,
+  updateBitbucketRepoSync,
 } from '../../actions/connections';
 import type { RemoteProjectsResult } from '../../actions/board-sources';
 import { bulkAddGitHubRepos } from '../../actions/github-sources';
@@ -65,6 +73,8 @@ interface Props {
   boardStatuses: BoardStatusOption[];
   /** GitHub connections available to this board; enables the live repo picker. */
   githubInstances?: GitHubInstanceOption[];
+  /** Bitbucket connections available to this board; enables the project-grouped picker. */
+  bitbucketInstances?: BitbucketInstanceOption[];
   /**
    * Whether the viewer holds the organization ADMIN role, which is what
    * rotating a connection's token needs (`POST
@@ -85,6 +95,7 @@ export function BoardSourcesList({
   readyProviders,
   boardStatuses,
   githubInstances = [],
+  bitbucketInstances = [],
   canManageConnections = true,
 }: Props) {
   const [sources, setSources] = useState<SourceShape[]>(initialSources);
@@ -120,7 +131,9 @@ export function BoardSourcesList({
     readyProviders.jira.length === 0 &&
     readyProviders.github.length === 0 &&
     readyProviders.ado.length === 0 &&
-    readyProviders.gitlab.length === 0;
+    readyProviders.gitlab.length === 0 &&
+    readyProviders.bitbucket.length === 0 &&
+    bitbucketInstances.length === 0;
 
   async function handleSave(
     source: SourceShape,
@@ -176,6 +189,18 @@ export function BoardSourcesList({
         ...row,
         gitlabProjectSync: { projectPath: source.name, gitlabInstanceId: source.instanceId },
       });
+    } else if (source.provider === 'bitbucket') {
+      // Bitbucket's only settings are the ingest switches on the shared repo
+      // sync; the board source itself has nothing editable.
+      const row = (await updateBitbucketRepoSync(source.bitbucketRepoSyncId, patch)) as Record<
+        string,
+        unknown
+      >;
+      updated = hydrateBitbucket({
+        id: source.id,
+        bitbucketRepoSyncId: source.bitbucketRepoSyncId,
+        bitbucketRepoSync: { ...row, repoFullName: source.name, bitbucketInstanceId: source.instanceId },
+      });
     }
     if (updated) {
       const finalUpdated = updated;
@@ -204,6 +229,7 @@ export function BoardSourcesList({
     if (source.provider === 'github') await detachBoardGitHubSource(boardId, source.id);
     if (source.provider === 'ado') await detachBoardAdoSource(boardId, source.id);
     if (source.provider === 'gitlab') await detachBoardGitLabSource(boardId, source.id);
+    if (source.provider === 'bitbucket') await detachBoardBitbucketSource(boardId, source.id);
     setSources((prev) => prev.filter((s) => s.id !== source.id));
   }
 
@@ -285,6 +311,24 @@ export function BoardSourcesList({
     }
   }
 
+  // Bitbucket bulk attach. Attaching enqueues nothing, so a board sync is started
+  // right after — the user picked repos to see their data, not to wait 15 min.
+  async function handleBulkAttachBitbucket(
+    req: BitbucketBulkAttachRequest,
+  ): Promise<BitbucketAttachResult> {
+    try {
+      const result = await bulkAttachBoardBitbucketSources(boardId, req);
+      if (!result.ok) return { ok: false, error: result.error };
+      const rows = await listBoardBitbucketSources(boardId);
+      const bbSources = rows.map((row) => hydrateBitbucket(row as unknown as Record<string, unknown>));
+      setSources((prev) => [...prev.filter((s) => s.provider !== 'bitbucket'), ...bbSources]);
+      void runSyncAfterSave(boardId).then(() => router.refresh());
+      return { ok: true, message: `Added ${result.addedCount}, skipped ${result.skippedCount}.` };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : 'Could not attach repositories.' };
+    }
+  }
+
   // Replace an expired connection token via the shipped validate-before-swap
   // refresh endpoints (the API tests the new token and only swaps on success).
   async function handleReplaceToken(
@@ -301,6 +345,8 @@ export function BoardSourcesList({
         return refreshAdoToken(connectionId, token);
       case 'gitlab':
         return refreshGitLabToken(connectionId, token);
+      case 'bitbucket':
+        return refreshBitbucketToken(connectionId, token);
     }
   }
 
@@ -390,6 +436,9 @@ export function BoardSourcesList({
           githubInstances={githubInstances}
           onBulkAttachGitHub={handleBulkAttachGitHub}
           onReplaceToken={canManageConnections ? handleReplaceToken : undefined}
+          bitbucketInstances={bitbucketInstances}
+          loadBitbucketRepos={listBitbucketRemoteRepos}
+          onBulkAttachBitbucket={handleBulkAttachBitbucket}
         />
       )}
 

@@ -173,7 +173,7 @@ export const ADVISOR_TOOL_SPECS: AdvisorToolSpec[] = [
     name: 'get_ticket_timeline',
     minRole: 'VIEWER',
     mutates: false,
-    description: 'Unified activity timeline (Jira/GitHub/GitLab/ADO) for one ticket key.',
+    description: 'Unified activity timeline (Jira/GitHub/GitLab/ADO/Bitbucket) for one ticket key.',
     inputSchema: z.object({ ticketKey: z.string().min(1) }),
     handler: ({ ticketKey }, { scope }, { intel }) => intel.getTicketTimeline(ticketKey, scope),
   },

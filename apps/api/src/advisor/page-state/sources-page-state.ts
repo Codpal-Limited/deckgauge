@@ -116,7 +116,7 @@ export async function resolveSourcesPageState(deps: PageStateDeps): Promise<Page
   const visible = visibleConnectionWhere(caller);
   const scope = { organizationId: caller.organizationId, ...visible };
 
-  const [jira, github, gitlab, ado] = await Promise.all([
+  const [jira, github, gitlab, ado, bitbucket] = await Promise.all([
     deps.prisma.jiraProjectSync.findMany({
       ...BOUND,
       where: { jiraInstance: scope },
@@ -139,6 +139,11 @@ export async function resolveSourcesPageState(deps: PageStateDeps): Promise<Page
       ...BOUND,
       where: { azureDevOpsInstance: scope },
       include: { ...withBoardCount, azureDevOpsInstance: { select: { name: true } } },
+    }),
+    deps.prisma.bitbucketRepoSync.findMany({
+      ...BOUND,
+      where: { bitbucketInstance: scope },
+      include: { ...withBoardCount, bitbucketInstance: { select: { name: true } } },
     }),
   ]);
 
@@ -198,6 +203,22 @@ export async function resolveSourcesPageState(deps: PageStateDeps): Promise<Page
       syncRepos: row.syncRepos,
       boardCount: row._count.boardSources,
     })),
+    ...bitbucket.slice(0, MAX_CONFIG_ROWS).map((row) => ({
+      provider: 'bitbucket' as const,
+      label: row.repoFullName,
+      instance: row.bitbucketInstance.name,
+      // The Bitbucket project the repo sits in (e.g. "FE") — the grouping the
+      // source picker shows, so the model can talk about "the FE repos".
+      project: row.projectKey,
+      // Two watermarks, because deployments stream newest-first on their own
+      // 90-day window: lastSyncedAt covers PRs + commits only.
+      lastSyncedAt: iso(row.lastSyncedAt),
+      deploymentsLastSyncedAt: iso(row.lastDeploymentSyncAt),
+      syncPrs: row.syncPrs,
+      syncCommits: row.syncCommits,
+      syncDeployments: row.syncDeployments,
+      boardCount: row._count.boardSources,
+    })),
   ];
 
   const truncatedProviders = [
@@ -205,6 +226,7 @@ export async function resolveSourcesPageState(deps: PageStateDeps): Promise<Page
     github.length > MAX_CONFIG_ROWS ? 'github' : null,
     gitlab.length > MAX_CONFIG_ROWS ? 'gitlab' : null,
     ado.length > MAX_CONFIG_ROWS ? 'ado' : null,
+    bitbucket.length > MAX_CONFIG_ROWS ? 'bitbucket' : null,
   ].filter((provider): provider is string => provider !== null);
 
   return {
@@ -217,8 +239,8 @@ export async function resolveSourcesPageState(deps: PageStateDeps): Promise<Page
       note:
         'This is every source configured on this Deckgauge instance, not one board\'s subset, and these are the last-known stored sync stamps rather than a live connection check. ' +
         'boardCount is how many boards each source is attached to: a source with boardCount 0 is configured but feeds no board, which is the usual reason a board stays empty while its source looks healthy. ' +
-        'Each provider records different stamps: GitHub keeps one watermark per feed with no single per-feed last-synced time — its lastSuccessAt is the last successful run of the bulk repo sync, its tier sets how often that runs (hot hourly, warm every 6h, cold daily), and a non-null disabledAt means the repo is skipped entirely, so a frozen watermark there is expected rather than a failure. The Azure DevOps last-synced stamp covers PR and commit intelligence only — a project that syncs work items but has no repositories never sets it — and that intelligence is opt-in, so syncPrs/syncCommits off, or an empty syncRepos with syncAllRepos false, means it was never meant to run. ' +
-        'Only GitHub records an error: lastErrorAt and lastErrorMessage exist on the GitHub sync record alone. The Jira, GitLab and Azure DevOps sync records have no error columns at all, so for those providers the absence of an error here is NOT evidence that their syncs succeeded — this tool cannot see whether they failed. Say so rather than implying you checked.',
+        'Each provider records different stamps: GitHub keeps one watermark per feed with no single per-feed last-synced time — its lastSuccessAt is the last successful run of the bulk repo sync, its tier sets how often that runs (hot hourly, warm every 6h, cold daily), and a non-null disabledAt means the repo is skipped entirely, so a frozen watermark there is expected rather than a failure. The Azure DevOps last-synced stamp covers PR and commit intelligence only — a project that syncs work items but has no repositories never sets it — and that intelligence is opt-in, so syncPrs/syncCommits off, or an empty syncRepos with syncAllRepos false, means it was never meant to run. Bitbucket keeps lastSyncedAt for pull requests and commits and a separate deploymentsLastSyncedAt for deployments. ' +
+        'Only GitHub records an error: lastErrorAt and lastErrorMessage exist on the GitHub sync record alone. The Jira, GitLab, Azure DevOps and Bitbucket sync records have no error columns at all, so for those providers the absence of an error here is NOT evidence that their syncs succeeded — this tool cannot see whether they failed. Say so rather than implying you checked.',
       truncationNote: `${TRUNCATION_NOTE} The cap here is per provider, so truncatedProviders names the providers whose lists were capped; a provider absent from it is complete.`,
     },
   };

@@ -13,6 +13,8 @@ const MIME_TO_EXT: Record<string, string> = {
 interface SaveFileInput {
   projectId?: string;
   orgEmployeeId?: string;
+  /** A profile photo: owned through `User.avatarUploadId`, not a project or employee. */
+  avatar?: boolean;
   mimeType: string;
   buffer: Buffer;
 }
@@ -44,7 +46,7 @@ export class UploadService {
   }
 
   async saveFile(input: SaveFileInput): Promise<UploadRow> {
-    if (!input.projectId && !input.orgEmployeeId) {
+    if (!input.avatar && !input.projectId && !input.orgEmployeeId) {
       throw new Error('projectId or orgEmployeeId is required');
     }
 
@@ -82,10 +84,24 @@ export class UploadService {
     return row as UploadRow | null;
   }
 
+  /** Remove one upload: its file (a missing file is fine) and its row. */
+  async deleteUpload(id: string): Promise<void> {
+    const row = await this.prisma.upload.findUnique({ where: { id } });
+    if (!row) return;
+    await unlink(join(this.uploadsDir, row.filename)).catch((err: NodeJS.ErrnoException) => {
+      if (err.code !== 'ENOENT') throw err;
+    });
+    await this.prisma.upload.delete({ where: { id } });
+  }
+
   async linkToComment(commentId: string, uploadIds: string[]): Promise<void> {
     if (uploadIds.length === 0) return;
     await this.prisma.upload.updateMany({
-      where: { id: { in: uploadIds } },
+      // Never a profile photo or an imported org-chart photo: deleting the
+      // comment deletes its attachments, so linking one would let any
+      // commenter remove someone else's picture. Their ids are visible to every
+      // org-chart viewer, so this cannot rely on them being unguessable.
+      where: { id: { in: uploadIds }, avatarOf: { is: null }, photoOf: { is: null } },
       data: { commentId },
     });
   }
@@ -106,7 +122,11 @@ export class UploadService {
   async linkToEmployeeComment(employeeCommentId: string, uploadIds: string[]): Promise<void> {
     if (uploadIds.length === 0) return;
     await this.prisma.upload.updateMany({
-      where: { id: { in: uploadIds } },
+      // Never a profile photo or an imported org-chart photo: deleting the
+      // comment deletes its attachments, so linking one would let any
+      // commenter remove someone else's picture. Their ids are visible to every
+      // org-chart viewer, so this cannot rely on them being unguessable.
+      where: { id: { in: uploadIds }, avatarOf: { is: null }, photoOf: { is: null } },
       data: { employeeCommentId },
     });
   }

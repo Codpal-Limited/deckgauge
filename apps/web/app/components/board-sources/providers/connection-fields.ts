@@ -45,6 +45,14 @@ export const PROVIDER_CONNECTION_FIELDS: Record<Provider, ConnectionField[]> = {
     { key: 'baseUrl', label: 'API base URL (optional)', type: 'url', required: false, placeholder: 'https://gitlab.com/api/v4' },
     { key: 'accessToken', label: 'Access token', type: 'password', required: true },
   ],
+  bitbucket: [
+    { key: 'name', label: 'Name', type: 'text', required: true, placeholder: 'Bitbucket' },
+    { key: 'email', label: 'Atlassian account email', type: 'text', required: true, placeholder: 'you@company.com' },
+    { key: 'apiToken', label: 'API token (with Bitbucket scopes)', type: 'password', required: true },
+    // Optional on purpose: the API detects it from the token when the token sees
+    // one workspace, and asks for a choice (WORKSPACE_REQUIRED) when it sees several.
+    { key: 'workspace', label: 'Workspace (optional)', type: 'text', required: false, placeholder: 'detected from the token' },
+  ],
 };
 
 export function requiredKeys(provider: Provider): string[] {

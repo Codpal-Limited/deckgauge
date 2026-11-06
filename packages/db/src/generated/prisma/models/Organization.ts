@@ -192,6 +192,7 @@ export type OrganizationWhereInput = {
   githubInstances?: Prisma.GitHubInstanceListRelationFilter
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceListRelationFilter
   gitlabInstances?: Prisma.GitLabInstanceListRelationFilter
+  bitbucketInstances?: Prisma.BitbucketInstanceListRelationFilter
   advisorConfig?: Prisma.XOR<Prisma.AdvisorConfigNullableScalarRelationFilter, Prisma.AdvisorConfigWhereInput> | null
   timesheetStatusRules?: Prisma.TimesheetStatusRuleListRelationFilter
   retiredJiraProjects?: Prisma.RetiredJiraProjectListRelationFilter
@@ -220,6 +221,7 @@ export type OrganizationOrderByWithRelationInput = {
   githubInstances?: Prisma.GitHubInstanceOrderByRelationAggregateInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceOrderByRelationAggregateInput
   gitlabInstances?: Prisma.GitLabInstanceOrderByRelationAggregateInput
+  bitbucketInstances?: Prisma.BitbucketInstanceOrderByRelationAggregateInput
   advisorConfig?: Prisma.AdvisorConfigOrderByWithRelationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleOrderByRelationAggregateInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectOrderByRelationAggregateInput
@@ -251,6 +253,7 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   githubInstances?: Prisma.GitHubInstanceListRelationFilter
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceListRelationFilter
   gitlabInstances?: Prisma.GitLabInstanceListRelationFilter
+  bitbucketInstances?: Prisma.BitbucketInstanceListRelationFilter
   advisorConfig?: Prisma.XOR<Prisma.AdvisorConfigNullableScalarRelationFilter, Prisma.AdvisorConfigWhereInput> | null
   timesheetStatusRules?: Prisma.TimesheetStatusRuleListRelationFilter
   retiredJiraProjects?: Prisma.RetiredJiraProjectListRelationFilter
@@ -301,6 +304,7 @@ export type OrganizationCreateInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -329,6 +333,7 @@ export type OrganizationUncheckedCreateInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -357,6 +362,7 @@ export type OrganizationUpdateInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -385,6 +391,7 @@ export type OrganizationUncheckedUpdateInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -584,6 +591,20 @@ export type OrganizationUpdateOneRequiredWithoutGitlabInstancesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutGitlabInstancesInput, Prisma.OrganizationUpdateWithoutGitlabInstancesInput>, Prisma.OrganizationUncheckedUpdateWithoutGitlabInstancesInput>
 }
 
+export type OrganizationCreateNestedOneWithoutBitbucketInstancesInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutBitbucketInstancesInput, Prisma.OrganizationUncheckedCreateWithoutBitbucketInstancesInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutBitbucketInstancesInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutBitbucketInstancesNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutBitbucketInstancesInput, Prisma.OrganizationUncheckedCreateWithoutBitbucketInstancesInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutBitbucketInstancesInput
+  upsert?: Prisma.OrganizationUpsertWithoutBitbucketInstancesInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutBitbucketInstancesInput, Prisma.OrganizationUpdateWithoutBitbucketInstancesInput>, Prisma.OrganizationUncheckedUpdateWithoutBitbucketInstancesInput>
+}
+
 export type OrganizationCreateNestedOneWithoutPrJiraLinksInput = {
   create?: Prisma.XOR<Prisma.OrganizationCreateWithoutPrJiraLinksInput, Prisma.OrganizationUncheckedCreateWithoutPrJiraLinksInput>
   connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutPrJiraLinksInput
@@ -753,6 +774,7 @@ export type OrganizationCreateWithoutMembershipsInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -780,6 +802,7 @@ export type OrganizationUncheckedCreateWithoutMembershipsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -823,6 +846,7 @@ export type OrganizationUpdateWithoutMembershipsInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -850,6 +874,7 @@ export type OrganizationUncheckedUpdateWithoutMembershipsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -877,6 +902,7 @@ export type OrganizationCreateWithoutBoardsInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -904,6 +930,7 @@ export type OrganizationUncheckedCreateWithoutBoardsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -947,6 +974,7 @@ export type OrganizationUpdateWithoutBoardsInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -974,6 +1002,7 @@ export type OrganizationUncheckedUpdateWithoutBoardsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1001,6 +1030,7 @@ export type OrganizationCreateWithoutJiraInstancesInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -1028,6 +1058,7 @@ export type OrganizationUncheckedCreateWithoutJiraInstancesInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1071,6 +1102,7 @@ export type OrganizationUpdateWithoutJiraInstancesInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -1098,6 +1130,7 @@ export type OrganizationUncheckedUpdateWithoutJiraInstancesInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1126,6 +1159,7 @@ export type OrganizationCreateWithoutSyncRunsInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -1153,6 +1187,7 @@ export type OrganizationUncheckedCreateWithoutSyncRunsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1196,6 +1231,7 @@ export type OrganizationUpdateWithoutSyncRunsInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -1223,6 +1259,7 @@ export type OrganizationUncheckedUpdateWithoutSyncRunsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1249,6 +1286,7 @@ export type OrganizationCreateWithoutGithubInstancesInput = {
   jiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -1276,6 +1314,7 @@ export type OrganizationUncheckedCreateWithoutGithubInstancesInput = {
   jiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1319,6 +1358,7 @@ export type OrganizationUpdateWithoutGithubInstancesInput = {
   jiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -1346,6 +1386,7 @@ export type OrganizationUncheckedUpdateWithoutGithubInstancesInput = {
   jiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1373,6 +1414,7 @@ export type OrganizationCreateWithoutAzureDevOpsInstancesInput = {
   jiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOrganizationInput
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -1400,6 +1442,7 @@ export type OrganizationUncheckedCreateWithoutAzureDevOpsInstancesInput = {
   jiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1443,6 +1486,7 @@ export type OrganizationUpdateWithoutAzureDevOpsInstancesInput = {
   jiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOrganizationNestedInput
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -1470,6 +1514,7 @@ export type OrganizationUncheckedUpdateWithoutAzureDevOpsInstancesInput = {
   jiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1498,6 +1543,7 @@ export type OrganizationCreateWithoutDeveloperProfilesInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -1525,6 +1571,7 @@ export type OrganizationUncheckedCreateWithoutDeveloperProfilesInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1568,6 +1615,7 @@ export type OrganizationUpdateWithoutDeveloperProfilesInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -1595,6 +1643,7 @@ export type OrganizationUncheckedUpdateWithoutDeveloperProfilesInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1621,6 +1670,7 @@ export type OrganizationCreateWithoutComparisonsInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -1648,6 +1698,7 @@ export type OrganizationUncheckedCreateWithoutComparisonsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1691,6 +1742,7 @@ export type OrganizationUpdateWithoutComparisonsInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -1718,6 +1770,7 @@ export type OrganizationUncheckedUpdateWithoutComparisonsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1745,6 +1798,7 @@ export type OrganizationCreateWithoutGitlabInstancesInput = {
   jiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOrganizationInput
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -1772,6 +1826,7 @@ export type OrganizationUncheckedCreateWithoutGitlabInstancesInput = {
   jiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1815,6 +1870,7 @@ export type OrganizationUpdateWithoutGitlabInstancesInput = {
   jiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOrganizationNestedInput
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -1842,6 +1898,135 @@ export type OrganizationUncheckedUpdateWithoutGitlabInstancesInput = {
   jiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
+  timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
+  retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
+  prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
+  developerProfiles?: Prisma.DeveloperProfileUncheckedUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedUpdateManyWithoutOrganizationNestedInput
+  syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutOrganizationNestedInput
+  notifications?: Prisma.NotificationUncheckedUpdateManyWithoutOrganizationNestedInput
+  notificationPreferences?: Prisma.NotificationPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutBitbucketInstancesInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  memberships?: Prisma.OrgMembershipCreateNestedManyWithoutOrganizationInput
+  boards?: Prisma.BoardCreateNestedManyWithoutOrganizationInput
+  roadmaps?: Prisma.RoadmapCreateNestedManyWithoutOrganizationInput
+  orgTrees?: Prisma.OrgTreeCreateNestedManyWithoutOrganizationInput
+  comparisons?: Prisma.ComparisonCreateNestedManyWithoutOrganizationInput
+  boardFolders?: Prisma.BoardFolderCreateNestedManyWithoutOrganizationInput
+  jiraInstances?: Prisma.JiraInstanceCreateNestedManyWithoutOrganizationInput
+  githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
+  azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
+  gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
+  timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
+  retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
+  prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
+  developerProfiles?: Prisma.DeveloperProfileCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictCreateNestedManyWithoutOrganizationInput
+  syncRuns?: Prisma.SyncRunCreateNestedManyWithoutOrganizationInput
+  notifications?: Prisma.NotificationCreateNestedManyWithoutOrganizationInput
+  notificationPreferences?: Prisma.NotificationPreferenceCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutBitbucketInstancesInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  memberships?: Prisma.OrgMembershipUncheckedCreateNestedManyWithoutOrganizationInput
+  boards?: Prisma.BoardUncheckedCreateNestedManyWithoutOrganizationInput
+  roadmaps?: Prisma.RoadmapUncheckedCreateNestedManyWithoutOrganizationInput
+  orgTrees?: Prisma.OrgTreeUncheckedCreateNestedManyWithoutOrganizationInput
+  comparisons?: Prisma.ComparisonUncheckedCreateNestedManyWithoutOrganizationInput
+  boardFolders?: Prisma.BoardFolderUncheckedCreateNestedManyWithoutOrganizationInput
+  jiraInstances?: Prisma.JiraInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
+  timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
+  retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
+  prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
+  developerProfiles?: Prisma.DeveloperProfileUncheckedCreateNestedManyWithoutOrganizationInput
+  focusVerdicts?: Prisma.FocusVerdictUncheckedCreateNestedManyWithoutOrganizationInput
+  syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutOrganizationInput
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutOrganizationInput
+  notificationPreferences?: Prisma.NotificationPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUncheckedCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutBitbucketInstancesInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutBitbucketInstancesInput, Prisma.OrganizationUncheckedCreateWithoutBitbucketInstancesInput>
+}
+
+export type OrganizationUpsertWithoutBitbucketInstancesInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutBitbucketInstancesInput, Prisma.OrganizationUncheckedUpdateWithoutBitbucketInstancesInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutBitbucketInstancesInput, Prisma.OrganizationUncheckedCreateWithoutBitbucketInstancesInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutBitbucketInstancesInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutBitbucketInstancesInput, Prisma.OrganizationUncheckedUpdateWithoutBitbucketInstancesInput>
+}
+
+export type OrganizationUpdateWithoutBitbucketInstancesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.OrgMembershipUpdateManyWithoutOrganizationNestedInput
+  boards?: Prisma.BoardUpdateManyWithoutOrganizationNestedInput
+  roadmaps?: Prisma.RoadmapUpdateManyWithoutOrganizationNestedInput
+  orgTrees?: Prisma.OrgTreeUpdateManyWithoutOrganizationNestedInput
+  comparisons?: Prisma.ComparisonUpdateManyWithoutOrganizationNestedInput
+  boardFolders?: Prisma.BoardFolderUpdateManyWithoutOrganizationNestedInput
+  jiraInstances?: Prisma.JiraInstanceUpdateManyWithoutOrganizationNestedInput
+  githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
+  azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
+  gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
+  timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
+  retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
+  prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
+  developerProfiles?: Prisma.DeveloperProfileUpdateManyWithoutOrganizationNestedInput
+  focusVerdicts?: Prisma.FocusVerdictUpdateManyWithoutOrganizationNestedInput
+  syncRuns?: Prisma.SyncRunUpdateManyWithoutOrganizationNestedInput
+  notifications?: Prisma.NotificationUpdateManyWithoutOrganizationNestedInput
+  notificationPreferences?: Prisma.NotificationPreferenceUpdateManyWithoutOrganizationNestedInput
+  sourceStatusBuckets?: Prisma.SourceStatusBucketUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutBitbucketInstancesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.OrgMembershipUncheckedUpdateManyWithoutOrganizationNestedInput
+  boards?: Prisma.BoardUncheckedUpdateManyWithoutOrganizationNestedInput
+  roadmaps?: Prisma.RoadmapUncheckedUpdateManyWithoutOrganizationNestedInput
+  orgTrees?: Prisma.OrgTreeUncheckedUpdateManyWithoutOrganizationNestedInput
+  comparisons?: Prisma.ComparisonUncheckedUpdateManyWithoutOrganizationNestedInput
+  boardFolders?: Prisma.BoardFolderUncheckedUpdateManyWithoutOrganizationNestedInput
+  jiraInstances?: Prisma.JiraInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1870,6 +2055,7 @@ export type OrganizationCreateWithoutPrJiraLinksInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -1897,6 +2083,7 @@ export type OrganizationUncheckedCreateWithoutPrJiraLinksInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1940,6 +2127,7 @@ export type OrganizationUpdateWithoutPrJiraLinksInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -1967,6 +2155,7 @@ export type OrganizationUncheckedUpdateWithoutPrJiraLinksInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1993,6 +2182,7 @@ export type OrganizationCreateWithoutBoardFoldersInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -2020,6 +2210,7 @@ export type OrganizationUncheckedCreateWithoutBoardFoldersInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2063,6 +2254,7 @@ export type OrganizationUpdateWithoutBoardFoldersInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -2090,6 +2282,7 @@ export type OrganizationUncheckedUpdateWithoutBoardFoldersInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2117,6 +2310,7 @@ export type OrganizationCreateWithoutOrgTreesInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -2144,6 +2338,7 @@ export type OrganizationUncheckedCreateWithoutOrgTreesInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2187,6 +2382,7 @@ export type OrganizationUpdateWithoutOrgTreesInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -2214,6 +2410,7 @@ export type OrganizationUncheckedUpdateWithoutOrgTreesInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2241,6 +2438,7 @@ export type OrganizationCreateWithoutRoadmapsInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -2268,6 +2466,7 @@ export type OrganizationUncheckedCreateWithoutRoadmapsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2311,6 +2510,7 @@ export type OrganizationUpdateWithoutRoadmapsInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -2338,6 +2538,7 @@ export type OrganizationUncheckedUpdateWithoutRoadmapsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2366,6 +2567,7 @@ export type OrganizationCreateWithoutTimesheetStatusRulesInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
@@ -2393,6 +2595,7 @@ export type OrganizationUncheckedCreateWithoutTimesheetStatusRulesInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2436,6 +2639,7 @@ export type OrganizationUpdateWithoutTimesheetStatusRulesInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
@@ -2463,6 +2667,7 @@ export type OrganizationUncheckedUpdateWithoutTimesheetStatusRulesInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2490,6 +2695,7 @@ export type OrganizationCreateWithoutSourceStatusBucketsInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -2517,6 +2723,7 @@ export type OrganizationUncheckedCreateWithoutSourceStatusBucketsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2560,6 +2767,7 @@ export type OrganizationUpdateWithoutSourceStatusBucketsInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -2587,6 +2795,7 @@ export type OrganizationUncheckedUpdateWithoutSourceStatusBucketsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2614,6 +2823,7 @@ export type OrganizationCreateWithoutRetiredJiraProjectsInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
@@ -2641,6 +2851,7 @@ export type OrganizationUncheckedCreateWithoutRetiredJiraProjectsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2684,6 +2895,7 @@ export type OrganizationUpdateWithoutRetiredJiraProjectsInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
@@ -2711,6 +2923,7 @@ export type OrganizationUncheckedUpdateWithoutRetiredJiraProjectsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2738,6 +2951,7 @@ export type OrganizationCreateWithoutAdvisorConfigInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkCreateNestedManyWithoutOrganizationInput
@@ -2765,6 +2979,7 @@ export type OrganizationUncheckedCreateWithoutAdvisorConfigInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2808,6 +3023,7 @@ export type OrganizationUpdateWithoutAdvisorConfigInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUpdateManyWithoutOrganizationNestedInput
@@ -2835,6 +3051,7 @@ export type OrganizationUncheckedUpdateWithoutAdvisorConfigInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
   prJiraLinks?: Prisma.PrJiraLinkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2862,6 +3079,7 @@ export type OrganizationCreateWithoutNotificationsInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -2889,6 +3107,7 @@ export type OrganizationUncheckedCreateWithoutNotificationsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2932,6 +3151,7 @@ export type OrganizationUpdateWithoutNotificationsInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -2959,6 +3179,7 @@ export type OrganizationUncheckedUpdateWithoutNotificationsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2986,6 +3207,7 @@ export type OrganizationCreateWithoutNotificationPreferencesInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -3013,6 +3235,7 @@ export type OrganizationUncheckedCreateWithoutNotificationPreferencesInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3056,6 +3279,7 @@ export type OrganizationUpdateWithoutNotificationPreferencesInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -3083,6 +3307,7 @@ export type OrganizationUncheckedUpdateWithoutNotificationPreferencesInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3110,6 +3335,7 @@ export type OrganizationCreateWithoutFocusVerdictsInput = {
   githubInstances?: Prisma.GitHubInstanceCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectCreateNestedManyWithoutOrganizationInput
@@ -3137,6 +3363,7 @@ export type OrganizationUncheckedCreateWithoutFocusVerdictsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedCreateNestedManyWithoutOrganizationInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedCreateNestedManyWithoutOrganizationInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedCreateNestedOneWithoutOrganizationInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedCreateNestedManyWithoutOrganizationInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3180,6 +3407,7 @@ export type OrganizationUpdateWithoutFocusVerdictsInput = {
   githubInstances?: Prisma.GitHubInstanceUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUpdateManyWithoutOrganizationNestedInput
@@ -3207,6 +3435,7 @@ export type OrganizationUncheckedUpdateWithoutFocusVerdictsInput = {
   githubInstances?: Prisma.GitHubInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   azureDevOpsInstances?: Prisma.AzureDevOpsInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   gitlabInstances?: Prisma.GitLabInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
+  bitbucketInstances?: Prisma.BitbucketInstanceUncheckedUpdateManyWithoutOrganizationNestedInput
   advisorConfig?: Prisma.AdvisorConfigUncheckedUpdateOneWithoutOrganizationNestedInput
   timesheetStatusRules?: Prisma.TimesheetStatusRuleUncheckedUpdateManyWithoutOrganizationNestedInput
   retiredJiraProjects?: Prisma.RetiredJiraProjectUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3234,6 +3463,7 @@ export type OrganizationCountOutputType = {
   githubInstances: number
   azureDevOpsInstances: number
   gitlabInstances: number
+  bitbucketInstances: number
   timesheetStatusRules: number
   retiredJiraProjects: number
   prJiraLinks: number
@@ -3256,6 +3486,7 @@ export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Exte
   githubInstances?: boolean | OrganizationCountOutputTypeCountGithubInstancesArgs
   azureDevOpsInstances?: boolean | OrganizationCountOutputTypeCountAzureDevOpsInstancesArgs
   gitlabInstances?: boolean | OrganizationCountOutputTypeCountGitlabInstancesArgs
+  bitbucketInstances?: boolean | OrganizationCountOutputTypeCountBitbucketInstancesArgs
   timesheetStatusRules?: boolean | OrganizationCountOutputTypeCountTimesheetStatusRulesArgs
   retiredJiraProjects?: boolean | OrganizationCountOutputTypeCountRetiredJiraProjectsArgs
   prJiraLinks?: boolean | OrganizationCountOutputTypeCountPrJiraLinksArgs
@@ -3350,6 +3581,13 @@ export type OrganizationCountOutputTypeCountGitlabInstancesArgs<ExtArgs extends 
 /**
  * OrganizationCountOutputType without action
  */
+export type OrganizationCountOutputTypeCountBitbucketInstancesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.BitbucketInstanceWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
 export type OrganizationCountOutputTypeCountTimesheetStatusRulesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.TimesheetStatusRuleWhereInput
 }
@@ -3427,6 +3665,7 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   githubInstances?: boolean | Prisma.Organization$githubInstancesArgs<ExtArgs>
   azureDevOpsInstances?: boolean | Prisma.Organization$azureDevOpsInstancesArgs<ExtArgs>
   gitlabInstances?: boolean | Prisma.Organization$gitlabInstancesArgs<ExtArgs>
+  bitbucketInstances?: boolean | Prisma.Organization$bitbucketInstancesArgs<ExtArgs>
   advisorConfig?: boolean | Prisma.Organization$advisorConfigArgs<ExtArgs>
   timesheetStatusRules?: boolean | Prisma.Organization$timesheetStatusRulesArgs<ExtArgs>
   retiredJiraProjects?: boolean | Prisma.Organization$retiredJiraProjectsArgs<ExtArgs>
@@ -3476,6 +3715,7 @@ export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.Interna
   githubInstances?: boolean | Prisma.Organization$githubInstancesArgs<ExtArgs>
   azureDevOpsInstances?: boolean | Prisma.Organization$azureDevOpsInstancesArgs<ExtArgs>
   gitlabInstances?: boolean | Prisma.Organization$gitlabInstancesArgs<ExtArgs>
+  bitbucketInstances?: boolean | Prisma.Organization$bitbucketInstancesArgs<ExtArgs>
   advisorConfig?: boolean | Prisma.Organization$advisorConfigArgs<ExtArgs>
   timesheetStatusRules?: boolean | Prisma.Organization$timesheetStatusRulesArgs<ExtArgs>
   retiredJiraProjects?: boolean | Prisma.Organization$retiredJiraProjectsArgs<ExtArgs>
@@ -3504,6 +3744,7 @@ export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     githubInstances: Prisma.$GitHubInstancePayload<ExtArgs>[]
     azureDevOpsInstances: Prisma.$AzureDevOpsInstancePayload<ExtArgs>[]
     gitlabInstances: Prisma.$GitLabInstancePayload<ExtArgs>[]
+    bitbucketInstances: Prisma.$BitbucketInstancePayload<ExtArgs>[]
     advisorConfig: Prisma.$AdvisorConfigPayload<ExtArgs> | null
     timesheetStatusRules: Prisma.$TimesheetStatusRulePayload<ExtArgs>[]
     retiredJiraProjects: Prisma.$RetiredJiraProjectPayload<ExtArgs>[]
@@ -3925,6 +4166,7 @@ export interface Prisma__OrganizationClient<T, Null = never, ExtArgs extends run
   githubInstances<T extends Prisma.Organization$githubInstancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$githubInstancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$GitHubInstancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   azureDevOpsInstances<T extends Prisma.Organization$azureDevOpsInstancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$azureDevOpsInstancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AzureDevOpsInstancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   gitlabInstances<T extends Prisma.Organization$gitlabInstancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$gitlabInstancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$GitLabInstancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  bitbucketInstances<T extends Prisma.Organization$bitbucketInstancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$bitbucketInstancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BitbucketInstancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   advisorConfig<T extends Prisma.Organization$advisorConfigArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$advisorConfigArgs<ExtArgs>>): Prisma.Prisma__AdvisorConfigClient<runtime.Types.Result.GetResult<Prisma.$AdvisorConfigPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   timesheetStatusRules<T extends Prisma.Organization$timesheetStatusRulesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$timesheetStatusRulesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TimesheetStatusRulePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   retiredJiraProjects<T extends Prisma.Organization$retiredJiraProjectsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$retiredJiraProjectsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RetiredJiraProjectPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -4599,6 +4841,30 @@ export type Organization$gitlabInstancesArgs<ExtArgs extends runtime.Types.Exten
   take?: number
   skip?: number
   distinct?: Prisma.GitLabInstanceScalarFieldEnum | Prisma.GitLabInstanceScalarFieldEnum[]
+}
+
+/**
+ * Organization.bitbucketInstances
+ */
+export type Organization$bitbucketInstancesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BitbucketInstance
+   */
+  select?: Prisma.BitbucketInstanceSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BitbucketInstance
+   */
+  omit?: Prisma.BitbucketInstanceOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BitbucketInstanceInclude<ExtArgs> | null
+  where?: Prisma.BitbucketInstanceWhereInput
+  orderBy?: Prisma.BitbucketInstanceOrderByWithRelationInput | Prisma.BitbucketInstanceOrderByWithRelationInput[]
+  cursor?: Prisma.BitbucketInstanceWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.BitbucketInstanceScalarFieldEnum | Prisma.BitbucketInstanceScalarFieldEnum[]
 }
 
 /**

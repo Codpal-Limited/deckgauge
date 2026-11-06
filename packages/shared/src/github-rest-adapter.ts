@@ -98,6 +98,27 @@ export class GitHubRestAdapter implements GitHubPort {
       .map((i) => this.mapIssue(repoFullName, i));
   }
 
+  async fetchIssue(repoFullName: string, number: number): Promise<GitHubIssue | null> {
+    const url = `${this.baseUrl}/repos/${repoFullName}/issues/${number}`;
+    const response = await this.fetchFn(url, {
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+    if (response.status === 404 || response.status === 410) return null;
+    if (response.status === 401 || response.status === 403) {
+      throw new GitHubAuthError(`GitHub authentication failed (${response.status})`);
+    }
+    if (!response.ok) {
+      throw new Error(`GitHub /repos/${repoFullName}/issues/${number} returned ${response.status}`);
+    }
+    const raw = (await response.json()) as RawIssue;
+    if (raw.pull_request != null) return null;
+    return this.mapIssue(repoFullName, raw);
+  }
+
   async fetchRepoLabels(repoFullName: string): Promise<string[]> {
     const path = `/repos/${repoFullName}/labels?per_page=100`;
     const raw = await this.fetchAllPages<RawLabel>(path);

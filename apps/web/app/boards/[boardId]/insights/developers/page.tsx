@@ -91,7 +91,7 @@ export default async function BoardDevelopersPage({
       ) : rows.length === 0 ? (
         <div className="rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           No intelligence sources connected — open{' '}
-          <a href="/settings" className="underline">Settings</a> to add Jira/GitHub/ADO/GitLab
+          <a href="/settings" className="underline">Settings</a> to add Jira/GitHub/ADO/GitLab/Bitbucket
           connections for this board.
         </div>
       ) : (

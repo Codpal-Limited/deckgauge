@@ -17,7 +17,7 @@ export interface ExecuteResult {
   rows: unknown[];
   ms: number;
   /**
-   * The four identifier lists, and deliberately NOT the two narrowing maps the
+   * The five identifier lists, and deliberately NOT the two narrowing maps the
    * board filter added to `ResolvedScope`.
    *
    * This field goes to the browser (`RunIntelligenceQueryOk.scope` in
@@ -26,7 +26,7 @@ export interface ExecuteResult {
    * admits — thousands on a real board — so returning the whole resolved scope
    * would have put that on every execute response for a count nothing displays.
    */
-  scope: Pick<ResolvedScope, 'github' | 'jira' | 'ado' | 'gitlab'>;
+  scope: Pick<ResolvedScope, 'github' | 'jira' | 'ado' | 'gitlab' | 'bitbucket'>;
   truncated: boolean;
   /** The post-rewrite SQL actually sent to ClickHouse — for audit logging. */
   executedSql: string;
@@ -110,6 +110,7 @@ export async function executeUserSql(
       jira: scope.jira,
       ado: scope.ado,
       gitlab: scope.gitlab,
+      bitbucket: scope.bitbucket,
     },
     truncated,
     executedSql,

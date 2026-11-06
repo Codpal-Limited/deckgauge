@@ -160,9 +160,16 @@ export class GitHubPromoteService {
             githubRepoFullName: repoFullName,
             boardId: boardSource.boardId,
           },
-          select: { id: true, githubIssueId: true, status: true, statusId: true, githubSyncedFields: true, overriddenFields: true },
+          select: { id: true, githubIssueId: true, status: true, statusId: true, githubSyncedFields: true, overriddenFields: true, linkedFromSource: true },
         });
         const projectByGithubId = new Map(existingProjects.map((p) => [p.githubIssueId, p]));
+        // Rows a user added from a pasted source link keep updating whatever the
+        // board's label/type scope says — scope governs what the sync ADDS.
+        const linkedIds = new Set(
+          existingProjects
+            .filter((p) => p.linkedFromSource && p.githubIssueId)
+            .map((p) => p.githubIssueId as string),
+        );
 
         const ghExclusions = await this.prisma.boardSyncExclusion.findMany({
           where: { boardId: boardSource.boardId, source: 'GITHUB' },
@@ -183,7 +190,7 @@ export class GitHubPromoteService {
         if (allowedLabels.length > 0) {
           issues = issues.filter((i) => {
             const issueLabelsList = i.labels as string[];
-            return allowedLabels.some((al) => issueLabelsList.includes(al));
+            return linkedIds.has(i.id) || allowedLabels.some((al) => issueLabelsList.includes(al));
           });
         }
 
@@ -191,7 +198,7 @@ export class GitHubPromoteService {
         if (allowedTypes.length > 0) {
           issues = issues.filter((i) => {
             const issueType = (i as { type: string | null }).type;
-            return issueType != null && allowedTypes.includes(issueType);
+            return linkedIds.has(i.id) || (issueType != null && allowedTypes.includes(issueType));
           });
         }
 

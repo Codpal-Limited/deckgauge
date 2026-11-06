@@ -3,6 +3,7 @@ import type { BuilderInputs, BuiltSql } from './types.js';
 import { formatDateTime, resolveWeeks } from '../../widgets/widget-helpers.js';
 import { resolvePeriod } from './period.js';
 import { adoScopeFilter } from '../../widgets/unions.js';
+import { bitbucketReviewQualityLeg } from './bitbucket-review-quality-leg.js';
 
 const DEFAULT_WEEKS = 12;
 
@@ -21,7 +22,8 @@ export function buildReviewQualityTrendSql({ config, scope }: BuilderInputs): Bu
   const hasGh = scope.githubRepoFullNames.length > 0;
   const hasAdo = scope.adoProjects.length > 0;
   const hasGl = scope.gitlabProjectPaths.length > 0;
-  if (!hasGh && !hasAdo && !hasGl) return null;
+  const hasBb = (scope.bitbucketRepoFullNames ?? []).length > 0;
+  if (!hasGh && !hasAdo && !hasGl && !hasBb) return null;
 
   const weeks = resolveWeeks((config as { weeks?: unknown }).weeks, DEFAULT_WEEKS);
   const { from, to } = resolvePeriod(config, Date.now, weeks * 7);
@@ -101,6 +103,9 @@ export function buildReviewQualityTrendSql({ config, scope }: BuilderInputs): Bu
         AND mr.state = 'merged'
         AND mr.created_at >= {from:DateTime} AND mr.created_at < {to:DateTime}`);
   }
+
+  const bitbucketLeg = bitbucketReviewQualityLeg(scope, params, { withCreatedAt: true });
+  if (bitbucketLeg) legs.push(bitbucketLeg);
 
   const sql = `
     WITH all_prs AS (${legs.join(' UNION ALL ')})

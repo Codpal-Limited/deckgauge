@@ -3,7 +3,7 @@
 
 import { authFetch } from './api';
 
-type SyncSource = 'jira' | 'github' | 'ado' | 'gitlab';
+type SyncSource = 'jira' | 'github' | 'ado' | 'gitlab' | 'bitbucket';
 
 /**
  * `tone` drives how the trigger renders the result. `notice` is the issue #8 case —
@@ -21,6 +21,7 @@ const SOURCE_LABEL: Record<SyncSource, string> = {
   github: 'GitHub',
   ado: 'Azure DevOps',
   gitlab: 'GitLab',
+  bitbucket: 'Bitbucket',
 };
 
 // The heading of the /sources panel that attaches each source's projects/repos.
@@ -29,6 +30,7 @@ const ATTACH_PANEL: Record<SyncSource, string> = {
   github: 'GitHub repo syncs',
   ado: 'Azure DevOps project syncs',
   gitlab: 'GitLab project syncs',
+  bitbucket: 'Bitbucket repositories',
 };
 
 const ATTACH_NOUN: Record<SyncSource, string> = {
@@ -36,10 +38,11 @@ const ATTACH_NOUN: Record<SyncSource, string> = {
   github: 'a repo',
   ado: 'a project',
   gitlab: 'a project',
+  bitbucket: 'a repo',
 };
 
 function isSource(s: unknown): s is SyncSource {
-  return s === 'jira' || s === 'github' || s === 'ado' || s === 'gitlab';
+  return s === 'jira' || s === 'github' || s === 'ado' || s === 'gitlab' || s === 'bitbucket';
 }
 
 function nothingAttachedHint(source: SyncSource): string {

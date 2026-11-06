@@ -203,6 +203,105 @@ export async function detachBoardGitLabSource(boardId: string, id: string): Prom
   if (!res.ok) throw new Error(await res.text());
 }
 
+// ---------------- Bitbucket ----------------
+// Bitbucket sources are attached in bulk from a project-grouped repo picker and
+// never write board rows, so there is no single-attach/role flow here.
+
+export interface BoardBitbucketSourceRow {
+  id: string;
+  boardId: string;
+  bitbucketRepoSyncId: string;
+  targetGroupId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  bitbucketRepoSync: {
+    id: string;
+    repoFullName: string;
+    projectKey: string | null;
+    bitbucketInstanceId: string;
+    syncPrs: boolean;
+    syncCommits: boolean;
+    syncDeployments: boolean;
+    lastSyncedAt: string | null;
+    lastDeploymentSyncAt: string | null;
+  };
+}
+
+export async function listBoardBitbucketSources(boardId: string): Promise<BoardBitbucketSourceRow[]> {
+  const res = await authFetch(`/boards/${boardId}/sources/bitbucket`, { method: 'GET' });
+  if (!res.ok) throw new Error(`list board bitbucket sources: ${res.status}`);
+  return res.json();
+}
+
+export async function detachBoardBitbucketSource(boardId: string, id: string): Promise<void> {
+  const res = await authFetch(`/boards/${boardId}/sources/bitbucket/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+/** One repository as the picker shows it — grouped under its Bitbucket project. */
+export interface BitbucketRemoteRepo {
+  fullName: string;
+  slug: string;
+  isPrivate: boolean;
+  updatedOn: string | null;
+  mainBranch: string | null;
+  projectKey: string | null;
+  projectName: string | null;
+}
+
+export interface BitbucketRemoteProject {
+  projectKey: string | null;
+  projectName: string | null;
+  repos: BitbucketRemoteRepo[];
+}
+
+export type BitbucketRemoteReposResult =
+  | { ok: true; workspace: string; projects: BitbucketRemoteProject[] }
+  | { ok: false; authFailed: boolean; error: string };
+
+export async function listBitbucketRemoteRepos(instanceId: string): Promise<BitbucketRemoteReposResult> {
+  try {
+    const res = await authFetch(`/bitbucket/instances/${encodeURIComponent(instanceId)}/remote-repos`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      return {
+        ok: false,
+        authFailed: res.status === 401 || res.status === 403,
+        error: await readApiError(res),
+      };
+    }
+    const body = (await res.json()) as { workspace: string; projects: BitbucketRemoteProject[] };
+    return { ok: true, workspace: body.workspace, projects: body.projects ?? [] };
+  } catch (err) {
+    return {
+      ok: false,
+      authFailed: false,
+      error: err instanceof Error ? err.message : 'Could not reach Bitbucket.',
+    };
+  }
+}
+
+export interface BitbucketBulkAttachRequest {
+  instanceId: string;
+  repos: Array<{ fullName: string; projectKey?: string }>;
+}
+
+/** Returns its failure rather than throwing (see AttachOutcome for why). */
+export async function bulkAttachBoardBitbucketSources(
+  boardId: string,
+  req: BitbucketBulkAttachRequest,
+): Promise<{ ok: true; addedCount: number; skippedCount: number } | { ok: false; error: string }> {
+  const res = await authFetch(`/boards/${boardId}/sources/bitbucket/bulk`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) return { ok: false, error: await readApiError(res) };
+  const body = (await res.json()) as { addedCount: number; skippedCount: number };
+  return { ok: true, addedCount: body.addedCount, skippedCount: body.skippedCount };
+}
+
 // ---------------- Provider sync list helpers (re-exports) ----------------
 // Lightweight read helpers used by the Sources page to populate the "attach" dropdowns.
 // These mirror the GET endpoints exposed by apps/api/src/project-syncs/*.routes.ts.
@@ -372,7 +471,7 @@ export interface PreviewCount {
 
 export async function fetchSourcePreviewCount(
   boardId: string,
-  provider: 'jira' | 'github' | 'ado' | 'gitlab',
+  provider: 'jira' | 'github' | 'ado' | 'gitlab' | 'bitbucket',
   sourceId: string,
 ): Promise<PreviewCount | null> {
   const res = await authFetch(

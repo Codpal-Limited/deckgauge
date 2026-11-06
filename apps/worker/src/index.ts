@@ -40,6 +40,8 @@ import { purgeJiraIssueKeys as purgeJiraKeysFromCh } from './jira-deleted-purge.
 import { handleGitHubSyncJob, GitHubProjectsAdapterFactory } from './github-sync.handler.js'
 import { handleAzureDevOpsSyncJob } from './azure-devops-sync.handler.js'
 import { handleGitLabSyncJob } from './gitlab-sync.handler.js'
+import { handleBitbucketSyncJob, type BitbucketFactoryConfig } from './bitbucket-sync.handler.js'
+import { createBitbucketAdapters } from './bitbucket-adapters.js'
 import { handleJiraIntelligenceSync } from './jira-intelligence-sync.handler.js'
 import { runIntelligenceSync } from './github-intelligence-sync.handler.js'
 import {
@@ -367,6 +369,49 @@ gitlabWorker.on('failed', (job, err) => {
 })
 
 await scheduleRepeatable(gitlabQueue, 'gitlab-sync', { trigger: 'scheduled' }, repeatInterval, 'gitlab-sync-scheduled')
+
+// ── Bitbucket Cloud sync queue ──────────────────────────────────────────────
+// One bundle per instance per job (one client → sequential requests per
+// instance; the main-branch cache lives exactly that long).
+const bitbucketAdapterFactory = (cfg: BitbucketFactoryConfig) =>
+  createBitbucketAdapters(cfg, { fake: process.env.USE_FAKE_BITBUCKET === 'true' })
+
+const bitbucketQueue = new Queue('bitbucket-sync', { connection })
+const bitbucketWorker = new Worker(
+  'bitbucket-sync',
+  async (job) => {
+    console.log(`Processing bitbucket-sync job (trigger: ${job.data?.trigger ?? 'none'})`)
+    const result = await handleBitbucketSyncJob(
+      job.data,
+      db,
+      bitbucketAdapterFactory,
+      // The FACTORY goes down, not a client: bound per instance, to its organization.
+      chClientFor,
+      syncPermission,
+    )
+    // Counts and redacted per-repo errors only — never the job's credentials.
+    console.log(
+      `[Bitbucket sync] instances=${result.instancesProcessed} repos=${result.reposProcessed} ` +
+        `prs=${result.pullRequestsWritten} reviews=${result.reviewsWritten} ` +
+        `commits=${result.commitsWritten} deployments=${result.deploymentsWritten} ` +
+        `skipped=${result.skippedInstances.length} errors=${result.errors.length}`,
+    )
+    for (const e of result.errors) {
+      console.error(`[Bitbucket sync] ${e.instanceId} ${e.repoFullName} (${e.phase}): ${e.message}`)
+    }
+    return result
+  },
+  { connection },
+)
+
+bitbucketWorker.on('completed', (job) => {
+  console.log(`Bitbucket job ${job.id} completed`)
+})
+bitbucketWorker.on('failed', (job, err) => {
+  console.error(`Bitbucket job ${job?.id} failed: ${err.message}`)
+})
+
+await scheduleRepeatable(bitbucketQueue, 'bitbucket-sync', { trigger: 'scheduled' }, repeatInterval, 'bitbucket-sync-scheduled')
 
 // ── EI-012/013/015: Phase 3 intelligence sync queues ───────────────────────
 const jiraIntelFactory = (cfg: { atlassianUrl: string; email: string; apiToken: string }) => {
@@ -888,6 +933,8 @@ process.on('SIGTERM', async () => {
   await adoQueue.close()
   await ghWorker.close()
   await ghQueue.close()
+  await bitbucketWorker.close()
+  await bitbucketQueue.close()
   await pruneWorker.close()
   await pruneQueue.close()
   await orgSourceSyncWorker.close()

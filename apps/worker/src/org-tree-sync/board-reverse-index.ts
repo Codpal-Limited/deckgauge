@@ -10,13 +10,13 @@ export interface BoardReverseIndex {
    * or PR belongs to a repo, not to a board row) but deliberately coarse: several
    * boards can slice one Jira/ADO project, and this cannot tell those slices apart.
    */
-  lookup(kind: 'gh' | 'ado' | 'jira', key: string): string[];
+  lookup(kind: 'gh' | 'ado' | 'jira' | 'bb', key: string): string[];
   /**
    * Boards that actually hold a given work-item row. Use for assignment signals,
    * where the exact ticket is known — this respects each board's JQL and
    * issue-type filter because it reads the rows already promoted onto the board.
    */
-  lookupRow(kind: 'gh' | 'ado' | 'jira', rowKey: string | null): string[];
+  lookupRow(kind: 'gh' | 'ado' | 'jira' | 'bb', rowKey: string | null): string[];
   boardNames: Record<string, string>;
 }
 
@@ -57,7 +57,7 @@ export async function buildBoardReverseIndex(
   // of the call site"), and without it every org-tree sync drags every other
   // tenant's promoted rows through worker memory. See the note in
   // `board-reverse-index-tenancy.test.ts`.
-  const [boards, gh, ado, jira, rows] = await Promise.all([
+  const [boards, gh, ado, jira, bb, rows] = await Promise.all([
     prisma.board.findMany({ where: { organizationId }, select: { id: true, name: true } }),
     prisma.boardGitHubSource.findMany({
       where: { useForIntelligence: true, ...inOrg },
@@ -68,6 +68,9 @@ export async function buildBoardReverseIndex(
       include: { azureDevOpsProjectSync: true },
     }),
     prisma.boardJiraSource.findMany({ where: { ...inOrg }, include: { jiraProjectSync: true } }),
+    // Bitbucket sources carry no useForIntelligence flag: code-only, they exist
+    // for intelligence. Repo-level only — Bitbucket adds no board rows.
+    prisma.boardBitbucketSource.findMany({ where: { ...inOrg }, include: { bitbucketRepoSync: true } }),
     prisma.project.findMany({
       where: {
         boardId: { not: null },
@@ -109,6 +112,7 @@ export async function buildBoardReverseIndex(
   for (const s of gh) add('gh', s.gitHubRepoSync.repoFullName, s.boardId);
   for (const s of ado) add('ado', s.azureDevOpsProjectSync.adoProject, s.boardId);
   for (const s of jira) add('jira', s.jiraProjectSync.jiraProjectKey, s.boardId);
+  for (const s of bb) add('bb', s.bitbucketRepoSync.repoFullName, s.boardId);
 
   // `lookup` gates GitHub/ADO on useForIntelligence, so the row index must too —
   // otherwise a board deliberately excluded from intelligence regains assignment

@@ -30,7 +30,7 @@ export interface ConnectionAuditLog {
   warn: (obj: unknown, msg?: string) => void;
 }
 
-export type ConnectionProvider = 'jira' | 'github' | 'azure-devops' | 'gitlab';
+export type ConnectionProvider = 'jira' | 'github' | 'azure-devops' | 'gitlab' | 'bitbucket';
 
 export interface HostRepointEvent {
   provider: ConnectionProvider;

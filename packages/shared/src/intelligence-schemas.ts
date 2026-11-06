@@ -47,7 +47,7 @@ export const TicketTimelineEventSchema = z.object({
 });
 export type TicketTimelineEvent = z.infer<typeof TicketTimelineEventSchema>;
 
-export const SyncTriggerSourceSchema = z.enum(['jira', 'github', 'ado', 'gitlab', 'all']);
+export const SyncTriggerSourceSchema = z.enum(['jira', 'github', 'ado', 'gitlab', 'bitbucket', 'all']);
 export type SyncTriggerSource = z.infer<typeof SyncTriggerSourceSchema>;
 
 // P2 — developer table row (one row per engineer, last N weeks).

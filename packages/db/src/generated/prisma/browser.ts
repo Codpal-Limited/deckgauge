@@ -175,6 +175,11 @@ export type ProjectStatusChange = Prisma.ProjectStatusChangeModel
  */
 export type GitLabInstance = Prisma.GitLabInstanceModel
 /**
+ * Model BitbucketInstance
+ * 
+ */
+export type BitbucketInstance = Prisma.BitbucketInstanceModel
+/**
  * Model JiraProjectSync
  * 
  */
@@ -240,6 +245,16 @@ export type GitLabProjectSync = Prisma.GitLabProjectSyncModel
  * 
  */
 export type BoardGitLabSource = Prisma.BoardGitLabSourceModel
+/**
+ * Model BitbucketRepoSync
+ * 
+ */
+export type BitbucketRepoSync = Prisma.BitbucketRepoSyncModel
+/**
+ * Model BoardBitbucketSource
+ * 
+ */
+export type BoardBitbucketSource = Prisma.BoardBitbucketSourceModel
 /**
  * Model BoardFolder
  * 

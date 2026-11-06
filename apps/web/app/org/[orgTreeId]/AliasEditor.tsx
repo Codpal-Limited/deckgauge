@@ -10,7 +10,7 @@ interface AliasEditorProps {
   initialAliases: OrgEmployeeAliasDto[];
 }
 
-const PROVIDERS: OrgEmployeeAliasInput['provider'][] = ['github', 'gitlab', 'ado', 'jira'];
+const PROVIDERS: OrgEmployeeAliasInput['provider'][] = ['github', 'gitlab', 'bitbucket', 'ado', 'jira'];
 const KINDS: OrgEmployeeAliasInput['kind'][] = ['login', 'email', 'name'];
 
 export function AliasEditor({ employeeId, initialAliases }: AliasEditorProps) {

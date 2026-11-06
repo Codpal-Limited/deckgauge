@@ -94,6 +94,16 @@ export interface BoardScope {
   adoProdConfig?: AdoProdConfig[];
   /** GitLab project paths (e.g. ['Acme/api']) — filters gitlab_merge_requests/commits */
   gitlabProjectPaths: string[];
+  /**
+   * Bitbucket Cloud repo full names (`{workspace}/{repo_slug}`) — filters every
+   * `cockpit.bitbucket_*` table.
+   *
+   * Optional at this level ONLY so the many hand-built scopes in tests keep
+   * compiling (the same reason `adoProjectRefs` is); absent means "no Bitbucket
+   * source". {@link ResolvedBoardScope} makes it required, so the real query
+   * path always carries it.
+   */
+  bitbucketRepoFullNames?: string[];
   /** True when no sources are connected for this board. */
   isEmpty: boolean;
 }
@@ -105,6 +115,7 @@ const EMPTY_SCOPE: BoardScope = {
   adoProjectRefs: [],
   adoProdConfig: [],
   gitlabProjectPaths: [],
+  bitbucketRepoFullNames: [],
   isEmpty: true,
 };
 
@@ -117,6 +128,7 @@ export interface ResolvedBoardScope extends BoardScope {
   jiraProjectRefs: Array<{ projectKey: string; issueKeys?: string[] }>;
   adoProjectRefs: Array<{ orgUrl: string; project: string; repos?: string[]; areaPaths?: string[] }>;
   adoProdConfig: AdoProdConfig[];
+  bitbucketRepoFullNames: string[];
 }
 
 export interface ResolveBoardScopeOptions {
@@ -145,7 +157,7 @@ export interface ResolveBoardScopeOptions {
   organizationId: string | null;
   /**
    * Honour the per-source `useForIntelligence` flag on the GitHub and ADO
-   * sources. Jira and GitLab board sources carry no such flag, so they are
+   * sources. Jira, GitLab and Bitbucket board sources carry no such flag, so they are
    * unaffected either way.
    *
    * True for the intelligence-query path; FALSE for the widget path, which has
@@ -180,7 +192,7 @@ export async function resolveBoardScope(
   const intelligenceFilter = intelligenceOnly ? { useForIntelligence: true } : {};
   // See `organizationId` on the options type for why this is empty when null.
   const tenantFilter = organizationId ? { board: { organizationId } } : {};
-  const [jiraSources, githubSources, adoSources, gitlabSources] = await Promise.all([
+  const [jiraSources, githubSources, adoSources, gitlabSources, bitbucketSources] = await Promise.all([
     prisma.boardJiraSource.findMany({
       where: { boardId, ...tenantFilter },
       select: {
@@ -216,6 +228,10 @@ export async function resolveBoardScope(
     prisma.boardGitLabSource.findMany({
       where: { boardId, ...tenantFilter },
       select: { gitlabProjectSync: { select: { projectPath: true } } },
+    }),
+    prisma.boardBitbucketSource.findMany({
+      where: { boardId, ...tenantFilter },
+      select: { bitbucketRepoSync: { select: { repoFullName: true } } },
     }),
   ]);
 
@@ -287,12 +303,16 @@ export async function resolveBoardScope(
   const gitlabProjectPaths = uniq(
     present(gitlabSources.map((s) => s.gitlabProjectSync?.projectPath)),
   );
+  const bitbucketRepoFullNames = uniq(
+    present(bitbucketSources.map((s) => s.bitbucketRepoSync?.repoFullName)),
+  );
 
   const isEmpty =
     jiraProjectKeys.length === 0 &&
     githubRepoFullNames.length === 0 &&
     adoProjects.length === 0 &&
-    gitlabProjectPaths.length === 0;
+    gitlabProjectPaths.length === 0 &&
+    bitbucketRepoFullNames.length === 0;
 
   return {
     jiraProjectKeys,
@@ -302,6 +322,7 @@ export async function resolveBoardScope(
     adoProjectRefs,
     adoProdConfig,
     gitlabProjectPaths,
+    bitbucketRepoFullNames,
     isEmpty,
   };
 }

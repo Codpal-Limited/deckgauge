@@ -2,11 +2,11 @@ import { DONE_STATUS_NAMES, toUtcIso } from '@deckgauge/shared';
 import { orgPredicate, type ChScopedReadClient } from '../ch-scoped-read.js';
 
 export interface ActivityIdentityRow {
-  provider: 'github' | 'ado' | 'jira';
+  provider: 'github' | 'ado' | 'jira' | 'bitbucket';
   login: string | null;
   name: string | null;
   email: string | null;
-  kind: 'gh' | 'ado' | 'jira';
+  kind: 'gh' | 'ado' | 'jira' | 'bb';
   /** The repo / project the activity happened in. Coarse: boards can share one. */
   scopeKey: string;
   /**
@@ -106,6 +106,26 @@ const SPECS: Spec[] = [
     sql: (o) =>
       `SELECT created_by_login login, ifNull(created_by_name,'') name, '' email, project scopeKey, toString(max(created_at)) lastTs FROM ado_pull_requests WHERE ${orgPredicate(o)} GROUP BY 1,2,3,4`,
   },
+  // Bitbucket Cloud. Commits carry an email; PRs carry the account nickname and
+  // display name only, so the nickname is bridged to a commit email by
+  // `fetchBitbucketLoginEmails` (the GitHub shape). Release PRs (stage→prod) are
+  // still the author's activity, so they are NOT filtered here — only from counts.
+  {
+    provider: 'bitbucket',
+    kind: 'bb',
+    isAssignment: false,
+    contributedCode: true,
+    sql: (o) =>
+      `SELECT ifNull(author_username,'') login, author_name name, lower(author_email) email, repo_full_name scopeKey, toString(max(committed_at)) lastTs FROM bitbucket_commits WHERE ${orgPredicate(o)} GROUP BY 1,2,3,4`,
+  },
+  {
+    provider: 'bitbucket',
+    kind: 'bb',
+    isAssignment: false,
+    contributedCode: true,
+    sql: (o) =>
+      `SELECT author_username login, ifNull(author_name,'') name, '' email, repo_full_name scopeKey, toString(max(updated_at)) lastTs FROM bitbucket_pull_requests WHERE ${orgPredicate(o)} GROUP BY 1,2,3,4`,
+  },
   {
     provider: 'jira',
     kind: 'jira',
@@ -180,7 +200,7 @@ const SPECS: Spec[] = [
 
 /** One (identity, ISO-week) code-commit tally, used to build the sparkbar heat. */
 export interface CommitHeatRow {
-  provider: 'github' | 'ado';
+  provider: 'github' | 'ado' | 'bitbucket';
   login: string | null;
   name: string | null;
   email: string | null;
@@ -205,6 +225,11 @@ const HEAT_SPECS: Array<{
     provider: 'ado',
     sql: (o, cutoff) =>
       `SELECT '' login, author_name name, lower(author_email) email, toString(toMonday(committed_at)) weekMonday, toUInt32(uniqExact(sha)) c FROM ado_commits WHERE ${orgPredicate(o)} AND committed_at >= toDateTime('${cutoff} 00:00:00') GROUP BY 1,2,3,4`,
+  },
+  {
+    provider: 'bitbucket',
+    sql: (o, cutoff) =>
+      `SELECT ifNull(author_username,'') login, author_name name, lower(author_email) email, toString(toMonday(committed_at)) weekMonday, toUInt32(uniqExact(sha)) c FROM bitbucket_commits WHERE ${orgPredicate(o)} AND committed_at >= toDateTime('${cutoff} 00:00:00') GROUP BY 1,2,3,4`,
   },
 ];
 
@@ -286,17 +311,56 @@ export async function fetchGithubLoginEmails(
 }
 
 /**
- * Fill the `email` field of GitHub rows that carry a login but no email, using the
- * login→email bridge, so the downstream email matcher can resolve them. Mutates and
- * returns the same array; a no-op when the bridge is absent.
+ * The Bitbucket equivalent of `fetchGithubLoginEmails`: each account nickname to
+ * its most-used commit author email, learned from `bitbucket_commits`. Bitbucket
+ * PR and review rows carry only a nickname and display name, and nicknames are
+ * often a single token ("Denys", "taras.s") that the first|last name matcher
+ * cannot resolve. Tenant-scoped for the same reason as the GitHub bridge.
+ */
+export async function fetchBitbucketLoginEmails(
+  ch: ChScopedReadClient,
+): Promise<Map<string, string>> {
+  const bridge = new Map<string, string>();
+  const sql =
+    `SELECT lower(author_username) login, lower(author_email) email, toUInt32(count()) c ` +
+    `FROM bitbucket_commits ` +
+    `WHERE ${orgPredicate(ch.organizationId)} AND ifNull(author_username,'') != '' AND author_email != '' ` +
+    `GROUP BY 1,2 ORDER BY login, c DESC`;
+  let rows: Array<{ login: string; email: string; c: number }>;
+  try {
+    rows = await ch.queryRows(sql);
+  } catch (err) {
+    console.error(`org-sync: bitbucket login-email bridge query failed, skipping: ${(err as Error).message}`);
+    return bridge;
+  }
+  for (const r of rows) {
+    if (!bridge.has(r.login)) bridge.set(r.login, r.email);
+  }
+  return bridge;
+}
+
+/** Per-provider login→email bridges. Each fills only its own provider's rows. */
+export interface LoginEmailBridges {
+  github?: Map<string, string>;
+  bitbucket?: Map<string, string>;
+}
+
+/**
+ * Fill the `email` field of GitHub / Bitbucket rows that carry a login but no
+ * email, using that provider's login→email bridge, so the downstream email matcher
+ * can resolve them. Mutates and returns the same array; a no-op for an absent bridge.
+ *
+ * A bare `Map` is still accepted and means the GitHub bridge — the original shape.
  */
 function applyLoginEmailBridge<T extends { provider: string; login: string | null; email: string | null }>(
   rows: T[],
-  bridge?: Map<string, string>,
+  bridges?: Map<string, string> | LoginEmailBridges,
 ): T[] {
-  if (!bridge) return rows;
+  if (!bridges) return rows;
+  const byProvider: LoginEmailBridges = bridges instanceof Map ? { github: bridges } : bridges;
   for (const r of rows) {
-    if (r.provider === 'github' && r.login && !r.email) {
+    const bridge = byProvider[r.provider as keyof LoginEmailBridges];
+    if (bridge && r.login && !r.email) {
       const email = bridge.get(r.login.toLowerCase());
       if (email) r.email = email;
     }
@@ -310,7 +374,7 @@ function applyLoginEmailBridge<T extends { provider: string; login: string | nul
 export type RankingMetricKind = 'ticketsClosed' | 'prsMerged' | 'commitsToMain' | 'reviewComments';
 
 export interface RankingMetricRow {
-  provider: 'github' | 'ado' | 'jira';
+  provider: 'github' | 'ado' | 'jira' | 'bitbucket';
   metric: RankingMetricKind;
   login: string | null;
   name: string | null;
@@ -382,6 +446,18 @@ const RANKING_SPECS: Array<{
       `WHERE ${orgPredicate(o)} AND status = 'completed' AND closed_at IS NOT NULL AND closed_at >= toDateTime('${c} 00:00:00') ` +
       `GROUP BY 1,2,3`,
   },
+  {
+    metric: 'prsMerged',
+    provider: 'bitbucket',
+    // is_release = 0: a stage→prod release PR re-ships work already merged once,
+    // so counting it would credit whoever opens releases twice for the same
+    // feature (spec § Decisions, "Release PR") — the same exclusion the unions make.
+    sql: (o, c) =>
+      `SELECT author_username login, ifNull(author_name,'') name, '' email, toUInt32(count()) cnt ` +
+      `FROM bitbucket_pull_requests FINAL ` +
+      `WHERE ${orgPredicate(o)} AND state = 'MERGED' AND is_release = 0 AND merged_at IS NOT NULL AND merged_at >= toDateTime('${c} 00:00:00') ` +
+      `GROUP BY 1,2,3`,
+  },
   // Commits — authored work, excluding merge-bubble commits. uniqExact(sha) is dedup-safe.
   {
     metric: 'commitsToMain',
@@ -398,6 +474,15 @@ const RANKING_SPECS: Array<{
     sql: (o, c) =>
       `SELECT ifNull(author_login,'') login, author_name name, lower(author_email) email, toUInt32(uniqExact(sha)) cnt ` +
       `FROM ado_commits ` +
+      `WHERE ${orgPredicate(o)} AND is_merge_commit = 0 AND committed_at >= toDateTime('${c} 00:00:00') ` +
+      `GROUP BY 1,2,3`,
+  },
+  {
+    metric: 'commitsToMain',
+    provider: 'bitbucket',
+    sql: (o, c) =>
+      `SELECT ifNull(author_username,'') login, author_name name, lower(author_email) email, toUInt32(uniqExact(sha)) cnt ` +
+      `FROM bitbucket_commits ` +
       `WHERE ${orgPredicate(o)} AND is_merge_commit = 0 AND committed_at >= toDateTime('${c} 00:00:00') ` +
       `GROUP BY 1,2,3`,
   },
@@ -420,6 +505,18 @@ const RANKING_SPECS: Array<{
       `WHERE ${orgPredicate(o)} AND reviewer_login != '' AND submitted_at >= toDateTime('${c} 00:00:00') ` +
       `GROUP BY 1,2,3`,
   },
+  {
+    metric: 'reviewComments',
+    provider: 'bitbucket',
+    // Reviews on release PRs are left out, matching `bitbucketNotReleasePrFilter`
+    // in the review unions: approving a release is not reviewing the feature.
+    sql: (o, c) =>
+      `SELECT reviewer_username login, ifNull(reviewer_name,'') name, '' email, toUInt32(sum(comment_count)) cnt ` +
+      `FROM bitbucket_reviews FINAL ` +
+      `WHERE ${orgPredicate(o)} AND reviewer_username != '' AND submitted_at >= toDateTime('${c} 00:00:00') ` +
+      `AND (repo_full_name, pr_id) NOT IN (SELECT repo_full_name, pr_id FROM bitbucket_pull_requests FINAL WHERE ${orgPredicate(o)} AND is_release = 1) ` +
+      `GROUP BY 1,2,3`,
+  },
 ];
 
 /**
@@ -430,7 +527,7 @@ const RANKING_SPECS: Array<{
 export async function fetchRankingMetrics(
   ch: ChScopedReadClient,
   cutoff: string,
-  loginEmails?: Map<string, string>,
+  loginEmails?: Map<string, string> | LoginEmailBridges,
 ): Promise<RankingMetricRow[]> {
   const out: RankingMetricRow[] = [];
   for (const spec of RANKING_SPECS) {
@@ -457,7 +554,7 @@ export async function fetchRankingMetrics(
 
 export async function fetchActivityIdentities(
   ch: ChScopedReadClient,
-  loginEmails?: Map<string, string>,
+  loginEmails?: Map<string, string> | LoginEmailBridges,
 ): Promise<ActivityIdentityRow[]> {
   const out: ActivityIdentityRow[] = [];
   for (const spec of SPECS) {

@@ -5,6 +5,12 @@
 // `cockpit.gitlab_merge_requests` instead. The method name and route stay stable
 // because the surface contract is "preview count for what will sync".
 //
+// Bitbucket note: Bitbucket feeds intelligence only (no issues, no board rows),
+// so its preview is the repo's pull-request count in
+// `cockpit.bitbucket_pull_requests`. Unlike the four methods above it resolves
+// the source WITHIN the board named in the route, so a source id from another
+// board cannot be previewed through this board's VIEWER gate.
+//
 // ADO note: `AzureDevOpsProjectSync` does not carry the org URL (it lives on
 // `AzureDevOpsInstance`). We scope by `project` only — same approach taken by
 // `apps/api/src/intelligence/board-scope.ts:54` so the preview and the real
@@ -134,6 +140,22 @@ export class PreviewCountService {
        FROM cockpit.gitlab_merge_requests
        WHERE project_path = {projectPath:String}`,
       { projectPath },
+    );
+    return { count, sampledAt: this.now() };
+  }
+
+  async countBitbucketPullRequests(boardId: string, boardBitbucketSourceId: string): Promise<PreviewCount> {
+    const row = await this.prisma.boardBitbucketSource.findFirst({
+      where: { id: boardBitbucketSourceId, boardId },
+      include: { bitbucketRepoSync: true },
+    });
+    if (!row) throw new PreviewSourceNotFoundError('bitbucket', boardBitbucketSourceId);
+
+    const count = await this.runCount(
+      `SELECT count() AS total
+       FROM cockpit.bitbucket_pull_requests FINAL
+       WHERE repo_full_name = {repo:String}`,
+      { repo: row.bitbucketRepoSync.repoFullName },
     );
     return { count, sampledAt: this.now() };
   }

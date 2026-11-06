@@ -197,3 +197,121 @@ export const BoardGitLabSourcePatchSchema = z.object({
   syncIssuesToBoard: z.boolean().optional(),
   syncMrsToBoard: z.boolean().optional(),
 });
+
+// ── Bitbucket Cloud ─────────────────────────────────────────────────────────
+// Auth is an Atlassian account email + an API token CREATED WITH BITBUCKET
+// SCOPES (Basic auth). `workspace` is optional on create: "Create & test"
+// detects it, and only asks when the token sees more than one.
+const BITBUCKET_REPO_FULL_NAME = z.string().regex(/^[^/\s]+\/[^/\s]+$/, 'Expected "workspace/repo"');
+
+export const BitbucketInstanceCreateSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  apiToken: z.string().min(1),
+  workspace: z.string().min(1).optional(),
+});
+export type BitbucketInstanceCreate = z.infer<typeof BitbucketInstanceCreateSchema>;
+
+export const BitbucketInstancePatchSchema = z.object({
+  name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  apiToken: z.string().min(1).optional(),
+  workspace: z.string().min(1).optional(),
+});
+export type BitbucketInstancePatch = z.infer<typeof BitbucketInstancePatchSchema>;
+
+/** Pre-save "Create & test": the credentials alone, before any instance exists. */
+export const BitbucketTestCredentialsSchema = z.object({
+  email: z.string().email(),
+  apiToken: z.string().min(1),
+});
+export type BitbucketTestCredentials = z.infer<typeof BitbucketTestCredentialsSchema>;
+
+export const BitbucketWorkspaceSchema = z.object({
+  slug: z.string(),
+  name: z.string(),
+  uuid: z.string(),
+});
+export type BitbucketWorkspaceDto = z.infer<typeof BitbucketWorkspaceSchema>;
+
+export const BitbucketTestResultSchema = z.object({
+  ok: z.boolean(),
+  user: z.object({ nickname: z.string(), displayName: z.string().nullable() }).optional(),
+  workspaces: z.array(BitbucketWorkspaceSchema),
+});
+export type BitbucketTestResult = z.infer<typeof BitbucketTestResultSchema>;
+
+export const BitbucketRepoSyncSchema = z.object({
+  id: z.string().uuid(),
+  bitbucketInstanceId: z.string().uuid(),
+  repoFullName: BITBUCKET_REPO_FULL_NAME,
+  projectKey: z.string().nullable(),
+  syncPrs: z.boolean(),
+  syncCommits: z.boolean(),
+  syncDeployments: z.boolean(),
+  lastSyncedAt: z.string().datetime().nullable(),
+  lastDeploymentSyncAt: z.string().datetime().nullable(),
+  boardCount: z.number().int().min(0),
+});
+export type BitbucketRepoSyncDto = z.infer<typeof BitbucketRepoSyncSchema>;
+
+export const BitbucketRepoSyncCreateSchema = z.object({
+  bitbucketInstanceId: z.string().uuid(),
+  repoFullName: BITBUCKET_REPO_FULL_NAME,
+  projectKey: z.string().min(1).nullable().optional(),
+  syncPrs: z.boolean().default(true),
+  syncCommits: z.boolean().default(true),
+  syncDeployments: z.boolean().default(true),
+});
+
+// No issue / PR row toggles: Bitbucket feeds intelligence only — Jira owns the
+// board rows for these teams.
+export const BoardBitbucketSourceCreateSchema = z.object({
+  boardId: z.string().uuid(),
+  bitbucketRepoSyncId: z.string().uuid(),
+  targetGroupId: z.string().uuid().nullable().optional(),
+});
+
+export const BoardBitbucketSourcePatchSchema = z.object({
+  targetGroupId: z.string().uuid().nullable().optional(),
+});
+
+/** POST /boards/:boardId/sources/bitbucket/bulk — "select all in project". */
+export const BoardBitbucketSourceBulkCreateSchema = z.object({
+  instanceId: z.string().uuid(),
+  repos: z
+    .array(
+      z.object({
+        fullName: BITBUCKET_REPO_FULL_NAME,
+        projectKey: z.string().min(1).nullable().optional(),
+      }),
+    )
+    .min(1)
+    .max(500),
+  targetGroupId: z.string().uuid().nullable().optional(),
+});
+export type BoardBitbucketSourceBulkCreate = z.infer<typeof BoardBitbucketSourceBulkCreateSchema>;
+
+export const BitbucketRemoteRepoSchema = z.object({
+  fullName: z.string(),
+  slug: z.string(),
+  isPrivate: z.boolean(),
+  updatedOn: z.string().nullable(),
+  mainBranch: z.string().nullable(),
+  projectKey: z.string().nullable(),
+  projectName: z.string().nullable(),
+});
+export type BitbucketRemoteRepoDto = z.infer<typeof BitbucketRemoteRepoSchema>;
+
+/** GET /bitbucket/instances/:id/remote-repos — grouped for the picker. */
+export const BitbucketRemoteReposResponseSchema = z.object({
+  workspace: z.string(),
+  projects: z.array(
+    z.object({
+      projectKey: z.string().nullable(),
+      projectName: z.string().nullable(),
+      repos: z.array(BitbucketRemoteRepoSchema),
+    }),
+  ),
+});
+export type BitbucketRemoteReposResponse = z.infer<typeof BitbucketRemoteReposResponseSchema>;

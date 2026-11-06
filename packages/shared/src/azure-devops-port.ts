@@ -37,4 +37,11 @@ export interface AzureDevOpsPort {
   ): Promise<Set<number>>;
 
   fetchWorkItemTypes(project: string): Promise<string[]>;
+
+  /**
+   * One work item by id, with the project it belongs to (work-item ids are
+   * unique per organization, so the id alone locates it). `null` when ADO
+   * answers 404. Optional so test doubles keep compiling.
+   */
+  fetchWorkItem?(id: number): Promise<{ item: AzureDevOpsWorkItem; project: string } | null>;
 }

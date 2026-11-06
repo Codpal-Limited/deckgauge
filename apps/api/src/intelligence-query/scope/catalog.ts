@@ -1,4 +1,4 @@
-export type SourceType = 'github' | 'jira' | 'ado' | 'gitlab';
+export type SourceType = 'github' | 'jira' | 'ado' | 'gitlab' | 'bitbucket';
 
 export interface CatalogEntry {
   sourceType: SourceType;
@@ -18,11 +18,12 @@ export interface CatalogEntry {
 // The per-source-type key naming the identifier LIST on a resolved console
 // scope. Lives here beside NARROWING_KEY because assert.ts needs it too now
 // that the second line compares VALUES against the scope and not only shapes.
-export const SCOPE_KEY: Record<SourceType, 'github' | 'jira' | 'ado' | 'gitlab'> = {
+export const SCOPE_KEY: Record<SourceType, 'github' | 'jira' | 'ado' | 'gitlab' | 'bitbucket'> = {
   github: 'github',
   jira: 'jira',
   ado: 'ado',
   gitlab: 'gitlab',
+  bitbucket: 'bitbucket',
 };
 
 // The per-source-type key naming the narrowing map on a resolved console scope.
@@ -61,6 +62,12 @@ export const CATALOG: Readonly<Record<string, CatalogEntry>> = Object.freeze({
   gitlab_commits:        { sourceType: 'gitlab', scopeColumn: 'project_path' },
   gitlab_reviews:        { sourceType: 'gitlab', scopeColumn: 'project_path' },
   gitlab_issues:         { sourceType: 'gitlab', scopeColumn: 'project_path' },
+  // No bitbucket issues table: Bitbucket issues are out of scope (Jira owns
+  // tasks). Every Bitbucket table is keyed "{workspace}/{repo_slug}".
+  bitbucket_pull_requests: { sourceType: 'bitbucket', scopeColumn: 'repo_full_name' },
+  bitbucket_commits:       { sourceType: 'bitbucket', scopeColumn: 'repo_full_name' },
+  bitbucket_reviews:       { sourceType: 'bitbucket', scopeColumn: 'repo_full_name' },
+  bitbucket_deployments:   { sourceType: 'bitbucket', scopeColumn: 'repo_full_name' },
 });
 
 export function isCatalogedTable(name: string): boolean {

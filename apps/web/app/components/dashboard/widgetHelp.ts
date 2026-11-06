@@ -342,7 +342,7 @@ export const WIDGET_HELP: Record<string, WidgetHelp> = {
   },
   COMMITS_PER_DEV: {
     howToRead:
-      'One row per developer, unified across GitHub, GitLab and ADO: commit count, lines added/removed, the percentage of their commits flagged as AI-assisted, and a weekly commit-count sparkline. There are no benchmark tiers — read it relative to the rest of the table.',
+      'One row per developer, unified across GitHub, GitLab, Bitbucket and ADO: commit count, lines added/removed, the percentage of their commits flagged as AI-assisted, and a weekly commit-count sparkline. There are no benchmark tiers — read it relative to the rest of the table.',
     whatToLookFor: [
       'A high commit count paired with very few lines changed — many small or trivial commits rather than substantive change.',
       'An AI-assist % that is much higher or lower than the rest of the team for the same role.',
@@ -547,7 +547,7 @@ export const WIDGET_HELP: Record<string, WidgetHelp> = {
   },
   BOT_VS_HUMAN: {
     howToRead:
-      'The share of non-merge commits carrying an AI-assist trailer (e.g. a Claude Code co-author) versus human-only commits, landed in the window across GitHub/GitLab/ADO, with a weekly line for each. Commits, not reviews, because that is the unit of work actually shipped.',
+      'The share of non-merge commits carrying an AI-assist trailer (e.g. a Claude Code co-author) versus human-only commits, landed in the window across GitHub/GitLab/Bitbucket/ADO, with a weekly line for each. Commits, not reviews, because that is the unit of work actually shipped.',
     whatToLookFor: [
       'The trailer detector is a floor, not a ceiling — a low bot share can mean low adoption or just untagged AI use.',
       'A bot line that climbs relative to the human line over successive weeks.',
@@ -608,7 +608,7 @@ export const WIDGET_HELP: Record<string, WidgetHelp> = {
   },
   REVIEW_QUALITY_TREND: {
     howToRead:
-      'Two lines over time, bucketed weekly or monthly: peer-approval coverage % and comment % of merged PRs/MRs (GitHub, ADO, GitLab), using the same genuine-peer-review logic as the Review Quality Index — approvals or comments from someone other than the author.',
+      'Two lines over time, bucketed weekly or monthly: peer-approval coverage % and comment % of merged PRs/MRs (GitHub, ADO, GitLab, Bitbucket), using the same genuine-peer-review logic as the Review Quality Index — approvals or comments from someone other than the author.',
     whatToLookFor: [
       'Both lines drifting down together — review rigor is eroding across the board, not just one dimension.',
       'Coverage staying flat while comment % falls — approvals are still happening but with less scrutiny.',

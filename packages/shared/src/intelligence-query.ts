@@ -46,6 +46,7 @@ export const intelligenceSchemaSchema = z.object({
     jiraProjectKeys: z.array(z.string()),
     adoProjects: z.array(z.string()),
     gitlabProjectPaths: z.array(z.string()),
+    bitbucketRepoFullNames: z.array(z.string()),
   }),
 });
 export type IntelligenceSchema = z.infer<typeof intelligenceSchemaSchema>;

@@ -89,7 +89,7 @@ export function stripSegments(timeline: TimelineSegmentDto[]): StripSegment[] {
 export type ActivityKind = 'commit' | 'pr' | 'status' | 'other';
 
 /** The three PR/MR sources the server's UNION emits today. */
-const PR_SOURCES: ReadonlySet<string> = new Set(['github', 'gitlab', 'ado']);
+const PR_SOURCES: ReadonlySet<string> = new Set(['github', 'gitlab', 'bitbucket', 'ado']);
 
 /**
  * Collapse the server's `source` strings into filter buckets.

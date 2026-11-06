@@ -7,9 +7,9 @@ import {
 } from '../board-sources/providers/connection-fields';
 import { PROVIDER_LABEL, type Provider } from '../board-sources/providers/roles';
 import { TokenTutorial } from '../board-sources/providers/TokenTutorial';
-import { createConnection } from '../../actions/connections';
+import { createConnection, type BitbucketWorkspaceOption } from '../../actions/connections';
 
-const PROVIDERS: Provider[] = ['jira', 'github', 'ado', 'gitlab'];
+const PROVIDERS: Provider[] = ['jira', 'github', 'ado', 'gitlab', 'bitbucket'];
 
 function initialValues(provider: Provider): Record<string, string> {
   const seed: Record<string, string> = {};
@@ -35,12 +35,15 @@ export function AddConnectionPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<string | null>(null);
+  // Bitbucket only: the token sees several workspaces and the API asked which.
+  const [workspaces, setWorkspaces] = useState<BitbucketWorkspaceOption[] | null>(null);
 
   const choose = (p: Provider) => {
     setProvider(p);
     setValues(initialValues(p));
     setError(null);
     setCreated(null);
+    setWorkspaces(null);
   };
 
   const set = (key: string, value: string) => setValues((prev) => ({ ...prev, [key]: value }));
@@ -61,12 +64,23 @@ export function AddConnectionPanel() {
     const result = await createConnection(provider, payload);
     setBusy(false);
     if (!result.ok) {
+      if (result.workspaces && result.workspaces.length > 0) {
+        setWorkspaces(result.workspaces);
+        setValues((prev) => ({ ...prev, workspace: result.workspaces![0].slug }));
+        setError('This token can see several Bitbucket workspaces — choose one and create again.');
+        return;
+      }
       setError(result.error ?? 'Could not create the connection.');
       return;
     }
-    setCreated(`${PROVIDER_LABEL[provider]} connection created.`);
+    setCreated(
+      provider === 'bitbucket'
+        ? 'Bitbucket connection created and tested. Attach repositories from a board’s Sources tab.'
+        : `${PROVIDER_LABEL[provider]} connection created.`,
+    );
     setProvider(null);
     setValues({});
+    setWorkspaces(null);
     // The instance lists above are rendered on the server.
     router.refresh();
   };
@@ -105,7 +119,11 @@ export function AddConnectionPanel() {
             New {PROVIDER_LABEL[provider]} connection
           </p>
           <TokenTutorial provider={provider} />
-          {PROVIDER_CONNECTION_FIELDS[provider].map((f) => (
+          {PROVIDER_CONNECTION_FIELDS[provider]
+            // Once the API has listed the workspaces, the picker below replaces
+            // the free-text workspace field.
+            .filter((f) => !(provider === 'bitbucket' && f.key === 'workspace' && workspaces))
+            .map((f) => (
             <div key={f.key}>
               <label className="block text-[11px] text-slate-500" htmlFor={`new-conn-${f.key}`}>
                 {f.label}
@@ -138,7 +156,32 @@ export function AddConnectionPanel() {
             </div>
           ))}
 
-          {error && <p className="text-xs text-rose-600">{error}</p>}
+          {provider === 'bitbucket' && workspaces && (
+            <div>
+              <label className="block text-[11px] text-slate-500" htmlFor="new-conn-bb-workspace">
+                Workspace
+              </label>
+              <select
+                id="new-conn-bb-workspace"
+                aria-label="Workspace"
+                className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs"
+                value={values.workspace ?? ''}
+                onChange={(e) => set('workspace', e.target.value)}
+              >
+                {workspaces.map((w) => (
+                  <option key={w.slug} value={w.slug}>
+                    {w.name} ({w.slug})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {error && (
+            <p className="text-xs text-rose-600" role="alert">
+              {error}
+            </p>
+          )}
 
           <div className="flex gap-2 pt-1">
             <button
@@ -147,7 +190,7 @@ export function AddConnectionPanel() {
               disabled={!complete || busy}
               onClick={submit}
             >
-              {busy ? 'Creating…' : 'Create connection'}
+              {busy ? 'Creating…' : provider === 'bitbucket' ? 'Create & test' : 'Create connection'}
             </button>
             <button
               type="button"

@@ -17,6 +17,13 @@ import { buildMentionSuggestion } from './extensions/MentionSuggestion';
 
 type TiptapJSON = Record<string, unknown>;
 
+/**
+ * Schemes a comment link may carry. Checked BEFORE either insert path: the
+ * caret path uses insertContent, which bypasses Link's own isAllowedUri check,
+ * and would otherwise store e.g. a `javascript:` href in the comment JSON.
+ */
+const ALLOWED_LINK = /^(https?:\/\/|mailto:|tel:)/i;
+
 interface CommentEditorProps {
   onSubmit: (content: TiptapJSON) => void;
   projectId?: string;
@@ -43,6 +50,7 @@ export function CommentEditor({
   const [uploadIds, setUploadIds] = useState<string[]>([]);
   const [pendingUploads, setPendingUploads] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Notify parent whenever uploadIds changes
@@ -66,7 +74,13 @@ export function CommentEditor({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit.configure({ undoRedo: false, underline: false }),
+      StarterKit.configure({
+        undoRedo: false,
+        underline: false,
+        // Ctrl/Cmd-click opens a link; a plain click just places the caret, so
+        // a linked line stays editable.
+        link: { openOnClick: false, autolink: true, linkOnPaste: true, defaultProtocol: 'https' },
+      }),
       TextStyle,
       Color,
       Underline,
@@ -143,6 +157,34 @@ export function CommentEditor({
     }
   };
 
+  const handleLink = () => {
+    if (!editor) return;
+    setLinkError(null);
+    const previous = (editor.getAttributes('link').href as string | undefined) ?? '';
+    const input = window.prompt('Link URL (leave empty to remove)', previous || 'https://');
+    if (input === null) return;
+    const url = input.trim();
+    const chain = editor.chain().focus().extendMarkRange('link');
+    if (!url || url === 'https://') {
+      chain.unsetLink().run();
+      return;
+    }
+    const href = /^[a-z][a-z0-9+.-]*:/i.test(url) ? url : `https://${url}`;
+    if (!ALLOWED_LINK.test(href)) {
+      setLinkError('Links must start with http://, https://, mailto: or tel:.');
+      return;
+    }
+    if (editor.state.selection.empty && !editor.isActive('link')) {
+      chain
+        .insertContent({ type: 'text', text: href, marks: [{ type: 'link', attrs: { href } }] })
+        .unsetMark('link')
+        .insertContent(' ')
+        .run();
+    } else {
+      chain.setLink({ href }).run();
+    }
+  };
+
   const isPostDisabled = isEmpty || pendingUploads > 0;
 
   return (
@@ -209,6 +251,19 @@ export function CommentEditor({
         >
           1.
         </button>
+        <button
+          type="button"
+          onClick={handleLink}
+          className={`px-2 py-1 text-xs rounded transition-colors ${
+            editor?.isActive('link')
+              ? 'bg-slate-200 text-slate-800'
+              : 'text-slate-500 hover:bg-slate-100'
+          }`}
+          aria-label="Link"
+          title="Add link (select text first)"
+        >
+          {'🔗'}
+        </button>
         <input
           type="color"
           onChange={(e) => editor?.chain().focus().setColor(e.target.value).run()}
@@ -238,13 +293,21 @@ export function CommentEditor({
       </div>
 
       {/* Editor */}
-      <EditorContent editor={editor} />
+      <style>{`.comment-editor a { color: #2563eb; text-decoration: underline; overflow-wrap: anywhere; }`}</style>
+      <div className="comment-editor">
+        <EditorContent editor={editor} />
+      </div>
 
       {/* Actions */}
       <div className="flex justify-end gap-2 px-3 py-2">
         {uploadError && (
           <span className="text-xs text-red-500 self-center" role="alert">
             {uploadError}
+          </span>
+        )}
+        {linkError && (
+          <span className="text-xs text-red-500 self-center" role="alert">
+            {linkError}
           </span>
         )}
         {pendingUploads > 0 && (

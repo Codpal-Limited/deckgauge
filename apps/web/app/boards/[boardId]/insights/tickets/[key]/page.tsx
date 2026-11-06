@@ -45,6 +45,8 @@ const SOURCE_TONE: Record<string, string> = {
   'github-commit': 'bg-purple-50 text-purple-700 ring-purple-200',
   gitlab: 'bg-orange-50 text-orange-700 ring-orange-200',
   'gitlab-commit': 'bg-orange-50 text-orange-700 ring-orange-200',
+  bitbucket: 'bg-blue-50 text-blue-800 ring-blue-300',
+  'bitbucket-commit': 'bg-blue-50 text-blue-800 ring-blue-300',
   ado: 'bg-sky-50 text-sky-700 ring-sky-200',
   'ado-commit': 'bg-sky-50 text-sky-700 ring-sky-200',
 };

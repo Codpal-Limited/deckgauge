@@ -60,6 +60,7 @@ export type ProjectMinAggregateOutputType = {
   adoWorkItemId: number | null
   adoProject: string | null
   adoRemovedFromSource: boolean | null
+  linkedFromSource: boolean | null
   roadmapPinnedStart: Date | null
   startDate: Date | null
   endDate: Date | null
@@ -96,6 +97,7 @@ export type ProjectMaxAggregateOutputType = {
   adoWorkItemId: number | null
   adoProject: string | null
   adoRemovedFromSource: boolean | null
+  linkedFromSource: boolean | null
   roadmapPinnedStart: Date | null
   startDate: Date | null
   endDate: Date | null
@@ -137,6 +139,7 @@ export type ProjectCountAggregateOutputType = {
   adoProject: number
   adoSyncedFields: number
   adoRemovedFromSource: number
+  linkedFromSource: number
   roadmapPinnedStart: number
   startDate: number
   endDate: number
@@ -185,6 +188,7 @@ export type ProjectMinAggregateInputType = {
   adoWorkItemId?: true
   adoProject?: true
   adoRemovedFromSource?: true
+  linkedFromSource?: true
   roadmapPinnedStart?: true
   startDate?: true
   endDate?: true
@@ -221,6 +225,7 @@ export type ProjectMaxAggregateInputType = {
   adoWorkItemId?: true
   adoProject?: true
   adoRemovedFromSource?: true
+  linkedFromSource?: true
   roadmapPinnedStart?: true
   startDate?: true
   endDate?: true
@@ -262,6 +267,7 @@ export type ProjectCountAggregateInputType = {
   adoProject?: true
   adoSyncedFields?: true
   adoRemovedFromSource?: true
+  linkedFromSource?: true
   roadmapPinnedStart?: true
   startDate?: true
   endDate?: true
@@ -390,6 +396,7 @@ export type ProjectGroupByOutputType = {
   adoProject: string | null
   adoSyncedFields: runtime.JsonValue | null
   adoRemovedFromSource: boolean
+  linkedFromSource: boolean
   roadmapPinnedStart: Date | null
   startDate: Date | null
   endDate: Date | null
@@ -454,6 +461,7 @@ export type ProjectWhereInput = {
   adoProject?: Prisma.StringNullableFilter<"Project"> | string | null
   adoSyncedFields?: Prisma.JsonNullableFilter<"Project">
   adoRemovedFromSource?: Prisma.BoolFilter<"Project"> | boolean
+  linkedFromSource?: Prisma.BoolFilter<"Project"> | boolean
   roadmapPinnedStart?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   startDate?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   endDate?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
@@ -504,6 +512,7 @@ export type ProjectOrderByWithRelationInput = {
   adoProject?: Prisma.SortOrderInput | Prisma.SortOrder
   adoSyncedFields?: Prisma.SortOrderInput | Prisma.SortOrder
   adoRemovedFromSource?: Prisma.SortOrder
+  linkedFromSource?: Prisma.SortOrder
   roadmapPinnedStart?: Prisma.SortOrderInput | Prisma.SortOrder
   startDate?: Prisma.SortOrderInput | Prisma.SortOrder
   endDate?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -561,6 +570,7 @@ export type ProjectWhereUniqueInput = Prisma.AtLeast<{
   adoProject?: Prisma.StringNullableFilter<"Project"> | string | null
   adoSyncedFields?: Prisma.JsonNullableFilter<"Project">
   adoRemovedFromSource?: Prisma.BoolFilter<"Project"> | boolean
+  linkedFromSource?: Prisma.BoolFilter<"Project"> | boolean
   roadmapPinnedStart?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   startDate?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   endDate?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
@@ -611,6 +621,7 @@ export type ProjectOrderByWithAggregationInput = {
   adoProject?: Prisma.SortOrderInput | Prisma.SortOrder
   adoSyncedFields?: Prisma.SortOrderInput | Prisma.SortOrder
   adoRemovedFromSource?: Prisma.SortOrder
+  linkedFromSource?: Prisma.SortOrder
   roadmapPinnedStart?: Prisma.SortOrderInput | Prisma.SortOrder
   startDate?: Prisma.SortOrderInput | Prisma.SortOrder
   endDate?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -660,6 +671,7 @@ export type ProjectScalarWhereWithAggregatesInput = {
   adoProject?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
   adoSyncedFields?: Prisma.JsonNullableWithAggregatesFilter<"Project">
   adoRemovedFromSource?: Prisma.BoolWithAggregatesFilter<"Project"> | boolean
+  linkedFromSource?: Prisma.BoolWithAggregatesFilter<"Project"> | boolean
   roadmapPinnedStart?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
   startDate?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
   endDate?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
@@ -697,6 +709,7 @@ export type ProjectCreateInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -747,6 +760,7 @@ export type ProjectUncheckedCreateInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -789,6 +803,7 @@ export type ProjectUpdateInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -839,6 +854,7 @@ export type ProjectUncheckedUpdateInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -885,6 +901,7 @@ export type ProjectCreateManyInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -922,6 +939,7 @@ export type ProjectUpdateManyMutationInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -963,6 +981,7 @@ export type ProjectUncheckedUpdateManyInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1035,6 +1054,7 @@ export type ProjectCountOrderByAggregateInput = {
   adoProject?: Prisma.SortOrder
   adoSyncedFields?: Prisma.SortOrder
   adoRemovedFromSource?: Prisma.SortOrder
+  linkedFromSource?: Prisma.SortOrder
   roadmapPinnedStart?: Prisma.SortOrder
   startDate?: Prisma.SortOrder
   endDate?: Prisma.SortOrder
@@ -1076,6 +1096,7 @@ export type ProjectMaxOrderByAggregateInput = {
   adoWorkItemId?: Prisma.SortOrder
   adoProject?: Prisma.SortOrder
   adoRemovedFromSource?: Prisma.SortOrder
+  linkedFromSource?: Prisma.SortOrder
   roadmapPinnedStart?: Prisma.SortOrder
   startDate?: Prisma.SortOrder
   endDate?: Prisma.SortOrder
@@ -1112,6 +1133,7 @@ export type ProjectMinOrderByAggregateInput = {
   adoWorkItemId?: Prisma.SortOrder
   adoProject?: Prisma.SortOrder
   adoRemovedFromSource?: Prisma.SortOrder
+  linkedFromSource?: Prisma.SortOrder
   roadmapPinnedStart?: Prisma.SortOrder
   startDate?: Prisma.SortOrder
   endDate?: Prisma.SortOrder
@@ -1448,6 +1470,7 @@ export type ProjectCreateWithoutBoardInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -1496,6 +1519,7 @@ export type ProjectUncheckedCreateWithoutBoardInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -1571,6 +1595,7 @@ export type ProjectScalarWhereInput = {
   adoProject?: Prisma.StringNullableFilter<"Project"> | string | null
   adoSyncedFields?: Prisma.JsonNullableFilter<"Project">
   adoRemovedFromSource?: Prisma.BoolFilter<"Project"> | boolean
+  linkedFromSource?: Prisma.BoolFilter<"Project"> | boolean
   roadmapPinnedStart?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   startDate?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   endDate?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
@@ -1608,6 +1633,7 @@ export type ProjectCreateWithoutBoardOwnerInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -1656,6 +1682,7 @@ export type ProjectUncheckedCreateWithoutBoardOwnerInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -1724,6 +1751,7 @@ export type ProjectCreateWithoutBoardStatusInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -1772,6 +1800,7 @@ export type ProjectUncheckedCreateWithoutBoardStatusInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -1840,6 +1869,7 @@ export type ProjectCreateWithoutGroupInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -1888,6 +1918,7 @@ export type ProjectUncheckedCreateWithoutGroupInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -1956,6 +1987,7 @@ export type ProjectCreateWithoutCommentsInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -2005,6 +2037,7 @@ export type ProjectUncheckedCreateWithoutCommentsInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -2062,6 +2095,7 @@ export type ProjectUpdateWithoutCommentsInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2111,6 +2145,7 @@ export type ProjectUncheckedUpdateWithoutCommentsInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2152,6 +2187,7 @@ export type ProjectCreateWithoutFieldValuesInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -2201,6 +2237,7 @@ export type ProjectUncheckedCreateWithoutFieldValuesInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -2258,6 +2295,7 @@ export type ProjectUpdateWithoutFieldValuesInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2307,6 +2345,7 @@ export type ProjectUncheckedUpdateWithoutFieldValuesInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2348,6 +2387,7 @@ export type ProjectCreateWithoutUploadsInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -2397,6 +2437,7 @@ export type ProjectUncheckedCreateWithoutUploadsInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -2454,6 +2495,7 @@ export type ProjectUpdateWithoutUploadsInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2503,6 +2545,7 @@ export type ProjectUncheckedUpdateWithoutUploadsInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2544,6 +2587,7 @@ export type ProjectCreateWithoutStatusChangesInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -2593,6 +2637,7 @@ export type ProjectUncheckedCreateWithoutStatusChangesInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -2650,6 +2695,7 @@ export type ProjectUpdateWithoutStatusChangesInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2699,6 +2745,7 @@ export type ProjectUncheckedUpdateWithoutStatusChangesInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2740,6 +2787,7 @@ export type ProjectCreateWithoutNotificationsInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -2789,6 +2837,7 @@ export type ProjectUncheckedCreateWithoutNotificationsInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -2846,6 +2895,7 @@ export type ProjectUpdateWithoutNotificationsInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2895,6 +2945,7 @@ export type ProjectUncheckedUpdateWithoutNotificationsInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2939,6 +2990,7 @@ export type ProjectCreateManyBoardInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -2976,6 +3028,7 @@ export type ProjectUpdateWithoutBoardInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3024,6 +3077,7 @@ export type ProjectUncheckedUpdateWithoutBoardInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3069,6 +3123,7 @@ export type ProjectUncheckedUpdateManyWithoutBoardInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3109,6 +3164,7 @@ export type ProjectCreateManyBoardOwnerInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -3146,6 +3202,7 @@ export type ProjectUpdateWithoutBoardOwnerInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3194,6 +3251,7 @@ export type ProjectUncheckedUpdateWithoutBoardOwnerInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3239,6 +3297,7 @@ export type ProjectUncheckedUpdateManyWithoutBoardOwnerInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3279,6 +3338,7 @@ export type ProjectCreateManyBoardStatusInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -3316,6 +3376,7 @@ export type ProjectUpdateWithoutBoardStatusInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3364,6 +3425,7 @@ export type ProjectUncheckedUpdateWithoutBoardStatusInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3409,6 +3471,7 @@ export type ProjectUncheckedUpdateManyWithoutBoardStatusInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3449,6 +3512,7 @@ export type ProjectCreateManyGroupInput = {
   adoProject?: string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: Date | string | null
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -3486,6 +3550,7 @@ export type ProjectUpdateWithoutGroupInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3534,6 +3599,7 @@ export type ProjectUncheckedUpdateWithoutGroupInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3579,6 +3645,7 @@ export type ProjectUncheckedUpdateManyWithoutGroupInput = {
   adoProject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adoSyncedFields?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   adoRemovedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  linkedFromSource?: Prisma.BoolFieldUpdateOperationsInput | boolean
   roadmapPinnedStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3687,6 +3754,7 @@ export type ProjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   adoProject?: boolean
   adoSyncedFields?: boolean
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: boolean
   startDate?: boolean
   endDate?: boolean
@@ -3738,6 +3806,7 @@ export type ProjectSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   adoProject?: boolean
   adoSyncedFields?: boolean
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: boolean
   startDate?: boolean
   endDate?: boolean
@@ -3783,6 +3852,7 @@ export type ProjectSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   adoProject?: boolean
   adoSyncedFields?: boolean
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: boolean
   startDate?: boolean
   endDate?: boolean
@@ -3828,6 +3898,7 @@ export type ProjectSelectScalar = {
   adoProject?: boolean
   adoSyncedFields?: boolean
   adoRemovedFromSource?: boolean
+  linkedFromSource?: boolean
   roadmapPinnedStart?: boolean
   startDate?: boolean
   endDate?: boolean
@@ -3840,7 +3911,7 @@ export type ProjectSelectScalar = {
   updatedAt?: boolean
 }
 
-export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "owner" | "assignee" | "overriddenFields" | "preOverrideValues" | "status" | "description" | "boardId" | "groupId" | "ownerId" | "statusId" | "order" | "jiraKey" | "jiraProjectKey" | "jiraType" | "jiraSyncedFields" | "jiraRemovedFromSource" | "jiraDeletedAt" | "jiraAnalyticsPurgedAt" | "githubIssueId" | "githubRepoFullName" | "githubSyncedFields" | "githubRemovedFromSource" | "adoWorkItemId" | "adoProject" | "adoSyncedFields" | "adoRemovedFromSource" | "roadmapPinnedStart" | "startDate" | "endDate" | "dueDate" | "durationCode" | "costClassification" | "onboardedEmployeeId" | "calendarEventId" | "createdAt" | "updatedAt", ExtArgs["result"]["project"]>
+export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "owner" | "assignee" | "overriddenFields" | "preOverrideValues" | "status" | "description" | "boardId" | "groupId" | "ownerId" | "statusId" | "order" | "jiraKey" | "jiraProjectKey" | "jiraType" | "jiraSyncedFields" | "jiraRemovedFromSource" | "jiraDeletedAt" | "jiraAnalyticsPurgedAt" | "githubIssueId" | "githubRepoFullName" | "githubSyncedFields" | "githubRemovedFromSource" | "adoWorkItemId" | "adoProject" | "adoSyncedFields" | "adoRemovedFromSource" | "linkedFromSource" | "roadmapPinnedStart" | "startDate" | "endDate" | "dueDate" | "durationCode" | "costClassification" | "onboardedEmployeeId" | "calendarEventId" | "createdAt" | "updatedAt", ExtArgs["result"]["project"]>
 export type ProjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   board?: boolean | Prisma.Project$boardArgs<ExtArgs>
   group?: boolean | Prisma.Project$groupArgs<ExtArgs>
@@ -3934,6 +4005,13 @@ export type $ProjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     adoProject: string | null
     adoSyncedFields: runtime.JsonValue | null
     adoRemovedFromSource: boolean
+    /**
+     * Added by a user from a pasted source link rather than promoted by the
+     * sync's scope. Such a row keeps receiving source updates even when it falls
+     * outside its board source's filters (issue types, JQL, labels), and narrowing
+     * a filter never flags it removed. See apps/api/src/source-link/.
+     */
+    linkedFromSource: boolean
     roadmapPinnedStart: Date | null
     startDate: Date | null
     endDate: Date | null
@@ -4404,6 +4482,7 @@ export interface ProjectFieldRefs {
   readonly adoProject: Prisma.FieldRef<"Project", 'String'>
   readonly adoSyncedFields: Prisma.FieldRef<"Project", 'Json'>
   readonly adoRemovedFromSource: Prisma.FieldRef<"Project", 'Boolean'>
+  readonly linkedFromSource: Prisma.FieldRef<"Project", 'Boolean'>
   readonly roadmapPinnedStart: Prisma.FieldRef<"Project", 'DateTime'>
   readonly startDate: Prisma.FieldRef<"Project", 'DateTime'>
   readonly endDate: Prisma.FieldRef<"Project", 'DateTime'>

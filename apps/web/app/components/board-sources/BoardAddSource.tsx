@@ -13,7 +13,16 @@ import {
   type BulkAttachResult,
 } from './GitHubSourcePicker';
 import { SourceReconnectBanner } from './SourceReconnectBanner';
-import type { RemoteProjectsResult } from '../../actions/board-sources';
+import {
+  BitbucketSourcePicker,
+  type BitbucketInstanceOption,
+  type BitbucketAttachResult,
+} from './BitbucketSourcePicker';
+import type {
+  RemoteProjectsResult,
+  BitbucketBulkAttachRequest,
+  BitbucketRemoteReposResult,
+} from '../../actions/board-sources';
 
 export type { Provider } from './providers/roles';
 
@@ -91,11 +100,20 @@ interface Props {
   ) => Promise<{ ok: boolean; error?: string }>;
   /** When set, the wizard opens directly on the pick step for this provider. */
   initialProvider?: Provider;
+  /**
+   * Bitbucket connections available to this board. Bitbucket always uses its
+   * own project-grouped picker (there is no ready-list flow for it): with no
+   * connection the wizard points at Settings → Connections instead.
+   */
+  bitbucketInstances?: BitbucketInstanceOption[];
+  loadBitbucketRepos?: (instanceId: string) => Promise<BitbucketRemoteReposResult>;
+  /** Bulk-attaches the picked Bitbucket repositories. Never rejects. */
+  onBulkAttachBitbucket?: (req: BitbucketBulkAttachRequest) => Promise<BitbucketAttachResult>;
 }
 
 type Step = 'provider' | 'pick' | 'review';
 
-const PROVIDERS: Provider[] = ['jira', 'github', 'ado', 'gitlab'];
+const PROVIDERS: Provider[] = ['jira', 'github', 'ado', 'gitlab', 'bitbucket'];
 
 export function BoardAddSource({
   boardId,
@@ -108,6 +126,9 @@ export function BoardAddSource({
   onBulkAttachGitHub,
   onReplaceToken,
   initialProvider,
+  bitbucketInstances = [],
+  loadBitbucketRepos,
+  onBulkAttachBitbucket,
 }: Props) {
   const [step, setStep] = useState<Step>(initialProvider ? 'pick' : 'provider');
   const [provider, setProvider] = useState<Provider | null>(initialProvider ?? null);
@@ -163,6 +184,12 @@ export function BoardAddSource({
     provider === 'github' &&
     (githubInstances?.length ?? 0) > 0 &&
     !!onBulkAttachGitHub;
+
+  // Bitbucket never takes the ready-list/cart flow: it has no board roles and
+  // its repos are best picked a project at a time.
+  const bitbucketStep = step === 'pick' && provider === 'bitbucket';
+  const bitbucketPickerMode =
+    bitbucketStep && bitbucketInstances.length > 0 && !!loadBitbucketRepos && !!onBulkAttachBitbucket;
 
   const isAttached = (p: Provider, name: string) =>
     attachedKeys?.has(`${p}:${name}`) ?? false;
@@ -348,7 +375,11 @@ export function BoardAddSource({
                     }`}
                   >
                     {PROVIDER_LABEL[p]}
-                    <span className="ml-auto text-[10px] text-slate-400">{count} ready</span>
+                    <span className="ml-auto text-[10px] text-slate-400">
+                      {p === 'bitbucket'
+                        ? `${count} connection${count === 1 ? '' : 's'}`
+                        : `${count} ready`}
+                    </span>
                   </button>
                 );
               })}
@@ -371,7 +402,41 @@ export function BoardAddSource({
           />
         )}
 
-        {step === 'pick' && provider && !githubPickerMode && (
+        {bitbucketPickerMode && (
+          <BitbucketSourcePicker
+            instances={bitbucketInstances}
+            attachedRepos={
+              new Set(
+                [...(attachedKeys ?? [])]
+                  .filter((k) => k.startsWith('bitbucket:'))
+                  .map((k) => k.slice('bitbucket:'.length)),
+              )
+            }
+            loadRepos={loadBitbucketRepos!}
+            onBulkAttach={onBulkAttachBitbucket!}
+            onReplaceToken={
+              onReplaceToken
+                ? (instanceId, token) => onReplaceToken('bitbucket', instanceId, token)
+                : undefined
+            }
+            onDone={onCancel}
+            onCancel={goToProviderStep}
+          />
+        )}
+
+        {bitbucketStep && !bitbucketPickerMode && (
+          <div className="text-xs text-slate-500 space-y-2">
+            <p>
+              No Bitbucket connection yet. Connect your workspace once — it takes an Atlassian API
+              token with Bitbucket scopes — then come back to pick repositories by project.
+            </p>
+            <a href="/sources" className="text-indigo-600 hover:underline">
+              Add a Bitbucket connection in Settings &rarr; Connections
+            </a>
+          </div>
+        )}
+
+        {step === 'pick' && provider && !githubPickerMode && !bitbucketStep && (
           <div>
             {reconnect && onReplaceToken && connectionId && (
               <SourceReconnectBanner
@@ -642,7 +707,16 @@ export function BoardAddSource({
             </button>
           </>
         )}
-        {step === 'pick' && !githubPickerMode && (
+        {bitbucketStep && !bitbucketPickerMode && (
+          <button
+            type="button"
+            className="px-3 py-1.5 rounded-md border border-slate-200 text-xs text-slate-600"
+            onClick={goToProviderStep}
+          >
+            Back
+          </button>
+        )}
+        {step === 'pick' && !githubPickerMode && !bitbucketStep && (
           <>
             <button
               type="button"

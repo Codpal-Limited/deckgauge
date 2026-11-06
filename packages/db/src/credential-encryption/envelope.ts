@@ -11,7 +11,8 @@ import type { CredentialKey } from "./key.js";
  *
  * The prefix is the whole plaintext-detection mechanism, so it has to be a shape
  * no provider token can take. Checked against real formats: GitHub (`ghp_`,
- * `github_pat_`), GitLab (`glpat-`), Atlassian (`ATATT`), Azure DevOps (base64),
+ * `github_pat_`), GitLab (`glpat-`), Atlassian (`ATATT` — Jira, and Bitbucket
+ * Cloud's scoped API tokens), Azure DevOps (base64),
  * Anthropic (`sk-ant-`). None contains a dot, let alone this one.
  *
  * `v1` is in the prefix rather than only in the key id so that a future format

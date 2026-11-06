@@ -20,7 +20,7 @@ what the board starts with:
   roadmap view. Start from nothing and shape it yourself.
 - **Development** — the delivery-board template: the
   engineering-intelligence dashboard and a roadmap view, ready for you to
-  connect Jira, GitHub, Azure DevOps, or GitLab. It carries the same Size
+  connect Jira, GitHub, Azure DevOps, GitLab, or Bitbucket. It carries the same Size
   column a Blank board gets. This is what a board becomes by default if you
   create one without picking a template.
 - **Recruitment** — a candidate pipeline: preset groups for each interview

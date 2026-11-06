@@ -8,6 +8,7 @@ export interface BoardSourceProbes {
   github: Probe;
   ado: Probe;
   gitlab: Probe;
+  bitbucket: Probe;
 }
 
 export interface BoardSourceHealthResult {
@@ -16,7 +17,7 @@ export interface BoardSourceHealthResult {
   hasExpired: boolean;
 }
 
-type Provider = 'jira' | 'github' | 'ado' | 'gitlab';
+type Provider = 'jira' | 'github' | 'ado' | 'gitlab' | 'bitbucket';
 
 // A provider federated to an external IdP relays that IdP's error verbatim on a
 // 403 when the credential's SSO session needs interactive re-auth — an Entra
@@ -50,7 +51,7 @@ export class BoardSourceHealthService {
   ) {}
 
   async probe(boardId: string): Promise<BoardSourceHealthResult> {
-    const [jira, github, ado, gitlab] = await Promise.all([
+    const [jira, github, ado, gitlab, bitbucket] = await Promise.all([
       this.prisma.boardJiraSource.findMany({
         where: { boardId },
         include: { jiraProjectSync: { include: { jiraInstance: true } } },
@@ -81,6 +82,14 @@ export class BoardSourceHealthService {
       }) as unknown as Promise<
         Array<{
           gitlabProjectSync: { gitlabInstance: { id: string; name?: string | null; baseUrl?: string | null } };
+        }>
+      >,
+      this.prisma.boardBitbucketSource.findMany({
+        where: { boardId },
+        include: { bitbucketRepoSync: { include: { bitbucketInstance: true } } },
+      }) as unknown as Promise<
+        Array<{
+          bitbucketRepoSync: { bitbucketInstance: { id: string; name?: string | null; workspace?: string | null } };
         }>
       >,
     ]);
@@ -120,6 +129,11 @@ export class BoardSourceHealthService {
         r.gitlabProjectSync.gitlabInstance.id,
         r.gitlabProjectSync.gitlabInstance.name ?? r.gitlabProjectSync.gitlabInstance.baseUrl ?? 'GitLab',
       );
+    }
+    for (const r of bitbucket) {
+      const inst = r.bitbucketRepoSync.bitbucketInstance;
+      // `||`: workspace defaults to '' (see the GitHub org label above).
+      add('bitbucket', inst.id, inst.name?.trim() || inst.workspace || 'Bitbucket');
     }
 
     const sources = await Promise.all(

@@ -12,7 +12,7 @@ export { OwnerAvatar } from "./OwnerAvatar";
 export { StatusDistributionBar, type BoardStatusSegment } from "./StatusDistributionBar";
 export { computeBoardStatusDistribution } from "./boardStatusDistribution";
 export { ColumnToggle, type VisibleColumns } from "./ColumnToggle";
-export { InlineAddRow } from "./InlineAddRow";
+export { InlineAddRow, type AddFromLinkResult } from "./InlineAddRow";
 export { CustomColumnCell } from "./CustomColumnCell";
 export { ColumnHeaderRow, useColumnResize, ResizeHandle } from "./ColumnHeaderRow";
 export { BoardShell } from "./board-shell/BoardShell";

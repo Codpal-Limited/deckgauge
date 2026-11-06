@@ -71,6 +71,7 @@ function formatScope(scope: RunIntelligenceQueryOk['scope']): string {
   if (scope.jira.length) parts.push(`${scope.jira.length} Jira`);
   if (scope.ado.length) parts.push(`${scope.ado.length} ADO`);
   if (scope.gitlab.length) parts.push(`${scope.gitlab.length} GitLab`);
+  if (scope.bitbucket?.length) parts.push(`${scope.bitbucket.length} Bitbucket`);
   return parts.join(', ') || 'none';
 }
 

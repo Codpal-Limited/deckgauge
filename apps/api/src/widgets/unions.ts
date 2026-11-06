@@ -8,6 +8,16 @@ export interface UnionResult {
   params: Record<string, unknown>;
 }
 
+/**
+ * The board's Bitbucket repositories, or [] for a hand-built scope that predates
+ * Bitbucket. Every Bitbucket leg binds them as `bbRepos`; all unions bind the
+ * SAME value under that name, so builders that merge several unions' params
+ * cannot collide.
+ */
+function bitbucketRepos(scope: BoardScope): string[] {
+  return scope.bitbucketRepoFullNames ?? [];
+}
+
 // Separator for the exact (org_url, project) pair key. org_url is always a URL
 // and can never contain '#', so splitting at the first '#' is unambiguous — the
 // concatenation is injective.
@@ -363,6 +373,9 @@ export function focusTasksUnion(scope: BoardScope): UnionResult {
 //                           repo_name is unique only WITHIN a project, so `repo`
 //                           is the project/repo pair for the same reason
 //                           adoScopeFilter keys on (org_url, project).
+//   bitbucket_pull_requests: author_username (Bitbucket nickname), UPPERCASE
+//                           state (OPEN | MERGED | DECLINED | SUPERSEDED, mapped
+//                           to open / merged / closed), repo_full_name, pr_id.
 const GITHUB_PR_COLUMNS = `
   toString(id)                                AS id,
   repo_full_name                              AS repo,
@@ -398,6 +411,45 @@ const GITLAB_MR_COLUMNS = `
   ai_assisted                                 AS is_ai_assisted,
   linked_ticket_keys                          AS linked_ticket_keys
 `;
+
+// Bitbucket's states are UPPERCASE and it has two "closed without merge" states
+// (DECLINED, SUPERSEDED); both read as 'closed', the github/ado spelling, so an
+// outer `state = 'merged'` / `state = 'open'` works across providers.
+const BITBUCKET_PR_COLUMNS = `
+  toString(id)                                AS id,
+  repo_full_name                              AS repo,
+  pr_id                                       AS number,
+  title                                       AS title,
+  created_at                                  AS created_at,
+  merged_at                                   AS merged_at,
+  closed_at                                   AS closed_at,
+  multiIf(state = 'MERGED', 'merged', state = 'OPEN', 'open', 'closed') AS state,
+  author_username                             AS author,
+  additions                                   AS additions,
+  deletions                                   AS deletions,
+  cycle_time_hours                            AS cycle_time_hours,
+  first_review_at                             AS first_review_at,
+  ai_assisted                                 AS is_ai_assisted,
+  linked_ticket_keys                          AS linked_ticket_keys
+`;
+
+/**
+ * Bitbucket leg of the PR union, shared with nothing else on purpose: the
+ * `is_release = 0` predicate is the ONE place the spec's "release PRs are
+ * stored but not counted" rule is enforced for every PR widget. A stage→prod
+ * release PR re-merges features that already merged into stage; counting it
+ * would double throughput and attribute every feature to whoever cut the
+ * release. FINAL because the PR adapter re-fetches every PR updated since the
+ * watermark, so an open PR gets a new row version on each sync.
+ */
+function bitbucketPullRequestsLeg(scope: BoardScope, params: Record<string, unknown>): string | null {
+  const repos = bitbucketRepos(scope);
+  if (repos.length === 0) return null;
+  params.bbRepos = repos;
+  return `SELECT ${BITBUCKET_PR_COLUMNS}, 'bitbucket' AS source
+      FROM cockpit.bitbucket_pull_requests FINAL
+      WHERE repo_full_name IN {bbRepos:Array(String)} AND is_release = 0`;
+}
 
 // ADO writes raw status ('completed' | 'active' | 'abandoned') and has no
 // merged_at column. Map status → state ('completed' → 'merged', 'abandoned' →
@@ -440,6 +492,8 @@ export function pullRequestsUnion(scope: BoardScope): UnionResult {
     legs.push(`SELECT ${ADO_PR_COLUMNS}, 'ado' AS source
       FROM cockpit.ado_pull_requests WHERE ${adoScopeFilter(scope, params, { repoColumn: 'repo_name' })}`);
   }
+  const bitbucket = bitbucketPullRequestsLeg(scope, params);
+  if (bitbucket) legs.push(bitbucket);
   return { sql: legs.length ? legs.join(' UNION ALL ') : null, params };
 }
 
@@ -450,7 +504,10 @@ export function pullRequestsUnion(scope: BoardScope): UnionResult {
 //   github_commits: author_login (Nullable) + author_email
 //   gitlab_commits: NO author_login — only author_name + author_email
 //   ado_commits:    author_login (Nullable) + author_email
-// All three use ai_assisted (not is_ai_assisted).
+//   bitbucket_commits: author_username (Nullable — set only when Bitbucket
+//                   linked the commit to an account) + author_email parsed from
+//                   author.raw, so it coalesces exactly like github.
+// All four use ai_assisted (not is_ai_assisted).
 //
 // Author aliasing favours git email as a cross-provider identity fallback —
 // every commit has a non-null email, whereas login is provider-specific and
@@ -488,6 +545,17 @@ const ADO_COMMIT_COLUMNS = `
   ai_assisted                                 AS is_ai_assisted
 `;
 
+const BITBUCKET_COMMIT_COLUMNS = `
+  sha                                         AS sha,
+  committed_at                                AS committed_at,
+  coalesce(author_username, author_email)     AS author,
+  message                                     AS message,
+  additions                                   AS additions,
+  deletions                                   AS deletions,
+  is_merge_commit                             AS is_merge_commit,
+  ai_assisted                                 AS is_ai_assisted
+`;
+
 export function commitsUnion(scope: BoardScope): UnionResult {
   const legs: string[] = [];
   const params: Record<string, unknown> = {};
@@ -505,6 +573,11 @@ export function commitsUnion(scope: BoardScope): UnionResult {
   if (scope.adoProjects.length) {
     legs.push(`SELECT ${ADO_COMMIT_COLUMNS}, 'ado' AS source
       FROM cockpit.ado_commits WHERE ${adoScopeFilter(scope, params, { repoColumn: 'repo_name' })}`);
+  }
+  if (bitbucketRepos(scope).length) {
+    legs.push(`SELECT ${BITBUCKET_COMMIT_COLUMNS}, 'bitbucket' AS source
+      FROM cockpit.bitbucket_commits WHERE repo_full_name IN {bbRepos:Array(String)}`);
+    params.bbRepos = bitbucketRepos(scope);
   }
   return { sql: legs.length ? legs.join(' UNION ALL ') : null, params };
 }
@@ -539,6 +612,32 @@ const GITLAB_REVIEW_COLUMNS = `
   state = 'approved'                          AS is_approval
 `;
 
+// bitbucket_reviews: derived from each PR's /activity feed, so like gitlab there
+// is no bot signal (is_bot constant 0). State is UPPERCASE — APPROVED |
+// COMMENTED | CHANGES_REQUESTED — unlike gitlab's lowercase.
+const BITBUCKET_REVIEW_COLUMNS = `
+  reviewer_username                           AS reviewer,
+  'bitbucket'                                 AS provider,
+  submitted_at                                AS submitted_at,
+  toUInt8(0)                                  AS is_bot,
+  state = 'APPROVED'                          AS is_approval
+`;
+
+/**
+ * Predicate excluding reviews left on a Bitbucket RELEASE PR, so the review
+ * surfaces agree with the PR union (which drops `is_release = 1`). Keyed on the
+ * PR table's `id` ("{repo_full_name}#{pr_id}") rather than a tuple IN, which the
+ * SQL console's parser does not round-trip. Callers must have bound `bbRepos`.
+ * `alias` qualifies the review table's columns where the outer query joins.
+ */
+export function bitbucketNotReleasePrFilter(alias?: string): string {
+  const p = alias ? `${alias}.` : '';
+  return `concat(${p}repo_full_name, '#', toString(${p}pr_id)) NOT IN (
+        SELECT id FROM cockpit.bitbucket_pull_requests FINAL
+        WHERE repo_full_name IN {bbRepos:Array(String)} AND is_release = 1
+      )`;
+}
+
 export function reviewsUnion(scope: BoardScope): UnionResult {
   const legs: string[] = [];
   const params: Record<string, unknown> = {};
@@ -557,11 +656,18 @@ export function reviewsUnion(scope: BoardScope): UnionResult {
       FROM cockpit.gitlab_reviews FINAL WHERE project_path IN {glReviewPaths:Array(String)}`);
     params.glReviewPaths = scope.gitlabProjectPaths;
   }
+  if (bitbucketRepos(scope).length) {
+    legs.push(`SELECT ${BITBUCKET_REVIEW_COLUMNS}
+      FROM cockpit.bitbucket_reviews FINAL
+      WHERE repo_full_name IN {bbRepos:Array(String)}
+        AND ${bitbucketNotReleasePrFilter()}`);
+    params.bbRepos = bitbucketRepos(scope);
+  }
   return { sql: legs.length ? legs.join(' UNION ALL ') : null, params };
 }
 
 // Per-developer commit shape. Surfaces both author_name and author_email
-// (universal across all three commit tables) so the COMMITS_PER_DEV builder can
+// (universal across all four commit tables) so the COMMITS_PER_DEV builder can
 // key identity on the display name and fall back to email when the name is
 // blank. Distinct from commitsUnion (whose shape rework-rate / bot-vs-human
 // depend on) so those consumers stay untouched.
@@ -594,6 +700,12 @@ export function developerCommitsUnion(scope: BoardScope): UnionResult {
     legs.push(`SELECT ${DEV_COMMIT_COLUMNS}
       FROM cockpit.ado_commits
       WHERE ${adoScopeFilter(scope, params, { repoColumn: 'repo_name' })} AND is_merge_commit = 0`);
+  }
+  if (bitbucketRepos(scope).length) {
+    legs.push(`SELECT ${DEV_COMMIT_COLUMNS}
+      FROM cockpit.bitbucket_commits
+      WHERE repo_full_name IN {bbRepos:Array(String)} AND is_merge_commit = 0`);
+    params.bbRepos = bitbucketRepos(scope);
   }
   return { sql: legs.length ? legs.join(' UNION ALL ') : null, params };
 }
@@ -690,6 +802,55 @@ const GITHUB_DEPLOYMENT_COLUMNS = `
   sha                                         AS sha
 `;
 
+// Bitbucket Pipelines → Deployments. One row in bitbucket_deployments is one
+// (pipeline run × environment), and a single release fans out to a Production
+// environment PER BRAND (Production_<brand>_…), so a row is not a deploy:
+// counting rows would multiply deploy frequency by the number of brands. The
+// leg therefore aggregates to ONE deploy per (repo_full_name, pipeline_uuid)
+// over Production-type environments (spec Decisions: "Deploy dedup"):
+//
+//   - success:   ≥1 SUCCESSFUL production deployment; deployed_at = the
+//                earliest successful completion (when the change first reached
+//                production).
+//   - failure:   no SUCCESSFUL, ≥1 FAILED production deployment — the pipeline
+//                tried to ship and nothing did. One failed prod deploy for
+//                change-failure-rate; deployed_at = earliest failed completion.
+//   - neither:   only STOPPED / IN_PROGRESS / UNDEPLOYED — no terminal outcome,
+//                so the pipeline is dropped (HAVING) rather than counted as a
+//                production deploy in CFR's denominator.
+//
+// Deliberate divergence from ADO: a pipeline that FAILED in one brand
+// environment but SUCCEEDED in another is a success here, not a failure. In
+// Bitbucket a single brand step failing (and usually being re-run inside the
+// same pipeline) is not "the change failed in production"; with ~16 brand
+// environments per release, counting any one failure would put CFR near 100%.
+//
+// is_production is constant 1 because the WHERE admits Production-type
+// environments only — Staging / Test deployments never reach the leg. The
+// verdict is made here, at query time (see 73_bitbucket_deployments.sql).
+// The column list mirrors GITHUB_DEPLOYMENT_COLUMNS exactly.
+function bitbucketDeploymentsLeg(scope: BoardScope, params: Record<string, unknown>): string | null {
+  const repos = bitbucketRepos(scope);
+  if (repos.length === 0) return null;
+  params.bbRepos = repos;
+  return `SELECT
+        if(countIf(status = 'SUCCESSFUL') > 0,
+           minIf(completed_at, status = 'SUCCESSFUL'),
+           minIf(completed_at, status = 'FAILED'))  AS deployed_at,
+        countIf(status = 'SUCCESSFUL') > 0          AS is_success,
+        toUInt8(1)                                  AS is_production,
+        concat('bb#', pipeline_uuid)                AS release_key,
+        repo_full_name                              AS repo,
+        any(commit_sha)                             AS sha,
+        'bitbucket' AS source
+      FROM cockpit.bitbucket_deployments FINAL
+      WHERE repo_full_name IN {bbRepos:Array(String)}
+        AND environment_type = 'Production'
+        AND pipeline_uuid != ''
+      GROUP BY repo_full_name, pipeline_uuid
+      HAVING countIf(status IN ('SUCCESSFUL', 'FAILED')) > 0`;
+}
+
 export function deploymentsUnion(scope: BoardScope): UnionResult {
   const legs: string[] = [];
   const params: Record<string, unknown> = {};
@@ -761,5 +922,7 @@ export function deploymentsUnion(scope: BoardScope): UnionResult {
       FROM cockpit.github_deployments FINAL WHERE repo_full_name IN {ghRepos:Array(String)}`);
     params.ghRepos = scope.githubRepoFullNames;
   }
+  const bitbucket = bitbucketDeploymentsLeg(scope, params);
+  if (bitbucket) legs.push(bitbucket);
   return { sql: legs.length ? legs.join(' UNION ALL ') : null, params };
 }

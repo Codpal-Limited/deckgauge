@@ -17,6 +17,7 @@ import {
 } from '../../actions/employee-comments';
 import { ActivityLists } from './ActivityLists';
 import { RankingPanel } from './RankingPanel';
+import { EmployeePhoto } from './EmployeePhoto';
 
 const EMPTY_ACTIVITY: EmployeeActivity = { commits: [], pullRequests: [], assignedIssues: [] };
 
@@ -206,12 +207,14 @@ export function EmployeeDetailDrawer({
     <SlideOverPanel isOpen={true} onClose={onClose} title={employee.name}>
       {/* Colored avatar header */}
       <div className="mb-4 flex items-start gap-3 pb-4 border-b border-slate-200">
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg shrink-0"
-          style={{ backgroundColor: avatarBg }}
-        >
-          {initials}
-        </div>
+        <EmployeePhoto src={employee.photoUrl} className="w-12 h-12 rounded-full object-cover shrink-0">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg shrink-0"
+            style={{ backgroundColor: avatarBg }}
+          >
+            {initials}
+          </div>
+        </EmployeePhoto>
         <div className="flex-1 min-w-0">
           <div className="text-base font-semibold text-slate-900 truncate">{employee.name}</div>
           <div className="text-sm text-slate-500">{displayTitle}</div>

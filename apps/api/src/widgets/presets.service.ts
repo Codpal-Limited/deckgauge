@@ -104,17 +104,19 @@ export class PresetService {
   }
 
   private async readBoardScope(boardId: string): Promise<WidgetScopeFlags> {
-    const [jira, github, gitlab, ado] = await Promise.all([
+    const [jira, github, gitlab, ado, bitbucket] = await Promise.all([
       this.prisma.boardJiraSource.count({ where: { boardId } }),
       this.prisma.boardGitHubSource.count({ where: { boardId } }),
       this.prisma.boardGitLabSource.count({ where: { boardId } }),
       this.prisma.boardAdoSource.count({ where: { boardId } }),
+      this.prisma.boardBitbucketSource.count({ where: { boardId } }),
     ]);
     return {
       hasJira: jira > 0,
       hasGitHub: github > 0,
       hasGitLab: gitlab > 0,
       hasAdo: ado > 0,
+      hasBitbucket: bitbucket > 0,
     };
   }
 }

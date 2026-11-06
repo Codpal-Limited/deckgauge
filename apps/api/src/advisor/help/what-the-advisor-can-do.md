@@ -1,7 +1,7 @@
 # What the Advisor can and can't do
 
-The Advisor never writes to any connected tool (Jira, GitHub, GitLab, or
-Azure DevOps) — that never changes, on any board, for any user. On a board,
+The Advisor never writes to any connected tool (Jira, GitHub, GitLab,
+Azure DevOps, or Bitbucket) — that never changes, on any board, for any user. On a board,
 it can now propose a batch of changes for the user to review, but a proposal
 is not a change: nothing on the board is created, edited, deleted, or moved
 by anything the Advisor itself does. Every answer it gives is either a real
